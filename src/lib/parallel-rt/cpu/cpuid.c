@@ -232,21 +232,21 @@ static void CPUID (uint32_t leaf, uint32_t op2, CPUID_t *info)
 {
     uint64_t	saveRBX;	// %rbx is callee-save
 
-    asm ("movq %%rbx,%0" : "=m" (saveRBX));
+    __asm__ ("movq %%rbx,%0" : "=m" (saveRBX));
 
     info->op = leaf;
 
   // load operation code into %eax
-    asm ("movl %0,%%eax; " : : "m" (leaf));
-    asm ("movl %0,%%ecx; " : : "m" (op2));
-    asm ("cpuid" : : : "%eax", "%ecx", "%edx");
-    asm (
+    __asm__ ("movl %0,%%eax; " : : "m" (leaf));
+    __asm__ ("movl %0,%%ecx; " : : "m" (op2));
+    __asm__ ("cpuid" : : : "%eax", "%ecx", "%edx");
+    __asm__ (
 	"movl %%eax,%0; movl %%ebx,%1; movl %%ecx,%2; movl %%edx,%3; "
 	: "=m" (info->u.regs.eax), "=m" (info->u.regs.ebx),
 	  "=m" (info->u.regs.ecx), "=m" (info->u.regs.edx)
 	:
 	: "%eax", "%edx", "%ecx");
-    asm ("movq %0,%%rbx" : : "m" (saveRBX));
+    __asm__ ("movq %0,%%rbx" : : "m" (saveRBX));
 
 }
 

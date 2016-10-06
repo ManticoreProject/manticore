@@ -16,9 +16,11 @@
 
 bool isGlobalHeapPtr (Value_t v)
 {
-  assert(isPtr(v));
-  assert(AddrToChunk(ValueToAddr(v)) != 0);
-  assert(AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
+  bool cond =  isPtr(v) 
+            && AddrToChunk(ValueToAddr(v)) != 0
+            && AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK;
+  assert(cond);
+  return cond;
 }
 
 /*! \brief check for obviously corrupt objects in the local heap
