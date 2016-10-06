@@ -110,8 +110,7 @@ structure ClassifyConts : sig
     fun kindToString JoinCont = "JoinCont"
       | kindToString ReturnCont = "ReturnCont"
       | kindToString ExnCont = "ExnCont"
-      | kindToString (ParamCont (SOME p)) = "ParamCont(" ^ (kindToString p) ^ ")"
-      | kindToString (ParamCont NONE) = "ParamCont"
+      | kindToString ParamCont = "ParamCont"
       | kindToString GotoCont = "GotoCont"
       | kindToString OtherCont = "OtherCont"
 
