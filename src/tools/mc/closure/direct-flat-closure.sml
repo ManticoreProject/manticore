@@ -20,6 +20,7 @@ structure DirectFlatClosureWithCFA : sig
     structure FV = FreeVars
     structure VMap = CPS.Var.Map
     structure ST = Stats
+    structure CC = ClassifyConts
     
     (********** Counters for statistics **********)
     val cntJoinContOpt    = ST.newCounter "clos:optimize-joink"
@@ -918,9 +919,30 @@ structure DirectFlatClosureWithCFA : sig
                   (binds @ retBinds @ argBinds, xfer)
                 end
         (* convert a throw *)
-          and cvtThrow (env, k, args) = if ClassifyConts.isJoinCont k
-		then cvtJoinThrow (env, k, args)
-		else (case CFA.valueOf k 
+          and cvtThrow (env, k, args) = 
+          if ClassifyConts.isJoinCont k
+          
+            then cvtJoinThrow (env, k, args)
+          
+          else (case CC.kindOfCont k
+                of CC.ParamCont => (case CC.checkRets(k, CC.contextOfThrow k)
+                    (* is this a throw to one of the immediately enclosing 
+                       continuations marked as an exnh or retk in this function? *)
+                  of SOME(CC.ReturnCont) => 
+                      (* this is a standard function return. *)
+                        cvtReturnThrow(env, k, args)
+                   
+                   | SOME(CC.ExnCont) => raise Fail "can't handle raising an excemption atm"
+                   | NONE => raise Fail "throw to a ret/exn continuation that's not the enclosing function's!"
+                   (* esac *))
+                | _ => raise Fail (
+                    "encountered a throw that I can't handle: "
+                    ^ (ClassifyConts.kindToString o ClassifyConts.kindOfCont) k
+                    )
+                (* esac *))
+        
+        (* OLD STUFF
+        (case CFA.valueOf k 
 		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
 		    | CFA.BOT => cvtStdThrow (env, k, NONE, args)
 		    | CFA.LAMBDAS gs => let
@@ -975,6 +997,7 @@ structure DirectFlatClosureWithCFA : sig
                 in
                   (bindCP :: (argBinds @ kBinds), xfer)
                 end
+    *)
 	  and cvtJoinThrow (env, k, args) = let
                 val (argBinds, args) = lookupVars(env, args)
 		val needsEP = ref false
@@ -991,6 +1014,13 @@ structure DirectFlatClosureWithCFA : sig
 		in
 		  (argBinds, CFG.Goto(labelOf k, args))
 		end
+        
+        and cvtReturnThrow (env, k, args) = let (* TODO remove the k once things are working *)
+            val (argBinds, args) = lookupVars(env, args)
+        in
+            (argBinds, CFG.Return args)
+        end
+        
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
                 val ep = CFG.Var.new ("dummyEP", CFGTy.T_Any)
