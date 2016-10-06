@@ -375,7 +375,7 @@ structure MLB : sig
 	  (* parallel array *)
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
             in
-              parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
+              (*parrayPts @ topLevelSchedPts @ runtimeBasisLibPts*) []
             end
           else let
 	  (* implicit-threading library *)
@@ -441,4 +441,3 @@ structure MLB : sig
 (* 		  | {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, emptyEnv))] *)
 (* 		  | _ => raise Fail "unknown source file extension" *)
 (* 		(\* end case *\)) *)
-
