@@ -744,76 +744,62 @@ structure DirectFlatClosureWithCFA : sig
               blocks := func :: !blocks
           end
         (* convert a bound continuation *)
-          and cvtCont (env, CPS.FB{f=k, params, body, ...}) =
-             if ClassifyConts.isJoinCont k
-		then let
-		(* f is a join continuation, so we will translate it to a *
- 		 * block.  We have to extend its parameters with the locally *
- 		 * bound free variables. *
- 		 *)
-		  val needsEP = ref false
-		  fun f (x, (bEnv, params)) = (case findVar(env, x)
-			 of Local _ => let
-			      val (bEnv', x') = newLocal(bEnv, x)
-			      in
-				(bEnv', x' :: params)
-			      end
-			  | Global i => (
-			      needsEP := true;
-			      (insertVar(bEnv, x, Global i), params))
-			  | EnclFun => (
-			      needsEP := true;
-			      (insertVar(bEnv, x, EnclFun), params))
-			  | EnclCont => (
-			      needsEP := true;
-			      (insertVar(bEnv, x, EnclCont), params))
-			  | JoinCont => (bEnv, params)
-			  | Extern _ => raise Fail "unexpected extern in free-var list"
-			(* end case *))
-		  val paramEP = CFG.Var.copy (envPtrOf env)
-		  val (bodyEnv, params) = newLocals (newEnv paramEP, params)
-		  val (bodyEnv, params) =
-			CPS.Var.Set.foldr f (bodyEnv, params) (FreeVars.envOfFun k)
-		  val bodyEnv = insertVar (bodyEnv, k, JoinCont)  (* to support recursive conts *)
-	       (* if there are any free globals in e, then we include *
-                * the environment pointer as an argument. *)
-		  val params = if !needsEP then paramEP :: params else params
-		  val lab = CFG.Label.new(
-			CPS.Var.nameOf k,
-			CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
-		  val _ = setLabel (k, lab) 
-                  val (start, body) = cvtExp (bodyEnv, params, k, lab, body)
-		  in
-		    ([], insertVar (env, k, JoinCont), start::body)
-		  end
-		else let
-		  val (mkContTy, mkEntry, mkEntryTy) =
-			if CFA.isEscaping k
-			  then (CFGTyUtil.stdContTy, CFG.StdCont, CFGTy.T_StdCont)
-			  else (CFGTyUtil.kwnContTy, CFG.KnownFunc, CFGTy.T_KnownFunc)
-		  val (binds, clos, lambdaEnv, params') = 
-			mkContClosure (env, params, FV.envOfFun k, mkContTy)
-		  val clos' = envPtrOf lambdaEnv
-		  val conv = mkEntry{
-			  clos = clos'
-			}
-		  val convTy = mkEntryTy{
-			  clos = CFG.Var.typeOf clos', 
-			  args = List.map CFG.Var.typeOf params'
-			}
-		  val lab = labelOf k
-		  val () = CFG.Label.setType (lab, convTy)
-		  val (bindLab, labVar) = bindLabel lab
-		  val contEnv = insertVar (lambdaEnv, k, EnclCont)  (* to support recursive conts *)
-		  val clos = labVar :: clos
-		  val closTy = CFGTy.T_Tuple(false, List.map CFG.Var.typeOf clos)
-		  val (env', k') = newLocalVar (env, k, closTy)
-		  val binds = CFG.mkAlloc(k', closTy, clos) :: bindLab :: binds
-                  val (start, body) = cvtExp (contEnv, params', k, lab, body)
-		  in
-                    finishFunc (lab, conv, start, body);
-		    (binds, env', [])
-		  end
+          and cvtCont (env, CPS.FB{f=k, params, body, ...}) = let
+                fun cvtJoinK () = let
+                
+            		(* f is a join continuation, so we will translate it to a *
+             		 * block.  We have to extend its parameters with the locally *
+             		 * bound free variables. *
+             		 *)
+            		  val needsEP = ref false
+            		  fun f (x, (bEnv, params)) = (case findVar(env, x)
+            			 of Local _ => let
+            			      val (bEnv', x') = newLocal(bEnv, x)
+            			      in
+            				(bEnv', x' :: params)
+            			      end
+            			  | Global i => (
+            			      needsEP := true;
+            			      (insertVar(bEnv, x, Global i), params))
+            			  | EnclFun => (
+            			      needsEP := true;
+            			      (insertVar(bEnv, x, EnclFun), params))
+            			  | EnclCont => (
+            			      needsEP := true;
+            			      (insertVar(bEnv, x, EnclCont), params))
+            			  | (RetCont | JoinCont) => (bEnv, params)
+            			  | Extern _ => raise Fail "unexpected extern in free-var list"
+            			(* end case *))
+            		  val paramEP = CFG.Var.copy (envPtrOf env)
+            		  val (bodyEnv, params) = newLocals (newEnv paramEP, params)
+            		  val (bodyEnv, params) =
+            			CPS.Var.Set.foldr f (bodyEnv, params) (FreeVars.envOfFun k)
+            		  val bodyEnv = insertVar (bodyEnv, k, JoinCont)  (* to support recursive conts *)
+            	       (* if there are any free globals in e, then we include *
+                            * the environment pointer as an argument. *)
+            		  val params = if !needsEP then paramEP :: params else params
+            		  val lab = CFG.Label.new(
+            			CPS.Var.nameOf k,
+            			CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
+            		  val _ = setLabel (k, lab) 
+                              val (start, body) = cvtExp (bodyEnv, params, k, lab, body)
+            		  in
+            		    ([], insertVar (env, k, JoinCont), start::body)
+            		  end
+                      
+                fun cvtRetK () = raise Fail "how to convert a return cont goes here"
+                
+                
+                fun cvtExnK () = raise Fail "don't know how we will convert exh conts yet!"
+          in
+            (case CC.kindOfCont k
+                of CC.JoinCont => cvtJoinK () (* TODO make sure the joink opt is always on *)
+                 | CC.ReturnCont => cvtRetK ()
+                 | CC.ExnCont => cvtExnK ()
+                 | x => raise Fail ((CC.kindToString x) ^ " conts are unexpected.")
+            (* esac *))
+          end
+          
         (* convert an apply *)
           and cvtApply (env, f, args, rets) = (case CFA.valueOf f
                  of CFA.TOP => cvtStdApply (env, f, NONE, args, rets)
