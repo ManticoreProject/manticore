@@ -211,7 +211,7 @@ structure DirectFlatClosureWithCFA : sig
       | Global of int           (* at the ith slot of the current closure *)
       | EnclFun                 (* the enclosing function (or one that shares the *)
                                 (* same closure). *)
-      | EnclCont		(* the enclosing continuation function *)
+      | EnclCont		(* the enclosing continuation function *) (* NOTE(kavon): this seems unused *)
       | JoinCont		(* a join continuation *)
       | RetCont			(* a return continuation *)
       | Extern of CFG.label	(* bound to an external variable (e.g., C function *)
@@ -504,7 +504,9 @@ structure DirectFlatClosureWithCFA : sig
                                     | EnclCont => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclCont), args, params))
-                                    | (RetCont | JoinCont) => (bEnv, args, params)
+                                        
+                                    | RetCont => (insertVar(bEnv, x, RetCont), args, params)
+                                    | JoinCont => (bEnv, args, params)
                                     | Extern _ => raise Fail "unexpected extern in free-var list"
                                   (* end case *))
                             val (branchEnv, args, params) =
@@ -767,7 +769,8 @@ structure DirectFlatClosureWithCFA : sig
             			  | EnclCont => (
             			      needsEP := true;
             			      (insertVar(bEnv, x, EnclCont), params))
-            			  | (RetCont | JoinCont) => (bEnv, params)
+                          | RetCont => (insertVar(bEnv, x, RetCont), params)
+            			  | JoinCont => (bEnv, params)
             			  | Extern _ => raise Fail "unexpected extern in free-var list"
             			(* end case *))
             		  val paramEP = CFG.Var.copy (envPtrOf env)
@@ -787,7 +790,49 @@ structure DirectFlatClosureWithCFA : sig
             		    ([], insertVar (env, k, JoinCont), start::body)
             		  end
                       
-                fun cvtRetK () = raise Fail "how to convert a return cont goes here"
+                fun cvtRetK () = let
+                    (* handle a return continuation. *)
+                    val needsEP = ref false
+                    fun f (x, (bEnv, params)) = (case findVar(env, x)
+                       of Local _ => let
+                            val (bEnv', x') = newLocal(bEnv, x)
+                            in
+                          (bEnv', x' :: params)
+                            end
+                        | Global i => (
+                            needsEP := true;
+                            (insertVar(bEnv, x, Global i), params))
+                        | EnclFun => (
+                            needsEP := true;
+                            (insertVar(bEnv, x, EnclFun), params))
+                        | EnclCont => (
+                            needsEP := true;
+                            (insertVar(bEnv, x, EnclCont), params))
+                        | RetCont => (insertVar(bEnv, x, RetCont), params)
+                        | JoinCont => (bEnv, params)
+                        | Extern _ => raise Fail "unexpected extern in free-var list"
+                      (* end case *))
+                      (* NOTE other than not adding k to the environment of its body, this is identical to
+                         how we handle joink's, except RetCont and not JoinCont etc. so clean this up! TODO *)
+                    val paramEP = CFG.Var.copy (envPtrOf env)
+                    val (bodyEnv, params) = newLocals (newEnv paramEP, params)
+                    val (bodyEnv, params) =
+                      CPS.Var.Set.foldr f (bodyEnv, params) (FreeVars.envOfFun k)
+                    (*val bodyEnv = insertVar (bodyEnv, k, JoinCont)  (* to support recursive conts *)*)
+                     (* if there are any free globals in e, then we include *
+                          * the environment pointer as an argument. *)
+                    val params = if !needsEP then paramEP :: params else params
+                    val lab = CFG.Label.new(
+                      CPS.Var.nameOf k,
+                      CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
+                    val _ = setLabel (k, lab) 
+                            val (start, body) = cvtExp (bodyEnv, params, k, lab, body)
+                in
+                  ([], insertVar (env, k, RetCont), start::body)
+                end
+                
+                
+                
                 
                 
                 fun cvtExnK () = raise Fail "don't know how we will convert exh conts yet!"
