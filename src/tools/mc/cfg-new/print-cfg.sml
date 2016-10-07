@@ -105,12 +105,23 @@ structure PrintCFG : sig
 		       of (CFG.LK_Func{export=SOME name, ...}, 
                            CFG.StdFunc{clos, ret, exh}) =>
 			    ("export stdfun ", clos :: args @ [ret, exh])
+                
 			| (CFG.LK_Func _, CFG.StdFunc{clos, ret, exh}) =>
 			    ("stdfun ", clos :: args @ [ret, exh])
+                
+                (* TODO print the return type of these guys! *)
+            | (CFG.LK_Func _, CFG.StdDirectFunc{clos, exh}) =>
+			    ("ds-stdfun ", clos :: args @ [exh])
+                
 			| (CFG.LK_Func _, CFG.StdCont{clos}) => 
                             ("cont ", clos::args)
+                            
 			| (CFG.LK_Func _, CFG.KnownFunc{clos}) => 
                             ("kfun ", clos::args)
+                            
+            | (CFG.LK_Func _, CFG.KnownDirectFunc{clos}) =>
+                            ("ds-kfun ", clos::args)
+                            
 			| (CFG.LK_Block _, _) => ("block ", args)
 			| _ => raise Fail "bogus function"
 		      (* end case *))

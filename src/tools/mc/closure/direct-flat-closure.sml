@@ -483,7 +483,7 @@ structure DirectFlatClosureWithCFA : sig
                  * list of blocks corresponding to what the true and false branches of the conditional
                  * were converted into.
                  *)
-                fun cvt (env, args, CPS.Exp(_, e), stms, encl) : CFG.block * CFG.block list = let
+                fun cvt (env, args, cpsExp as (CPS.Exp(_, e)), stms, encl) : CFG.block * CFG.block list = let
                      fun cvtBranch (lab, e, encl) = let
                             val needsEP = ref false
                             val argEP = envPtrOf env
@@ -572,7 +572,8 @@ structure DirectFlatClosureWithCFA : sig
                                  rr)
                               end
                           | CPS.Apply(f, args', rets) => let
-                                val (binds, xfer) = cvtApply (env, f, args', rets)
+                                val isTail = CC.isTailApply cpsExp
+                                val (binds, xfer) = cvtApply (env, f, args', rets, isTail)
                             in
                                 (CFG.mkBlock(lab, params, rev (binds@stms), xfer), [])
                             end
@@ -846,9 +847,9 @@ structure DirectFlatClosureWithCFA : sig
           end
           
         (* convert an apply *)
-          and cvtApply (env, f, args, rets) = (case CFA.valueOf f
-                 of CFA.TOP => cvtStdApply (env, f, NONE, args, rets)
-                  | CFA.BOT => cvtStdApply (env, f, NONE, args, rets)
+          and cvtApply (env, f, args, rets, isTail) = (case CFA.valueOf f
+                 of CFA.TOP => cvtStdApply (env, f, NONE, args, rets, isTail)
+                  | CFA.BOT => cvtStdApply (env, f, NONE, args, rets, isTail)
                   | CFA.LAMBDAS gs => let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
                       val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
@@ -857,11 +858,11 @@ structure DirectFlatClosureWithCFA : sig
                                  else NONE
                       in
                         if CFA.isEscaping g
-                          then cvtStdApply (env, f, fTgt, args, rets)
-                          else cvtKwnApply (env, f, fTgt, args, rets)
+                          then cvtStdApply (env, f, fTgt, args, rets, isTail)
+                          else cvtKwnApply (env, f, fTgt, args, rets, isTail)
                       end
                 (* end case *))
-          and cvtStdApply (env, f, fTgt, args, rets as [_, _]) = let
+          and cvtStdApply (env, f, fTgt, args, rets as [_, _], isTail) = let
                 val (argBinds, args) = lookupVars(env, args)
                 val (retBinds, [ret, exh]) = lookupVars(env, rets)
                 fun bindEP () = let
@@ -907,54 +908,67 @@ structure DirectFlatClosureWithCFA : sig
                 in
                   (binds @ retBinds @ argBinds, xfer)
                 end
-            | cvtStdApply (env, f, fTgt, args, rets as [_]) = 
-                cvtKwnApply (env, f, fTgt, args, rets)
-            | cvtStdApply (env, f, fTgt, args, rets) = 
+            | cvtStdApply (env, f, fTgt, args, rets as [_], isTail) = 
+                cvtKwnApply (env, f, fTgt, args, rets, isTail)
+            | cvtStdApply (env, f, fTgt, args, rets, isTail) = 
                 raise Fail "non-standard apply convention"
-          and cvtKwnApply (env, f, fTgt, args, rets) = let
+          and cvtKwnApply (env, f, fTgt, args, rets, isTail) = let
+                
                 val (argBinds, args) = lookupVars(env, args)
-                val (retBinds, rets) = lookupVars(env, rets)
+                
                 fun bindEP () = let
                       val (fBinds, f') = lookupVar(env, f)
                       val ep = CFG.Var.new (CPS.Var.nameOf f ^ "_ep", CFGTy.T_Any)
-                      in
-                        (CFG.mkSelect(ep, 0, f') :: fBinds, f', ep)
-                      end
-                val (binds, xfer) = let
-                      val (cp, ep, binds') = (case fTgt
-                             of SOME g => let
-                                  val (gBind, cp) = bindLabel (labelOf g)
+                  in
+                    (CFG.mkSelect(ep, 0, f') :: fBinds, f', ep)
+                  end
+                      
+                val (cp, ep, binds') = (case fTgt
+                     of SOME g => let
+                          val (gBind, cp) = bindLabel (labelOf g)
+                          in
+                            case findVar'(env, g)
+                             of SOME EnclFun => (cp, envPtrOf env, [gBind])
+                              | _ => let
+                                  val (epBinds, _, ep) = bindEP ()
                                   in
-                                    case findVar'(env, g)
-                                     of SOME EnclFun => (cp, envPtrOf env, [gBind])
-                                      | _ => let
-                                          val (epBinds, _, ep) = bindEP ()
-                                          in
-                                            (cp, ep, gBind :: epBinds)
-                                          end
-                                    (* end case *)
+                                    (cp, ep, gBind :: epBinds)
                                   end
-                              | NONE => let
-                                  val (epBinds, f', ep) = bindEP ()
-                                  val cp = CFG.Var.new(
-                                        CFG.Var.nameOf f',
-                                        CFGTyUtil.select(CFG.Var.typeOf f', 1))
-                                  val cpBind = CFG.mkSelect(cp, 1, f')
-                                  in
-                                    (cp, ep, cpBind :: epBinds)
-                                  end
-                            (* end case *))
-                      val xfer = CFG.Apply{
-                              f = cp,
-                              clos = ep,
-                              args = args @ rets
-                            }
-                      in
-                        (binds', xfer)
-                      end
-                in
-                  (binds @ retBinds @ argBinds, xfer)
-                end
+                            (* end case *)
+                          end
+                      | NONE => let
+                          val (epBinds, f', ep) = bindEP ()
+                          val cp = CFG.Var.new(
+                                CFG.Var.nameOf f',
+                                CFGTyUtil.select(CFG.Var.typeOf f', 1))
+                          val cpBind = CFG.mkSelect(cp, 1, f')
+                          in
+                            (cp, ep, cpBind :: epBinds)
+                          end
+                    (* end case *))
+                
+                fun doTailCall () = let
+                    val xfer = CFG.Call {
+                            f = cp,
+                            clos = ep,
+                            args = args,
+                            next = NONE
+                          }
+                    in
+                      (binds' @ argBinds, xfer)
+                    end
+                    
+                fun doCall () = raise Fail "implement doCall"
+            
+            
+          in
+            if isTail
+            then doTailCall()
+            else doCall()
+          end
+          
+          
+          
         (* convert a throw *)
           and cvtThrow (env, k, args) = 
           if ClassifyConts.isJoinCont k

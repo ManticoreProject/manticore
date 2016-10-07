@@ -247,6 +247,8 @@ structure CFG =
     fun paramsOfConv (StdFunc{clos, ret, exh}, params) = clos :: params @ [ret, exh]
       | paramsOfConv (StdCont{clos}, params) = clos::params
       | paramsOfConv (KnownFunc{clos}, params) = clos::params
+      | paramsOfConv (StdDirectFunc {clos, exh}, params) = clos :: params @ [exh]
+      | paramsOfConv (KnownDirectFunc {clos}, params) = clos :: params
 
     fun mkBlock (lab, args, body, exit) = let
         val block = BLK{lab=lab, args=args, body=body, exit=exit}
