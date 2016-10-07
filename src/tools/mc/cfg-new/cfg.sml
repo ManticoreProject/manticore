@@ -50,6 +50,16 @@ structure CFG =
 				(* "T" property).  It uses a specialized calling convention. *)
 	    clos : var		  (* closure parameter *)
           }
+          
+      | StdDirectFunc of {		(* a direct-style function that may be called from unknown sites*)
+	    clos : var,		  (* closure parameter *)
+	    exh : var		  (* exception-handler parameter *)
+	  }
+      
+      | KnownDirectFunc of {		(* a direct-style function for which all call sites are known *)
+	    clos : var		  (* closure parameter *)
+	  }
+      
 
     and exp
       = E_Var of var list * var list            (* parallel assignment *)

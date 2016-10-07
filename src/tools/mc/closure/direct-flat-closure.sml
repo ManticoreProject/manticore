@@ -213,6 +213,7 @@ structure DirectFlatClosureWithCFA : sig
                                 (* same closure). *)
       | EnclCont		(* the enclosing continuation function *)
       | JoinCont		(* a join continuation *)
+      | RetCont			(* a return continuation *)
       | Extern of CFG.label	(* bound to an external variable (e.g., C function *)
 
   (* an envrionment for mapping from CPS variables to CFG variables.  We also
@@ -226,6 +227,7 @@ structure DirectFlatClosureWithCFA : sig
       | locToString EnclFun = "EnclFun"
       | locToString EnclCont = "EnclCont"
       | locToString JoinCont = "JoinCont"
+      | locToString RetCont = "RetCont"
       | locToString (Extern lab) = concat["X(", CFG.Label.toString lab, ")"]
     fun prEnv (E{ep, env}) = let
 	  fun f (x, loc) = print(concat[
@@ -357,7 +359,13 @@ structure DirectFlatClosureWithCFA : sig
                 in
                   ([CFG.mkLabel(tmp, lab)], tmp)
                 end
-            | NONE => raise Fail(concat[
+                
+        | SOME RetCont => raise Fail(concat[
+		  "unbound retk ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep,
+          "\n did you forget to filter it out?"
+		])
+        
+        | NONE => raise Fail(concat[
 		  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
 		])
           (* end case *))
@@ -493,10 +501,10 @@ structure DirectFlatClosureWithCFA : sig
                                     | EnclFun => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclFun), args, params))
-				    | EnclCont => (
+                                    | EnclCont => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclCont), args, params))
-				    | JoinCont => (bEnv, args, params)
+                                    | (RetCont | JoinCont) => (bEnv, args, params)
                                     | Extern _ => raise Fail "unexpected extern in free-var list"
                                   (* end case *))
                             val (branchEnv, args, params) =
@@ -656,18 +664,14 @@ structure DirectFlatClosureWithCFA : sig
           and stdFuncConvention (env, args, [ret, exh]) = let
                 val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
-                val (env, ret) = newLocal (env, ret)
-                val (env, exh) = newLocal (env, exh)
+                val (env, exh) = newLocal(env, exh)
+                val env = insertVar(env, ret, RetCont)
                 val clos = envPtrOf env
-                val conv = CFG.StdFunc{
-                        clos = clos,
-                        ret = ret, 
-                        exh = exh
-                      }
-                val convTy = CFGTy.T_StdFun {
+                val conv = CFG.StdDirectFunc { clos = clos, exh = exh }
+                val convTy = CFGTy.T_StdDirFun {
                         clos = CFG.Var.typeOf clos,
                         args = List.map CFG.Var.typeOf args,
-                        ret = CFG.Var.typeOf ret,
+                        ret = cvtTyOfVar ret,
                         exh = CFG.Var.typeOf exh
                       }
                 in
@@ -678,20 +682,22 @@ structure DirectFlatClosureWithCFA : sig
             | stdFuncConvention (env, args, rets) =
                 raise Fail "non-standard apply convention"
         (* create a known function convention for a list of parameters *)
-          and kwnFuncConvention (env, args, rets) = let
+          and kwnFuncConvention (env, args, [ret, exh]) = let
                 val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
-                val (env, rets) = newLocals (env, rets)
+                val (env, exh) = newLocal (env, exh)
+                val env = insertVar(env, ret, RetCont)
                 val clos = envPtrOf env
-                val conv = CFG.KnownFunc{
+                val conv = CFG.KnownDirectFunc {
                         clos = clos
                       }
-                val convTy = CFGTy.T_KnownFunc {
+                val convTy = CFGTy.T_KnownDirFunc {
                         clos = CFG.Var.typeOf clos,
-                        args = List.map CFG.Var.typeOf (args @ rets)
+                        args = List.map CFG.Var.typeOf (args @ [exh]),
+                        ret = cvtTyOfVar ret
                       }
                 in
-                  (env, args @ rets, conv, convTy)
+                  (env, args @ [exh], conv, convTy)
                 end
         (* convert bound functions *)
           and cvtFunc (env, fbs) = let
