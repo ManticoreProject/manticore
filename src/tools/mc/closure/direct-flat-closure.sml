@@ -958,7 +958,16 @@ structure DirectFlatClosureWithCFA : sig
                       (binds' @ argBinds, xfer)
                     end
                     
-                fun doCall () = raise Fail "implement doCall"
+                fun doCall () = let
+                    val xfer = CFG.Call {
+                            f = cp,
+                            clos = ep,
+                            args = args,
+                            next = NONE
+                          }
+                in
+                    raise Fail "finish implementation"
+                end
             
             
           in

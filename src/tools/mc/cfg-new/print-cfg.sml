@@ -227,7 +227,7 @@ structure PrintCFG : sig
           | CFG.Call {f, clos, args, next=SOME(lhs, (afterL, liveAfter))} => (
               prCall("call", lhs, f, clos::args);
               indent (i+1); 
-                prJump("next", (afterL, lhs@liveAfter))
+                prJump("next", (afterL, liveAfter))
             )
           
           | CFG.Call {f, clos, args, next=NONE} =>
