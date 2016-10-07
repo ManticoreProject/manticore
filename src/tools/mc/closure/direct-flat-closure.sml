@@ -958,12 +958,63 @@ structure DirectFlatClosureWithCFA : sig
                       (binds' @ argBinds, xfer)
                     end
                     
+                    (*
+                    cvtJoinThrow (env, k, args) = let
+                              val (argBinds, args) = lookupVars(env, args)
+              		val needsEP = ref false
+              		fun f (x, args) = (case findVar(env, x)
+              		       of Local x' => x' :: args
+              			| Extern _ => raise Fail "unexpected extern in free-var list"
+              			| _ => (needsEP := true; args)
+              		      (* end case *))
+              		val args = CPS.Var.Set.foldr f args (FreeVars.envOfFun k)
+              	     (* if there are any free globals in e, then we include
+              	      * the environment pointer as an argument.
+              	      *)
+              		val args = if !needsEP then envPtrOf env :: args else args
+              		in
+              		  (argBinds, CFG.Goto(labelOf k, args))
+              		end
+                    *)
+                    
                 fun doCall () = let
+                    
+                    (* TODO: include the exn as an argument if its there *)
+                    val (retk :: _) = rets
+                    
+                    val needsEP = ref false
+                    
+                    fun f (x, args) = (case findVar(env, x)
+                            of Local x' => x' :: args
+                             | Extern _ => raise Fail "unexpected extern in free-var list"
+                             | RetCont => args
+                             | JoinCont => args
+                             | _ => (needsEP := true; args) (* TODO not true of RetCont or JoinCont! *)
+                            (* end case *))
+                            
+                    val freeVars = CPS.Var.Set.foldr f nil (FreeVars.envOfFun retk)
+                    val freeVars = if !needsEP then envPtrOf env :: freeVars else freeVars
+                    
+                    val afterLab = labelOf retk
+                    
+                    val lhs = let
+                            val (CFGTy.T_OpenTuple [retkTy]) = cvtTyOfVar retk  (* consult CFA to see what the type is. *)
+                            val argTys = (case retkTy
+                                           of CFGTy.T_StdCont {args,...} => raise Fail "it was a std cont"
+                                            | CFGTy.T_KnownFunc {args, clos, ...} => raise Fail "it was a known func"
+                                            | _ => raise Fail "dunno about this one"
+                                          (* esac *))
+                        in
+                            raise Fail "todo lhs"
+                        end
+                    
+                    val retkArgs = raise Fail "todo arg list"
+                
                     val xfer = CFG.Call {
                             f = cp,
                             clos = ep,
                             args = args,
-                            next = NONE
+                            next = SOME (lhs, (labelOf retk, retkArgs))
                           }
                 in
                     raise Fail "finish implementation"
@@ -1064,7 +1115,8 @@ structure DirectFlatClosureWithCFA : sig
 		fun f (x, args) = (case findVar(env, x)
 		       of Local x' => x' :: args
 			| Extern _ => raise Fail "unexpected extern in free-var list"
-			| _ => (needsEP := true; args)
+			| _ => (needsEP := true; args)       (* TODO in both this and the regular closure conversion, 
+                                                         JoinCont and RetCont do not require EP to be passed *)
 		      (* end case *))
 		val args = CPS.Var.Set.foldr f args (FreeVars.envOfFun k)
 	     (* if there are any free globals in e, then we include
