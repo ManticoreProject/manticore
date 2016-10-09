@@ -537,6 +537,14 @@ structure DirectFlatClosureWithCFA : sig
                               end
                           | CPS.Cont(fb, e) => let
                               val (binds, env, joinBlocks) = cvtCont(env, fb)
+                              
+                              val _ = let
+                                    val (CPS.FB{f,...}) = fb
+                                  in
+                                    print ("env after cvtCont(" ^ (CPS.Var.toString f) ^ "):\n")
+                                  end
+                              val _ = prEnv env
+                              
                               val (start, body) = cvt (env, args, e, binds @ stms, encl)
                               val body = joinBlocks@body
                               in
@@ -914,6 +922,8 @@ structure DirectFlatClosureWithCFA : sig
                 raise Fail "non-standard apply convention"
           and cvtKwnApply (env, f, fTgt, args, rets, isTail) = let
                 
+                val _ = print ("hit an apply to arg: " ^ ((CPS.Var.toString o List.hd) args) ^ "\n")
+                
                 val (argBinds, args) = lookupVars(env, args)
                 
                 fun bindEP () = let
@@ -981,6 +991,8 @@ structure DirectFlatClosureWithCFA : sig
                     
                     (* TODO: include the exn as an argument if its there *)
                     val (retk :: _) = rets
+                    
+                    val _ = prEnv env
                     
                     val needsEP = ref false
                     
