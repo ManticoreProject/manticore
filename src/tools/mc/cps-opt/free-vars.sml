@@ -41,6 +41,7 @@ structure FreeVars : sig
 (* -DEBUG*)
 
     val checkJoin = ref true
+    val checkDS = ref true
 
     val {getFn = getFV, setFn = setFV, clrFn=clearFV,  ...} = V.newProp (fn _ => VSet.empty)
     val {getFn = getFVOfPt, setFn = setFVOfPt, clrFn = clearFVOfPt, ...} = PPt.newProp (fn _ => VSet.empty)
@@ -80,7 +81,7 @@ structure FreeVars : sig
   (* return the variable of a lambda *)
     fun funVar (CPS.FB{f, ...}) = f
 
-    fun analExp (CPS.Exp(_, e)) = (case e
+    fun analExp (theExp as CPS.Exp(_, e)) = (case e
 	   of CPS.Let(xs, rhs, e) => removes (fvOfRHS(analExp e, rhs), xs)
 	    | CPS.Fun(fbs, e) => let
 	      (* first, compute the union of the free variables of the lambdas *)
@@ -120,7 +121,14 @@ structure FreeVars : sig
 		in
 		  addVar (fv, x)
 		end
-	    | CPS.Apply(f, args, rets) => addVars(VSet.empty, f::args@rets)
+	    | CPS.Apply(f, args, rets) => let
+            val fv = addVars(VSet.empty, f::args@rets)
+        in
+            if !checkDS andalso (not o ClassifyConts.isTailApply) theExp
+                then VSet.union(fv, (getFV o List.hd) rets)
+                else fv
+        end
+        
 	    | CPS.Throw(k, args) => let
 		val fv = addVars(VSet.empty, args)
 		in
@@ -150,8 +158,7 @@ structure FreeVars : sig
 	  analExp body,
 	  addVars (addVars(VSet.empty, params), rets))
 
-    fun analyze (CPS.MODULE{name, externs, body, ...}) = let
-          val _ = checkJoin := true
+    fun doAnalysis (CPS.MODULE{name, externs, body, ...}) = let
 	  val fv = analFB body
 	  in
 	    if VSet.isEmpty fv
@@ -164,25 +171,13 @@ structure FreeVars : sig
 
     val analyze = BasicControl.mkTracePassSimple {
 	    passName = "free-vars",
-	    pass = analyze
+	    pass = doAnalysis
 	  }
-
-    fun analyzeIgnoringJoin (CPS.MODULE{name, externs, body, ...}) = let
-          val _ = checkJoin := true
-	  val fv = analFB body
-	  in
-	    if VSet.isEmpty fv
-	      then ()
-	      else (
-		print(concat["FV(", Atom.toString name, ") = "]);
-		prSet fv; print "\n";
-		raise Fail "non-closed module")
-	  end
-
-    val analyze = BasicControl.mkTracePassSimple {
-	    passName = "free-vars",
-	    pass = analyze
-	  }
+      
+      
+    fun analyze m = (checkJoin := true ; checkDS := ClassifyConts.wasDirectStyle() ; doAnalysis m)
+    
+    and analyzeIgnoringJoin m = (checkJoin := false ; checkDS := false ; doAnalysis m)
 
     fun envOfFun f = let
 	  val fv = getFV f

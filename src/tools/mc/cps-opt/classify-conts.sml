@@ -54,22 +54,9 @@ structure ClassifyConts : sig
     
     val isTailApply : CPS.exp -> bool
     
-    (* TODO
-        We need to implement this in classify conts. the current bug is that
-        in cvtBranch, the fold over the freeVarsOfExp does not know that we are going 
-        to need all of the bindings used in any return continuations that are used
-        in an Apply in that expression, so they should not be filtered out.
-        
-        The cleanest way to fix this without hacking up closure conversion is to
-        have the FreeVars analysis check the information added by this pass (if using DS) 
-        at control flow points. Then, it would add the union of the free vars of all the 
-        retconts used in each branch, and make that the expression's free vars.
-        
-        This should be easy to do in FreeVars because you should already know what the FV
-        set of the ret cont is because it had to have been defined earlier.
-     *)
-    (* for direct-style conversion *)
-    (*val dsContsOf : CPS.exp -> CPS.var list*)
+    (* ask whether this analysis is in direct-style mode
+       only valid after analyze has been run!! *)
+    val wasDirectStyle : unit -> bool
 
   end = struct
 
@@ -81,6 +68,8 @@ structure ClassifyConts : sig
     (* controls *)
     val enableFlg = ref true
     val usingDS = ref false
+    
+    fun wasDirectStyle () = !usingDS
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
