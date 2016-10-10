@@ -1007,21 +1007,21 @@ structure DirectFlatClosureWithCFA : sig
                     val freeVars = CPS.Var.Set.foldr f nil (FreeVars.envOfFun retk)
                     val freeVars = if !needsEP then envPtrOf env :: freeVars else freeVars
                     
-                    val afterLab = labelOf retk
-                    
                     val lhs = let
                             val (CFGTy.T_OpenTuple [retkTy]) = cvtTyOfVar retk  (* consult CFA to see what the type is. *)
                             val argTys = (case retkTy
-                                           of CFGTy.T_StdCont {args,...} => raise Fail "it was a std cont"
-                                            | CFGTy.T_KnownFunc {args, clos, ...} => raise Fail "it was a known func"
+                                           of CFGTy.T_StdCont {args,...} => args
+                                            | CFGTy.T_KnownFunc {args, clos, ...} => clos :: args
                                             | _ => raise Fail "dunno about this one"
                                           (* esac *))
+                                          
+                            fun fresh ty = CFG.Var.new ("ret", ty)
                         in
-                            raise Fail "todo lhs"
+                            List.map fresh argTys
                         end
                     
-                    val retkArgs = raise Fail "todo arg list"
-                
+                    val retkArgs = lhs @ freeVars
+                                    
                     val xfer = CFG.Call {
                             f = cp,
                             clos = ep,
@@ -1029,7 +1029,7 @@ structure DirectFlatClosureWithCFA : sig
                             next = SOME (lhs, (labelOf retk, retkArgs))
                           }
                 in
-                    raise Fail "finish implementation"
+                    (argBinds, xfer)
                 end
             
             

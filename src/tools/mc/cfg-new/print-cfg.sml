@@ -270,7 +270,7 @@ structure PrintCFG : sig
         )
         | prCall (prefix, lhs, f, args) = (
             prl [prefix, " "];
-            prList varUseToString lhs;
+            prList varBindToString lhs;
             prl [" = ", varUseToString f, " "];
             prList varUseToString args;
             pr "\n"
