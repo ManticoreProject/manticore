@@ -1003,24 +1003,27 @@ structure DirectFlatClosureWithCFA : sig
                              | JoinCont => args
                              | _ => (needsEP := true; args) (* TODO not true of RetCont or JoinCont! *)
                             (* end case *))
-                            
-                    val freeVars = CPS.Var.Set.foldr f nil (FreeVars.envOfFun retk)
-                    val freeVars = if !needsEP then envPtrOf env :: freeVars else freeVars
                     
+                    
+                    val freeVars = CPS.Var.Set.foldr f nil (FreeVars.envOfFun retk)
+                    
+                    (* bindings for the values from the return throw *)
                     val lhs = let
                             val (CFGTy.T_OpenTuple [retkTy]) = cvtTyOfVar retk  (* consult CFA to see what the type is. *)
                             val argTys = (case retkTy
                                            of CFGTy.T_StdCont {args,...} => args
-                                            | CFGTy.T_KnownFunc {args, clos, ...} => clos :: args
+                                            | CFGTy.T_KnownFunc {args, ...} => args
                                             | _ => raise Fail "dunno about this one"
                                           (* esac *))
                                           
-                            fun fresh ty = CFG.Var.new ("ret", ty)
+                            fun fresh ty = CFG.Var.new ("rv", ty)
                         in
                             List.map fresh argTys
                         end
                     
-                    val retkArgs = lhs @ freeVars
+                    (* ep, free vars, retk's params *)
+                    val retkArgs = freeVars @ lhs 
+                    val retkArgs = if !needsEP then envPtrOf env :: retkArgs else retkArgs
                                     
                     val xfer = CFG.Call {
                             f = cp,
@@ -1029,7 +1032,7 @@ structure DirectFlatClosureWithCFA : sig
                             next = SOME (lhs, (labelOf retk, retkArgs))
                           }
                 in
-                    (argBinds, xfer)
+                    (binds' @ argBinds, xfer)
                 end
             
             
@@ -1063,64 +1066,7 @@ structure DirectFlatClosureWithCFA : sig
                     ^ (ClassifyConts.kindToString o ClassifyConts.kindOfCont) k
                     )
                 (* esac *))
-        
-        (* OLD STUFF
-        (case CFA.valueOf k 
-		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
-		    | CFA.BOT => cvtStdThrow (env, k, NONE, args)
-		    | CFA.LAMBDAS gs => let
-			val SOME g = CPS.Var.Set.find (fn _ => true) gs
-			val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
-			val kTgt = if CPS.Var.Set.numItems gs = 1 
-				      then CPS.Var.Set.find (fn _ => true) gs
-				   else NONE
-			in
-			  if CFA.isEscaping g
-			    then cvtStdThrow (env, k, kTgt, args)
-			    else cvtKnownThrow (env, k, kTgt, args)
-			end
-		  (* end case *))
-          and cvtStdThrow (env, k, kTgt, args) = let
-                val (kBinds, k') = lookupVar(env, k)
-                val (argBinds, args') = lookupVars(env, args)
-                val cp = CFG.Var.new(CFG.Var.nameOf k',
-                                     CFGTyUtil.select(CFG.Var.typeOf k', 0))
-              (* if valueOf(k) = LAMBDAS {g},
-               * then we can refer directly to labelOf(g)
-               *)
-                val bindCP = (case kTgt
-                       of SOME g => CFG.mkLabel(cp, labelOf g)
-                        | NONE => CFG.mkSelect(cp, 0, k')
-                      (* end case *))
-                val xfer = CFG.StdThrow {
-                        k = cp,
-                        clos = k',
-                        args = args'
-                     }
-                in
-                  (bindCP :: (argBinds @ kBinds), xfer)
-                end
-          and cvtKnownThrow (env, k, kTgt, args) = let
-                val (kBinds, k') = lookupVar(env, k)
-                val (argBinds, args') = lookupVars(env, args)
-                val cp = CFG.Var.new(CFG.Var.nameOf k',
-                                     CFGTyUtil.select(CFG.Var.typeOf k', 0))
-              (* if valueOf(k) = LAMBDAS {g},
-               * then we can refer directly to labelOf(g)
-               *)
-                val bindCP = (case kTgt
-                       of SOME g => CFG.mkLabel(cp, labelOf g)  
-                        | NONE => CFG.mkSelect(cp, 0, k')
-                      (* end case *))
-                val xfer = CFG.Apply {
-                        f = cp,
-                        clos = k',
-                        args = args'
-                     }
-                in
-                  (bindCP :: (argBinds @ kBinds), xfer)
-                end
-    *)
+
 	  and cvtJoinThrow (env, k, args) = let
                 val (argBinds, args) = lookupVars(env, args)
 		val needsEP = ref false
