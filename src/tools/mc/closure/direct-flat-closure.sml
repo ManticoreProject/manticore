@@ -1045,27 +1045,28 @@ structure DirectFlatClosureWithCFA : sig
           
           
         (* convert a throw *)
-          and cvtThrow (env, k, args) = 
-          if ClassifyConts.isJoinCont k
-          
-            then cvtJoinThrow (env, k, args)
-          
-          else (case CC.kindOfCont k
-                of CC.ParamCont => (case CC.checkRets(k, CC.contextOfThrow k)
-                    (* is this a throw to one of the immediately enclosing 
-                       continuations marked as an exnh or retk in this function? *)
-                  of SOME(CC.ReturnCont) => 
-                      (* this is a standard function return. *)
-                        cvtReturnThrow(env, k, args)
-                   
-                   | SOME(CC.ExnCont) => raise Fail "can't handle raising an excemption atm"
-                   | NONE => raise Fail "throw to a ret/exn continuation that's not the enclosing function's!"
-                   (* esac *))
-                | _ => raise Fail (
-                    "encountered a throw that I can't handle: "
-                    ^ (ClassifyConts.kindToString o ClassifyConts.kindOfCont) k
-                    )
-                (* esac *))
+          and cvtThrow (env, k, args) = let
+            val _ = print (concat (["handling throw to ", CPS.Var.toString k, " of "] @
+                                    List.map CPS.Var.toString args @ ["\n"]))
+          in
+            (case CC.kindOfCont k
+                  of CC.ParamCont => (case CC.checkRets(k, CC.contextOfThrow k)
+                      (* is this a throw to one of the immediately enclosing 
+                         continuations marked as an exnh or retk in this function? *)
+                    of SOME(CC.ReturnCont) => 
+                        (* this is a standard function return. *)
+                          cvtReturnThrow(env, k, args)
+                     
+                     | SOME(CC.ExnCont) => raise Fail "can't handle raising an excemption atm"
+                     | NONE => raise Fail "throw to a ret/exn continuation that's not the enclosing function's!"
+                     (* esac *))
+                  | (CC.JoinCont | CC.ReturnCont) => cvtJoinThrow (env, k, args)
+                  | _ => raise Fail (
+                      "encountered a throw that I can't handle: "
+                      ^ (ClassifyConts.kindToString o ClassifyConts.kindOfCont) k
+                      )
+                  (* esac *))
+          end
 
 	  and cvtJoinThrow (env, k, args) = let
                 val (argBinds, args) = lookupVars(env, args)
@@ -1073,8 +1074,9 @@ structure DirectFlatClosureWithCFA : sig
 		fun f (x, args) = (case findVar(env, x)
 		       of Local x' => x' :: args
 			| Extern _ => raise Fail "unexpected extern in free-var list"
-			| _ => (needsEP := true; args)       (* TODO in both this and the regular closure conversion, 
-                                                         JoinCont and RetCont do not require EP to be passed *)
+            | (JoinCont | RetCont) => args
+			| _ => (needsEP := true; args)
+            (* TODO FIXME in regular CPS closure conversion, JoinCont bindings are not a reason to include an EP *)
 		      (* end case *))
 		val args = CPS.Var.Set.foldr f args (FreeVars.envOfFun k)
 	     (* if there are any free globals in e, then we include

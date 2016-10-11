@@ -137,7 +137,9 @@ structure FreeVars : sig
 		 * path from where k is defined to here.  Otherwise, we add
 		 * k in as a free variable.
 		 *)
-		  if !checkJoin andalso ClassifyConts.isJoinCont k
+		  if (!checkJoin andalso ClassifyConts.isJoinCont k) 
+                orelse
+             (!checkDS andalso ClassifyConts.isReturnCont k)
 		    then VSet.union(fv, getFV k)
 		    else addVar(fv, k)
 		end
