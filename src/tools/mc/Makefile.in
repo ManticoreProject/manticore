@@ -45,7 +45,7 @@ PROGRAM =		pmlc
 TARGET =		@TARGET@
 HEAP_IMAGE =		$(PROGRAM).@SMLNJ_HEAP_SUFFIX@
 ROOT_CM =		driver/$(TARGET).cm
-# (* NOTE cfg-new is a temporary change *)
+
 CM_FILES =		ast-opt/sources.cm \
 			ast/sources.cm \
 			binding/sources.cm \
@@ -53,7 +53,6 @@ CM_FILES =		ast-opt/sources.cm \
 			bom/sources.cm \
 			cfg-opt/sources.cm \
 			cfg/sources.cm \
-			cfg-new/sources.cm \
 			closure/sources.cm \
 			codegen/group.cm \
 			codegen/sources.cm \

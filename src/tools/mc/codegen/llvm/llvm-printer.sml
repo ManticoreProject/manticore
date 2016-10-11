@@ -1606,7 +1606,7 @@ in
 
     pr "\n\n\n\n; ---------------- end of LLVM generation ---------------------- \n\n\n\n" ;
     (if DEBUGGING then
-        PrintCFG.output {counts=true, types=true, preds=false} (TextIO.stdErr, module)
+        PrintCFG.output {counts=true, types=PrintCFG.Full, preds=false} (TextIO.stdErr, module)
     else ()) ;
     ()
   )

@@ -28,7 +28,7 @@ is
   ../bom-opt/sources.cm
   ../bom/sources.cm
   ../cfg-opt/sources.cm
-  ../cfg-new/sources.cm  (* NOTE cfg-new is a temporary change *)
+  ../cfg/sources.cm
   ../closure/sources.cm
   ../codegen/sources.cm
   ../common/sources.cm

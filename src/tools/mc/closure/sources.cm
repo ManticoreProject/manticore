@@ -19,7 +19,7 @@ is
   ../prim/sources.cm
   ../cps/sources.cm
   ../cps-opt/sources.cm
-  ../cfg-new/sources.cm     (* NOTE cfg-new is a temporary change *)
+  ../cfg/sources.cm
   ../codegen/sources.cm
 
   closure-fn.sml

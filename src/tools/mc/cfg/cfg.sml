@@ -50,6 +50,16 @@ structure CFG =
 				(* "T" property).  It uses a specialized calling convention. *)
 	    clos : var		  (* closure parameter *)
           }
+          
+      | StdDirectFunc of {		(* a direct-style function that may be called from unknown sites*)
+	    clos : var,		  (* closure parameter *)
+	    exh : var		  (* exception-handler parameter *)
+	  }
+      
+      | KnownDirectFunc of {		(* a direct-style function for which all call sites are known *)
+	    clos : var		  (* closure parameter *)
+	  }
+      
 
     and exp
       = E_Var of var list * var list            (* parallel assignment *)
@@ -78,6 +88,27 @@ structure CFG =
       = StdApply of {f : var, clos : var, args : var list, ret : var, exh : var}
       | StdThrow of {k : var, clos : var, args : var list}
       | Apply of {f : var, clos : var, args : var list}
+      
+      (* Call is a direct-style Apply 
+         the presence of the 'next' field determines whether it is a tail or non-tail call.
+         
+         In the case of a non-tail call:
+         
+         - the var list represents the bindings for the values returned by the call.
+         - the jump represents the goto performed after the call returns.
+             if any of the values returned by the call is needed in the goto block,
+             it must be included in the list of vars of the jump to carry them over.
+       *)
+      | Call of {
+          f : var,
+          clos : var,
+          args : var list,
+          next : (var list * jump) option
+      }
+                    
+      (* a direct-style Throw of a return continuation corresponding to a Call *)
+      | Return of var list  (* the args *)
+      
       | Goto of jump
       | If of (cond * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
@@ -218,6 +249,8 @@ structure CFG =
     fun paramsOfConv (StdFunc{clos, ret, exh}, params) = clos :: params @ [ret, exh]
       | paramsOfConv (StdCont{clos}, params) = clos::params
       | paramsOfConv (KnownFunc{clos}, params) = clos::params
+      | paramsOfConv (StdDirectFunc {clos, exh}, params) = clos :: params @ [exh]
+      | paramsOfConv (KnownDirectFunc {clos}, params) = clos :: params
 
     fun mkBlock (lab, args, body, exit) = let
         val block = BLK{lab=lab, args=args, body=body, exit=exit}

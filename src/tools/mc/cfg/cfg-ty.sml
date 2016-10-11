@@ -26,8 +26,10 @@ structure CFGTy =
      * types should be used for labels and code addresses.
      *)
       | T_StdFun of {clos : ty, args : ty list, ret : ty, exh : ty}
+      | T_StdDirFun of {clos : ty, args : ty list, ret : ty, exh : ty}
       | T_StdCont of {clos : ty, args : ty list}
       | T_KnownFunc of {clos : ty, args : ty list}
+      | T_KnownDirFunc of {clos : ty, args : ty list, ret : ty}
       | T_Block of {args : ty list}
 
     val unitTy = T_Enum(0w0)

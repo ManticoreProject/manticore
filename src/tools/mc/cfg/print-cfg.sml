@@ -5,8 +5,12 @@
  *)
 
 structure PrintCFG : sig
-
-    type flags = {counts : bool, types : bool, preds : bool}
+    
+    (* Max of int means the maximum number of characters to write out the type. 
+       if the type's string length is longer, it is omitted. *)
+    datatype verbosity = Full | Max of int | Silent
+    
+    type flags = {counts : bool, types : verbosity, preds : bool}
 
     val output : flags -> (TextIO.outstream * CFG.module) -> unit
 
@@ -15,8 +19,10 @@ structure PrintCFG : sig
     val printFunc : CFG.func -> unit
 
   end = struct
-
-    type flags = {counts : bool, types : bool, preds : bool}
+    
+    datatype verbosity = Full | Max of int | Silent
+    
+    type flags = {counts : bool, types : verbosity, preds : bool}
 
     fun output (flags : flags) (outS, CFG.MODULE{name, externs, code}) = let
 	  fun pr s = TextIO.output(outS, s)
@@ -34,9 +40,17 @@ structure PrintCFG : sig
 		  pr "("; prL l; pr ")"
 		end
 	  fun varBindToString x = let
-		val l = if (#types flags)
-		      then [":", CFGTyUtil.toString(CFG.Var.typeOf x)]
-		      else []
+		val l = (case #types flags
+                 of Silent => []
+                  | Full => [":", CFGTyUtil.toString(CFG.Var.typeOf x)]
+                  | Max max => let
+                    val typeStr = CFGTyUtil.toString(CFG.Var.typeOf x)
+                  in
+                    if String.size typeStr > max 
+                    then [] 
+                    else [":", typeStr]
+                  end
+                (* end case *))
 		val l = if (#counts flags)
 		      then "#" :: Int.toString(CFG.Var.useCount x) :: l
 		      else l
@@ -91,12 +105,23 @@ structure PrintCFG : sig
 		       of (CFG.LK_Func{export=SOME name, ...}, 
                            CFG.StdFunc{clos, ret, exh}) =>
 			    ("export stdfun ", clos :: args @ [ret, exh])
+                
 			| (CFG.LK_Func _, CFG.StdFunc{clos, ret, exh}) =>
 			    ("stdfun ", clos :: args @ [ret, exh])
+                
+                (* TODO print the return type of these guys! *)
+            | (CFG.LK_Func _, CFG.StdDirectFunc{clos, exh}) =>
+			    ("ds-stdfun ", clos :: args @ [exh])
+                
 			| (CFG.LK_Func _, CFG.StdCont{clos}) => 
                             ("cont ", clos::args)
+                            
 			| (CFG.LK_Func _, CFG.KnownFunc{clos}) => 
                             ("kfun ", clos::args)
+                            
+            | (CFG.LK_Func _, CFG.KnownDirectFunc{clos}) =>
+                            ("ds-kfun ", clos::args)
+                            
 			| (CFG.LK_Block _, _) => ("block ", args)
 			| _ => raise Fail "bogus function"
 		      (* end case *))
@@ -194,12 +219,22 @@ structure PrintCFG : sig
 		        indent (i+1); prJump("else", nogc))
                       end
 		  | CFG.AllocCCall {lhs, f, args, ret=(l,rArgs)} => (
-		      prl ["ccall-alloc "];
-                      prList varUseToString lhs;
-                      prl [" = ", varUseToString f, " "];
-		      prList varUseToString args;
-		      pr "\n";
-		      indent (i+1); prJump("", (l,lhs@rArgs)))
+              prCall("ccall-alloc", lhs, f, args);
+              indent (i+1); 
+                  prJump("", (l,lhs@rArgs))  (* the post call jump *)
+            )
+		      
+          | CFG.Call {f, clos, args, next=SOME(lhs, (afterL, liveAfter))} => (
+              prCall("call", lhs, f, clos::args);
+              indent (i+1); 
+                prJump("next", (afterL, liveAfter))
+            )
+          
+          | CFG.Call {f, clos, args, next=NONE} =>
+              prCall("tailcall", nil, f, clos::args)
+          
+          | CFG.Return args => prReturn("return", args)
+           
 		  | CFG.If(cond, j1, j2) => (
 		      prl ["if ", CondUtil.fmt varUseToString cond, "\n"];
 		      indent (i+1); prJump("then", j1);
@@ -226,6 +261,28 @@ structure PrintCFG : sig
 		prl [prefix, " ", labelUseToString lab];
 		prList varUseToString args;
 		pr "\n")
+      
+      and prCall (prefix, nil, f, args) = (
+            prl [prefix, " "];
+            prl [varUseToString f, " "];
+            prList varUseToString args;
+            pr "\n"
+        )
+        | prCall (prefix, lhs, f, args) = (
+            prl [prefix, " "];
+            prList varBindToString lhs;
+            prl [" = ", varUseToString f, " "];
+            prList varUseToString args;
+            pr "\n"
+        )
+        
+      and prReturn (prefix, args) = (
+          prl [prefix, " "];
+          prList varUseToString args;
+          pr "\n"
+      )
+      
+        
 	  fun prExtern cf = prl["  ", CFunctions.cfunToString cf, "\n"]
 (*
 	  fun prExtern (CFunctions.CFun{var, ...}) = prl[
@@ -240,7 +297,7 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output {counts=true, types=false, preds=false} (TextIO.stdOut, m)
+    fun print m = output {counts=true, types=Silent, preds=false} (TextIO.stdOut, m)
 
     fun printFunc f = let
           val m = CFG.MODULE {name = Atom.atom "ad-hoc",
