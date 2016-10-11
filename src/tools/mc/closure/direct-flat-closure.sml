@@ -999,9 +999,8 @@ structure DirectFlatClosureWithCFA : sig
                     fun f (x, args) = (case findVar(env, x)
                             of Local x' => x' :: args
                              | Extern _ => raise Fail "unexpected extern in free-var list"
-                             | RetCont => args
-                             | JoinCont => args
-                             | _ => (needsEP := true; args) (* TODO not true of RetCont or JoinCont! *)
+                             | (RetCont | JoinCont) => args
+                             | _ => (needsEP := true; args)
                             (* end case *))
                     
                     
