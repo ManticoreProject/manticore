@@ -53,11 +53,13 @@ structure CFG =
           
       | StdDirectFunc of {		(* a direct-style function that may be called from unknown sites*)
 	    clos : var,		  (* closure parameter *)
-	    exh : var		  (* exception-handler parameter *)
+	    exh : var,		  (* exception-handler parameter *)
+        ret : ty
 	  }
       
       | KnownDirectFunc of {		(* a direct-style function for which all call sites are known *)
-	    clos : var		  (* closure parameter *)
+	    clos : var,		  (* closure parameter *)
+        ret : ty
 	  }
       
 
@@ -249,8 +251,8 @@ structure CFG =
     fun paramsOfConv (StdFunc{clos, ret, exh}, params) = clos :: params @ [ret, exh]
       | paramsOfConv (StdCont{clos}, params) = clos::params
       | paramsOfConv (KnownFunc{clos}, params) = clos::params
-      | paramsOfConv (StdDirectFunc {clos, exh}, params) = clos :: params @ [exh]
-      | paramsOfConv (KnownDirectFunc {clos}, params) = clos :: params
+      | paramsOfConv (StdDirectFunc {clos, exh,...}, params) = clos :: params @ [exh]
+      | paramsOfConv (KnownDirectFunc {clos,...}, params) = clos :: params
 
     fun mkBlock (lab, args, body, exit) = let
         val block = BLK{lab=lab, args=args, body=body, exit=exit}

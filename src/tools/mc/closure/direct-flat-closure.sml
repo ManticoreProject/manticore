@@ -677,12 +677,13 @@ structure DirectFlatClosureWithCFA : sig
                 val (env, args) = newLocals (env, args)
                 val (env, exh) = newLocal(env, exh)
                 val env = insertVar(env, ret, RetCont)
+                val retTy = cvtTyOfVar ret
                 val clos = envPtrOf env
-                val conv = CFG.StdDirectFunc { clos = clos, exh = exh }
+                val conv = CFG.StdDirectFunc { clos = clos, exh = exh, ret = retTy }
                 val convTy = CFGTy.T_StdDirFun {
                         clos = CFG.Var.typeOf clos,
                         args = List.map CFG.Var.typeOf args,
-                        ret = cvtTyOfVar ret,
+                        ret = retTy,
                         exh = CFG.Var.typeOf exh
                       }
                 in
@@ -698,14 +699,16 @@ structure DirectFlatClosureWithCFA : sig
                 val (env, args) = newLocals (env, args)
                 val (env, exh) = newLocal (env, exh)
                 val env = insertVar(env, ret, RetCont)
+                val retTy = cvtTyOfVar ret
                 val clos = envPtrOf env
                 val conv = CFG.KnownDirectFunc {
-                        clos = clos
+                        clos = clos,
+                        ret = retTy
                       }
                 val convTy = CFGTy.T_KnownDirFunc {
                         clos = CFG.Var.typeOf clos,
                         args = List.map CFG.Var.typeOf (args @ [exh]),
-                        ret = cvtTyOfVar ret
+                        ret = retTy
                       }
                 in
                   (env, args @ [exh], conv, convTy)

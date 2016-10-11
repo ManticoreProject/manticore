@@ -39,18 +39,21 @@ structure PrintCFG : sig
 		in
 		  pr "("; prL l; pr ")"
 		end
+    
+      fun tyToStr prefix t = (case #types flags
+               of Silent => ""
+                | Full => prefix ^ CFGTyUtil.toString t
+                | Max max => let
+                  val typeStr = CFGTyUtil.toString t
+                in
+                  if String.size typeStr > max 
+                  then ""
+                  else prefix ^ typeStr
+                end
+              (* end case *))
+        
 	  fun varBindToString x = let
-		val l = (case #types flags
-                 of Silent => []
-                  | Full => [":", CFGTyUtil.toString(CFG.Var.typeOf x)]
-                  | Max max => let
-                    val typeStr = CFGTyUtil.toString(CFG.Var.typeOf x)
-                  in
-                    if String.size typeStr > max 
-                    then [] 
-                    else [":", typeStr]
-                  end
-                (* end case *))
+		val l = [tyToStr ":" (CFG.Var.typeOf x)]
 		val l = if (#counts flags)
 		      then "#" :: Int.toString(CFG.Var.useCount x) :: l
 		      else l
@@ -66,11 +69,11 @@ structure PrintCFG : sig
 		  String.concat("$" :: CFG.Label.toString lab :: l)
 		end
 	  fun labelUseToString lab = "$" ^ (CFG.Label.toString lab)
-	  fun prParams []= pr "() ="
-	    | prParams [x] = pr(concat["(", varBindToString x, ") ="])
+	  fun prParams []= pr "()"
+	    | prParams [x] = pr(concat["(", varBindToString x, ")"])
 	    | prParams params = let
 		val params = List.map varBindToString params
-		fun prl [x] = (pr x; pr "\n  ) =")
+		fun prl [x] = (pr x; pr "\n  )")
 		  | prl (x::r) = (pr x; pr ",\n    "; prl r)
 		in
 		  pr "(\n    ";
@@ -101,34 +104,34 @@ structure PrintCFG : sig
 	  		()
 
 	  fun prFunc (CFG.FUNC{lab, entry, start as CFG.BLK{args, exit, body=startbody, ...}, body}) = let
-		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
-		       of (CFG.LK_Func{export=SOME name, ...}, 
-                           CFG.StdFunc{clos, ret, exh}) =>
-			    ("export stdfun ", clos :: args @ [ret, exh])
+        val (kind, params, maybeRetTy) = (case (CFG.Label.kindOf lab, entry)
+		       of (CFG.LK_Func{export=SOME _, ...}, CFG.StdFunc _) =>
+			    ("export stdfun ", CFG.paramsOfConv(entry, args), NONE)
                 
-			| (CFG.LK_Func _, CFG.StdFunc{clos, ret, exh}) =>
-			    ("stdfun ", clos :: args @ [ret, exh])
+			| (CFG.LK_Func _, CFG.StdFunc _) =>
+			    ("stdfun ", CFG.paramsOfConv(entry, args), NONE)        
+                        
+            | (CFG.LK_Func _, CFG.StdDirectFunc {ret=retTy,...}) =>
+			    ("ds-stdfun ", CFG.paramsOfConv(entry, args), SOME retTy)
                 
-                (* TODO print the return type of these guys! *)
-            | (CFG.LK_Func _, CFG.StdDirectFunc{clos, exh}) =>
-			    ("ds-stdfun ", clos :: args @ [exh])
-                
-			| (CFG.LK_Func _, CFG.StdCont{clos}) => 
-                            ("cont ", clos::args)
+			| (CFG.LK_Func _, CFG.StdCont _) => 
+                            ("cont ", CFG.paramsOfConv(entry, args), NONE)
                             
-			| (CFG.LK_Func _, CFG.KnownFunc{clos}) => 
-                            ("kfun ", clos::args)
+			| (CFG.LK_Func _, CFG.KnownFunc _) => 
+                            ("kfun ", CFG.paramsOfConv(entry, args), NONE)
                             
-            | (CFG.LK_Func _, CFG.KnownDirectFunc{clos}) =>
-                            ("ds-kfun ", clos::args)
+            | (CFG.LK_Func _, CFG.KnownDirectFunc{ret=retTy,...}) =>
+                            ("ds-kfun ", CFG.paramsOfConv(entry, args), SOME retTy)
                             
-			| (CFG.LK_Block _, _) => ("block ", args)
+			| (CFG.LK_Block _, _) => ("block ", args, NONE)
 			| _ => raise Fail "bogus function"
 		      (* end case *))
+        fun prRetTy t = pr (tyToStr " -> " t)
 		in
 		  indent 1;
 		  pr kind;
-		  prl [labelBindToString lab, " "]; prParams params; pr "\n";
+		  prl [labelBindToString lab, " "]; 
+                prParams params; Option.map prRetTy maybeRetTy; pr " =\n";
 		  List.app (prExp 2) startbody;
 		  prXfer (2, exit);
                   List.app prBlock body
@@ -136,7 +139,7 @@ structure PrintCFG : sig
           and prBlock (b as CFG.BLK{lab,args,exit,body}) = (
               indent 1;
               pr "block ";
-              prl [labelBindToString lab, " "]; prPreds lab; prParams args; pr "\n";
+              prl [labelBindToString lab, " "]; prPreds lab; prParams args; pr " =\n";
               List.app (prExp 2) body;
               prXfer (2, exit))
 	  and prExp i e = (

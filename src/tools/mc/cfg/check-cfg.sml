@@ -125,6 +125,19 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " exh"],
                                     [exhTy], typesOf [exh]);
                       addVars(VSet.empty, clos::ret::exh::args))
+                      
+                  | (CFG.StdDirectFunc {clos, ret, exh},
+                      Ty.T_StdDirFun {clos = closTy, args = argTys, ret = retTy, exh = exhTy}) => (
+                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " clos"],
+                                     [closTy], typesOf [clos]);
+                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " args"],
+                                     argTys, typesOf args);
+                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " ret"],
+                                     [retTy], [ret]);
+                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " exh"],
+                                     [exhTy], typesOf [exh]);
+                       addVars(VSet.empty, clos::exh::args))
+                      
                   | (CFG.StdCont {clos},
                      Ty.T_StdCont {clos = closTy, args = argTys}) => (
                       checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " clos"],
@@ -132,6 +145,7 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
+                      
                   | (CFG.KnownFunc {clos}, 
                      Ty.T_KnownFunc {clos = closTy, args = argTys}) => (
                       checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " clos"],
@@ -139,12 +153,25 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
+                      
+                  | (CFG.KnownDirectFunc {clos, ret}, 
+                     Ty.T_KnownDirFunc {clos = closTy, args = argTys, ret = retTy}) => (
+                      checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " clos"],
+                                    [closTy], typesOf [clos]);
+                      checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " args"],
+                                    argTys, typesOf args);
+                      checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " retTy"],
+                                    [retTy], [ret]);
+                      addVars(VSet.empty, clos::args))
+                      
                   | (conv, ty) => (
                       error["entry of ", l2s lab, " is ", 
                             (case conv 
                               of CFG.StdFunc _ => "stdfunc"
                                | CFG.StdCont _ => "stdcont"
                                | CFG.KnownFunc _ => "known"
+                               | CFG.KnownDirectFunc _ => "ds-kfun"
+                               | CFG.StdDirectFunc _ => "ds-stdfun"
                              (* end case *)), 
                             " (expected ", TyU.toString ty, ")\n"];
                       addVars(VSet.empty, CFG.paramsOfConv (conv, args)))
