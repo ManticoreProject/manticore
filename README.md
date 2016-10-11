@@ -30,7 +30,11 @@ any Unix machine setup for C++ development should already have. To configure LLV
     cd llvm
     mkdir build install
     cd build
-    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ../src
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=host ../src
+    
+If you're hacking on Manticore or LLVM, you might want to replace `-DCMAKE_BUILD_TYPE=Release` with the following:
+
+    -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_ASSERTIONS=1
 
 Next, we will compile and install LLVM locally, which typically takes 5-10 minutes.
 Replace `n` below with the number of parallel jobs you would like to use during the build.
