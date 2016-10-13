@@ -139,6 +139,22 @@ structure CFGTyUtil : sig
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1))
+                  
+            | (CTy.T_StdDirFun{clos = clos1, args = args1, ret = rets1, exh = exh1},
+               CTy.T_StdDirFun{clos = clos2, args = args2, ret = rets2, exh = exh2}) =>
+              (* Note contravariance for arguments! *)
+                  (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
+                  ListPair.allEq match (args2, args1) andalso
+                  ListPair.allEq match (rets2, rets1) andalso
+                  match (exh2, exh1)
+                  
+            | (CTy.T_KnownDirFunc{clos = clos1, args = args1, ret = rets1},
+               CTy.T_KnownDirFunc{clos = clos2, args = args2, ret = rets2}) =>
+              (* Note contravariance for arguments! *)
+                  (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
+                  ListPair.allEq match (args2, args1) andalso
+                  ListPair.allEq match (rets2, rets1)
+                  
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
