@@ -163,6 +163,18 @@ structure DirectFlatClosureWithCFA : sig
             ty'
           end
 
+    (* a function call's return type is the type of the args to the retk *)
+    fun retTyOf retk = let
+        val (CFGTy.T_OpenTuple [retkTy]) = cvtTyOfVar retk  (* consult CFA to see what the type is. *)
+        val argTys = (case retkTy
+                       of CFGTy.T_StdCont {args,...} => args
+                        | CFGTy.T_KnownFunc {args, ...} => args
+                        | _ => raise Fail "dunno about this one"
+                      (* esac *))
+    in
+        argTys
+    end
+
 
   (* assign labels to functions and continuations *)
     local
@@ -677,13 +689,13 @@ structure DirectFlatClosureWithCFA : sig
                 val (env, args) = newLocals (env, args)
                 val (env, exh) = newLocal(env, exh)
                 val env = insertVar(env, ret, RetCont)
-                val retTy = cvtTyOfVar ret
+                val retTys = retTyOf ret
                 val clos = envPtrOf env
-                val conv = CFG.StdDirectFunc { clos = clos, exh = exh, ret = retTy }
+                val conv = CFG.StdDirectFunc { clos = clos, exh = exh, ret = retTys }
                 val convTy = CFGTy.T_StdDirFun {
                         clos = CFG.Var.typeOf clos,
                         args = List.map CFG.Var.typeOf args,
-                        ret = retTy,
+                        ret = retTys,
                         exh = CFG.Var.typeOf exh
                       }
                 in
@@ -699,16 +711,16 @@ structure DirectFlatClosureWithCFA : sig
                 val (env, args) = newLocals (env, args)
                 val (env, exh) = newLocal (env, exh)
                 val env = insertVar(env, ret, RetCont)
-                val retTy = cvtTyOfVar ret
+                val retTys = retTyOf ret
                 val clos = envPtrOf env
                 val conv = CFG.KnownDirectFunc {
                         clos = clos,
-                        ret = retTy
+                        ret = retTys
                       }
                 val convTy = CFGTy.T_KnownDirFunc {
                         clos = CFG.Var.typeOf clos,
                         args = List.map CFG.Var.typeOf (args @ [exh]),
-                        ret = retTy
+                        ret = retTys
                       }
                 in
                   (env, args @ [exh], conv, convTy)
@@ -1011,12 +1023,7 @@ structure DirectFlatClosureWithCFA : sig
                     
                     (* bindings for the values from the return throw *)
                     val lhs = let
-                            val (CFGTy.T_OpenTuple [retkTy]) = cvtTyOfVar retk  (* consult CFA to see what the type is. *)
-                            val argTys = (case retkTy
-                                           of CFGTy.T_StdCont {args,...} => args
-                                            | CFGTy.T_KnownFunc {args, ...} => args
-                                            | _ => raise Fail "dunno about this one"
-                                          (* esac *))
+                            val argTys = retTyOf retk
                                           
                             fun fresh ty = CFG.Var.new ("rv", ty)
                         in

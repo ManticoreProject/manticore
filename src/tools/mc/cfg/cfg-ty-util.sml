@@ -178,10 +178,10 @@ structure CFGTyUtil : sig
                     "kfun(", toString clos, "/", args2s args, ")"
                   ]
           | CTy.T_KnownDirFunc {clos, args, ret} => concat [
-                    "ds-kfun(", toString clos, "/", args2s args, "->", toString ret, ")"
+                    "ds-kfun(", toString clos, "/", args2s args, "->", args2s ret, ")"
                 ]
           | CTy.T_StdDirFun {clos, args, ret, exh} => concat[
-		    "ds-fun(", toString clos, "/", args2s args, "/", toString exh, "->", toString ret, ")"
+		    "ds-fun(", toString clos, "/", args2s args, "/", toString exh, "->", args2s ret, ")"
 		  ]
                 
 	    (* end case *)

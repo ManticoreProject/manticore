@@ -111,8 +111,8 @@ structure PrintCFG : sig
 			| (CFG.LK_Func _, CFG.StdFunc _) =>
 			    ("stdfun ", CFG.paramsOfConv(entry, args), NONE)        
                         
-            | (CFG.LK_Func _, CFG.StdDirectFunc {ret=retTy,...}) =>
-			    ("ds-stdfun ", CFG.paramsOfConv(entry, args), SOME retTy)
+            | (CFG.LK_Func _, CFG.StdDirectFunc {ret=retTys,...}) =>
+			    ("ds-stdfun ", CFG.paramsOfConv(entry, args), SOME retTys)
                 
 			| (CFG.LK_Func _, CFG.StdCont _) => 
                             ("cont ", CFG.paramsOfConv(entry, args), NONE)
@@ -120,13 +120,29 @@ structure PrintCFG : sig
 			| (CFG.LK_Func _, CFG.KnownFunc _) => 
                             ("kfun ", CFG.paramsOfConv(entry, args), NONE)
                             
-            | (CFG.LK_Func _, CFG.KnownDirectFunc{ret=retTy,...}) =>
-                            ("ds-kfun ", CFG.paramsOfConv(entry, args), SOME retTy)
+            | (CFG.LK_Func _, CFG.KnownDirectFunc{ret=retTys,...}) =>
+                            ("ds-kfun ", CFG.paramsOfConv(entry, args), SOME retTys)
                             
 			| (CFG.LK_Block _, _) => ("block ", args, NONE)
 			| _ => raise Fail "bogus function"
 		      (* end case *))
-        fun prRetTy t = pr (tyToStr " -> " t)
+        
+        local
+            val toTy = tyToStr ""
+            fun pret [] = raise Fail "no return value?"
+              | pret [x] = pr (toTy x)
+              | pret xs = let
+                val xs = List.map toTy xs
+                fun commas [x] = pr x
+                  | commas (x::xs) = 
+                    (pr x ; pr ", " ; commas xs)
+              in
+                commas xs
+              end
+        in
+            fun prRetTy ts = (pr " -> "; pret ts)
+        end
+        
 		in
 		  indent 1;
 		  pr kind;

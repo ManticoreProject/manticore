@@ -133,7 +133,7 @@ structure CheckCFG : sig
                        checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " args"],
                                      argTys, typesOf args);
                        checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " ret"],
-                                     [retTy], [ret]);
+                                     retTy, ret);
                        checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " exh"],
                                      [exhTy], typesOf [exh]);
                        addVars(VSet.empty, clos::exh::args))
@@ -161,7 +161,7 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " args"],
                                     argTys, typesOf args);
                       checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " retTy"],
-                                    [retTy], [ret]);
+                                    retTy, ret);
                       addVars(VSet.empty, clos::args))
                       
                   | (conv, ty) => (

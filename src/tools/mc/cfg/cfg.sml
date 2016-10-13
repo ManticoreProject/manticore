@@ -54,12 +54,12 @@ structure CFG =
       | StdDirectFunc of {		(* a direct-style function that may be called from unknown sites*)
 	    clos : var,		  (* closure parameter *)
 	    exh : var,		  (* exception-handler parameter *)
-        ret : ty
+        ret : ty list
 	  }
       
       | KnownDirectFunc of {		(* a direct-style function for which all call sites are known *)
 	    clos : var,		  (* closure parameter *)
-        ret : ty
+        ret : ty list
 	  }
       
 
