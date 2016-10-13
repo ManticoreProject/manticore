@@ -190,7 +190,7 @@ structure DirectFlatClosureWithCFA : sig
                   setFn (f, lab);
                   assignExp body
                 end
-          and assignKB (CPS.FB{f, body, ...}) = if ClassifyConts.isJoinCont f
+          and assignKB (CPS.FB{f, body, ...}) = if CC.isJoinCont f
 		then (* this continuation will map to a block, so no label now *)
 		  (assignExp body ; ST.tick cntJoinContOpt)
 		else let
@@ -1072,7 +1072,7 @@ structure DirectFlatClosureWithCFA : sig
                   | (CC.JoinCont | CC.ReturnCont) => cvtJoinThrow (env, k, args)
                   | _ => raise Fail (
                       "encountered a throw that I can't handle: "
-                      ^ (ClassifyConts.kindToString o ClassifyConts.kindOfCont) k
+                      ^ (CC.kindToString o CC.kindOfCont) k
                       )
                   (* esac *))
           end
