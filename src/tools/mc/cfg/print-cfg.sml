@@ -129,7 +129,7 @@ structure PrintCFG : sig
         
         local
             val toTy = tyToStr ""
-            fun pret [] = raise Fail "no return value?"
+            fun pret [] = ()
               | pret [x] = pr (toTy x)
               | pret xs = let
                 val xs = List.map toTy xs

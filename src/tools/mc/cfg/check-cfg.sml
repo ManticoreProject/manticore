@@ -416,7 +416,7 @@ structure CheckCFG : sig
 			addVar (env, x)
                       end
                 (* end case *))
-          fun chkExit (env, exit) = (case exit
+          fun chkExit (env, exit, enclF) = (case exit
                  of CFG.StdApply{f, clos, args, ret, exh} => (
 		      chkVar (env, f, "StdApply");
                       case V.typeOf f
@@ -517,6 +517,62 @@ structure CheckCFG : sig
                          | ty => error[v2s f, ":", TyU.toString ty, " is not a cfun\n"]
                        (* end case *);
                        chkJump (addVars (env, lhs), (l,lhs@rargs), "AllocCCall"))
+
+                  
+                  | CFG.Call {f, clos, args, next} => let
+                        val name = "Call "
+                                                
+                        fun chkAfter env (lhs, jmp) = 
+                            chkJump(addVars(env, lhs), jmp, name)
+                        
+                        fun chkLHS retTys (SOME(lhs, _)) = 
+                                    checkArgTypes (TyU.match, concat [name, v2s f, " retVals"],
+                                                    retTys, typesOf lhs)
+                                            
+                          | chkLHS retTys NONE = (case L.typeOf enclF
+                              of (Ty.T_StdDirFun{ret,...} | Ty.T_KnownDirFunc{ret,...}) =>
+                                    checkArgTypes (TyU.match, concat [name, v2s f, " tailcall"],
+                                                   ret, retTys)
+                               | _ => error ["tailcall can only appear in a direct-style fun"]
+                               (* esac *))
+                        
+                        fun chkTys () = (case V.typeOf f
+                            of Ty.T_KnownDirFunc {clos = closTy, args = argTys, ret = retTys} => (
+                                    checkArgTypes (TyU.match, concat [name, v2s f, " clos"],
+                                                   [closTy], typesOf [clos]);
+                                    checkArgTypes (TyU.match, concat [name, v2s f, " args"],
+                                                   argTys, typesOf args);
+                                    chkLHS retTys next
+                                    )
+                                
+                                (* see paramsOfConv, exh is expected at the end of arg list *)
+                             | Ty.T_StdDirFun {clos = closTy, args = argTys, ret = retTys, exh = exhTy} => (
+                                     checkArgTypes (TyU.match, concat [name, v2s f, " clos"],
+                                                    [closTy], typesOf [clos]);
+                                     checkArgTypes (TyU.match, concat [name, v2s f, " args"],
+                                                    argTys @ [exhTy], typesOf args);
+                                     chkLHS retTys next
+                                     )
+                             | _ => error ["only direct-style functions can appear in a Call"]
+                            (* esac *))
+                  in (
+                     chkVar(env, f, name);
+                     chkVar(env, clos, name);
+                     chkVars(env, args, name);
+                     chkTys();
+                     Option.app (chkAfter env) next
+                    )
+                  end
+                  
+                  | CFG.Return args => ( 
+                    chkVars(env, args, "Return");
+                    (case L.typeOf enclF
+                      of (Ty.T_StdDirFun{ret,...} | Ty.T_KnownDirFunc{ret,...}) =>
+                            checkArgTypes (TyU.match, "Return", ret, typesOf args)
+                       | _ => error ["Return can only appear in a direct-style fun"]
+                       (* esac *))
+                     )
+                  
                 (* end case *))
 		and chkJump (env, (lab, args), cxt) = let
 		      val cxt = String.concat[cxt, " jump to ", l2s lab]
@@ -529,17 +585,17 @@ structure CheckCFG : sig
 			  | ty => error[cxt, " is not a block\n"]
 			(* end case *)
 		      end
-          fun chkBlock (block as CFG.BLK{lab, args, body, exit}, env) = let
+          fun chkBlock (block as CFG.BLK{lab, args, body, exit}, env, enclF) = let
                 val env = addVars(env, args)
 		val env = List.foldl (fn (exp,env) => chkExp (env, exp)) env body
-                val _ = chkExit (env, exit)
+                val _ = chkExit (env, exit, enclF)
                 in
                    ()
                 end
           fun chkFunc (CFG.FUNC {lab, entry, start as CFG.BLK {args,...}, body}) = let
                 val env = chkEntry (lab, entry, args)
-                val _ = chkBlock (start, env)
-                val _ = List.app (fn b => chkBlock (b, env)) body
+                val _ = chkBlock (start, env, lab)
+                val _ = List.app (fn b => chkBlock (b, env, lab)) body
                 in
                    ()
                 end
