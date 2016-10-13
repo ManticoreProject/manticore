@@ -939,6 +939,7 @@ structure DirectFlatClosureWithCFA : sig
                 val _ = print ("hit an apply to arg: " ^ ((CPS.Var.toString o List.hd) args) ^ "\n")
                 
                 val (argBinds, args) = lookupVars(env, args)
+                val (exnhBinds, exnh) = lookupVars(env, List.tl rets)
                 
                 fun bindEP () = let
                       val (fBinds, f') = lookupVar(env, f)
@@ -975,35 +976,16 @@ structure DirectFlatClosureWithCFA : sig
                     val xfer = CFG.Call {
                             f = cp,
                             clos = ep,
-                            args = args,
+                            args = args @ exnh,
                             next = NONE
                           }
                     in
-                      (binds' @ argBinds, xfer)
+                      (binds' @ exnhBinds @ argBinds, xfer)
                     end
                     
-                    (*
-                    cvtJoinThrow (env, k, args) = let
-                              val (argBinds, args) = lookupVars(env, args)
-              		val needsEP = ref false
-              		fun f (x, args) = (case findVar(env, x)
-              		       of Local x' => x' :: args
-              			| Extern _ => raise Fail "unexpected extern in free-var list"
-              			| _ => (needsEP := true; args)
-              		      (* end case *))
-              		val args = CPS.Var.Set.foldr f args (FreeVars.envOfFun k)
-              	     (* if there are any free globals in e, then we include
-              	      * the environment pointer as an argument.
-              	      *)
-              		val args = if !needsEP then envPtrOf env :: args else args
-              		in
-              		  (argBinds, CFG.Goto(labelOf k, args))
-              		end
-                    *)
                     
                 fun doCall () = let
                     
-                    (* TODO: include the exn as an argument if its there *)
                     val (retk :: _) = rets
                     
                     val _ = prEnv env
@@ -1032,15 +1014,15 @@ structure DirectFlatClosureWithCFA : sig
                     (* ep, free vars, retk's params *)
                     val retkArgs = freeVars @ lhs 
                     val retkArgs = if !needsEP then envPtrOf env :: retkArgs else retkArgs
-                                    
+                    
                     val xfer = CFG.Call {
                             f = cp,
                             clos = ep,
-                            args = args,
+                            args = args @ exnh,
                             next = SOME (lhs, (labelOf retk, retkArgs))
                           }
                 in
-                    (binds' @ argBinds, xfer)
+                    (binds' @ exnhBinds @ argBinds, xfer)
                 end
             
             
