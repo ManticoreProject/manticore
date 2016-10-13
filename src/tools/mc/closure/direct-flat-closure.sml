@@ -63,6 +63,13 @@ structure DirectFlatClosureWithCFA : sig
            "bogus type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
     and cvtTyTop ty = cvtTy (ty, CFA.TOP)
     and cvtTyBot ty = cvtTy (ty, CFA.BOT)
+    
+    (* for converted return conts *)
+    and extractArgs (CFGTy.T_OpenTuple [ty]) = (case ty
+        of CFGTy.T_StdCont{args,...} => args
+         | CFGTy.T_KnownFunc{args,...} => args
+         | _ => raise Fail "unexpected type for a return cont"
+        (* esac *))
 
   (* convert a function type to a standard-function type, guided by CFA values *)
     and cvtStdFunTy (ty, v) = CFG.T_Tuple(false, [CFG.T_Any, cvtStdFunTyAux (ty, v)])
@@ -78,36 +85,37 @@ structure DirectFlatClosureWithCFA : sig
           end
       | cvtStdFunTyAux (ty, v) = raise Fail(concat[
           "bogus function type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
-    and cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [retTy, exhTy])) = CFGTy.T_StdFun{
+    and cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [retTy, exhTy])) = CFGTy.T_StdDirFun {
             clos = CFGTy.T_Any,
             args = List.map cvtTyTop argTys,
-            ret = cvtStdContTy (retTy, CFA.TOP),
+            ret = extractArgs (cvtStdContTy (retTy, CFA.TOP)),
             exh = cvtStdContTy (exhTy, CFA.TOP)
           }
-      | cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [retTy])) = CFGTy.T_KnownFunc{
+      | cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [retTy])) = CFGTy.T_KnownDirFunc {
             clos = CFGTy.T_Any,
-            args = List.map cvtTyTop argTys @ [cvtStdContTy (retTy, CFA.TOP)]
+            args = List.map cvtTyTop argTys,
+            ret = extractArgs (cvtStdContTy (retTy, CFA.TOP))
           }
-      | cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [])) = CFGTy.T_KnownFunc{
+      | cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [])) = CFGTy.T_KnownDirFunc {
             clos = CFGTy.T_Any,
-            args = List.map cvtTyTop argTys
+            args = List.map cvtTyTop argTys,
+            ret = [CFGTy.T_Any]         (* TODO is this right? *)
           }
-      | cvtStdFunTyAuxStd (CPSTy.T_Any) = CFGTy.T_StdFun{
+      | cvtStdFunTyAuxStd (CPSTy.T_Any) = CFGTy.T_StdDirFun {
             clos = CFGTy.T_Any,
             args = [CFGTy.T_Any],
-            ret = cvtStdContTy (CPSTy.T_Any, CFA.TOP),
+            ret = extractArgs (cvtStdContTy (CPSTy.T_Any, CFA.TOP)),
             exh = cvtStdContTy (CPSTy.T_Any, CFA.TOP)
           }
       | cvtStdFunTyAuxStd ty = raise Fail(concat[
           "bogus function type ", CPSTyUtil.toString ty])
-    and cvtStdFunTyAuxKwn (CPSTy.T_Fun(argTys, retTys), (args, rets)) = let
+    and cvtStdFunTyAuxKwn (CPSTy.T_Fun(argTys, [retT, exnT]), (args, [ret, exn])) = let
           fun cvtTy' (ty, x) = cvtTy (ty, CFA.valueOf x)
-          fun cvtStdContTy' (ty, x) = cvtStdContTy (ty, CFA.valueOf x)
           in
-            CFGTy.T_KnownFunc{
+            CFGTy.T_KnownDirFunc {
               clos = CFGTy.T_Any,
-              args = (ListPair.mapEq cvtTy' (argTys, args)) @ 
-                     (ListPair.mapEq cvtStdContTy' (retTys, rets))
+              args = ListPair.mapEq cvtTy' (argTys, args) @ [ cvtStdContTy(exnT, CFA.valueOf exn) ],
+              ret = extractArgs (cvtStdContTy(retT, CFA.valueOf ret))
             }
           end
       | cvtStdFunTyAuxKwn (ty, _) = raise Fail(concat[
@@ -164,16 +172,7 @@ structure DirectFlatClosureWithCFA : sig
           end
 
     (* a function call's return type is the type of the args to the retk *)
-    fun retTyOf retk = let
-        val (CFGTy.T_OpenTuple [retkTy]) = cvtTyOfVar retk  (* consult CFA to see what the type is. *)
-        val argTys = (case retkTy
-                       of CFGTy.T_StdCont {args,...} => args
-                        | CFGTy.T_KnownFunc {args, ...} => args
-                        | _ => raise Fail "dunno about this one"
-                      (* esac *))
-    in
-        argTys
-    end
+    val retTyOf = extractArgs o cvtTyOfVar
 
 
   (* assign labels to functions and continuations *)
