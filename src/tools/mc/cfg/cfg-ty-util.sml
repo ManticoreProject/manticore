@@ -83,6 +83,17 @@ structure CFGTyUtil : sig
             | (CTy.T_KnownFunc{clos = clos1, args = args1}, 
                CTy.T_KnownFunc{clos = clos2, args = args2}) => 
                   equal (clos1, clos2) andalso equalList (args1, args2)
+                  
+            | (CTy.T_KnownDirFunc{clos = clos1, args = args1, ret = rets1}, 
+               CTy.T_KnownDirFunc{clos = clos2, args = args2, ret = rets2}) => 
+                  equal (clos1, clos2) andalso equalList (args1, args2)
+                  andalso equalList (rets1, rets2)
+                  
+            | (CTy.T_StdDirFun{clos = clos1, args = args1, ret = rets1, exh = exh1},
+               CTy.T_StdDirFun{clos = clos2, args = args2, ret = rets2, exh = exh2}) =>
+                  equal (clos1, clos2) andalso equalList (args1, args2) andalso
+                  equalList (rets1, rets2) andalso equal (exh1, exh2)
+                  
             | _ => false
 	  (* end case *))
     and equalList (tys1, tys2) = ListPair.allEq equal (tys1, tys2)
