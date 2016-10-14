@@ -870,8 +870,8 @@ structure DirectFlatClosureWithCFA : sig
           
         (* convert an apply *)
           and cvtApply (env, f, args, rets, isTail) = (case CFA.valueOf f
-                 of CFA.TOP => cvtStdApply (env, f, NONE, args, rets, isTail)
-                  | CFA.BOT => cvtStdApply (env, f, NONE, args, rets, isTail)
+                 of CFA.TOP => cvtApplyAux (env, f, NONE, args, rets, isTail)
+                  | CFA.BOT => cvtApplyAux (env, f, NONE, args, rets, isTail)
                   | CFA.LAMBDAS gs => let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
                       val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
@@ -879,63 +879,19 @@ structure DirectFlatClosureWithCFA : sig
                                     then CPS.Var.Set.find (fn _ => true) gs
                                  else NONE
                       in
-                        if CFA.isEscaping g
-                          then cvtStdApply (env, f, fTgt, args, rets, isTail)
-                          else cvtKwnApply (env, f, fTgt, args, rets, isTail)
+                        cvtApplyAux (env, f, fTgt, args, rets, isTail)
                       end
                 (* end case *))
-          and cvtStdApply (env, f, fTgt, args, rets as [_, _], isTail) = let
-                val (argBinds, args) = lookupVars(env, args)
-                val (retBinds, [ret, exh]) = lookupVars(env, rets)
-                fun bindEP () = let
-                      val (fBinds, f') = lookupVar(env, f)
-                      val ep = CFG.Var.new (CPS.Var.nameOf f ^ "_ep", CFGTy.T_Any)
-                      in
-                        (CFG.mkSelect(ep, 0, f') :: fBinds, f', ep)
-                      end
-                val (binds, xfer) = let
-                      val (cp, ep, binds') = (case fTgt
-                             of SOME g => let
-                                  val (gBind, cp) = bindLabel (labelOf g)
-                                  in
-                                    case findVar'(env, g)
-                                     of SOME EnclFun => (cp, envPtrOf env, [gBind])
-                                      | _ => let
-                                          val (epBinds, _, ep) = bindEP ()
-                                          in
-                                            (cp, ep, gBind :: epBinds)
-                                          end
-                                    (* end case *)
-                                  end
-                              | NONE => let
-                                  val (epBinds, f', ep) = bindEP ()
-                                  val cp = CFG.Var.new(
-                                        CFG.Var.nameOf f',
-                                        CFGTyUtil.select(CFG.Var.typeOf f', 1))
-                                  val cpBind = CFG.mkSelect(cp, 1, f')
-                                  in
-                                    (cp, ep, cpBind :: epBinds)
-                                  end
-                            (* end case *))
-                      val xfer = CFG.StdApply{
-                              f = cp,
-                              clos = ep,
-                              args = args,
-                              ret = ret,
-                              exh = exh
-                            }
-                      in
-                        (binds', xfer)
-                      end
-                in
-                  (binds @ retBinds @ argBinds, xfer)
-                end
-            | cvtStdApply (env, f, fTgt, args, rets as [_], isTail) = 
-                cvtKwnApply (env, f, fTgt, args, rets, isTail)
-            | cvtStdApply (env, f, fTgt, args, rets, isTail) = 
-                raise Fail "non-standard apply convention"
-          and cvtKwnApply (env, f, fTgt, args, rets, isTail) = let
+
+          and cvtApplyAux (env, f, fTgt, args, rets, isTail) = let
                 
+                (* sanity checks  *)
+                val _ = (case (rets, CFA.isEscaping f)
+                          of ([retk], false) => () (* exnh is only optional if f is known *)
+                           | ([retk, exnh], _) => ()
+                           | _ => raise Fail "rets did not meet expectations!"
+                           (* esac *))
+                           
                 val _ = print ("hit an apply to arg: " ^ ((CPS.Var.toString o List.hd) args) ^ "\n")
                 
                 val (argBinds, args) = lookupVars(env, args)

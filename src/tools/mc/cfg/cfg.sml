@@ -100,6 +100,9 @@ structure CFG =
          - the jump represents the goto performed after the call returns.
              if any of the values returned by the call is needed in the goto block,
              it must be included in the list of vars of the jump to carry them over.
+             
+        The type of f determines the convention: If it is a ds-stdfun, then the
+        last argument is always the exception handler.
        *)
       | Call of {
           f : var,
