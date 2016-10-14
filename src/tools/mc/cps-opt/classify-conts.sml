@@ -236,9 +236,18 @@ structure ClassifyConts : sig
             if !usingDS then chkDS else chkCPS
           end
 
-    
+
+    (* TODO i think this the function below is not useful and leads to problems! CLEANME LATER
+       
+       what seems to happen is that CFA tells us that the throw to a retk bound
+       as a parameter is actually a join cont, and then that leads us to thinking
+       that the throw occurs in a different function (marking the use from another fun),
+       so the join gets turned into a GOTO cont, when in reality it should just be treated
+       as a return/join cont.
+       *)
+       
     (* consult CFA to determine the actual continuation, if its known *)
-    fun actualCont k = (case CFA.valueOf k
+    (*fun actualCont k = (case CFA.valueOf k
         of CFA.LAMBDAS gs => let
                 val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
             in 
@@ -247,7 +256,8 @@ structure ClassifyConts : sig
                     else k 
             end
          | _ => k
-         (* esac *))
+         (* esac *))*) 
+    fun actualCont k = k
     
     (* climbs the context, if necessary, to find the immediately enclosing function. *)
     fun enclosingFun outer = (case CV.kindOf outer
@@ -303,7 +313,7 @@ structure ClassifyConts : sig
                 if (not o List.null) (usesOf f) andalso notEscaping
                         then (* after analyzing the body, we found out
                                 that it's a recursive Join, so we turn it into a Goto *)
-                            markAsGoto f
+                            (*markAsGoto f*) raise Fail "found a recursive cont"
                         else ();
                 
                 analExp (outer, e);
