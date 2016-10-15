@@ -542,13 +542,27 @@ structure DirectFlatClosureWithCFA : sig
                                 cvt (env', args, e, binds @ stms, encl)
                               end
                           | CPS.Fun(fbs, e) => let
+                              
+                              (* debug prints *)
+                              val _ = let
+                                    fun nameOf (CPS.FB{f,...}) = CPS.Var.toString f
+                                  in
+                                    print ("converting func group: " 
+                                            ^ String.concatWith ", " (List.map nameOf fbs)
+                                            ^ "\n")
+                                  end
+                              
                               val (binds, env) = cvtFunc(env, fbs)
+                              
+                              val _ = print "done.\n"
+                              
                               in
                                 cvt (env, args, e, binds @ stms, encl)
                               end
                           | CPS.Cont(fb, e) => let
                               val (binds, env, joinBlocks) = cvtCont(env, fb)
                               
+                              (* debug prints *)
                               val _ = let
                                     val (CPS.FB{f,...}) = fb
                                   in
