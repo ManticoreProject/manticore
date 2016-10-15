@@ -544,6 +544,8 @@ structure DirectFlatClosureWithCFA : sig
                           | CPS.Fun(fbs, e) => let
                               
                               (* debug prints *)
+                              val _ = print "env before handling following func group:\n"
+                              val _ = prEnv env
                               val _ = let
                                     fun nameOf (CPS.FB{f,...}) = CPS.Var.toString f
                                   in
