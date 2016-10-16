@@ -121,13 +121,21 @@ structure FreeVars : sig
 		in
 		  addVar (fv, x)
 		end
-	    | CPS.Apply(f, args, rets) => let
-            val fv = addVars(VSet.empty, f::args@rets)
-        in
-            if !checkDS andalso (not o ClassifyConts.isTailApply) theExp
-                then VSet.union(fv, (getFV o List.hd) rets)
-                else fv
-        end
+	    | CPS.Apply(f, args, rets) => if !checkDS
+            then let
+                    (* retk is not considered free *)
+                    val fv = addVars(VSet.empty, f::args @ (List.tl rets))
+                 in
+                    if ClassifyConts.isTailApply theExp
+                        then fv
+                        else VSet.union(fv, (getFV o List.hd) rets) 
+                        (* in a non-tail apply, the FV's of the retk are used here. *)
+                 end
+            
+            else 
+                addVars(VSet.empty, f::args@rets)
+        
+        
         
 	    | CPS.Throw(k, args) => let
 		val fv = addVars(VSet.empty, args)
@@ -139,7 +147,7 @@ structure FreeVars : sig
 		 *)
 		  if (!checkJoin andalso ClassifyConts.isJoinCont k) 
                 orelse
-             (!checkDS andalso ClassifyConts.isReturnCont k)
+             (!checkDS andalso ClassifyConts.isReturnThrow k)
 		    then VSet.union(fv, getFV k)
 		    else addVar(fv, k)
 		end

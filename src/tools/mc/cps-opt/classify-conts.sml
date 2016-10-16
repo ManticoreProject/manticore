@@ -52,6 +52,9 @@ structure ClassifyConts : sig
     
     val isReturnCont : CPS.var -> bool
     
+    (* also checks the binding if it is a ParamCont to see if it's in the retk position. *)
+    val isReturnThrow : CPS.var -> bool
+    
     val isTailApply : CPS.exp -> bool
     
     (* ask whether this analysis is in direct-style mode
@@ -435,6 +438,19 @@ structure ClassifyConts : sig
     fun isReturnCont k = 
         (case (kindOfCont o actualCont) k
             of ReturnCont => true
+             | _ => false
+            (* esac *))
+            
+    fun isReturnThrow k = 
+        (case (kindOfCont o actualCont) k
+            of ReturnCont => true
+             | ParamCont => (case CV.kindOf k
+                 of CPS.VK_Param fb => (case checkRets (k, fb)
+                     of SOME ReturnCont => true
+                      | _ => false
+                      (* esac *))
+                  | _ => false
+                  (* esac *))
              | _ => false
             (* esac *))
     
