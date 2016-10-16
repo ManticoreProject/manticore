@@ -1012,16 +1012,36 @@ structure DirectFlatClosureWithCFA : sig
                                     List.map CPS.Var.toString args @ ["\n"]))
           in
             (case CC.kindOfCont k
-                  of CC.ParamCont => (case CC.checkRets(k, CC.contextOfThrow k)
-                      (* is this a throw to one of the immediately enclosing 
-                         continuations marked as an exnh or retk in this function? *)
-                    of SOME(CC.ReturnCont) => 
-                        (* this is a standard function return. *)
-                          cvtReturnThrow(env, k, args)
-                     
-                     | SOME(CC.ExnCont) => raise Fail "can't handle raising an excemption atm"
-                     | NONE => raise Fail "throw to a ret/exn continuation that's not the enclosing function's!"
-                     (* esac *))
+                  of CC.ParamCont => let
+                        val fncxts = CC.contextOfThrow k
+                        (* TODO: multiple contexts are okay if it's bound as an exnh, so
+                           we need to fold/map over the list of funs to see if they're all
+                           ExnConts or not. *)
+                        val fb = (case CPS.Var.Set.listItems fncxts
+                                   of [funV] => (case CPS.Var.kindOf funV
+                                                 of CPS.VK_Fun fb => fb
+                                                  | _ => raise Fail "expected only Funs!"
+                                                (* esac *))
+                                    | funs => 
+                                        raise Fail 
+                                    (String.concatWith " " 
+                                        (["throws to retk/exnh", CPS.Var.toString k, 
+                                        "occur in multiple contexts:\n"] @ (List.map CPS.Var.toString funs) @ ["\n"]))
+                                 (* esac *))
+                  in
+                    (case CC.checkRets(k, fb)
+                        (* is this a throw to one of the immediately enclosing 
+                           continuations marked as an exnh or retk in this function? *)
+                      of SOME(CC.ReturnCont) => 
+                          (* this is a standard function return. *)
+                            cvtReturnThrow(env, k, args)
+                       
+                       | SOME(CC.ExnCont) => raise Fail "can't handle raising an excemption atm"
+                       | NONE => raise Fail "throw to a ret/exn continuation that's not the enclosing function's!"
+                       (* esac *))
+                  end
+                  
+                  
                   | (CC.JoinCont | CC.ReturnCont) => cvtJoinThrow (env, k, args)
                   | _ => raise Fail (
                       "encountered a throw that I can't handle: "

@@ -39,7 +39,7 @@ structure ClassifyConts : sig
     val kindOfCont : CPS.var -> cont_kind
     
   (* Given a throw of some var k, returns the immediately enclosing function at that site. *)
-    val contextOfThrow : CPS.var -> CPS.lambda
+    val contextOfThrow : CPS.var -> CPS.Var.Set.set
     
     (* helper for contextOfThrow. will check the rets of the lambda to see if
        the given var matches one of those. *)
@@ -207,11 +207,12 @@ structure ClassifyConts : sig
        a jump to a continuation that happens to marked as a return continuation.
     *)
     local
-        val {getFn, setFn : C.var * C.lambda -> unit, ...} =
-              CV.newProp (fn _ => raise Fail "throw kind")
+        val {getFn, setFn : C.var * CV.Set.set -> unit, ...} =
+              CV.newProp (fn _ => CV.Set.empty)
     in
         val contextOfThrow = getFn
         val markThrowContext = setFn
+        fun addThrowContext (k, CPS.FB{f,...}) = markThrowContext(k, CV.Set.add(contextOfThrow k, f))
     end
 
   (* given a binding context for a continuation, check uses to see
@@ -402,7 +403,7 @@ structure ClassifyConts : sig
                    after arity raising. *)
                      val SOME encl = enclosingFun outer
                    in
-                    addUse (outer, actualCont k) ; markThrowContext (k, encl)
+                    addUse (outer, actualCont k) ; addThrowContext (k, encl)
                    end
                 
                 
