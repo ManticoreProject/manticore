@@ -1013,6 +1013,20 @@ structure DirectFlatClosureWithCFA : sig
           in
             (case CC.kindOfCont k
                   of CC.ParamCont => let
+                        (* TODO CLEANME in this older code, we wanted to check the set of contexts that
+                           throws to this continuation occur in, and ensure that the
+                           throw is only to a single context, namely, the immediately enclosing
+                           function's parameter list. It turns out that the inliner may decide
+                           to inline the return continuation into a function, making the calls
+                           to that function a tail call, and thus the throw to a retk might
+                           be to an outer function's parameter list, but still it is safe to
+                           turn it into a return. Thus, we decided to blindly turn
+                           any throw to some parameter bound retk into a return, because we
+                           assume that optimizations preserve the safety of doing this (which
+                           is the property that the the inital CPS conversion gives us, only
+                           exnk's are thrown to from a deeper context) *)
+                        
+                        (*
                         val fncxts = CC.contextOfThrow k
                         (* TODO: multiple contexts are okay if it's bound as an exnh, so
                            we need to fold/map over the list of funs to see if they're all
@@ -1028,12 +1042,16 @@ structure DirectFlatClosureWithCFA : sig
                                         (["throws to retk/exnh", CPS.Var.toString k, 
                                         "occur in multiple contexts:\n"] @ (List.map CPS.Var.toString funs) @ ["\n"]))
                                  (* esac *))
+                        *)
+                        
+                        val fb = (case CPS.Var.kindOf k
+                                    of CPS.VK_Param fb => fb
+                                     | _ => raise Fail "expected this to be a param bound cont"
+                                    (* esac *))
                   in
                     (case CC.checkRets(k, fb)
-                        (* is this a throw to one of the immediately enclosing 
-                           continuations marked as an exnh or retk in this function? *)
                       of SOME(CC.ReturnCont) => 
-                          (* this is a standard function return. *)
+                          (* if this is this a throw to the retk parameter of an enclosing function, it's a return. *)
                             cvtReturnThrow(env, k, args)
                        
                        | SOME(CC.ExnCont) => raise Fail "can't handle raising an excemption atm"
