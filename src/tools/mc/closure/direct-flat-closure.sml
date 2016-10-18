@@ -874,7 +874,8 @@ structure DirectFlatClosureWithCFA : sig
                 
                 
                 
-                fun cvtExnK () = raise Fail "don't know how we will convert exh conts yet!"
+                fun cvtExnK () = raise Fail "installing an exception handler is not supported!"
+                                            (* TODO would have to change how we throw to exceptions. *)
           in
             (case CC.kindOfCont k
                 of CC.JoinCont => cvtJoinK () (* TODO make sure the joink opt is always on *)
@@ -1054,7 +1055,9 @@ structure DirectFlatClosureWithCFA : sig
                           (* if this is this a throw to the retk parameter of an enclosing function, it's a return. *)
                             cvtReturnThrow(env, k, args)
                        
-                       | SOME(CC.ExnCont) => raise Fail "can't handle raising an excemption atm"
+                       | SOME(CC.ExnCont) => (* NOTE TODO FIXME This only works for the top-level exception handler! *)
+                                                cvtExnThrow(env, k, args)
+                       
                        | NONE => raise Fail "throw to a ret/exn continuation that's not the enclosing function's!"
                        (* esac *))
                   end
@@ -1092,6 +1095,69 @@ structure DirectFlatClosureWithCFA : sig
         in
             (argBinds, CFG.Return args)
         end
+        
+        and cvtExnThrow (env, k, args) = let
+            (* NOTE FIXME this will only work because we're assuming you can only throw
+               to the top level exception handler, since I have not implemented
+               the conversion of an exception handler cont. *)
+                    fun cvtThrow (env, k, args) = (case CFA.valueOf k 
+            		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
+            		    | CFA.BOT => cvtStdThrow (env, k, NONE, args)
+            		    | CFA.LAMBDAS gs => let
+            			val SOME g = CPS.Var.Set.find (fn _ => true) gs
+            			val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
+            			val kTgt = if CPS.Var.Set.numItems gs = 1 
+            				      then CPS.Var.Set.find (fn _ => true) gs
+            				   else NONE
+            			in
+            			  if CFA.isEscaping g
+            			    then cvtStdThrow (env, k, kTgt, args)
+            			    else cvtKnownThrow (env, k, kTgt, args)
+            			end
+            		  (* end case *))
+                      and cvtStdThrow (env, k, kTgt, args) = let
+                            val (kBinds, k') = lookupVar(env, k)
+                            val (argBinds, args') = lookupVars(env, args)
+                            val cp = CFG.Var.new(CFG.Var.nameOf k',
+                                                 CFGTyUtil.select(CFG.Var.typeOf k', 0))
+                          (* if valueOf(k) = LAMBDAS {g},
+                           * then we can refer directly to labelOf(g)
+                           *)
+                            val bindCP = (case kTgt
+                                   of SOME g => CFG.mkLabel(cp, labelOf g)
+                                    | NONE => CFG.mkSelect(cp, 0, k')
+                                  (* end case *))
+                            val xfer = CFG.StdThrow {
+                                    k = cp,
+                                    clos = k',
+                                    args = args'
+                                 }
+                            in
+                              (bindCP :: (argBinds @ kBinds), xfer)
+                            end
+                      and cvtKnownThrow (env, k, kTgt, args) = let
+                            val (kBinds, k') = lookupVar(env, k)
+                            val (argBinds, args') = lookupVars(env, args)
+                            val cp = CFG.Var.new(CFG.Var.nameOf k',
+                                                 CFGTyUtil.select(CFG.Var.typeOf k', 0))
+                          (* if valueOf(k) = LAMBDAS {g},
+                           * then we can refer directly to labelOf(g)
+                           *)
+                            val bindCP = (case kTgt
+                                   of SOME g => CFG.mkLabel(cp, labelOf g)  
+                                    | NONE => CFG.mkSelect(cp, 0, k')
+                                  (* end case *))
+                            val xfer = CFG.Apply {
+                                    f = cp,
+                                    clos = k',
+                                    args = args'
+                                 }
+                            in
+                              (bindCP :: (argBinds @ kBinds), xfer)
+                            end
+              in
+                cvtThrow(env, k, args)
+              end
         
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
