@@ -911,7 +911,7 @@ structure DirectFlatClosureWithCFA : sig
                            | _ => raise Fail "rets did not meet expectations!"
                            (* esac *))
                            
-                val _ = print ("hit an apply to arg: " ^ ((CPS.Var.toString o List.hd) args) ^ "\n")
+                (*val _ = print ("hit an apply to arg: " ^ ((CPS.Var.toString o List.hd) args) ^ "\n")*)
                 
                 val (argBinds, args) = lookupVars(env, args)
                 val (exnhBinds, exnh) = lookupVars(env, List.tl rets)
@@ -1011,8 +1011,10 @@ structure DirectFlatClosureWithCFA : sig
           
         (* convert a throw *)
           and cvtThrow (env, k, args) = let
+          (*
             val _ = print (concat (["handling throw to ", CPS.Var.toString k, " of "] @
                                     List.map CPS.Var.toString args @ ["\n"]))
+           *)
           in
             (case CC.kindOfCont k
                   of CC.ParamCont => let
