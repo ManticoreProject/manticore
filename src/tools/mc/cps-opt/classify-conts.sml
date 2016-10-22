@@ -6,7 +6,6 @@
 
 structure ClassifyConts : sig
 
-    (* bool indicates whether the analysis should assume a direct-style translation. *)
     val analyze : CPS.module -> unit
 
   (* the different kinds of continuations *)
