@@ -26,6 +26,9 @@ structure BasicControl :  sig
   (* use the LLVM backend *)
     val llvm : bool Controls.control
     
+  (* use the direct-style codegen *)
+    val direct : bool Controls.control
+    
   (* optimization level used by LLVM backend *)
     val llopt : int Controls.control
 
@@ -161,6 +164,15 @@ structure BasicControl :  sig
 	    help = "compile sequential programs",
 	    default = false
 	  }
+      
+  (* direct-style *)
+    val direct : bool Controls.control = Controls.genControl {
+        name = "direct",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "use direct-style code generation",
+        default = false
+      }
 
   (* llvm backend *)
     val llvm : bool Controls.control = Controls.genControl {
@@ -236,6 +248,10 @@ structure BasicControl :  sig
 	    };
       ControlRegistry.register topRegistry {
           ctl = Controls.stringControl ControlUtil.Cvt.bool llvm,
+          envName = NONE
+        };
+      ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool direct,
           envName = NONE
         };
 	  ControlRegistry.register topRegistry {

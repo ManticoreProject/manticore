@@ -184,7 +184,7 @@ structure CommonSubexpressionElimination : sig
     fun transform (m as C.MODULE{name, externs, body}) =
 	  if !cseFlg
 	    then let
-              val _ = FreeVars.analyze m
+              val _ = FreeVars.analyzeIgnoringJoin m
 	      val body = doFB (VMap.empty, VMap.empty, [], [], body)
               val m' = C.MODULE{name=name, externs=externs, body=C.mkLambda (body, false)}
               val _ = FreeVars.clear m
@@ -195,4 +195,3 @@ structure CommonSubexpressionElimination : sig
 	    else m
 
   end
-

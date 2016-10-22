@@ -60,20 +60,9 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
             default = ConvertStyle.Flat
           }
           
-    val useDirectStyle = Controls.genControl {
-            name = "direct",
-            pri = [5, 0],
-            obscurity = 1,
-            help = "generate direct-style CFG during closure conversion",
-            default = false
-          }
 
     val () = (ControlRegistry.register ClosureControls.registry {
                 ctl = Controls.stringControl ConvertStyle.cvt convertStyle,
-                envName = NONE
-              };
-              ControlRegistry.register ClosureControls.registry {
-                ctl = Controls.stringControl ControlUtil.Cvt.bool useDirectStyle,
                 envName = NONE
               })
             
@@ -81,7 +70,7 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
     fun doConvert module = (
       case Controls.get convertStyle
        of ConvertStyle.Flat => 
-            if (Controls.get useDirectStyle)
+            if (Controls.get BasicControl.direct)
                 then DirectFlatClosureWithCFA.convert module
                 else FlatClosureWithCFA.convert module
                 
@@ -100,7 +89,7 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
 	  }
 
     fun convert module = let
-        val _ = ClassifyConts.analyze (Controls.get useDirectStyle) module
+        val _ = ClassifyConts.analyze module
         val _ = cfa module
         val _ = freeVars module 
     in

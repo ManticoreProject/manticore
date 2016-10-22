@@ -264,6 +264,7 @@ functor MainFn (
 	  \    -llvm            use LLVM backend with its default optimizations\n\
       \    -llopt<level>    use LLVM backend and set its optimization level (0 to 3)\n\
 	  \    -sequential      compile a sequential-mode program\n\
+      \    -direct          use direct-style code generation\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
 
@@ -357,6 +358,7 @@ functor MainFn (
 		| "-version" => version ()
 		| "-sequential" => set BasicControl.sequential
 		| "-llvm" => set BasicControl.llvm
+        | "-direct" => set BasicControl.direct
 		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
 		| "-log" => set BasicControl.logging
 		| "-gcstats" => set BasicControl.gcStats

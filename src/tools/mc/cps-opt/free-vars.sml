@@ -10,8 +10,8 @@ structure FreeVars : sig
    * of a module.  We record the sets of functions, continuations, and
    * the arms of conditionals and switches.
    *)
-    val analyze : CPS.module -> unit
-    val analyzeIgnoringJoin : CPS.module -> unit
+    val analyze : CPS.module -> unit             (* this one should be used for closure conversion. *)
+    val analyzeIgnoringJoin : CPS.module -> unit (* this one should be used for CPS opts *)
 
   (* return the free variables of a function or continuation variable *)
     val envOfFun : CPS.var -> CPS.Var.Set.set
@@ -185,7 +185,7 @@ structure FreeVars : sig
 	  }
       
       
-    fun analyze m = (checkJoin := true ; checkDS := ClassifyConts.wasDirectStyle() ; doAnalysis m)
+    fun analyze m = (checkJoin := true ; checkDS := (Controls.get BasicControl.direct) ; doAnalysis m)
     
     and analyzeIgnoringJoin m = (checkJoin := false ; checkDS := false ; doAnalysis m)
 

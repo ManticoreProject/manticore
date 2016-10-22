@@ -7,7 +7,7 @@
 structure ClassifyConts : sig
 
     (* bool indicates whether the analysis should assume a direct-style translation. *)
-    val analyze : bool -> CPS.module -> unit
+    val analyze : CPS.module -> unit
 
   (* the different kinds of continuations *)
     datatype cont_kind
@@ -56,10 +56,6 @@ structure ClassifyConts : sig
     val isReturnThrow : CPS.var -> bool
     
     val isTailApply : CPS.exp -> bool
-    
-    (* ask whether this analysis is in direct-style mode
-       only valid after analyze has been run!! *)
-    val wasDirectStyle : unit -> bool
 
   end = struct
 
@@ -72,8 +68,6 @@ structure ClassifyConts : sig
     val enableFlg = ref true
     val usingDS = ref false
     
-    fun wasDirectStyle () = !usingDS
-
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
               envName = NONE
@@ -410,8 +404,8 @@ structure ClassifyConts : sig
                 
           (* end case *))
 
-    fun analyze usingDirectStyle (C.MODULE{body=C.FB{f, body, ...}, ...}) = 
-        (usingDS := usingDirectStyle ; analExp (f, body))
+    fun analyze (C.MODULE{body=C.FB{f, body, ...}, ...}) = 
+        (usingDS := (Controls.get BasicControl.direct) ; analExp (f, body))
 
   (* return the kind of a continuation *)
     fun kindOfCont k = (case CV.kindOf k

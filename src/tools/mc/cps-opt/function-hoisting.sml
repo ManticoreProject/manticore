@@ -270,7 +270,7 @@ structure FunctionHoisting : sig
     fun transform m = 
         let (*val _ = dump m "pre"*)
             val _ = FreeVars.clear m
-            val _ = FreeVars.analyze m
+            val _ = FreeVars.analyzeIgnoringJoin m
             val m' = reorderFuns m
            (* val _ = dump m' "post"*)
         in m'
