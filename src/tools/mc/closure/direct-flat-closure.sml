@@ -543,7 +543,7 @@ structure DirectFlatClosureWithCFA : sig
                               end
                           | CPS.Fun(fbs, e) => let
                               
-                              (* debug prints *)
+                              (* debug prints 
                               val _ = print "env before handling following func group:\n"
                               val _ = prEnv env
                               val _ = let
@@ -553,10 +553,11 @@ structure DirectFlatClosureWithCFA : sig
                                             ^ String.concatWith ", " (List.map nameOf fbs)
                                             ^ "\n")
                                   end
+                              *)
                               
                               val (binds, env) = cvtFunc(env, fbs)
                               
-                              val _ = print "done.\n"
+                              (*val _ = print "done.\n"*)
                               
                               in
                                 cvt (env, args, e, binds @ stms, encl)
@@ -564,13 +565,14 @@ structure DirectFlatClosureWithCFA : sig
                           | CPS.Cont(fb, e) => let
                               val (binds, env, joinBlocks) = cvtCont(env, fb)
                               
-                              (* debug prints *)
+                              (* debug prints 
                               val _ = let
                                     val (CPS.FB{f,...}) = fb
                                   in
                                     print ("env after cvtCont(" ^ (CPS.Var.toString f) ^ "):\n")
                                   end
                               val _ = prEnv env
+                              *)
                               
                               val (start, body) = cvt (env, args, e, binds @ stms, encl)
                               val body = joinBlocks@body
@@ -961,7 +963,7 @@ structure DirectFlatClosureWithCFA : sig
                     
                     val (retk :: _) = rets
                     
-                    val _ = prEnv env
+                    (*val _ = prEnv env*)
                     
                     val needsEP = ref false
                     
