@@ -1016,41 +1016,41 @@ structure DirectFlatClosureWithCFA : sig
           in
             (case CC.kindOfCont k
                   of CC.ParamCont => let
-                        (* TODO CLEANME in this older code, we wanted to check the set of contexts that
+                        (* NOTE in this code, we wanted to check the set of contexts that
                            throws to this continuation occur in, and ensure that the
                            throw is only to a single context, namely, the immediately enclosing
                            function's parameter list. It turns out that the inliner may decide
                            to inline the return continuation into a function, making the calls
                            to that function a tail call, and thus the throw to a retk might
-                           be to an outer function's parameter list, but still it is safe to
-                           turn it into a return. Thus, we decided to blindly turn
-                           any throw to some parameter bound retk into a return, because we
-                           assume that optimizations preserve the safety of doing this (which
-                           is the property that the the inital CPS conversion gives us, only
-                           exnk's are thrown to from a deeper context) *)
+                           be to an outer function's parameter list, [[but still it is safe to
+                           turn it into a return.]] <- this proved to not be true, it's sometimes unsafe,
+                           so we changed the inliner to not inline throws for direct-style.
+                           *)
                         
-                        (*
+                        
                         val fncxts = CC.contextOfThrow k
                         (* TODO: multiple contexts are okay if it's bound as an exnh, so
                            we need to fold/map over the list of funs to see if they're all
-                           ExnConts or not. *)
+                           ExnConts or not. not exactly critical since we don't support 
+                           handle right now *)
                         val fb = (case CPS.Var.Set.listItems fncxts
-                                   of [funV] => (case CPS.Var.kindOf funV
+                                   of nil => raise Fail "throw must occur in some function!"
+                                    | [funV] => (case CPS.Var.kindOf funV
                                                  of CPS.VK_Fun fb => fb
                                                   | _ => raise Fail "expected only Funs!"
                                                 (* esac *))
-                                    | funs => 
+                                    | funs =>
                                         raise Fail 
                                     (String.concatWith " " 
                                         (["throws to retk/exnh", CPS.Var.toString k, 
                                         "occur in multiple contexts:\n"] @ (List.map CPS.Var.toString funs) @ ["\n"]))
                                  (* esac *))
-                        *)
-                        
+                        (*
                         val fb = (case CPS.Var.kindOf k
                                     of CPS.VK_Param fb => fb
                                      | _ => raise Fail "expected this to be a param bound cont"
                                     (* esac *))
+                        *)
                   in
                     (case CC.checkRets(k, fb)
                       of SOME(CC.ReturnCont) => 
