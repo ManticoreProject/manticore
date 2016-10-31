@@ -17,18 +17,31 @@ structure Prim =
       | I32Mul of 'var * 'var
       | I32Div of 'var * 'var
       | I32Mod of 'var * 'var
-      | I32LSh of 'var * 'var
       | I32Neg of 'var
+      | U32Mul of 'var * 'var
+      | U32Div of 'var * 'var
+      | U32Rem of 'var * 'var
+      | I32AndB of 'var * 'var   (*bitwise and*)
+      | I32OrB of 'var * 'var    (*bitwise or*)
+      | I32XorB of 'var * 'var   (*bitwise or*)
+      | I32NotB of 'var          (*bitwise not*)
+      | I32LSh of 'var * 'var    (*left shift*)
+      | I32RSh of 'var * 'var    (*right (logical) shift*)
       | I64Add of 'var * 'var
       | I64Sub of 'var * 'var
       | I64Mul of 'var * 'var
       | I64Div of 'var * 'var
       | I64Mod of 'var * 'var
-      | I64LSh of 'var * 'var
       | I64Neg of 'var
       | U64Mul of 'var * 'var
       | U64Div of 'var * 'var
       | U64Rem of 'var * 'var
+      | I64AndB of 'var * 'var   (*bitwise and*)
+      | I64OrB of 'var * 'var    (*bitwise or*)
+      | I64XorB of 'var * 'var   (*bitwise or*)
+      | I64NotB of 'var          (*bitwise not*)
+      | I64LSh of 'var * 'var    (*left shift*)
+      | I64RSh of 'var * 'var    (*right (logical) shift*)
       | F32Add of 'var * 'var
       | F32Sub of 'var * 'var
       | F32Mul of 'var * 'var
@@ -43,11 +56,9 @@ structure Prim =
       | F64Neg of 'var
       | F64Sqrt of 'var
       | F64Abs of 'var
-      (*right shift*)
+    (*right (logical) shift*)
       | I8RSh of 'var * 'var
       | I16RSh of 'var * 'var
-      | I32RSh of 'var * 'var
-      | I64RSh of 'var * 'var
     (* conversions *)
       | I32ToI64X of 'var		(* int -> long conversion with sign extension *)
       | I32ToI64 of 'var		(* unsigned int -> long conversion *)
