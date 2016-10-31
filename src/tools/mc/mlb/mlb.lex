@@ -86,7 +86,7 @@
 <INITIAL> {ws}		=> (continue ());
 <INITIAL> "(*"		=> (YYBEGIN COMMENT; depth := 1; continue());
 
-<INITIAL> "\""          => (YYBEGIN STRING; skip())
+<INITIAL> "\""          => (YYBEGIN STRING; skip());
 
 <STRING>{esc}		=> (addStr(valOf(String.fromString yytext)); continue());
 <STRING>{sgood}+	=> (addStr yytext; continue());
