@@ -226,7 +226,7 @@ in (case p
 
 
   | (P.I8RSh _ | P.I16RSh _ | P.I32RSh _ | P.I64RSh _ )
-      => (fn [a, b] => f e Op.AShr #[a, b])
+      => (fn [a, b] => f e Op.LShr #[a, b])
       
   (* conversions *)
   
