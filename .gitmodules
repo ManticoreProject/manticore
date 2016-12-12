@@ -6,7 +6,7 @@
 	path = src/benchmarks
 	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/benchmarks.git
 	branch = master
-[submodule "lib/basis"]
-	path = lib/basis
+[submodule "src/lib/basis"]
+	path = src/lib/basis
 	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/basis.git
 	branch = master
