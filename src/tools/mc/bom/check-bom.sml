@@ -57,6 +57,7 @@ structure CheckBOM : sig
     datatype context
       = TAIL of (B.var * B.ty list)
       | BIND of (B.var list * B.exp)
+      | NORET of B.var (* expecting to end in a throw to this cont *)
 
     fun pr s = TextIO.output(TextIO.stdErr, concat s)
 
@@ -118,6 +119,9 @@ structure CheckBOM : sig
 	  val B.MODULE{name, externs, hlops, rewrites, body} = module
 	  val anyErrors = ref false
 	  val anyWarnings = ref false
+      (* the following indicates whether to ensure conts are used in a restricted way
+         so that efficient stack allocation is possible. See the BOL paper. *)
+      val secondClassConts = Controls.get BasicControl.direct
 	(* report an error *)
 	  fun error msg = (
 		if !anyErrors orelse !anyWarnings then ()
@@ -159,19 +163,22 @@ structure CheckBOM : sig
 			cerror ["  found    (", str argTys, ")\n"]
                       end
 	        end
-	(* match a list of variables to a context *)
+	(* match a list of variables being returned to a context *)
 	  fun chkContext (cxt, xs) = (case cxt
 		 of TAIL(f, tys) => checkArgTypes (BTU.match, "return from " ^ v2s f, tys, typesOf xs)
 		  | BIND(ys, rhs) => checkArgTypes (
 		      BTU.match, concat["binding ", vl2s ys, " = ", BOMUtil.expToString rhs],
 		      typesOf ys, typesOf xs)
+          | NORET m => error ["letcont ", v2s m, " ends in a return\n"]
 		(* end case *))
-	(* create a tail context *)
-	  fun tailContext f = let
-		val (_, _, rng) = BTU.asFunTy(BV.typeOf f)
-		in
-		  TAIL(f, rng)
-		end
+    
+    (* create a tail context *)
+	fun tailContext f = let
+      val (_, _, rng) = BTU.asFunTy(BV.typeOf f)
+      in
+        TAIL(f, rng)
+      end 
+		
 	(* Check that a variable is bound *)
 	  fun chkVar (x, ctx) = useVar x
 	  fun chkApplyVar (x, cxt) = appVar x
@@ -236,7 +243,10 @@ structure CheckBOM : sig
 		  | B.E_Cont(fb as B.FB{f, params, exh, body}, e) => (
 		      chkBinding (f, B.VK_Cont fb);
 		      chkBindings (params, B.VK_Param);
-		      chkE(cxt, e);
+		      chkE(if secondClassConts
+                    then NORET f  (* e is expected to end in a throw to f *)
+                    else cxt
+                   , e);
 		      if not(null exh)
 			then error[
 			    "continuation ", v2s f, " has non-empty return list"
@@ -280,17 +290,25 @@ structure CheckBOM : sig
                                     BTU.match, 
 				    concat["binding ", vl2s ys, " to Apply ", v2s f],
 				    typesOf ys, retTys)
+			      | NORET m =>  error ["letcont ", v2s m, " ends in an Apply ", v2s f, "\n"]
 			    (* end case *))
 			| ty => error[v2s f, " : ", BTU.toString ty, " is not a function\n"]
 		      (* end case *))
 		  | B.E_Throw(k, args) => (
 		      chkApplyVar (k, "Throw");
-		      case BV.typeOf k
+		      (case BV.typeOf k
 		       of BTy.T_Cont(argTys) => (
 			    chkVars (args, "Throw args");
 			    checkArgTypes (BTU.match, concat["Throw ", v2s k, " args"], argTys, typesOf args))
-			| ty => error[v2s k, ":", BTU.toString ty, " is not a continuation\n"]
-		      (* end case *))
+			    | ty => error[v2s k, ":", BTU.toString ty, " is not a continuation\n"]
+		      (* end case *));
+              case cxt
+                of NORET m => 
+                    if BV.same(m, k) 
+                    then () 
+                    else error ["throw to ", v2s k, " in letcont ", v2s m, ", instead of to ", v2s m, "\n"]
+                | _ => ()
+              (* end Throw case *))
 		  | B.E_Ret args => (
 		      chkVars(args, "Return");
 		      chkContext (cxt, args))
