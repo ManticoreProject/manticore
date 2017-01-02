@@ -120,6 +120,8 @@ structure CFACFG : sig
             | CFGTy.T_StdCont _ => LABELS(LSet.empty)
             | CFGTy.T_KnownFunc _ => LABELS(LSet.empty)
             | CFGTy.T_Block _ => LABELS(LSet.empty)
+            | CFGTy.T_KnownDirFunc _ => LABELS(LSet.empty)
+            | CFGTy.T_StdDirFun _ => LABELS(LSet.empty)
           (* end case *))
 
   (* property to track call-sites *)
@@ -328,6 +330,10 @@ structure CFACFG : sig
                     | CFG.HeapCheck{nogc, ...} => addJump nogc
                     | CFG.HeapCheckN{nogc, n, ...} => addJump nogc
                     | CFG.AllocCCall{ret, ...} => addJump ret
+                    | CFG.Call{f, next, ...} => (
+                        addSet f;
+                        Option.app (fn (_, jmp) => addJump jmp) next)
+                    | CFG.Return _ => ()
                   (* end case *)
                 end
           fun compute (CFG.FUNC{start, body, ...}) = (
@@ -405,6 +411,39 @@ structure CFACFG : sig
                   | doXfer (CFG.AllocCCall{ret, args, ...}) = (
                       List.app escape args;
                       doJump ret)
+                      
+                      (* TODO NOTE 
+                        We might need to change a lot of code here to track information
+                        about what values might be returned to a direct-style Call. 
+                        
+                        Luckily, almost no CFG optimizations are currently using this information. 
+                        
+                        The difficulty is that we no longer have a label associated 
+                        with each return continuation. Thus, with the current data structures
+                        used in this code, we cannot associate the parameters 
+                        (aka the LHS of a CFG.Call) of return continuations with sets 
+                        of values they may take on.
+                        
+                        (kavon, 1/2/17)
+                      *)
+                  | doXfer (CFG.Return args) = List.app escape args (* see above comment *)
+                  
+                  | doXfer (CFG.Call{f, clos, args, next}) = let
+                        val (name, chk) = (case CFG.Var.typeOf f
+                                       of CFGTy.T_KnownDirFunc _ =>
+                                            ("Call (KnownDirFunc) ", fn CFG.KnownDirectFunc _ => true | _ => false)
+                                        | CFGTy.T_StdDirFun _ =>
+                                            ("Call (StdDirFun)", fn CFG.StdDirectFunc _ => true | _ => false)
+                                        (* esac *))
+                      in
+                        doApply (f,
+                                 (name ^ " {f = " ^ (CFG.Var.toString f) ^ ", ...}", chk),
+                                 clos :: args);
+                        Option.app (fn (_, jmp) => doJump jmp) next
+                      end
+                        
+                  
+                  
                 and doApply (f, chk, args) = (case getValue f 
                        of LABELS targets => LSet.app (fn lab => doLabel (lab, chk, args)) targets
                         | BOT => ()
@@ -472,6 +511,11 @@ structure CFACFG : sig
                   setSites (lab, Unknown);
                   setValue (clos, TOP); List.app (fn x => setValue (x, TOP)) args;
                   setValue (ret, TOP); setValue (exh, TOP))
+                  
+              | CFG.FUNC{lab, entry=CFG.StdDirectFunc{clos, ret=notAVar, exh}, start as CFG.BLK{args,...}, ...} :: _ => (
+                   setSites (lab, Unknown);
+                   setValue (clos, TOP); List.app (fn x => setValue (x, TOP)) args;
+                   setValue (exh, TOP))
               | _ => raise Fail "strange module entry"
             (* end case *);
           (* iterate to a fixed point *)
@@ -499,6 +543,7 @@ structure CFACFG : sig
              of CFG.StdApply{f, ...} => labelSet f
               | CFG.StdThrow{k, ...} => labelSet k
               | CFG.Apply{f, ...} => labelSet f
+              | CFG.Call{f, ...} => labelSet f
               | _ => SOME (LSet.addList(LSet.empty, CFGUtil.labelsOfXfer xfer))
             (* end case *)
           end

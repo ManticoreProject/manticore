@@ -37,6 +37,8 @@ structure Census : sig
     fun doEntry (C.StdFunc{clos, ret, exh}) = (clr clos; clr ret; clr exh)
       | doEntry (C.StdCont{clos}) = (clr clos)
       | doEntry (C.KnownFunc{clos}) = (clr clos)
+      | doEntry (C.StdDirectFunc{clos, exh, ret=notAVar}) = (clr clos; clr exh)
+      | doEntry (C.KnownDirectFunc{clos, ret=notAVar}) = (clr clos)
 
   (* update the census counts for the variables in an expression *)
     fun doExp (C.E_Var(xs, ys)) = (clr' xs; inc' ys)
@@ -59,6 +61,9 @@ structure Census : sig
 
   (* update the census counts for the variables used in a jump *)
     fun doJump (lab, args) = (incLab lab; inc' args)
+    
+    fun doNext (SOME(retBinds, jmp)) = (clr' retBinds ; doJump jmp)
+      | doNext NONE = ()
 
   (* update the census counts for the variables in a exit transfer *)
     fun doExit (C.StdApply{f, clos, args, ret, exh}) = (inc f; inc clos; inc' args; inc ret; inc exh)
@@ -73,6 +78,8 @@ structure Census : sig
       | doExit (C.HeapCheck{nogc, ...}) = doJump nogc
       | doExit (C.HeapCheckN{nogc, n, ...}) = (inc n; doJump nogc)
       | doExit (C.AllocCCall{lhs, f, args, ret}) = (List.app inc lhs; inc f; inc' args; doJump ret)
+      | doExit (C.Return args) = inc' args
+      | doExit (C.Call{f, clos, args, next}) = (inc f; inc clos; inc' args; doNext next)
 
   (* initialize the census count of a function's label *)
     fun initFun (C.FUNC{lab, start, body, ...}) = let

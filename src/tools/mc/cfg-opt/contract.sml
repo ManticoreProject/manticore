@@ -124,6 +124,14 @@ structure Contract : sig
 	      | C.HeapCheck{hck, szb, nogc} => C.HeapCheck{hck=hck, szb=szb, nogc=contractJump nogc}
 	      | C.AllocCCall{lhs, f, args, ret} => 
                    C.AllocCCall{lhs=lhs, f=applySubst(env, f), args=applySubst'(env, args), ret=contractJump ret}
+          | C.Return args => C.Return(applySubst'(env, args))
+          | C.Call {f, clos, args, next} =>
+                C.Call {
+                    f = applySubst(env, f),
+                    clos = applySubst(env, clos),
+                    args = applySubst'(env, args),
+                    next = Option.map (fn (lhs, jmp) => (lhs, contractJump jmp)) next
+                }
 	    (* end case *)
 	  end
 
@@ -284,6 +292,8 @@ structure Contract : sig
           Option.app deleteJump dflt)
           | C.HeapCheck{hck, szb, nogc} => deleteJump nogc
           | C.AllocCCall{lhs, f, args, ret} => deleteJump ret
+          | C.Return _ => ()
+          | C.Call{f, clos, args, next} => Option.app (fn (_,jmp) => deleteJump jmp) next
         (* end case *))
 	
     and deleteJump (lab, _) = Census.decLab lab
