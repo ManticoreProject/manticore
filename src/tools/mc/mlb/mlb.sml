@@ -375,7 +375,7 @@ structure MLB : sig
 	  (* parallel array *)
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
             in
-              (*parrayPts @ topLevelSchedPts @ *) runtimeBasisLibPts @ []
+              (*parrayPts @ topLevelSchedPts @ runtimeBasisLibPts @ *) []
             end
           else let
 	  (* implicit-threading library *)
@@ -417,8 +417,6 @@ structure MLB : sig
 	  val _	= chkExists file	  
 	  val e = chkExt file
         (* now load the basis etc. *)
-
-       (* KAVON_TEMP: no basis for you *)
       val basis = loadBasisLib emptyEnv
 	  (* val basis = [] *)
 
