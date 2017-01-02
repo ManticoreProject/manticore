@@ -205,7 +205,7 @@ structure LLVMType : sig
     val mkFunc = HC.consList tbl (0w11, Ty.T_Func)
     val mkInt = HC.cons1 tbl (0w13, Ty.T_Int)
     val floatTy = HC.cons0 tbl (0w17, Ty.T_Float)
-    val doubleTy = HC.cons0 tbl (0wx19, Ty.T_Double)
+    val doubleTy = HC.cons0 tbl (0w19, Ty.T_Double)
     val mkPtr = HC.cons1 tbl (0w23, Ty.T_Ptr)
     val mkVector = HC.cons2 tbl (0w29, Ty.T_Vector)
     val mkArray = HC.cons2 tbl (0w31, Ty.T_Array)
