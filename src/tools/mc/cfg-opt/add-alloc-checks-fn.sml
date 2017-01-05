@@ -143,6 +143,25 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				  in
 				    (clos' :: args', args', clos :: args, CFG.KnownFunc{clos=clos'})
 				  end
+                  | CFG.StdDirectFunc{clos, exh, ret=retTy} => let
+                    val clos' = CFG.Var.copy clos
+                    val args' = List.map CFG.Var.copy args
+                    val exh' = CFG.Var.copy exh
+                  in (
+                      clos' :: args' @ [exh'],
+                      args',
+                      clos :: args @ [exh],
+                      CFG.StdDirectFunc{clos=clos', exh=exh', ret=retTy}
+                  ) end
+                  | CFG.KnownDirectFunc{clos, ret=retTy} => let
+                    val clos' = CFG.Var.copy clos
+                    val args' = List.map CFG.Var.copy args
+                  in (
+                      clos' :: args',
+                      args',
+                      clos :: args,
+                      CFG.KnownDirectFunc{clos=clos', ret=retTy}
+                  ) end
 			   (* end case *))
 		      fun convertBlock (block as CFG.BLK{body, args, exit, lab}, freeVars, renamedArgs, allArgs) = let
 			    val lab' = CFG.Label.new(

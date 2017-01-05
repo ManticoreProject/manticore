@@ -97,9 +97,14 @@ structure CFGUtil : sig
       | varsOfXfer (HeapCheck{nogc=(_, args), ...}) = args
       | varsOfXfer (HeapCheckN{nogc=(_, args), ...}) = args
       | varsOfXfer (AllocCCall{lhs, args, ret=(_, rArgs), ...}) = lhs @ args @ rArgs
+      | varsOfXfer (Call{f, clos, args, next}) = 
+            (* NOTE(kavon): going with the live vars here *)
+            f :: clos :: args @ (fn (SOME(_,(_,fvNext))) => fvNext | (NONE) => []) next
+      | varsOfXfer (Return args) = args
 
    (* project the lhs variables of a control transfer *)
     fun lhsOfXfer (AllocCCall{lhs, ...}) = lhs
+      | lhsOfXfer (Call{next=SOME(lhs,_), ...}) = lhs
       | lhsOfXfer _ = []
 
   (* project the list of destination labels in a control transfer; note that this function
@@ -118,6 +123,9 @@ structure CFGUtil : sig
       | labelsOfXfer (HeapCheck{nogc=(lab, _), ...}) = [lab]
       | labelsOfXfer (HeapCheckN{nogc=(lab, _), ...}) = [lab]
       | labelsOfXfer (AllocCCall{ret=(lab, _), ...}) = [lab]
+      | labelsOfXfer (Return _) = []
+      | labelsOfXfer (Call {next=SOME(_,(lab,_)), ...}) = [lab]
+      | labelsOfXfer (Call _) = []
 
   (* project out the parameters of a convention *)
     val paramsOfConv = CFG.paramsOfConv
@@ -188,4 +196,3 @@ structure CFGUtil : sig
 	  end
 
   end
-
