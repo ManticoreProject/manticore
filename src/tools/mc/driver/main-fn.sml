@@ -213,12 +213,12 @@ functor MainFn (
           val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom
 	  in
-	      (*codegen (verbose, asmFile, cfg);
+	      codegen (verbose, asmFile, cfg);
               if verbose
               then TextIO.print(concat ["Full compilation finished in: ",
 					(Time.toString (Time.- (Time.now(), inclusiveStart))),
 					"\n"])
-              else ();*)
+              else ();
 	      Stats.report ()
     end
 
