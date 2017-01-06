@@ -5,7 +5,7 @@
  *
  * Outputs a CFG program as textual LLVM IR. 
  *    - Depends on the predecessor CFG pass.
- *    - Compatible with LLVM 3.8
+ *    - Compatible with a modified version of LLVM 3.8 (with the JWA calling convention.)
  *)
 
 functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
@@ -16,26 +16,6 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   
   (* if set to true, will send CFG output to stderr for debugging purposes *)
   val DEBUGGING = false
-
-    (*
-
-      Plan: since CFG is basically in SSA form, the main things we need to
-            keep track of are the pinned register values (allocation ptr,
-            vproc, limit ptr, etc) as they change and are changed by various
-            actions. For everything else we ought to be able to just reuse the
-            vars and not keep track of those things. All of the
-            information needed seems to be otherwise already present in the CFG
-            representation.
-
-            Another difference is the way we generate heap checks. since we
-            need to spill and reload live vars in the case of a GC occuring,
-            along with having the std regs change in that case, we need to
-            introduce extra GC bbs for the GCs occuring and introduce phis
-            for the following block. An additional optimization we talked about
-            was to mark such blocks as cold paths so they're not stuck in the middle
-            of a hot path.
-
-      *)
 
   structure C = CFG
   structure CV = CFG.Var
@@ -365,12 +345,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         arg[i+1] <- phi [ jump[k].arg[i+1], jump[k].label ], [ jump[k+1].arg[i+1], jump[k+1].label ], ...
         ...
     *)
-    
-      (* handle control transfers. i think you need to actually have
-      fill block return a LB.t and a thunk LB.t -> LB.bb to finish the block,
-      because we need to go over all other blocks before finishing the block so
-      that the terminator function adds the proper phi's to the block when it finializes it.
-      *)
       
       (* handy stuff used in several places *)
       
@@ -384,6 +358,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       (* the noattr instruction maker *)
       val mk = LB.mk b AS.empty
       val cast = LB.cast b
+      val mkVolatile = LB.mk b (AS.singleton A.Volatile)
 
       (* end handy stuff *)
       
@@ -662,9 +637,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              in
                  (myBB, brTo)
              end
-             
-             (* TODO mark cold branches for basic block placement! *)
-             
+                          
              (* this enoughSpaceCond is for the initial heap check. *)
              val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc)) szb)
              
@@ -964,7 +937,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                | C.E_VPLoad rhs => genVPLoad(env, rhs)
                | C.E_VPStore rhs => genVPStore(env, rhs)
                | C.E_VPAddr rhs => genVPAddr(env, rhs)
-               (* | _ => raise Fail "(llvm-backend) error: unexpected exp type encountered in CFG representation" *)
               (* esac *))
           in
             process(env, xs)
@@ -1028,7 +1000,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              end
             (* esac *)) (* end constInstr *)
             
-            (* NOTE we must introduce this dummy binding here so we do not accidentially perform
+            (* NOTE we introduce this dummy binding here so we do not accidentially perform
               an unsafe constant propigation if we were to add the raw constant to the env otherwise. *)
               
             val constTy = LB.toTy constInstr
@@ -1145,7 +1117,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         env
       end
       
-      and genGAlloc(env, (lhsVar, ty, vars)) = (* TODO not implemented yet. should go very similarly to local alloc *)
+      and genGAlloc(env, (lhsVar, ty, vars)) = 
+      (* TODO not implemented yet. should go very similarly to local alloc *)
         raise Fail "not implemented yet"
       
       and genPromote(env, (lhsVar, var)) = let
@@ -1263,22 +1236,13 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       and genHostVProc(env, lhsVar) = insertV(env, lhsVar, lookupMV(env, MV_Vproc))
       
-      (*
-      NOTE TODO FIXME (3/13/16)  some fields of a vproc are accessable by other threads.
-      a great example of this is the heap limit pointer. LLVM's alias analysis might
-      assume that the vprocs are not shared or something, and might remove some loads of
-      the heap limit pointer (say, hoisting out of a loop) when it really should not because the value is volatile. 
-      THUS you should really add the volatile attribute to at _least_ loads, if not also for stores?
-      This needs testing and evaluation
-      *)
-      
       and genVPLoad(env, (lhsVar, offset, vpVar)) = let
         val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
         val vpLL = lookupV(env, vpVar)
         
         (* now we do the offset & loading sequence *)
         val addr = LPU.vpOffset b vpLL offset (LT.mkPtr(lhsTy))
-        val final = mk Op.Load #[addr] 
+        val final = mkVolatile Op.Load #[addr] 
       in
         insertV(env, lhsVar, final)
       end
@@ -1290,7 +1254,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         
         (* offset and store seq *)
         val addr = LPU.vpOffset b vpLL offset (LT.mkPtr(argTy))
-        val _ = mk Op.Store #[addr, argLL] (* no resulting instr after store *)
+        val _ = mkVolatile Op.Store #[addr, argLL] (* no resulting instr after store *)
       in
         env
       end
@@ -1550,15 +1514,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
      for it called maintEntry so the C runtime knows what the main fn is. *)
   val (C.FUNC { lab = mainLab, ...})::_ = module_code
   val mainFn = lookupL(initEnv, mainLab)
-
-(* NOTE
-    
-      ordering of declarations only matters in LLVM for types.
-        
-        so, string constants need to be saved as we generate the module, and then we can
-          shove them at the end of processing the functions.
-
-      *)
 
   (* process the whole module, generating a string for each function and populating the type
      and string literal caches *)
