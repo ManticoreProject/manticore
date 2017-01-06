@@ -310,7 +310,7 @@ structure ClassifyConts : sig
                 if (not o List.null) (usesOf f) andalso notEscaping
                         then (* after analyzing the body, we found out
                                 that it's a recursive Join, so we turn it into a Goto *)
-                            (*markAsGoto f*) raise Fail "found a recursive cont"
+                            markAsGoto f (*raise Fail "found a recursive cont"*)
                         else ();
                 
                 analExp (outer, e);

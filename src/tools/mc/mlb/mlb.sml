@@ -375,7 +375,9 @@ structure MLB : sig
 	  (* parallel array *)
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
             in
-              (*parrayPts @ topLevelSchedPts @ runtimeBasisLibPts @ *) []
+              if Controls.get BasicControl.direct (* TEMPORARY *)
+              then (*parrayPts @ topLevelSchedPts @ runtimeBasisLibPts @ *) []
+              else parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
             end
           else let
 	  (* implicit-threading library *)
