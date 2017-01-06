@@ -147,6 +147,15 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
              | CFGTy.T_KnownFunc {clos, args} => 
                   CFGTy.T_KnownFunc {clos = transTy clos, args = transTyKFncArgs args}
              | CFGTy.T_Block {args} => CFGTy.T_Block {args = List.map transTy args}
+             | CFGTy.T_StdDirFun {clos, args, ret, exh} =>
+                    CFGTy.T_StdDirFun {clos = transTy clos,
+                                       args = [transTyStdArgs args], 
+                                       ret = List.map transTy ret, 
+                                       exh = transTy exh}        
+             | CFGTy.T_KnownDirFunc {clos, args, ret} => 
+                    CFGTy.T_KnownDirFunc {clos = transTy clos, 
+                                          args = transTyKFncArgs args,
+                                          ret = List.map transTy ret}
 
          local
             val {getFn, peekFn, setFn, clrFn, ...} = 
@@ -299,7 +308,23 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                    in
                       (CFG.KnownFunc {clos = clos}, 
                        binds, args)
-                   end)
+                   end
+              | CFG.StdDirectFunc {clos, exh, ret} => 
+                    let
+                       val (arg, binds) = transFormalStdArgs args
+                    in
+                       (CFG.StdDirectFunc {clos = clos, ret = ret, exh = exh}, 
+                        binds, [arg])
+                    end
+              | CFG.KnownDirectFunc {clos, ret} => 
+                    let
+                       val (args, binds) = transFormalKFncArgs args
+                    in
+                       (CFG.KnownDirectFunc {clos = clos, ret = ret}, 
+                        binds, args)
+                    end
+              )
+              
          fun transExp (exp : CFG.exp) : CFG.exp =
             (List.app updVarType (CFG.lhsOfExp exp);
              case exp of
@@ -415,6 +440,20 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                    in
                      (binds, CFG.Apply {f = f, clos = clos, args = args})
                    end
+             | CFG.Call {f, clos, args, next} => 
+                    let
+                       val (binds, args) = 
+                            (case CFG.Var.typeOf f
+                                of CFGTy.T_KnownDirFunc _ => transActualKFncArgs args
+                                 | CFGTy.T_StdDirFun _ => let
+                                    val (binds, arg) = transActualStdArgs args
+                                    in
+                                        (binds, [arg])
+                                    end
+                                 (* end case *))
+                    in
+                      (binds, CFG.Call {f = f, clos = clos, args = args, next = next})
+                    end
              | _ => ([], t)
 
           fun transBlock (CFG.BLK{lab=lab, body, exit, args}, entryBinds, args') = let

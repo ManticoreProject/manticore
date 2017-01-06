@@ -81,7 +81,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
           val _ = cfa module
           val module = specialCalls module
           val _ = cfaClear module
-          (*val module = implCalls module*)
+          val module = implCalls module
 	  val _ = census module
 	  val module = contract module
 	  val _ = cfa module
