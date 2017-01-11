@@ -1,7 +1,7 @@
 [submodule "llvm/src"]
 	path = llvm/src
 	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/llvm.git
-	branch = master
+	branch = dev-tot
 [submodule "src/benchmarks"]
 	path = src/benchmarks
 	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/benchmarks.git
