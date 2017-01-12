@@ -7,6 +7,8 @@
  *    - Depends on the CFG contraction pass (to remove blocks with no predecessors).
  *    - Known to be compatible with a modified version of LLVM 3.8 through 4.0
  *      (with the JWA calling convention). 
+ *
+ * Originally authored by Kavon Farvardin (kavon@farvard.in)
  *)
 
 functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
@@ -362,29 +364,27 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       val mkVolatile = LB.mk b (AS.singleton A.Volatile)
 
       (* end handy stuff *)
-      
-      (* NOTE NOTE what needs to happen in `finish` is that all transfers making this basic block
-        a predecessor of some other basic block within this function _must_ use LB.addIncoming
-        to tell that block about its new predecessor _before_ constructing the thunk that delays the
-        actual addition of the block terminator to the LB.t that turns it into a LB.bb. It is
-        incorrect to create the LB.bb value and then save that in the thunk, you have to
-        thunk the actual application of the function that produces that value. ex: (fn () => LB.retVoid b)
         
-        This kind of hacky design is due to the fact that I decided agianst having a 
-        seperate pass that annotates basic blocks in the CFG with their predecessors 
-        (though some remnants of that pass I wrote are around). The other factor is 
-        that I didn't want to write this printer in such a control-flowy way that 
-        integrates that pass into the construction of things. 
-        
-        type jump = (label * var list)
-        
-        and cond = var Prim.cond
-        
-        *)
-        
-        
+(****************************************************************************************
+
+
+                                start of finish function
+
+                    This function generates code for CFG exits.
+                    
+                    
+*****************************************************************************************)        
       fun finish(env, exit) = let
-      
+      (*
+        NOTE All transfers making this basic block a predecessor of some other basic block
+             within this function _must_ use LB.addIncoming to tell that block about its 
+             new predecessor _before_ constructing the thunk that delays the actual 
+             addition of the block terminator to the LB.t that turns it into a LB.bb. 
+             
+             This kind of hacky design is due to the fact that I decided agianst having a 
+             seperate pass that annotates basic blocks in the CFG with their predecessors 
+             (though some remnants of that pass I wrote are around).  ~kavon
+      *)
         datatype space_needed = SN_Const of word | SN_Var of LB.instr
     
     (************* start heapCheckHelper ****************)  
@@ -666,7 +666,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              (fn () => [LB.condBr b (notEnoughSpaceCond, LB.labelOf prepBB, nogcTarg),
                         prepTerminator(), gcTerminator(), xtractTerminator()])
         end 
-    (************* end heapCheckHelper ****************)
+    (**** end heapCheckHelper ****)
       
       
         (* 
@@ -915,6 +915,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
               (* esac *))  
       end
+      
+(****************************************************************************************
+                                
+                                
+                                end of finish function
+                                
+                                
+*****************************************************************************************)
       
       (* handle the list of exp's in a CFG block *)
       and process(env, []) = env
@@ -1359,6 +1367,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val decl = [comment, "define ", linkage, ccStr,
                 "void ", llName, "(", (stringify  allAssign), ") ",
                 stdAttrs(MantiFun), " {\n"]
+                
+                (* FIXME put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
     
     (* now we setup the environment, we need to make fresh vars for the reg types,
        and map the original parameters to the reg types when we call mk bbelow *)
@@ -1392,7 +1402,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
 
 
     fun attrOfC (a : CF.attribute) = (case a
-          of CF.A_pure => "" (* "readonly" *)
+          of CF.A_pure => "" (* FIXME "readonly" *)
            | CF.A_noreturn => "noreturn"
            (* alloc/malloc attribute in C doesn't seem to translate over to LLVM IR *)
            | _ => ""
