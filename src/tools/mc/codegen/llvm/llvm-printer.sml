@@ -166,6 +166,11 @@ fun output (outS, module as C.MODULE { name = module_name,
   
 
   (* Basic Blocks *)
+  
+  datatype ('a, 'b) start_conv 
+    = Padded of 'a          (* padded & uniform types, 
+                                used in CPS generation for musttail calls *)
+    | Regular of 'b         (* used for direct-style calls *)
 
   fun mkBasicBlocks (initEnv : gamma, start : C.block, body : C.block list, llvmCC) : string list = let
     (* no branches should be expected to target the start block, 
@@ -204,7 +209,7 @@ fun output (outS, module as C.MODULE { name = module_name,
           (* fillBlock b (env, body, exit) *)
         end
 
-      fun mkStartBlock (C.BLK{body, exit, ...}, (cc, ccRegs, mvRegs)) = let
+      fun mkStartBlock (C.BLK{body, exit, ...}, Padded (cc, ccRegs, mvRegs)) = let
               (* start needs to be treated specially because its inputs
                  are the parameters to the function that need a special calling convention, and
                  we need to add bitcasts of the parameters instead of phi nodes for  *)
@@ -242,6 +247,8 @@ fun output (outS, module as C.MODULE { name = module_name,
                 (blk, env, fn (blk, env) => fillBlock blk (env, body, exit))
                 (* fillBlock blk (env, body, exit) *)
             end
+            
+        | mkStartBlock (C.BLK{body, exit, ...}, Regular _) = raise Fail "todo: start block creation"
 
       (* make new blocks and setup their individual environments wrt their calling conventions *)
       val allBlocks = mkStartBlock(start, llvmCC) :: (L.map mkRegBlock body)
@@ -1390,7 +1397,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                   vars=inherited_vars,
                                   blks=inherited_blks,
                                   mvs=mvs},
-                                start, body, (cc, ccRegs, mvRegs))  
+                                start, body, Padded (cc, ccRegs, mvRegs))  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
