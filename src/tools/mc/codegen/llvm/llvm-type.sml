@@ -448,12 +448,24 @@ structure LLVMType : sig
             funCtor([typeOfC retTy] @ (List.map typeOfC argTys))
         end
       
-
       | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
-
       | CT.T_StdCont _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
-
       | CT.T_KnownFunc _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
+      
+      (* FIXME? right now we're assuming a single return value. multiple
+               return values would warrant returning a struct, but
+               I don't actually know how we'll allocate, initialize, and return
+               such a struct. *)
+               
+      (* NOTE no need to do hacky stuff with types given the JWA convention in the
+              direct-style case. *)
+      
+      (* NOTE see paramsOfConv to ensure the ordering is right here. *)
+      | CT.T_KnownDirFunc {ret=[retTy], clos, args} => 
+            mkPtr(mkFunc(List.map typeOf (retTy :: clos :: args) ))
+                            
+      | CT.T_StdDirFun {ret=[retTy], clos, args, exh} => 
+            mkPtr(mkFunc(List.map typeOf (retTy :: clos :: args @ [exh]) ))
 
     (* end case *))
 
@@ -674,56 +686,6 @@ structure LLVMType : sig
       | Ty.T_Struct ts => List.foldl (fn (x, acc) => (widthOf x) + acc) 0 ts
       | _ => raise Fail ("type " ^ (fullNameOf someTy) ^ " has unknown width.")
       (* esac *))
-
-
-
-  
-  (*(case cty      
-    of CT.T_StdFun { clos, args, ret, exh } =>
-          (typeOf clos) :: (List.map typeOf args) @ [typeOf ret, typeOf exh]
-     
-     | CT.T_StdCont {clos, args} =>
-          (typeOf clos) :: (List.map typeOf args)
-     
-     | CT.T_KnownFunc {clos, args} => 
-          (typeOf clos) :: (List.map typeOf args)
-
-     | _ => raise Fail "only functions/continuations have calling convention types")
-
-
-  local 
-    val getTy = C.Var.typeOf
-  in
-    fun typeOfConv (conv : C.convention, args : C.var list) : CT.ty = (case conv
-      of C.StdFunc { clos, ret, exh } => 
-          CT.T_StdFun {clos=(getTy clos), args=(List.map getTy args),
-                       ret=(getTy ret), exh=(getTy exh)} 
-
-       | C.StdCont { clos } =>
-          CT.T_StdCont {clos=(getTy clos), args=(List.map getTy args)} 
-
-       | C.KnownFunc { clos } => 
-          CT.T_KnownFunc {clos=(getTy clos), args=(List.map getTy args)} 
-      (* end case *))
-  end   *)
-  
-  (*and determineCC (tys : LT.ty list) : (int * LT.ty) list = let
-  (* this is a concequence of the fact that LLVM can't perform tail call optimization
-     if the parameters of the callee differ from the caller. Thus, we are essentially
-     making all Manticore function types identical. Note that this function will *not*
-     add the pinned values to the CC, you should prepend them to the type list before
-     calling this function.
-     
-     Input: CFG types of this function converted to a list of LLVM types
-     Output: a list of pairs where the int is the argument number for the caller
-             and the 2nd argument is the type to bitcast the original value to
-             before making the call.
-   *)
-        val regTys = L.map LT.toRegType tys
-        val slotPairs = ListPair.zipEq(LT.allocateToRegs regTys, regTys)
-    in
-        slotPairs
-    end (* end determineCC *)*)
 
 end (* end local *)
 

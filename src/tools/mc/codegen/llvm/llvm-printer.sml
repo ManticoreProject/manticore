@@ -911,8 +911,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     heapCheckHelper env (SN_Var totalNeeded) nogc
                end
                 
-               
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
+               
+               | C.Return vars => raise Fail "todo: ds-returns"
+               
+               | C.Call _ => raise Fail "todo: ds-calls"
               (* esac *))  
       end
       
@@ -1286,9 +1289,19 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   (* end of Basic Blocks *)
 
 (****** Functions ******)
+    (* NOTE: this probably should be moved into a new module or something *)
+    
+  fun mkFunc (func as C.FUNC{entry,...}, initEnv) = (case entry
+      of C.KnownDirectFunc _ => mkDSFunc(func, initEnv)
+       | C.StdDirectFunc _ => mkDSFunc(func, initEnv)
+       
+       | C.StdFunc _ => mkCPSFunc(func, initEnv)
+       | C.StdCont _ => mkCPSFunc(func, initEnv)
+       | C.KnownFunc _ => mkCPSFunc(func, initEnv)
+      (* end case *))
   
-  (* NOTE: this probably should be moved into a new module or something *)
-  fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
+  and mkCPSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
+              initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
     val (mvTys : LT.ty list, cc : (int * C.var) list) = determineCC(entry, cfgArgs)
     
@@ -1382,7 +1395,55 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
     total
-  end  
+  end
+  
+  
+  and mkDSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
+              initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
+    
+    fun cvtVar cvar = let
+        val name = CV.nameOf cvar
+        val ty = (LT.typeOf o CV.typeOf) cvar
+    in
+        LV.new(name, ty)
+    end
+    
+    fun dclToStr var = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
+    fun stringify vars = S.concatWith ", " (L.map dclToStr vars)
+
+    val (_,mvs) = freshMVs()
+    
+    (* the calling convention used by DS funs *)
+    val allAssign = mvs @ (List.map cvtVar cfgArgs)
+    
+    val attrs = ""
+    val retTyStr = "void " (* FIXME *)
+    
+    (* string building code *)
+    val linkage = linkageOf lab
+    val ccStr = " " ^ (LB.cctoStr LB.fastCC) ^ " "
+    val llName = LV.toString(lookupL(initEnv, lab))
+    val decl = ["define ", linkage, ccStr,
+                retTyStr, llName, "(", (stringify allAssign), ") ",
+                attrs, " {\n"]
+                
+                (* FIXME put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
+    
+    (* now we setup the environment, we need to make fresh vars for the reg types,
+       and map the original parameters to the reg types when we call mk bbelow *)
+    
+    val body = ["entry:\n\tret void\n"]
+    (* TODO
+                mkBasicBlocks (ENV{labs=inherited_labs,
+                                  vars=inherited_vars,
+                                  blks=inherited_blks,
+                                  mvs=Vector.fromList mvs},
+                                start, body, (cc, ccRegs, mvRegs))  
+    *)
+    val total = S.concat (decl @ body @ ["\n}\n\n"])
+  in
+    total
+  end
 
   and linkageOf (label) = (case CL.kindOf label
     of C.LK_Func { export = NONE, ... } => "internal"
