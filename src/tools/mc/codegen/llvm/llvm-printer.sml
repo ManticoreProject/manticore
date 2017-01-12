@@ -4,8 +4,9 @@
  * All rights reserved.
  *
  * Outputs a CFG program as textual LLVM IR. 
- *    - Depends on the predecessor CFG pass.
- *    - Compatible with a modified version of LLVM 3.8 (with the JWA calling convention.)
+ *    - Depends on the CFG contraction pass (to remove blocks with no predecessors).
+ *    - Known to be compatible with a modified version of LLVM 3.8 through 4.0
+ *      (with the JWA calling convention). 
  *)
 
 functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
