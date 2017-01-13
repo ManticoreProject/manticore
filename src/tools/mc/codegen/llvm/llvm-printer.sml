@@ -167,10 +167,15 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (* Basic Blocks *)
   
-  datatype ('a, 'b) start_conv 
+  datatype 'a start_conv 
     = Padded of 'a          (* padded & uniform types, 
-                                used in CPS generation for musttail calls *)
-    | Regular of 'b         (* used for direct-style calls *)
+                                used in CPS generation for musttail calls.
+                                it's an 'a because I was lazy to write out the type *)
+    
+    | Regular of                    (* used for direct-style calls *)
+        { llArgs : LV.var list, 
+          cfgArgs : C.var list, 
+          mvs : LV.var list }
 
   fun mkBasicBlocks (initEnv : gamma, start : C.block, body : C.block list, llvmCC) : string list = let
     (* no branches should be expected to target the start block, 
@@ -248,7 +253,18 @@ fun output (outS, module as C.MODULE { name = module_name,
                 (* fillBlock blk (env, body, exit) *)
             end
             
-        | mkStartBlock (C.BLK{body, exit, ...}, Regular _) = raise Fail "todo: start block creation"
+        | mkStartBlock (C.BLK{body, exit, ...}, Regular{llArgs, cfgArgs, mvs}) = let
+                val blk = LB.new(LV.new("entry", LT.labelTy), mvs @ llArgs)
+                
+                (* add the args to the env. 
+                   machine vals are already in the env with the correct types. *)
+                val env = L.foldl
+                            (fn ((cfgV, llvmV), acc) => insertV(acc, cfgV, LB.fromV llvmV))
+                            initialEnv
+                            (ListPair.zipEq(cfgArgs, llArgs))
+            in
+                (blk, env, fn (blk, env) => fillBlock blk (env, body, exit))
+            end
 
       (* make new blocks and setup their individual environments wrt their calling conventions *)
       val allBlocks = mkStartBlock(start, llvmCC) :: (L.map mkRegBlock body)
@@ -920,9 +936,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
                
-               | C.Return vars => raise Fail "todo: ds-returns"
+               | C.Return vars => raise Fail "todo: ds-returns" (* (fn () => [LB.retVoid b]) *)
                
-               | C.Call _ => raise Fail "todo: ds-calls"
+               | C.Call _ => raise Fail "todo: ds-calls" (* (fn () => [LB.retVoid b]) *)
+               
               (* esac *))  
       end
       
@@ -1137,7 +1154,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       end
       
       and genGAlloc(env, (lhsVar, ty, vars)) = 
-      (* TODO not implemented yet. should go very similarly to local alloc *)
+      (* NOTE not implemented yet. should go very similarly to local alloc *)
         raise Fail "not implemented yet"
       
       and genPromote(env, (lhsVar, var)) = let
@@ -1408,20 +1425,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   and mkDSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
               initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
-    fun cvtVar cvar = let
-        val name = CV.nameOf cvar
-        val ty = (LT.typeOf o CV.typeOf) cvar
-    in
-        LV.new(name, ty)
-    end
-    
     fun dclToStr var = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
     fun stringify vars = S.concatWith ", " (L.map dclToStr vars)
 
     val (_,mvs) = freshMVs()
     
     (* the calling convention used by DS funs *)
-    val allAssign = mvs @ (List.map cvtVar cfgArgs)
+    val cfgArgs = C.paramsOfConv(entry, cfgArgs)
+    val llArgs = List.map LV.convert cfgArgs
+    val allAssign = mvs @ llArgs
     
     val attrs = ""
     val retTyStr = "void " (* FIXME *)
@@ -1439,14 +1451,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     (* now we setup the environment, we need to make fresh vars for the reg types,
        and map the original parameters to the reg types when we call mk bbelow *)
     
-    val body = ["entry:\n\tret void\n"]
-    (* TODO
-                mkBasicBlocks (ENV{labs=inherited_labs,
+    val body = mkBasicBlocks (ENV{labs=inherited_labs,
                                   vars=inherited_vars,
                                   blks=inherited_blks,
-                                  mvs=Vector.fromList mvs},
-                                start, body, (cc, ccRegs, mvRegs))  
-    *)
+                                  mvs= V.fromList(L.map LB.fromV mvs) },
+                                start, body, Regular {llArgs=llArgs,cfgArgs=cfgArgs,mvs=mvs})  
+                                
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
     total

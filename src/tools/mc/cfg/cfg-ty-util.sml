@@ -59,6 +59,8 @@ structure CFGTyUtil : sig
       | kindOf (CTy.T_StdFun _) = CTy.K_RAW
       | kindOf (CTy.T_StdCont _) = CTy.K_RAW
       | kindOf (CTy.T_KnownFunc _) = CTy.K_TYPE
+      | kindOf (CTy.T_StdDirFun _) = CTy.K_RAW
+      | kindOf (CTy.T_KnownDirFunc _) = CTy.K_TYPE
 
   (* compare types for equality *)
     fun equal (ty1, ty2) = (case (ty1, ty2)
