@@ -936,9 +936,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
                
-               | C.Return vars => raise Fail "todo: ds-returns" (* (fn () => [LB.retVoid b]) *)
-               
-               | C.Call _ => raise Fail "todo: ds-calls" (* (fn () => [LB.retVoid b]) *)
+               | C.Return _ => (fn () => [LB.retVoid b])  (*raise Fail "todo: ds-returns not implemented yet" *)
+               | C.Call _ => (fn () => [LB.retVoid b]) (* raise Fail "todo: ds-calls" (*(fn () => [LB.retVoid b])*)*)
                
               (* esac *))  
       end
@@ -1316,8 +1315,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     (* NOTE: this probably should be moved into a new module or something *)
     
   fun mkFunc (func as C.FUNC{entry,...}, initEnv) = (case entry
-      of C.KnownDirectFunc _ => mkDSFunc(func, initEnv)
-       | C.StdDirectFunc _ => mkDSFunc(func, initEnv)
+      of C.KnownDirectFunc {ret,...} => mkDSFunc(func, ret, initEnv)
+       | C.StdDirectFunc {ret,...} => mkDSFunc(func, ret, initEnv)
        
        | C.StdFunc _ => mkCPSFunc(func, initEnv)
        | C.StdCont _ => mkCPSFunc(func, initEnv)
@@ -1423,6 +1422,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   
   
   and mkDSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
+                ret,
               initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
     fun dclToStr var = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
@@ -1436,7 +1436,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val allAssign = mvs @ llArgs
     
     val attrs = ""
-    val retTyStr = "void " (* FIXME *)
+    (* FIXME 
+        major assumption that functions only return one value
+        until we figure out how we'll deal with a CFG.Return [v1, v2, ...].
+    *)
+    val retTyStr = (case ret
+                     of [] => "void "
+                      | [retValTy] => (LT.nameOf o LT.typeOf) retValTy ^ " "
+                      | _ => raise Fail "llvm-backend: cannot deal with functions that return more than 1 val at the moment."
+                    (* end case *))
     
     (* string building code *)
     val linkage = linkageOf lab
