@@ -133,8 +133,11 @@ structure LLVMBuilder : sig
     (* NOTE(kavon): something probably not supported right now is GEPs that calculate a
        vector of addresses, extend the interface if desired. *)
        
-       
-    val extractV : t -> (instr * constant vector) -> instr 
+    (* (struct, #[offset1, offset2, ...]) *)
+    val extractV : t -> (instr * constant vector) -> instr
+    
+    (* (struct, value, #[offset1, offset2, ...]) *)
+    val insertV : t -> (instr * instr * constant vector) -> instr 
 
     val cast : t -> op_code -> (instr * ty) -> instr
 
@@ -225,6 +228,7 @@ structure LLVMBuilder : sig
     | OP_GEP
     | OP_GEP_IB
     | OP_ExtractVal
+    | OP_InsertVal
     | OP_Return
     | OP_Br
     | OP_CondBr
@@ -723,6 +727,23 @@ structure LLVMBuilder : sig
                          offsets
                        ]
                    end)
+                   
+             | (OP_InsertVal, SOME (resName, _)) => (let
+                     (* #[agg, valu, offset1, offset2, ...] *)
+                     val prefix = 2
+                     val (aggName, aggTy) = break (V.sub(args, 0))
+                     val (valName, valTy) = break (V.sub(args, 1))
+                     val offsets = L.tabulate ((V.length args) - prefix,
+                                     fn i => getArgStr false (V.sub(args, i+prefix)))
+                     val offsets = S.concatWith ", " offsets
+                   in
+                     S.concat
+                       [ resName, " = insertvalue ",
+                         LT.fullNameOf aggTy, " ", aggName, ", ",
+                         LT.nameOf valTy, " ", valName, ", ",
+                         offsets
+                       ]
+                   end)
              
              | (OP_Return, NONE) => 
                 if V.length args = 0
@@ -1143,6 +1164,26 @@ structure LLVMBuilder : sig
     val extractV = genGep OP_ExtractVal stripI32 fromC
 
   end
+  
+  (* t -> (instr * instr * constant vector) -> instr  *)
+  fun insertV blk (agg, valu, offsets) = let
+        val numOffsets = V.length offsets
+        val prefix = 2
+        (* #[agg, valu, offset1, offset2, ...] *)
+        val args = V.tabulate(numOffsets + prefix,
+                      fn 0 => agg
+                       | 1 => valu
+                       | i => fromC(V.sub(offsets, i-prefix)))
+  in
+        push(blk,
+            INSTR {
+                result = R_Var(LV.new(genPfx agg, toTy agg)),
+                kind = OP_InsertVal,
+                args = args,
+                atr = AS.empty
+            })
+  end
+        
 
 
   (* t -> cast_op -> (instr * ty) -> instr *)
