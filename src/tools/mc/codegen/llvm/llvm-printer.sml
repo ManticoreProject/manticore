@@ -936,12 +936,29 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
                
-               (* TODO: Return vars => 
-                    1. retVals = [vproc, alloc] @ vars
+               (* NOTE: Return vars => 
+                    1. retVals = mvCC @ vars
                     2. initialize a struct S that is "in register" with the retVals
                     3. return S
                *)
-               | C.Return _ => (fn () => [LB.retVoid b])  (*raise Fail "todo: ds-returns not implemented yet" *)
+               | C.Return vars => let
+                    val vars = L.map (fn v => lookupV(env, v)) vars
+                    val mvs = L.map (fn mv => lookupMV(env, mv)) mvCC
+                    val retVals = mvs @ vars
+                    
+                    fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
+                    
+                    val offsets = L.tabulate(L.length retVals, toC)
+                    val startStruct = LB.fromC(LB.undef (LT.mkUStruct (L.map LB.toTy retVals)))
+                    
+                    val retStruct = ListPair.foldlEq 
+                                    (fn (i, v, strct) => LB.insertV b (strct, v, #[i]))
+                                    startStruct
+                                    (offsets, retVals)
+                                    
+               in
+                    (fn () => [LB.ret b retStruct])
+               end
                
                
                | C.Call _ => (fn () => [LB.retVoid b]) (* raise Fail "todo: ds-calls" (*(fn () => [LB.retVoid b])*)*)
@@ -1442,23 +1459,19 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val llArgs = List.map LV.convert cfgArgs
     val allAssign = mvs @ llArgs
     
+    (* the return convention/type used by DS funs *)
+    val mvTys = L.map machineValTy mvCC
+    val returnedValTys = L.map LT.typeOf ret
+    val retTyStr = LT.nameOf(LT.mkUStruct (mvTys @ returnedValTys))
+    
     val attrs = ""
-    (* FIXME 
-        major assumption that functions only return one value
-        until we figure out how we'll deal with a CFG.Return [v1, v2, ...].
-    *)
-    val retTyStr = (case ret
-                     of [] => "void "
-                      | [retValTy] => (LT.nameOf o LT.typeOf) retValTy ^ " "
-                      | _ => raise Fail "llvm-backend: cannot deal with functions that return more than 1 val at the moment."
-                    (* end case *))
     
     (* string building code *)
     val linkage = linkageOf lab
     val ccStr = " " ^ (LB.cctoStr LB.fastCC) ^ " "
     val llName = LV.toString(lookupL(initEnv, lab))
     val decl = ["define ", linkage, ccStr,
-                retTyStr, llName, "(", (stringify allAssign), ") ",
+                retTyStr, " ", llName, "(", (stringify allAssign), ") ",
                 attrs, " {\n"]
                 
                 (* FIXME put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
