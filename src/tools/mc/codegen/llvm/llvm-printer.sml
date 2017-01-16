@@ -936,7 +936,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
                
+               (* TODO: Return vars => 
+                    1. retVals = [vproc, alloc] @ vars
+                    2. initialize a struct S that is "in register" with the retVals
+                    3. return S
+               *)
                | C.Return _ => (fn () => [LB.retVoid b])  (*raise Fail "todo: ds-returns not implemented yet" *)
+               
+               
                | C.Call _ => (fn () => [LB.retVoid b]) (* raise Fail "todo: ds-calls" (*(fn () => [LB.retVoid b])*)*)
                
               (* esac *))  
