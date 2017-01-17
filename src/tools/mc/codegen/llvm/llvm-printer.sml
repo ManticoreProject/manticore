@@ -1005,20 +1005,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     
                     (* update the machine vals in the env *)
                     val newMVs = L.take(retVals, numMachineVals)
-                    val env = ListPair.foldrEq
+                    val env = ListPair.foldlEq
                                 (fn (mv, valu, acc) => updateMV(acc, mv, valu))
                                 env
                                 (mvCC, newMVs)
                     
                     (* bind the lhs values *)
                     val rhs = L.drop(retVals, numMachineVals)
-                    val env = ListPair.foldrEq
+                    val env = ListPair.foldlEq
                                 (fn (lhs, rhs, acc) => insertV(acc, lhs, rhs))
                                 env
                                 (lhs, rhs)
                     
                     (* update the env with the relocated values *)
-                    val env = ListPair.foldrEq
+                    val env = ListPair.foldlEq
                                 (fn (live, relo, acc) => insertV(acc, live, relo))
                                 env
                                 (lives, relos)
