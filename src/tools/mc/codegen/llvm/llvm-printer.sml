@@ -961,7 +961,73 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                end
                
                
-               | C.Call _ => (fn () => [LB.retVoid b]) (* raise Fail "todo: ds-calls" (*(fn () => [LB.retVoid b])*)*)
+               (* NOTE: Call =>
+                    1. lookup f, clos, args, and lives;
+                          where lives = liveAfter - lhs
+                    2. token = call{f, clos, args, lives}
+                    3. retStruct = returnOf token
+                    4. env += lhs_i -> retStruct_i, and env += mv_i -> retStruct_i
+                    5. relos = relosOf token
+                    6. env += lives_i -> relos_i
+                    7. lookup in env everything in liveAfter and do a branch.
+                *)
+               | C.Call {f, clos, args, next=SOME(lhs, jmp as (_, liveAfter))} => let
+                    (* lookup everything in the env *)
+                    val f = lookupV(env, f)
+                    val clos = lookupV(env, clos)
+                    val args = L.map (fn v => lookupV(env, v)) args
+                    val mvs = L.map (fn mv => lookupMV(env, mv)) mvCC
+                    val allArgs = mvs @ clos :: args
+                    
+                    (* remove the lhs vars from the liveAfter list *)
+                    val lives = L.filter 
+                                (fn v => 
+                                    not(L.exists 
+                                        (fn x => CV.same(v, x)) 
+                                        lhs)) 
+                                liveAfter
+                                
+                    val lives_llvm = L.map (fn v => lookupV(env, v)) lives
+                    
+                    val {ret, relos} = LLVMStatepoint.call { 
+                                          blk = b,
+                                          conv = LB.fastCC,
+                                          func = f,
+                                          args = allArgs,
+                                          lives = lives_llvm
+                                        }
+                                        
+                    (* grab the return values *)
+                    fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
+                    
+                    val idxs = L.tabulate(numMachineVals + L.length lhs, toC)
+                    val retVals = L.map (fn i => LB.extractV b (ret, #[i])) idxs
+                    
+                    (* update the machine vals in the env *)
+                    val newMVs = L.take(retVals, numMachineVals)
+                    val env = ListPair.foldrEq
+                                (fn (mv, valu, acc) => updateMV(acc, mv, valu))
+                                env
+                                (mvCC, newMVs)
+                    
+                    (* bind the lhs values *)
+                    val rhs = L.drop(retVals, numMachineVals)
+                    val env = ListPair.foldrEq
+                                (fn (lhs, rhs, acc) => insertV(acc, lhs, rhs))
+                                env
+                                (lhs, rhs)
+                    
+                    (* update the env with the relocated values *)
+                    val env = ListPair.foldrEq
+                                (fn (live, relo, acc) => insertV(acc, live, relo))
+                                env
+                                (lives, relos)
+                                
+                    (* do the jump *)
+                    val (targ, _) = markPred env jmp
+               in
+                    (fn () => [LB.br b targ])
+               end
                
               (* esac *))  
       end
