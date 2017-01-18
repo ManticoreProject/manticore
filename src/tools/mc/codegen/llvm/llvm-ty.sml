@@ -26,6 +26,7 @@ structure LLVMTy = struct
   datatype t_node = 
       T_Void
     | T_Label
+    | T_Token
     | T_Func of t list  (* first element is the return type *)
     | T_VFunc of t list (* same as T_Func, but this function has varargs. 
                            mostly needed for c functinos *)

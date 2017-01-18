@@ -182,6 +182,7 @@ structure LLVMType : sig
     fun eq query = (case query
       of (Ty.T_Void, Ty.T_Void) => true
        | (Ty.T_Label, Ty.T_Label) => true
+       | (Ty.T_Token, Ty.T_Token) => true
        | (Ty.T_Func xs, Ty.T_Func ys) => ListPair.allEq HC.same (xs, ys)
        | (Ty.T_VFunc xs, Ty.T_VFunc ys) => ListPair.allEq HC.same (xs, ys)
        | (Ty.T_Int x, Ty.T_Int y) => HC.same(x, y)
@@ -212,8 +213,9 @@ structure LLVMType : sig
     val mkStruct = HC.consList tbl (0w37, Ty.T_Struct)
     val mkUStruct = HC.consList tbl (0w43, Ty.T_UStruct)
     val mkVFunc = HC.consList tbl (0w47, Ty.T_VFunc)
+    val tokenTy = HC.cons0 tbl (0w53, Ty.T_Token)
     
-    (* more primes   53     59     61     67     71 *)
+    (* more primes  59     61     67     71 *)
 
     val cnt = HCInt.mk
     val tnc = HC.node
@@ -274,6 +276,7 @@ structure LLVMType : sig
               | Ty.T_Float => "float"
               | Ty.T_Double => "double"
               | Ty.T_Label => "label"
+              | Ty.T_Token => "token"
               | Ty.T_Ptr t => (recur t) ^ "*"
               | Ty.T_Func ts => funTyStr false ts
               | Ty.T_VFunc ts => funTyStr true ts
@@ -593,7 +596,7 @@ structure LLVMType : sig
 
       | lp(elms, idx, t) = let
         val t' = (case HC.node t
-                 of (Ty.T_Void | Ty.T_Label) => ohno(t, idx)
+                 of (Ty.T_Void | Ty.T_Label | Ty.T_Token) => ohno(t, idx)
                   | (Ty.T_Struct tys | Ty.T_UStruct tys) => let
                       val offset = V.sub(vec, idx)
                     in
