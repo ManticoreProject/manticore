@@ -72,6 +72,12 @@ structure LLVMType : sig
     
     (* name of type without using the type cache *)
     val fullNameOf : ty -> string
+    
+    (*
+        get the mangled name of the type for LLVM.
+        implements lib/IR/Function.cpp, function "getMangledTypeStr"
+    *)
+    val mangledNameOf : ty -> string
 
     (*
       O(1) operation to compare two types for equality.
@@ -256,6 +262,11 @@ structure LLVMType : sig
   in  
   
     fun toString t = mkString nameOf t
+    
+    and mangledNameOf ty = (case HC.node ty
+        of Ty.T_Void => "void"
+         | _ => ""
+        (* end case *))
 
     and mkString (recur : ty -> string) (t : ty) = let
       fun nodeToStr (nt : ty_node) : string =

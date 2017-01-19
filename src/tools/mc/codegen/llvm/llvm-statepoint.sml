@@ -23,6 +23,12 @@ structure LLVMStatepoint : sig
 
 end = struct
 
+    local
+        val spTbl = AtomTable.mkTable (1000, Fail "statepoint table")
+    in
+        
+    end
+
     (* TODO:
         - keep a cache of statepoint intrinsic functions
           that you have emitted calls for so you can
