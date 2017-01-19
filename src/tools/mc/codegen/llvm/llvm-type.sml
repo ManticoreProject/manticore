@@ -264,10 +264,21 @@ structure LLVMType : sig
   
     fun toString t = mkString nameOf t
     
-    and mangledNameOf ty = (case HC.node ty
-        of Ty.T_Void => "void"
-         | _ => ""
-        (* end case *))
+    and mangledNameOf ty = let
+        val c2s = i2s o HC.node
+    in
+        (case HC.node ty
+            of Ty.T_Ptr (space, ty) => "p" ^ (c2s space) ^ mangledNameOf ty
+             | Ty.T_Array (nelms, ty) => "a" ^ (c2s nelms) ^ mangledNameOf ty
+             | Ty.T_Vector (nelms, ty) => "v" ^ (c2s nelms) ^ mangledNameOf ty
+             | Ty.T_Func _ => raise Fail "todo"
+             | Ty.T_VFunc _ => raise Fail "todo, plus a vararg at the end"
+             | Ty.T_Struct _ => raise Fail "grab the typedef'd name, stripping the % probably"
+             | Ty.T_UStruct _ => raise Fail "grab the typedef'd name, stripping the % probably"
+             | _ => fullNameOf ty
+            (* end case *))
+    end
+    
 
     and mkString (recur : ty -> string) (t : ty) = let
       fun nodeToStr (nt : ty_node) : string =
@@ -341,7 +352,7 @@ structure LLVMType : sig
           (* esac *))
        (* esac *))
        
-    fun fullNameOf x = mkString fullNameOf x
+    and fullNameOf x = mkString fullNameOf x
        
        
     val uniformTy = mkPtr(mkInt(cnt 64)) 
