@@ -194,7 +194,7 @@ structure LLVMType : sig
        | (Ty.T_Int x, Ty.T_Int y) => HC.same(x, y)
        | (Ty.T_Float, Ty.T_Float) => true
        | (Ty.T_Double, Ty.T_Double) => true
-       | (Ty.T_Ptr x, Ty.T_Ptr y) => HC.same(x, y)
+       | (Ty.T_Ptr (xspace, x), Ty.T_Ptr (yspace, y)) => HC.same(xspace, yspace) andalso HC.same(x, y)
        | (Ty.T_Vector (xcount, x), Ty.T_Vector (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
        | (Ty.T_Array (xcount, x), Ty.T_Array (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
        | (Ty.T_Struct xs, Ty.T_Struct ys) => ListPair.allEq HC.same (xs, ys)
@@ -213,7 +213,8 @@ structure LLVMType : sig
     val mkInt = HC.cons1 tbl (0w13, Ty.T_Int)
     val floatTy = HC.cons0 tbl (0w17, Ty.T_Float)
     val doubleTy = HC.cons0 tbl (0w19, Ty.T_Double)
-    val mkPtr = HC.cons1 tbl (0w23, Ty.T_Ptr)
+    fun mkPtr ty = (HC.cons2 tbl (0w23, Ty.T_Ptr)) (HCInt.mk 0, ty)
+    fun mkGCPtr ty = (HC.cons2 tbl (0w23, Ty.T_Ptr)) (HCInt.mk 1, ty)
     val mkVector = HC.cons2 tbl (0w29, Ty.T_Vector)
     val mkArray = HC.cons2 tbl (0w31, Ty.T_Array)
     val mkStruct = HC.consList tbl (0w37, Ty.T_Struct)
@@ -288,7 +289,10 @@ structure LLVMType : sig
               | Ty.T_Double => "double"
               | Ty.T_Label => "label"
               | Ty.T_Token => "token"
-              | Ty.T_Ptr t => (recur t) ^ "*"
+              | Ty.T_Ptr (space, t) => (case HC.node space
+                                         of 0 => (recur t) ^ "*"
+                                          | n => (recur t) ^ " addrspace(" ^ (Int.toString n) ^ ")*"
+                                        (* end case *))
               | Ty.T_Func ts => funTyStr false ts
               | Ty.T_VFunc ts => funTyStr true ts
               
@@ -570,7 +574,7 @@ structure LLVMType : sig
     fun err () = raise Fail(S.concat["llvm: cannot dereference non-pointer type ", nameOf t])
   in
     case HC.node t
-      of Ty.T_Ptr innerT => innerT
+      of Ty.T_Ptr (_, innerT) => innerT
        | _ => err()
   end
 
@@ -601,7 +605,7 @@ structure LLVMType : sig
       
       | lp(elms, (idx as 0), ogT) = (case HC.node ogT
         (* t must be a pointer type, we step through the pointer *)
-        of Ty.T_Ptr t' => lp(elms-1, idx+1, t')
+        of Ty.T_Ptr (_, t') => lp(elms-1, idx+1, t')
          | _ => ohno(ogT, idx)
         (* esac *))
 
@@ -682,7 +686,7 @@ structure LLVMType : sig
 
   (* returnTy : ty -> ty option *)
   fun returnTy t = (case HC.node t
-    of Ty.T_Ptr maybeFunc => (case HC.node maybeFunc
+    of Ty.T_Ptr (_, maybeFunc) => (case HC.node maybeFunc
       of (Ty.T_Func (ret::_) | Ty.T_VFunc (ret::_)) => SOME ret
        | _ => NONE
       (* esac *))

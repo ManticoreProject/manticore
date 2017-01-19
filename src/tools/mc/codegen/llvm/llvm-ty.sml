@@ -33,7 +33,7 @@ structure LLVMTy = struct
     | T_Int of count (* number of bits *)
     | T_Float
     | T_Double
-    | T_Ptr of t
+    | T_Ptr of count * t        (* count is the address space number *)
     | T_Vector of count * t
     | T_Array of count * t
     | T_Struct of t list  (* packed struct *)

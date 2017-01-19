@@ -37,7 +37,7 @@ in
     val idxNum = Int.toLarge idx
   in
       (case LT.node llvTy
-        of Ty.T_Ptr t => (case LT.node t
+        of Ty.T_Ptr (_, t) => (case LT.node t
             of (Ty.T_Vector _
                | Ty.T_Array _
                | Ty.T_Struct _
