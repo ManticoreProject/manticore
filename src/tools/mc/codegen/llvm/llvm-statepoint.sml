@@ -103,14 +103,19 @@ end = struct
         
     end (* end local *)
 
-    (* TODO:
-        - actually emit the calls & relocations.
-    *)
 
-    fun call (x as {blk, conv, func, args, lives}) = let
-            val (token, reloIdx) = doCall x
+    
+    fun call (x as {blk, lives, ...}) = let
+            val (token, reloStartIdx) = doCall x
+            
+            (* must be foldl to match indexes up *)
+            val relocator = relocate (blk, token)
+            val (_, relos) = List.foldl relocator (reloStartIdx, []) lives
+            val relos = List.rev relos
+            
+            val ret = getResult (x, token)
         in
-            raise Fail "implement me"
+            { relos = relos, ret = ret }
         end
         
     and doCall {blk, conv, func, args, lives} = let
@@ -132,6 +137,21 @@ end = struct
         val intrinsic = LB.fromV(getStatepointVar funTy)
     in
         (LB.callAs blk conv (intrinsic, Vector.fromList spArgs), liveStartIdx)
+    end
+    
+    and relocate (blk, tok) (live, (i, rest)) = let
+        val intrinsic = LB.fromV (getRelocateVar (LB.toTy live))
+        val offset = LB.iconst LT.i32 i
+        val relo = LB.call blk (intrinsic, #[tok, offset, offset])
+    in
+        (i+1, relo::rest)
+    end
+    
+    and getResult ({blk, func, ...}, tok) = let
+        val SOME retTy = LT.returnTy (LB.toTy func)
+        val intrinsic = LB.fromV (getResultVar retTy)
+    in
+        LB.call blk (intrinsic, #[tok])
     end
 
 end (* LLVMStatepoint *)
