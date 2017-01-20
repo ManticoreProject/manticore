@@ -29,6 +29,7 @@ end = struct
 
     structure LT = LLVMType
     structure LV = LLVMVar
+    structure LB = LLVMBuilder
 
     local
         val intrinsicTbl = AtomTable.mkTable (1000, Fail "statepoint table")
@@ -106,10 +107,31 @@ end = struct
         - actually emit the calls & relocations.
     *)
 
-    fun call {blk, conv, func, args, lives} = let
-            
+    fun call (x as {blk, conv, func, args, lives}) = let
+            val (token, reloIdx) = doCall x
         in
             raise Fail "implement me"
         end
+        
+    and doCall {blk, conv, func, args, lives} = let
+        val funTy = LB.toTy func
+        val SOME arity = LT.arityOf funTy
+        val spPrefix = [
+            LB.iconst LT.i64 0,         (* id *)
+            LB.iconst LT.i32 0,         (* num patch bytes *)
+            func,
+            LB.iconst LT.i64 arity,
+            LB.iconst LT.i64 0          (* flags *)
+            ] @ args @ [
+            LB.iconst LT.i64 0,         (* num transition args *)
+            LB.iconst LT.i64 0          (* num deopt args *)
+            ]
+            
+        val liveStartIdx = List.length spPrefix
+        val spArgs = spPrefix @ lives
+        val intrinsic = LB.fromV(getStatepointVar funTy)
+    in
+        (LB.callAs blk conv (intrinsic, Vector.fromList spArgs), liveStartIdx)
+    end
 
 end (* LLVMStatepoint *)

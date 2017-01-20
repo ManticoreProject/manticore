@@ -107,6 +107,10 @@ structure LLVMType : sig
     (* if ty is a function type or a pointer to one, get the function's return type.
        if it is not either of those, it returns NONE *)
     val returnTy : ty -> ty option
+    
+    (* determines the arity of a non-vararg function type,
+       or a pointer to such a function *)
+    val arityOf : ty -> int option
 
     (* TODO might be a useful function *)
     (* val sizeOf : ty * ty -> int *)
@@ -714,6 +718,17 @@ structure LLVMType : sig
      | (Ty.T_Func (ret::_) | Ty.T_VFunc (ret::_)) => SOME ret
      | _ => NONE 
     (* esac *))
+    
+   (* arityOf : ty -> int option *)
+   fun arityOf t = (case HC.node t
+     of Ty.T_Ptr (_, maybeFunc) => (case HC.node maybeFunc
+       (* arity of a vararg func is not fixed *)
+       of Ty.T_Func (_::args) => SOME (List.length args)
+        | _ => NONE
+       (* esac *))
+      | Ty.T_Func (_::args) => SOME (List.length args)
+      | _ => NONE 
+     (* esac *))
     
    (* in bits *)
    fun widthOf someTy = (case HC.node someTy
