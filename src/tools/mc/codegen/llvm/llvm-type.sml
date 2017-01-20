@@ -129,6 +129,7 @@ structure LLVMType : sig
     val enumTy : ty
     val voidStar : ty
     val gcHeaderTy : ty
+    val tokenTy : ty
     
     (* common integer types *)
     val i64 : ty
@@ -271,10 +272,19 @@ structure LLVMType : sig
             of Ty.T_Ptr (space, ty) => "p" ^ (c2s space) ^ mangledNameOf ty
              | Ty.T_Array (nelms, ty) => "a" ^ (c2s nelms) ^ mangledNameOf ty
              | Ty.T_Vector (nelms, ty) => "v" ^ (c2s nelms) ^ mangledNameOf ty
-             | Ty.T_Func _ => raise Fail "todo"
-             | Ty.T_VFunc _ => raise Fail "todo, plus a vararg at the end"
-             | Ty.T_Struct _ => raise Fail "grab the typedef'd name, stripping the % probably"
-             | Ty.T_UStruct _ => raise Fail "grab the typedef'd name, stripping the % probably"
+             | Ty.T_Func (retTy :: argTys) => S.concat [
+                        "f_", mangledNameOf retTy, S.concatWithMap "" mangledNameOf argTys, "f"
+                    ]
+             | Ty.T_VFunc (retTy :: argTys) => S.concat [
+                        "f_", mangledNameOf retTy, S.concatWithMap "" mangledNameOf argTys, "varargf"
+                    ]
+             | (Ty.T_Struct _ | Ty.T_UStruct _) => let
+                    val typedefdName = nameOf ty
+                 in
+                    if S.sub(typedefdName, 0) = #"%"
+                        then S.extract(typedefdName, 1, NONE)
+                        else raise Fail "literal struct types cannot be mangled"
+                 end
              | _ => fullNameOf ty
             (* end case *))
     end
