@@ -178,6 +178,7 @@ structure LLVMType : sig
   structure CTU = CFGTyUtil
   structure CF = CFunctions
   structure V = Vector
+  structure L = List
 
   structure HC = HashCons
   structure HCM = HashConsMap
@@ -494,23 +495,22 @@ structure LLVMType : sig
       | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
       | CT.T_StdCont _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
       | CT.T_KnownFunc _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
-      
-      (* FIXME? right now we're assuming a single return value. multiple
-               return values would warrant returning a struct, but
-               I don't actually know how we'll allocate, initialize, and return
-               such a struct. *)
-               
+                 
       (* NOTE no need to do hacky stuff with types given the JWA convention in the
               direct-style case. *)
       
       (* NOTE see paramsOfConv to ensure the ordering is right here. *)
-      | CT.T_KnownDirFunc {ret=[retTy], clos, args} => 
-            mkPtr(mkFunc(List.map typeOf (retTy :: clos :: args) ))
+      | CT.T_KnownDirFunc {ret, clos, args} => 
+            mkPtr(mkFunc( (dsReturnConv ret) :: [allocPtrTy, vprocTy] @ (L.map typeOf (clos :: args) )))
                             
-      | CT.T_StdDirFun {ret=[retTy], clos, args, exh} => 
-            mkPtr(mkFunc(List.map typeOf (retTy :: clos :: args @ [exh]) ))
+      | CT.T_StdDirFun {ret, clos, args, exh} => 
+            mkPtr(mkFunc( (dsReturnConv ret) :: [allocPtrTy, vprocTy] @ (L.map typeOf (clos :: args @ [exh]) )))
 
     (* end case *))
+    
+    (* the return convention/type used by DS funs. keep consistent with llvm-printer's
+       machine values. *)
+    and dsReturnConv rets = mkUStruct ([allocPtrTy, vprocTy] @ (L.map typeOf rets))
 
     (* single element tuples are just a pointer to the object itself.
     
@@ -546,8 +546,8 @@ structure LLVMType : sig
         
     and declOf (fnTy : ty) = let
         fun mkDecl ret params varArg = let
-            val llvmParams = S.concatWith ", " (List.map toString params)
-            val llvmRet = toString ret
+            val llvmParams = S.concatWith ", " (List.map nameOf params)
+            val llvmRet = nameOf ret
 
             val llvmParams = if not varArg
                           then llvmParams

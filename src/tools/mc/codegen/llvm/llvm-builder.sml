@@ -723,7 +723,7 @@ structure LLVMBuilder : sig
                    in
                      S.concat
                        [ resName, " = extractvalue ",
-                         LT.fullNameOf aggTy, " ", aggName, ", ",
+                         LT.nameOf aggTy, " ", aggName, ", ",
                          offsets
                        ]
                    end)
@@ -739,7 +739,7 @@ structure LLVMBuilder : sig
                    in
                      S.concat
                        [ resName, " = insertvalue ",
-                         LT.fullNameOf aggTy, " ", aggName, ", ",
+                         LT.nameOf aggTy, " ", aggName, ", ",
                          LT.nameOf valTy, " ", valName, ", ",
                          offsets
                        ]
@@ -799,7 +799,7 @@ structure LLVMBuilder : sig
                  val cc = case cc of SOME ccStr => ccStr ^ " " | NONE => ""
                in   
                 
-                 S.concat ["call ", cc, LT.fullNameOf funcTy, " ", funcName, "(", paramStr, ")"]
+                 S.concat ["call ", cc, LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
                end
 
              | (OP_Call cc, SOME(resName, resTy)) => let 
@@ -810,7 +810,7 @@ structure LLVMBuilder : sig
                  val cc = case cc of SOME ccStr => ccStr ^ " " | NONE => ""
                in   
                 
-                 S.concat [resName, " = call ", cc, LT.fullNameOf funcTy, " ", funcName, "(", paramStr, ")"]
+                 S.concat [resName, " = call ", cc, LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
                end
 
              | (OP_Unreachable, NONE) => "unreachable"

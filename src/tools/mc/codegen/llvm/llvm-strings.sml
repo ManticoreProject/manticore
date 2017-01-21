@@ -100,7 +100,7 @@ structure LLVMStrings =
       fun export () : string list = let            
             fun toDecl (llv, lit) = String.concat [
                 LV.toString llv, " = private unnamed_addr constant ",
-                (LT.fullNameOf o LT.deref o LV.typeOf) llv, " c\"", lit, "\", align 8\n"
+                (LT.nameOf o LT.deref o LV.typeOf) llv, " c\"", lit, "\", align 8\n"
             ]
             
             val mappings = Map.listItems(!cache)
