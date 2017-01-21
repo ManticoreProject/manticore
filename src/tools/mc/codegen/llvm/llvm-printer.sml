@@ -1029,6 +1029,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     (fn () => [LB.br b targ])
                end
                
+               | C.Call {next=NONE,...} => (fn () => [LB.retVoid b]) (* FIXME *)
+               
               (* esac *))  
       end
       
@@ -1646,14 +1648,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val convertedExterns = List.map toLLVMDecl module_externs
     val externDecls = S.concat (List.map (fn (s, _, _) => s) convertedExterns)
     
-    
-    fun magicDecls lst attrs = S.concat (L.map 
-                        (fn (llv, cc) => let
-                            val cc = case cc of SOME lbCC => LB.cctoStr lbCC | NONE => ""
-                        in
-                            (LT.declOf (LV.typeOf llv) cc (LV.toString llv)) ^ " " ^ attrs ^ "\n"
-                        end) lst)
-    
     (* now we add the magic llvm runtime stuff that are not actually part of the CFG module. *)
     val runtimeDecls = magicDecls LR.runtime (stdAttrs ExternCFun)
     
@@ -1675,6 +1669,13 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     in
       (header, convertedExterns)
     end
+    
+  and magicDecls lst attrs = S.concat (L.map 
+        (fn (llv, cc) => let
+          val cc = case cc of SOME lbCC => LB.cctoStr lbCC | NONE => ""
+        in
+          (LT.declOf (LV.typeOf llv) cc (LV.toString llv)) ^ " " ^ attrs ^ "\n"
+        end) lst)
 
   (* end of Module *)
 
@@ -1741,6 +1742,9 @@ in
     
     pr "\n\n; external constants\n" ;
     prl (externalConstants()) ;
+    
+    pr "\n\n; statepoint intrinsics, if any\n\n" ;
+    pr (magicDecls (LLVMStatepoint.exportDecls ()) "") ;
 
     pr "\n\n\n\n; ---------------- end of LLVM generation ---------------------- \n\n\n\n" ;
     (if DEBUGGING then

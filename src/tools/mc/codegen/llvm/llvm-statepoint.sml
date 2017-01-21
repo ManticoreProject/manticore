@@ -23,13 +23,14 @@ structure LLVMStatepoint : sig
     
     (* retrieves the list of intrinsic functions required by previous calls.
        you should declare these in the module at the end of codegen. *)
-    val exportDecls : unit -> LLVMVar.var list
+    val exportDecls : unit -> (LLVMVar.var * LLVMBuilder.convention option) list
 
 end = struct
 
     structure LT = LLVMType
     structure LV = LLVMVar
     structure LB = LLVMBuilder
+    structure L = List
 
     local
         val intrinsicTbl = AtomTable.mkTable (1000, Fail "statepoint table")
@@ -99,7 +100,7 @@ end = struct
             (* esac *))
         end (* end getRelocateVar *)
         
-        fun exportDecls () = AtomTable.listItems intrinsicTbl
+        fun exportDecls () = L.map (fn v => (v, NONE)) (AtomTable.listItems intrinsicTbl)
         
     end (* end local *)
 

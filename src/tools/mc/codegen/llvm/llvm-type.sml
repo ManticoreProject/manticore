@@ -304,7 +304,7 @@ structure LLVMType : sig
             let
                 val llvmParams = mapSep(recur, nil, ", ", params)
               in
-                S.concat ([recur ret, " ("] @ llvmParams @ [ if varArg then "..." else "", ")"])
+                S.concat ([recur ret, " ("] @ llvmParams @ [ if varArg then ",..." else "", ")"])
               end
             
         in
@@ -563,6 +563,7 @@ structure LLVMType : sig
     (case HC.node fnTy
         of Ty.T_Func (ret::params) => mkDecl ret params false
          | Ty.T_VFunc (ret::params) => mkDecl ret params true
+         | Ty.T_Ptr(_,ty) => declOf ty (* a bit aggressive in cutting through pointers here :) *)
          | _ => raise Fail "not a function type"
         (* esac *))
     end
