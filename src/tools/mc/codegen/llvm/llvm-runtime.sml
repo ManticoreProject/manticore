@@ -16,7 +16,7 @@ structure LLVMRuntime =
     structure LB = LLVMBuilder
     
     (* first type is return type *)
-    fun mkLabel name tys = mkConst name (LT.mkFunc tys)
+    fun mkLabel name tys = mkConst name (LT.mkPtr(LT.mkFunc tys))
     
     and mkConst name ty = LV.newWithKind(name, LV.VK_Global true, ty)
     

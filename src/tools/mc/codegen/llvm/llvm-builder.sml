@@ -790,6 +790,21 @@ structure LLVMBuilder : sig
 
                  S.concat ["musttail call ", jwaCC , " void ", funcName, "(", paramStr, ")"]
                end
+               
+        (* a NOTE about Call syntax as of LLVM 4.0+
+                
+            %x1 = call fastcc i8* @M_StringConcat2(i8* undef, i8* undef)  ; <- good
+        	%x2 = call fastcc i8* (i8*, ...) @M_printf(i8* undef, i8* undef)  ; <- good
+        	; oh my lord, only HERE is @M_printf considered a pointer! "functions are not values, refer to them as pointers"
+        	%casted_printf = bitcast i8* (i8*, ...)* @M_printf to i8* (i8*, ...)*   
+        	%x4 = call fastcc i8* (i8*, ...) %casted_printf(i8* %x1, i8* %x2) ; <- good
+        	; %x2 = call fastcc i8* @M_printf(i8* undef, i8* undef) ; <- incorrect, is vararg.
+        	; %x2 = call fastcc i8* (i8*, ...)* @M_printf(i8* undef, i8* undef) ; <- incorrect b/c of the pointer on the end
+        	; %x5 = call fastcc i8* (i8*, ...)* %casted_printf(i8* %x4, i8* %x2)  ; <- incorrect due to vararg
+        	
+        	; it seems the safest thing to do is strip the * off the var and then print the whole type for the function.
+                
+                *)
              
              | (OP_Call cc, NONE) => let
                  val (funcName, funcTy) = break (V.sub(args, 0))
@@ -799,7 +814,7 @@ structure LLVMBuilder : sig
                  val cc = case cc of SOME ccStr => ccStr ^ " " | NONE => ""
                in   
                 
-                 S.concat ["call ", cc, LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+                 S.concat ["call ", cc, (LT.nameOf o LT.deref) funcTy, " ", funcName, "(", paramStr, ")"]
                end
 
              | (OP_Call cc, SOME(resName, resTy)) => let 
@@ -810,7 +825,7 @@ structure LLVMBuilder : sig
                  val cc = case cc of SOME ccStr => ccStr ^ " " | NONE => ""
                in   
                 
-                 S.concat [resName, " = call ", cc, LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+                 S.concat [resName, " = call ", cc, (LT.nameOf o LT.deref) funcTy, " ", funcName, "(", paramStr, ")"]
                end
 
              | (OP_Unreachable, NONE) => "unreachable"

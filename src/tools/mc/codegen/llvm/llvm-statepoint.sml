@@ -46,11 +46,11 @@ end = struct
                | NONE => let
                     val ty = LT.mkPtr(LT.mkVFunc [
                         LT.tokenTy,
-                        LT.i64,
-                        LT.i32,
+                        LT.i64,     (* id *)
+                        LT.i32,     (* num patch bytes *)
                         funTy,
-                        LT.i32,
-                        LT.i32
+                        LT.i64,     (* num call args *)
+                        LT.i64      (* flags *)
                     ])
                     val lv = LV.newWithKind(name, LV.VK_Global true, ty)
                in

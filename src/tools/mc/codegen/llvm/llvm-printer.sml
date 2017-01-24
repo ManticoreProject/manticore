@@ -1251,7 +1251,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       and genPromote(env, (lhsVar, var)) = let
         val (promLab, NONE) = LR.promote
         val llFunc = LB.fromV promLab
-        val paramTys = (LT.argsOf o LB.toTy) llFunc
+        val paramTys = (LT.argsOf o LT.deref o LB.toTy) llFunc
         
         val args = [lookupMV(env, MV_Vproc), lookupV(env, var)]
         
@@ -1315,7 +1315,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       (* A standard C call that returns. *)
       and genCCall(env, (results, func, args)) = let
             val llFunc = lookupV(env, func)            
-            val argTys = (LT.argsOf o LB.toTy) llFunc
+            val argTys = (LT.argsOf o LT.deref o LB.toTy) llFunc
             
             val llArgs = L.map (fn (a, realTy) => let
                                 val ll = lookupV(env, a)

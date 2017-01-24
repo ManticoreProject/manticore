@@ -489,7 +489,7 @@ structure LLVMType : sig
       | CT.T_CFun(CF.CProto(retTy, argTys, _, varArg)) => let
             val funCtor = if varArg then mkVFunc else mkFunc
         in
-            funCtor([typeOfC retTy] @ (List.map typeOfC argTys))
+            mkPtr(funCtor([typeOfC retTy] @ (List.map typeOfC argTys)))
         end
       
       | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
