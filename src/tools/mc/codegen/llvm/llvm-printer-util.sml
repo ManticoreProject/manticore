@@ -81,15 +81,18 @@ in
      This implementation is based on alloc64-fn.sml
      
       *)
+      
+  (* TODO I wonder why CFG.T_Addr is not considered a heap pointer in the old backend?
+     my guess is that Addrs are for pointers derived from pointer arithmetic. *)
+     
+  fun isHeapPointer CFG.T_Any = true
+    | isHeapPointer (CFG.T_Tuple _) = true
+    | isHeapPointer (CFG.T_OpenTuple _) = true
+    | isHeapPointer _ = false
+      
   fun headerTag (ctys : CFGTy.ty list) : LB.instr = let
     
-    (* TODO I wonder why CFG.T_Addr is not considered a heap pointer in the old backend?
-       my guess is that Addrs are for pointers derived from pointer arithmetic. *)
-       
-    fun isHeapPointer CFG.T_Any = true
-      | isHeapPointer (CFG.T_Tuple _) = true
-      | isHeapPointer (CFG.T_OpenTuple _) = true
-      | isHeapPointer _ = false
+    
       
       
     (* initializes a non-forwarding pointer header, following header-bits.h
@@ -99,7 +102,7 @@ in
         |	  length    |      ID       |      1      |
         ----------------------------------------------
      *)
-    and packHeader length id = W.toLargeInt (
+    fun packHeader length id = W.toLargeInt (
         W.orb (W.orb (W.<< (W.fromInt length, 0w16), 
                         W.<< (W.fromInt id, 0w1)
                        ),

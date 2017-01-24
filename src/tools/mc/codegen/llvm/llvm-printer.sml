@@ -979,12 +979,16 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     val mvs = L.map (fn mv => lookupMV(env, mv)) mvCC
                     val allArgs = mvs @ clos :: args
                     
-                    (* remove the lhs vars from the liveAfter list *)
+                    (* we need to remove:
+                        1. the lhs vars from the liveAfter list
+                        2. any non-pointer values. 
+                    *)
                     val lives = L.filter 
                                 (fn v => 
-                                    not(L.exists 
-                                        (fn x => CV.same(v, x)) 
-                                        lhs)) 
+                                    not(L.exists (fn x => CV.same(v, x)) lhs)
+                                    andalso
+                                    LPU.isHeapPointer(CV.typeOf v)
+                                ) 
                                 liveAfter
                                 
                     val lives_llvm = L.map (fn v => lookupV(env, v)) lives
