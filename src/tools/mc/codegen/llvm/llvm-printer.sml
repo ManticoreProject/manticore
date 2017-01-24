@@ -1540,7 +1540,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val llName = LV.toString(lookupL(initEnv, lab))
     val decl = ["define ", linkage, ccStr,
                 retTyStr, " ", llName, "(", (stringify allAssign), ") ",
-                attrs, " {\n"]
+                attrs, " gc \"statepoint-example\" {\n"]
                 
                 (* FIXME put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
     
