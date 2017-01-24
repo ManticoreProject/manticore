@@ -979,6 +979,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     val mvs = L.map (fn mv => lookupMV(env, mv)) mvCC
                     val allArgs = mvs @ clos :: args
                     
+                    (* need to cast args before call. this is normally due to mismatches
+                       between enums & tuples in LLVM (pointer vs int). *)
+                    fun castArgs (pair as (arg, paramTy)) = let
+                        val argTy = LB.toTy arg
+                    in
+                        if LT.same(argTy, paramTy)
+                        then arg
+                        else cast (Op.safeCast (argTy, paramTy)) pair
+                    end
+                        
+                                                
+                    val paramTys = LT.argsOf(LT.deref(LB.toTy f))
+                    val allArgs = ListPair.mapEq castArgs (allArgs, paramTys) 
+                    
                     (* we need to remove:
                         1. the lhs vars from the liveAfter list
                         2. any non-pointer values. 
