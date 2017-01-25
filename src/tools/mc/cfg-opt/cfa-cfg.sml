@@ -543,7 +543,18 @@ structure CFACFG : sig
              of CFG.StdApply{f, ...} => labelSet f
               | CFG.StdThrow{k, ...} => labelSet k
               | CFG.Apply{f, ...} => labelSet f
-              | CFG.Call{f, ...} => labelSet f
+              | CFG.Call{f, next=NONE, ...} => labelSet f
+              | CFG.Call{f, next=SOME(_,(nextLab,_)), ...} => 
+                    SOME(LSet.add(Option.getOpt(labelSet f, LSet.empty), nextLab))
+                (* NOTE 
+                    ideally, for a CFG.Return, we would return the set of all callers of 
+                    the enclosing function. the issue with how our datatypes are setup
+                    is that we don't know which function a Return belongs to.
+                    
+                    It might be worth marking the Returns with their enclosing function
+                    so we could actually do this and give better control-flow information.
+                *)
+                
               | _ => SOME (LSet.addList(LSet.empty, CFGUtil.labelsOfXfer xfer))
             (* end case *)
           end
