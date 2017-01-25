@@ -133,6 +133,9 @@ end = struct
             LB.iconst LT.i64 0          (* num deopt args *)
             ]
             
+        (* TODO cast the live pointers from addrspace 0 to 1 *)
+        
+            
         val liveStartIdx = List.length spPrefix
         val spArgs = spPrefix @ lives
         val intrinsic = LB.fromV(getStatepointVar funTy)
@@ -144,6 +147,7 @@ end = struct
         val intrinsic = LB.fromV (getRelocateVar (LB.toTy live))
         val offset = LB.iconst LT.i32 i
         val relo = LB.call blk (intrinsic, #[tok, offset, offset])
+        (* TODO cast the live pointers from addrspace 1 to 0 *)
     in
         (i+1, relo::rest)
     end
