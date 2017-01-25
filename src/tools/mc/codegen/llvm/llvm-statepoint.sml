@@ -49,8 +49,8 @@ end = struct
                         LT.i64,     (* id *)
                         LT.i32,     (* num patch bytes *)
                         funTy,
-                        LT.i64,     (* num call args *)
-                        LT.i64      (* flags *)
+                        LT.i32,     (* num call args *)
+                        LT.i32      (* flags *)
                     ])
                     val lv = LV.newWithKind(name, LV.VK_Global true, ty)
                in
@@ -126,8 +126,8 @@ end = struct
             LB.iconst LT.i64 0,         (* id *)
             LB.iconst LT.i32 0,         (* num patch bytes *)
             func,
-            LB.iconst LT.i64 arity,
-            LB.iconst LT.i64 0          (* flags *)
+            LB.iconst LT.i32 arity,
+            LB.iconst LT.i32 0          (* flags *)
             ] @ args @ [
             LB.iconst LT.i64 0,         (* num transition args *)
             LB.iconst LT.i64 0          (* num deopt args *)
