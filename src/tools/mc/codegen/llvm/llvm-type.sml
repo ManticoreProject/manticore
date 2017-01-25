@@ -152,6 +152,9 @@ structure LLVMType : sig
     val mkVFunc : ty list -> ty
 
     val mkPtr : ty -> ty
+    
+    (* addrspace(1) pointer; for statepoint calls. *)
+    val mkGCPtr : ty -> ty
 
     (* count is number of elements of type ty *)
     val mkVector : count * ty -> ty

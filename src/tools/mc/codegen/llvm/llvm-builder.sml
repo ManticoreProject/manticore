@@ -603,7 +603,8 @@ structure LLVMBuilder : sig
                  | Op.FPExt   
                  | Op.PtrToInt
                  | Op.IntToPtr
-                 | Op.BitCast ) => let
+                 | Op.BitCast
+                 | Op.AddrSpace ) => let
                     val (arg1, ty) = break(V.sub(args, 0))
                     in
                     S.concat[

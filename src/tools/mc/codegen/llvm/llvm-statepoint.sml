@@ -28,9 +28,11 @@ structure LLVMStatepoint : sig
 end = struct
 
     structure LT = LLVMType
+    structure Ty = LLVMTy
     structure LV = LLVMVar
     structure LB = LLVMBuilder
     structure L = List
+    structure Op = LLVMOp
 
     local
         val intrinsicTbl = AtomTable.mkTable (1000, Fail "statepoint table")
@@ -106,11 +108,22 @@ end = struct
 
 
     
-    fun call (x as {blk, lives, ...}) = let
+    fun call {blk, conv, func, args, lives} = let
+            (* cast the live pointers into the special address space. *)
+            val lives = L.map (spaceCast (blk, LT.mkGCPtr)) lives
+            
+            (* put the new lives back in struct *)
+            val x = { blk = blk, 
+                      conv = conv,
+                      func = func,
+                      args = args,
+                      lives = lives }
+            
             val (token, reloStartIdx) = doCall x
             
-            (* must be foldl to match indexes up *)
-            val relocator = relocate (blk, token)
+            (* must be foldl to match indexes up. 
+               We also cast them back to the regular space after relocating.  *)
+            val relocator = relocate (blk, token, spaceCast (blk, LT.mkPtr))
             val (_, relos) = List.foldl relocator (reloStartIdx, []) lives
             val relos = List.rev relos
             
@@ -133,9 +146,6 @@ end = struct
             LB.iconst LT.i64 0          (* num deopt args *)
             ]
             
-        (* TODO cast the live pointers from addrspace 0 to 1 *)
-        
-            
         val liveStartIdx = List.length spPrefix
         val spArgs = spPrefix @ lives
         val intrinsic = LB.fromV(getStatepointVar funTy)
@@ -143,11 +153,11 @@ end = struct
         (LB.callAs blk conv (intrinsic, Vector.fromList spArgs), liveStartIdx)
     end
     
-    and relocate (blk, tok) (live, (i, rest)) = let
+    and relocate (blk, tok, from) (live, (i, rest)) = let
         val intrinsic = LB.fromV (getRelocateVar (LB.toTy live))
         val offset = LB.iconst LT.i32 i
         val relo = LB.call blk (intrinsic, #[tok, offset, offset])
-        (* TODO cast the live pointers from addrspace 1 to 0 *)
+        val relo = from relo (* do a cast *)
     in
         (i+1, relo::rest)
     end
@@ -158,5 +168,10 @@ end = struct
     in
         LB.call blk (intrinsic, #[tok])
     end
+    
+    and spaceCast (blk, to) instr = (case LT.node(LB.toTy instr)
+        of Ty.T_Ptr (_, ty) => LB.cast blk Op.AddrSpace (instr, to ty)
+         | _ => raise Fail "unexpected non-pointer live value in statepoint call."
+        (* esac *))
 
 end (* LLVMStatepoint *)

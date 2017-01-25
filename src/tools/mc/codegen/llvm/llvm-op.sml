@@ -67,6 +67,7 @@ structure LLVMOp = struct
     | PtrToInt 
     | IntToPtr 
     | BitCast  
+    | AddrSpace
 
     | Icmp of icmp_kind
     | Fcmp of fcmp_kind
@@ -143,6 +144,7 @@ structure LLVMOp = struct
       | PtrToInt
       | IntToPtr
       | BitCast
+      | AddrSpace
       | Load )   => 1
       
     | CmpXchg => 3
@@ -575,6 +577,7 @@ structure LLVMOp = struct
       | PtrToInt    => "ptrtoint"
       | IntToPtr    => "inttoptr"
       | BitCast     => "bitcast"
+      | AddrSpace   => "addrspacecast"
 
       | Icmp _ => "icmp"
       | Fcmp _ => "fcmp"
