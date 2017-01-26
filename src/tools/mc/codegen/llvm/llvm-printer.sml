@@ -971,7 +971,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     6. env += lives_i -> relos_i
                     7. lookup in env everything in liveAfter and do a branch.
                 *)
-               | C.Call {f, clos, args, next=SOME(lhs, jmp as (_, liveAfter))} => let
+               | C.Call {f, clos, args, next} => let
                     (* lookup everything in the env *)
                     val f = lookupV(env, f)
                     val clos = lookupV(env, clos)
@@ -993,61 +993,70 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     val paramTys = LT.argsOf(LT.deref(LB.toTy f))
                     val allArgs = ListPair.mapEq castArgs (allArgs, paramTys) 
                     
-                    (* we need to remove:
-                        1. the lhs vars from the liveAfter list
-                        2. any non-pointer values. 
-                    *)
-                    val lives = L.filter 
-                                (fn v => 
-                                    not(L.exists (fn x => CV.same(v, x)) lhs)
-                                    andalso
-                                    LPU.isHeapPointer(CV.typeOf v)
-                                ) 
-                                liveAfter
-                                
-                    val lives_llvm = L.map (fn v => lookupV(env, v)) lives
-                    
-                    val {ret, relos} = LLVMStatepoint.call { 
-                                          blk = b,
-                                          conv = LB.jwaCC,
-                                          func = f,
-                                          args = allArgs,
-                                          lives = lives_llvm
-                                        }
+                    fun nonTail (lhs, jmp as (_, liveAfter)) = let
+                            (* we need to remove:
+                                1. the lhs vars from the liveAfter list
+                                2. any non-pointer values. 
+                            *)
+                            val lives = L.filter 
+                                        (fn v => 
+                                            not(L.exists (fn x => CV.same(v, x)) lhs)
+                                            andalso
+                                            LPU.isHeapPointer(CV.typeOf v)
+                                        ) 
+                                        liveAfter
                                         
-                    (* grab the return values *)
-                    fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
-                    
-                    val idxs = L.tabulate(numMachineVals + L.length lhs, toC)
-                    val retVals = L.map (fn i => LB.extractV b (ret, #[i])) idxs
-                    
-                    (* update the machine vals in the env *)
-                    val newMVs = L.take(retVals, numMachineVals)
-                    val env = ListPair.foldlEq
-                                (fn (mv, valu, acc) => updateMV(acc, mv, valu))
-                                env
-                                (mvCC, newMVs)
-                    
-                    (* bind the lhs values *)
-                    val rhs = L.drop(retVals, numMachineVals)
-                    val env = ListPair.foldlEq
-                                (fn (lhs, rhs, acc) => insertV(acc, lhs, rhs))
-                                env
-                                (lhs, rhs)
-                    
-                    (* update the env with the relocated values *)
-                    val env = ListPair.foldlEq
-                                (fn (live, relo, acc) => insertV(acc, live, relo))
-                                env
-                                (lives, relos)
-                                
-                    (* do the jump *)
-                    val (targ, _) = markPred env jmp
-               in
-                    (fn () => [LB.br b targ])
-               end
-               
-               | C.Call {next=NONE,...} => (fn () => [LB.retVoid b]) (* FIXME *)
+                            val lives_llvm = L.map (fn v => lookupV(env, v)) lives
+                            
+                            val {ret, relos} = LLVMStatepoint.call { 
+                                                  blk = b,
+                                                  conv = LB.jwaCC,
+                                                  func = f,
+                                                  args = allArgs,
+                                                  lives = lives_llvm
+                                                }
+                                                
+                            (* grab the return values *)
+                            fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
+                            
+                            val idxs = L.tabulate(numMachineVals + L.length lhs, toC)
+                            val retVals = L.map (fn i => LB.extractV b (ret, #[i])) idxs
+                            
+                            (* update the machine vals in the env *)
+                            val newMVs = L.take(retVals, numMachineVals)
+                            val env = ListPair.foldlEq
+                                        (fn (mv, valu, acc) => updateMV(acc, mv, valu))
+                                        env
+                                        (mvCC, newMVs)
+                            
+                            (* bind the lhs values *)
+                            val rhs = L.drop(retVals, numMachineVals)
+                            val env = ListPair.foldlEq
+                                        (fn (lhs, rhs, acc) => insertV(acc, lhs, rhs))
+                                        env
+                                        (lhs, rhs)
+                            
+                            (* update the env with the relocated values *)
+                            val env = ListPair.foldlEq
+                                        (fn (live, relo, acc) => insertV(acc, live, relo))
+                                        env
+                                        (lives, relos)
+                                        
+                            (* do the jump *)
+                            val (targ, _) = markPred env jmp
+                       in
+                            (fn () => [LB.br b targ])
+                       end (* end nonTail *)
+                       
+                       
+                       fun tail _ = (fn () => [LB.retVoid b]) (* FIXME *)
+                   
+                   in
+                        (case next
+                            of SOME info => nonTail info
+                             | NONE => tail ()
+                            (* esac *))
+                   end (* end Call case *)
                
               (* esac *))  
       end
