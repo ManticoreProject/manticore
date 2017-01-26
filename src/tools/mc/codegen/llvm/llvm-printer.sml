@@ -1009,7 +1009,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     
                     val {ret, relos} = LLVMStatepoint.call { 
                                           blk = b,
-                                          conv = LB.fastCC,
+                                          conv = LB.jwaCC,
                                           func = f,
                                           args = allArgs,
                                           lives = lives_llvm
@@ -1554,7 +1554,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     
     (* string building code *)
     val linkage = linkageOf lab
-    val ccStr = " " ^ (LB.cctoStr LB.fastCC) ^ " "
+    val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " "  (* TODO it's likely that we need a direct-style Manticore CC in LLVM *)
     val llName = LV.toString(lookupL(initEnv, lab))
     val decl = ["define ", linkage, ccStr,
                 retTyStr, " ", llName, "(", (stringify allAssign), ") ",
