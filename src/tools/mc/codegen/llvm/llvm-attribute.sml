@@ -24,7 +24,7 @@ structure LLVMAttribute = struct
     | NUW (* no unsigned wrap *)
     | ExactDiv (* for sdiv NOTE this needs to be changed to just be "Exact" b/c other ops use it like lshr
                     don't rely on this for now! *)
-
+    | Tail      (* for calls *)
     (* fast math flags for fadd, fsub, fmul, fdiv, frem, fcmp *)
     | NoNaN
     | NoInf
@@ -52,6 +52,7 @@ structure LLVMAttribute = struct
      | AllowRecip   => "arcp"
      | FastMath     => "fast"
      | SeqCst       => "seq_cst"
+     | Tail         => "tail"
     (* esac *))
 
   fun id (x : t) : int = (case x
@@ -73,6 +74,7 @@ structure LLVMAttribute = struct
      | AllowRecip   => 9
      | FastMath     => 10
      | SeqCst       => 11
+     | Tail         => 12
 
      
 

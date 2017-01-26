@@ -813,9 +813,11 @@ structure LLVMBuilder : sig
                                  fn i => getArgStr true (V.sub(args, i+1))))
                                  
                  val cc = case cc of SOME ccStr => ccStr ^ " " | NONE => ""
+                 
+                 val tail = optAttr(atr, A.Tail) 
                in   
                 
-                 S.concat ["call ", cc, (LT.nameOf o LT.deref) funcTy, " ", funcName, "(", paramStr, ")"]
+                 S.concat [tail, "call ", cc, (LT.nameOf o LT.deref) funcTy, " ", funcName, "(", paramStr, ")"]
                end
 
              | (OP_Call cc, SOME(resName, resTy)) => let 
@@ -824,9 +826,11 @@ structure LLVMBuilder : sig
                                  fn i => getArgStr true (V.sub(args, i+1))))
                  
                  val cc = case cc of SOME ccStr => ccStr ^ " " | NONE => ""
+                 
+                 val tail = optAttr(atr, A.Tail) 
                in   
                 
-                 S.concat [resName, " = call ", cc, (LT.nameOf o LT.deref) funcTy, " ", funcName, "(", paramStr, ")"]
+                 S.concat [resName, " = ", tail, "call ", cc, (LT.nameOf o LT.deref) funcTy, " ", funcName, "(", paramStr, ")"]
                end
 
              | (OP_Unreachable, NONE) => "unreachable"
