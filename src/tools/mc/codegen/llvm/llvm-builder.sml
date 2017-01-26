@@ -141,11 +141,19 @@ structure LLVMBuilder : sig
 
     val cast : t -> op_code -> (instr * ty) -> instr
 
+
+    (* NOTE having three different 'call' functions in the sig
+        is kind of messy. would be nice to merge them together 
+        or something but I don't have time to refactor ~kavon *)
+
     (* calls which return, without a specific calling convention *)
     val call : t -> (instr * instr vector) -> instr
     
     (* call with a specific convention *)
     val callAs : t -> convention -> (instr * instr vector) -> instr
+    
+    (* call with a specific convention and attributes *)
+    val callAs' : t -> (attrs * convention) -> (instr * instr vector) -> instr
 
     (* calling convention goodies *)
     val jwaCC : convention  (* the Manticore calling convention *)
@@ -1218,7 +1226,7 @@ structure LLVMBuilder : sig
 
 
   (* call : t -> convention -> (instr * instr vector) -> instr *)
-  fun buildCall blk cc = 
+  fun buildCall blk cc atr = 
     fn (func as INSTR{result=R_Var(funcVar),...}, args) => let
 
       (* TODO(kavon): ensure the call's types match up and that
@@ -1243,14 +1251,16 @@ structure LLVMBuilder : sig
                 fn 0 => func 
                  | i => V.sub(args, i-1)
                )),
-          atr = AS.empty
+          atr = atr
         }
       )
     end
     
-  and callAs blk cc = buildCall blk (SOME cc)
+  and callAs blk cc = buildCall blk (SOME cc) AS.empty
   
-  and call blk = buildCall blk NONE
+  and call blk = buildCall blk NONE AS.empty
+  
+  and callAs' blk (atr, cc) = buildCall blk (SOME cc) atr
 
   
   (* addIncoming : t -> (var * instr list) -> t *)

@@ -1049,7 +1049,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                        end (* end nonTail *)
                        
                        
-                       fun tail _ = (fn () => [LB.retVoid b]) (* FIXME *)
+                       fun tail _ = let
+                            val conv = (AS.singleton A.Tail, LB.jwaCC)
+                            val result = LB.callAs' b conv (f, V.fromList allArgs)
+                       in
+                            (fn () => [LB.ret b result])
+                       end
                    
                    in
                         (case next
