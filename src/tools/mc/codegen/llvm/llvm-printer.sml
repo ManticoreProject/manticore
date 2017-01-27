@@ -352,6 +352,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 in
                     (machineValPadding, ListPair.zipEq(actualIndices, actualConvVars))
                 end
+                
+            | C.StdDirectFunc {clos, exh, ret=notAVar} => raise Fail "todo"
+            
+            | C.KnownDirectFunc {clos, ret=notAVar} => raise Fail "todo"
         (* end case *))
   end
 
@@ -1438,6 +1442,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
 (****** Functions ******)
     (* NOTE: this probably should be moved into a new module or something *)
     
+    datatype slotTy
+     = Used of LV.var
+     | NotUsed of LT.ty
+    
   fun mkFunc (func as C.FUNC{entry,...}, initEnv) = (case entry
       of C.KnownDirectFunc {ret,...} => mkDSFunc(func, ret, initEnv)
        | C.StdDirectFunc {ret,...} => mkDSFunc(func, ret, initEnv)
@@ -1446,71 +1454,73 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
        | C.StdCont _ => mkCPSFunc(func, initEnv)
        | C.KnownFunc _ => mkCPSFunc(func, initEnv)
       (* end case *))
+      
+  and assignToSlots (mvTys, cc) = let
+  
+        val pairedMvTys = ListPair.zipEq(L.tabulate(numMachineVals, fn i => i), mvTys)
+        
+        (* reg vars and the real types *)
+        val mvRegs = L.map (fn (i, ty) => let
+                val (SOME mv) = IdxMachineVal i
+                val (_, name, realTy) = machineInfo mv
+            in
+                (i, LV.new(name, ty), realTy)
+            end) pairedMvTys
+            
+        val ccRegs = L.map (fn (i, cvar) => let
+                val name = CV.nameOf cvar
+                val realTy = (LT.typeOf o CV.typeOf) cvar
+                val ty = LT.toRegType realTy
+            in
+                (i, LV.new(name, ty), realTy)
+            end) cc
+            
+            (* NEXT now we assign mvRegs :: ccRegs to the jwaCC slots,
+               filling in junk slots with "unused" LV's.
+               then we pass these two lists to mkBasicBlocks so that 
+               a block of bitcasts is produced in the header to fixup 
+               the environment. *)
+         
+            (* NOTE the regs must be ordered by slot num *)
+            fun assign(nil, nil, res) = L.rev res 
+              | assign(slot::rest, nil, res) = assign(rest, nil, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
+              | assign(slot::rest, (regs as ((r as (idx, var, _))::rs)), res) =
+                if idx = slot 
+                    then assign(rest, rs, (Used var)::res)
+                    else assign(rest, regs, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
+                    
+                    
+            val slotNums = L.tabulate(V.length LT.jwaCC, fn i => i)
+            
+            val allRegs = mvRegs @ ccRegs
+            
+            val _ = if (L.length allRegs) > (L.length slotNums)
+                    then print ("(llvm-backend) warning: number of live vars across a function call\n"
+                                ^ "exceeds the number of registers in jwaCC, thus some values may\n"
+                                ^ "be passed via the stack!") else ()
+                                
+                                (* NOTE this warning is mostly of concern for loops, as
+                                   each iteration will cause a register spill/reload.
+                                   If a GC triggers, we'll also have to load these values
+                                   from the stack just to move them to the heap, and back again
+                                   upon resuming.
+                                *)
+            
+            val allAssign = assign(slotNums, allRegs, nil)  
+            
+            val mvs = V.fromList(L.map (fn (_, var, _) => LB.fromV var) mvRegs)
+        
+      in
+        (Padded (cc, ccRegs, mvRegs), allAssign, mvs)
+      end
+      
+  and mkDecl (Used var) = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
+    | mkDecl (NotUsed ty) = LT.nameOf ty
   
   and mkCPSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
               initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
-    val (mvTys : LT.ty list, cc : (int * C.var) list) = determineCC(entry, cfgArgs)
-    
-    val pairedMvTys = ListPair.zipEq(L.tabulate(numMachineVals, fn i => i), mvTys)
-    
-    (* reg vars and the real types *)
-    val mvRegs = L.map (fn (i, ty) => let
-            val (SOME mv) = IdxMachineVal i
-            val (_, name, realTy) = machineInfo mv
-        in
-            (i, LV.new(name, ty), realTy)
-        end) pairedMvTys
-        
-    val ccRegs = L.map (fn (i, cvar) => let
-            val name = CV.nameOf cvar
-            val realTy = (LT.typeOf o CV.typeOf) cvar
-            val ty = LT.toRegType realTy
-        in
-            (i, LV.new(name, ty), realTy)
-        end) cc
-    
-    
-    (* NEXT now we assign mvRegs :: ccRegs to the jwaCC slots,
-       filling in junk slots with "unused" LV's.
-       then we pass these two lists to mkBasicBlocks so that 
-       a block of bitcasts is produced in the header to fixup 
-       the environment. *)
-       
-    datatype slotTy
-     = Used of LV.var
-     | NotUsed of LT.ty
-       
-    (* NOTE the regs must be ordered by slot num *)
-    fun assign(nil, nil, res) = L.rev res 
-      | assign(slot::rest, nil, res) = assign(rest, nil, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
-      | assign(slot::rest, (regs as ((r as (idx, var, _))::rs)), res) =
-        if idx = slot 
-            then assign(rest, rs, (Used var)::res)
-            else assign(rest, regs, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
-       
-    val slotNums = L.tabulate(V.length LT.jwaCC, fn i => i)
-    
-    val allRegs = mvRegs @ ccRegs
-    
-    val _ = if (L.length allRegs) > (L.length slotNums)
-            then print ("(llvm-backend) warning: number of live vars across a function call\n"
-                        ^ "exceeds the number of registers in jwaCC, thus some values may\n"
-                        ^ "be passed via the stack!") else ()
-                        
-                        (* NOTE this warning is mostly of concern for loops, as
-                           each iteration will cause a register spill/reload.
-                           If a GC triggers, we'll also have to load these values
-                           from the stack just to move them to the heap, and back again
-                           upon resuming.
-                        *)
-    
-    val allAssign = assign(slotNums, allRegs, nil)  
-    
-    val mvs = V.fromList(L.map (fn (_, var, _) => LB.fromV var) mvRegs)
-    
-    fun mkDecl (Used var) = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
-      | mkDecl (NotUsed ty) = LT.nameOf ty
+    val (startConv, allAssign, mvs) = assignToSlots(determineCC(entry, cfgArgs))
     
     fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     
@@ -1537,7 +1547,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                   vars=inherited_vars,
                                   blks=inherited_blks,
                                   mvs=mvs},
-                                start, body, Padded (cc, ccRegs, mvRegs))  
+                                start, body, startConv)  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
@@ -1548,6 +1558,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   and mkDSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
                 ret,
               initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
+    
+    (* TODO rewrite this using assignToSlots as in mkCPSFunc *)
     
     fun dclToStr var = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
     fun stringify vars = S.concatWith ", " (L.map dclToStr vars)

@@ -479,9 +479,9 @@ structure LLVMType : sig
      | CT.T_Raw rt => mkInt(cnt (sizeOfRawTy rt))
       
       (* always a pointer type. *)
-      | CT.T_Tuple (_, ts) => uniformTy (* determineTuple ts *)
+      | CT.T_Tuple (_, ts) => uniformTy
 
-      | CT.T_OpenTuple ts => uniformTy (* determineTuple ts *)
+      | CT.T_OpenTuple ts => uniformTy
 
       | CT.T_Addr t => mkPtr(typeOf t)
 
@@ -498,38 +498,16 @@ structure LLVMType : sig
       | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
       | CT.T_StdCont _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
       | CT.T_KnownFunc _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
-                 
-      (* NOTE no need to do hacky stuff with types given the JWA convention in the
-              direct-style case. *)
-      
-      (* NOTE see paramsOfConv to ensure the ordering is right here. *)
-      | CT.T_KnownDirFunc {ret, clos, args} => 
-            mkPtr(mkFunc( (dsReturnConv ret) :: [allocPtrTy, vprocTy] @ (L.map typeOf (clos :: args) )))
+      | CT.T_KnownDirFunc _ => 
+            mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
                             
-      | CT.T_StdDirFun {ret, clos, args, exh} => 
-            mkPtr(mkFunc( (dsReturnConv ret) :: [allocPtrTy, vprocTy] @ (L.map typeOf (clos :: args @ [exh]) )))
+      | CT.T_StdDirFun _ => 
+            mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
 
     (* end case *))
     
-    (* the return convention/type used by DS funs. keep consistent with llvm-printer's
-       machine values. *)
-    and dsReturnConv rets = mkUStruct ([allocPtrTy, vprocTy] @ (L.map typeOf rets))
-
-    (* single element tuples are just a pointer to the object itself.
-    
-        NOTE 6/14/16
-        
-        We can't rely on unpacked structs + data layout strings to generate code
-        that respects the alignment constraints of our runtime system.
-        
-     *)
-    and determineTuple ts = (case ts
-        of nil => raise Fail "empty tuple. should be an enum for unit."
-        
-         | t::nil => mkPtr(typeOf t)
-
-         | ts => mkPtr(mkUStruct(List.map typeOf ts))
-        (* esac *))
+    (* the return convention/type used by the given convention. *)
+    and dsReturnConv cty = mkUStruct(typesInConv(cty))
 
     and typeOfC (ct : CF.c_type) : ty = (case ct
           of CF.PointerTy => voidStar  (* LLVM's void* *)
@@ -578,7 +556,9 @@ structure LLVMType : sig
     and typesInConv (cty : CT.ty) : ty list = (case cty
         of (CT.T_StdFun _ 
             | CT.T_StdCont _ 
-            | CT.T_KnownFunc _ ) =>
+            | CT.T_KnownFunc _
+            | CT.T_StdDirFun _
+            | CT.T_KnownDirFunc _ ) =>
                 List.tabulate(Vector.length jwaCC, 
                     fn i => Vector.sub(jwaCC, i))
          | _ => raise Fail ("only functions/continuations have calling convention types")
