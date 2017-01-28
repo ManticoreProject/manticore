@@ -1559,22 +1559,18 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 ret,
               initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
-    (* TODO rewrite this using assignToSlots as in mkCPSFunc *)
+    val (startConv, allAssign, mvs) = assignToSlots(determineCC(entry, cfgArgs))
     
-    fun dclToStr var = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
-    fun stringify vars = S.concatWith ", " (L.map dclToStr vars)
-
-    val (_,mvs) = freshMVs()
+    fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     
-    (* the calling convention used by DS funs *)
-    val cfgArgs = C.paramsOfConv(entry, cfgArgs)
-    val llArgs = List.map LV.convert cfgArgs
-    val allAssign = mvs @ llArgs
+    val comment = (* "; comment use to be here \n" *) ""
     
+    (*val comment = S.concat ["; CFG type: ", CTU.toString cfgTy, "\n",
+                            "; LLVM type: ", (stringify  llParamTys), "\n",
+                            "; LLVM arity = ", i2s(List.length llParamTys), "\n" ]*)
+   
     (* the return convention/type used by DS funs *)
-    val mvTys = L.map machineValTy mvCC
-    val returnedValTys = L.map LT.typeOf ret
-    val retTyStr = LT.nameOf(LT.mkUStruct (mvTys @ returnedValTys))
+    val retTyStr = LT.nameOf(LT.mkUStruct (Vector.toList LT.jwaCC))
     
     val attrs = ""
     
@@ -1594,9 +1590,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val body = mkBasicBlocks (ENV{labs=inherited_labs,
                                   vars=inherited_vars,
                                   blks=inherited_blks,
-                                  mvs= V.fromList(L.map LB.fromV mvs) },
-                                start, body, Regular {llArgs=llArgs,cfgArgs=cfgArgs,mvs=mvs})  
-                                
+                                  mvs=mvs},
+                                start, body, startConv)  
+
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
     total
