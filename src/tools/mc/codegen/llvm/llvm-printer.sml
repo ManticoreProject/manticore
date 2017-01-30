@@ -310,6 +310,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         
         (*val _ = if L.length args <= 0 then raise Fail "no arg?" else ()*)
         
+        val pad = CV.new("regPadding", CT.T_Any)
+        
         val getTy = LT.toRegType o LT.typeOf o C.Var.typeOf
         
         (* dummy machine val padding *)
@@ -334,15 +336,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 end
                 
                 
-
-            | (C.StdCont { clos } | C.KnownFunc { clos }) => let
+                (* TODO make this body a func so that we don't have a ... pattern for the record for saftey. *)
+            | (C.StdCont { clos } | C.KnownFunc { clos } | C.KnownDirectFunc {clos, ...}) => let
             
             (* NOTE there is no exn handler or retk, so we need to add artifical padding
-               in order to get the args into the right registers, we also need CFG vars
-               in this list so we just duplicate the clos. Kinda gross but it's fine. *)
+               in order to shift the args into the right registers according to LLVM *)
                 val actualConvVars = clos :: args
                 
-                val paddedConv = clos :: [clos, clos] @ args
+                val paddedConv = clos :: [pad, pad] @ args
                 
                 (* now that everything's been assigned to slots, drop the two generic paddings in
                    we added between the first clos and the args. *)
@@ -353,9 +354,18 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     (machineValPadding, ListPair.zipEq(actualIndices, actualConvVars))
                 end
                 
-            | C.StdDirectFunc {clos, exh, ret=notAVar} => raise Fail "todo"
+            | C.StdDirectFunc {clos, exh, ret=notAVar} => let
+                
+                val actualConvVars = clos :: exh :: args
+                
+                (* NOTE there's no retk, so we place a pad there instead as above. *)
+                val paddedConv = clos :: pad :: exh :: args
+                val (closI :: _ :: rest) = determineIndices paddedConv
+                val actualIndices = closI :: rest
+            in
+                (machineValPadding, ListPair.zipEq(actualIndices, actualConvVars))
+            end
             
-            | C.KnownDirectFunc {clos, ret=notAVar} => raise Fail "todo"
         (* end case *))
   end
 
@@ -994,7 +1004,13 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     end
                         
                                                 
-                    val paramTys = LT.argsOf(LT.deref(LB.toTy f))
+                    (* TODO the UnequalLengths error occurs here because of the padding to f.
+                       we must use determineCC to help us do this casting as in the CPS case.
+                       NOTE: that we also must check if f is a ds-stdfun or not, because
+                       we have to move the exh argument to the front of the args to match
+                       up with the calling convention in determineCC (clos :: _ :: exh :: args)
+                       to get things in the right registers. *)
+                    val paramTys = LT.argsOf(LT.deref(LB.toTy f)) 
                     val allArgs = ListPair.mapEq castArgs (allArgs, paramTys) 
                     
                     fun nonTail (lhs, jmp as (_, liveAfter)) = let
