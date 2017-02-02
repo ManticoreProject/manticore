@@ -1077,11 +1077,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                 else LB.cast b (Op.safeCast(extrTy, lhsTy)) (extr, lhsTy)
                             end
                             
-                            (*
-                            val idxs = L.tabulate(numMachineVals + L.length lhs, toC)
-                            val retVals = L.map (fn i => LB.extractV b (ret, #[i])) idxs
-                            *)
-                            
                             (* update the machine vals in the env *)
                             val newMVs = L.map (extractElm ret machineValTy) mvAssign
                             val env = ListPair.foldlEq
