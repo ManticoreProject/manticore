@@ -134,6 +134,7 @@ structure LLVMType : sig
     val voidStar : ty
     val gcHeaderTy : ty
     val tokenTy : ty
+    val stdRetTy : ty       (* for direct-style returns *)
     
     (* common integer types *)
     val i64 : ty
@@ -441,6 +442,8 @@ structure LLVMType : sig
      in
          alloc(ts, [], #1(gprRange), #1(f32Range), #1(f64Range))
      end
+     
+     val stdRetTy = mkUStruct(Vector.toList jwaCC)
        
        
        

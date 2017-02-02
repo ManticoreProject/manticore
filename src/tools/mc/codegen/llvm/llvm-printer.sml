@@ -767,6 +767,29 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 (llLab, allArgs)
             end
             
+        (* determines the return convention for direct-style. returns slot assignments for
+           both machine values that need to be returned, and the CFG vars *)
+        and determineRet (rets : CV.var list) : ( ((int * machineVal) list) * ((int * CV.var) list) ) = let
+             (* we "reserve" the clos, retk, and exh registers with padding *)
+             val dummyTy = LT.toRegType LT.uniformTy
+             val dummyPad = [dummyTy, dummyTy, dummyTy]
+             
+             val mvTys = L.map (fn mv => LT.toRegType(machineValTy mv)) mvCC
+             val retTys = L.map (fn v => LT.toRegType(LT.typeOf(CV.typeOf v))) rets
+             
+             (* first slots are assigned to machine vals, and are i64s *)
+             val idxs = LT.allocateToRegs (mvTys @ dummyPad @ retTys)
+             
+             val mvSlots = L.take(idxs, numMachineVals)
+             val retSlots = L.drop(idxs, numMachineVals + L.length dummyPad)
+             
+             val mvAssign = ListPair.zipEq (mvSlots, mvCC)
+             val retAssign = ListPair.zipEq (retSlots, rets)
+             
+        in
+             (mvAssign, retAssign)
+        end
+            
         and setupCall (func, (_, cc : (int * C.var) list)) = let
                 
                 val mvs = ListPair.zipEq(
@@ -961,20 +984,27 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     3. return S
                *)
                | C.Return vars => let
-                    val vars = L.map (fn v => lookupV(env, v)) vars
-                    val mvs = L.map (fn mv => lookupMV(env, mv)) mvCC
+                    val (mvAssign, varAssign) = determineRet vars
+                    
+                    val vars = L.map (fn (i, v) => (i, lookupV(env, v))) varAssign
+                    val mvs = L.map (fn (i, mv) => (i, lookupMV(env, mv))) mvAssign
                     val retVals = mvs @ vars
                     
                     fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
                     
-                    val offsets = L.tabulate(L.length retVals, toC)
-                    val startStruct = LB.fromC(LB.undef (LT.mkUStruct (L.map LB.toTy retVals)))
+                    fun insertElms ((i, v), strct) = let
+                        val varTy = LB.toTy v
+                        val slotTy = LT.gevType (LT.stdRetTy, #[i])
+                        val casted = if LT.same (varTy, slotTy)
+                                     then v
+                                     else LB.cast b (Op.safeCast(varTy, slotTy)) (v, slotTy)
+                    in
+                        LB.insertV b (strct, casted, #[toC i])
+                    end
                     
-                    val retStruct = ListPair.foldlEq 
-                                    (fn (i, v, strct) => LB.insertV b (strct, v, #[i]))
-                                    startStruct
-                                    (offsets, retVals)
-                                    
+                    val startStruct = LB.fromC(LB.undef LT.stdRetTy)
+                    
+                    val retStruct = L.foldl insertElms startStruct retVals
                in
                     (fn () => [LB.ret b retStruct])
                end
