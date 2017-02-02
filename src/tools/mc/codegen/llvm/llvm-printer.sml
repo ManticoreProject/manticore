@@ -767,8 +767,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 (llLab, allArgs)
             end
             
-            
-        and mantiFnCall (func, (_, cc : (int * C.var) list)) = let
+        and setupCall (func, (_, cc : (int * C.var) list)) = let
                 
                 val mvs = ListPair.zipEq(
                             L.tabulate(numMachineVals, fn i => i), 
@@ -804,6 +803,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     ) allAssign
                 
                 val llFun = lookupV(env, func)
+            in
+                (llFun, allCvtdArgs)
+            end
+            
+        and mantiFnCall x = let
+                val (llFun, allCvtdArgs) = setupCall x
             in
                 (fn () => [LB.tailCall b (llFun, V.fromList allCvtdArgs)])
             end
@@ -986,32 +991,23 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     7. lookup in env everything in liveAfter and do a branch.
                 *)
                | C.Call {f, clos, args, next} => let
-                    (* lookup everything in the env *)
-                    val f = lookupV(env, f)
-                    val clos = lookupV(env, clos)
-                    val args = L.map (fn v => lookupV(env, v)) args
-                    val mvs = L.map (fn mv => lookupMV(env, mv)) mvCC
-                    val allArgs = mvs @ clos :: args
+                    val cc = (case CV.typeOf f
+                                of CT.T_KnownDirFunc{ret,...} => (C.KnownDirectFunc{clos=clos, ret=ret}, args)
+                                 | CT.T_StdDirFun{ret,...} => let
+                                    (* probably should have made the exh the first arg -shrug- *)
+                                    val stor = ref NONE
+                                    
+                                    fun getExh (exh :: []) = (stor := SOME exh ; [])
+                                      | getExh (x :: xs) = x :: (getExh xs)
+                                      
+                                    val args = getExh args
+                                    val SOME exh = !stor
+                                 in
+                                    (C.StdDirectFunc{clos=clos, exh = exh, ret = ret}, args)
+                                 end    
+                                (* esac *))
                     
-                    (* need to cast args before call. this is normally due to mismatches
-                       between enums & tuples in LLVM (pointer vs int). *)
-                    fun castArgs (pair as (arg, paramTy)) = let
-                        val argTy = LB.toTy arg
-                    in
-                        if LT.same(argTy, paramTy)
-                        then arg
-                        else cast (Op.safeCast (argTy, paramTy)) pair
-                    end
-                        
-                                                
-                    (* TODO the UnequalLengths error occurs here because of the padding to f.
-                       we must use determineCC to help us do this casting as in the CPS case.
-                       NOTE: that we also must check if f is a ds-stdfun or not, because
-                       we have to move the exh argument to the front of the args to match
-                       up with the calling convention in determineCC (clos :: _ :: exh :: args)
-                       to get things in the right registers. *)
-                    val paramTys = LT.argsOf(LT.deref(LB.toTy f)) 
-                    val allArgs = ListPair.mapEq castArgs (allArgs, paramTys) 
+                    val (f, allArgs) = setupCall(f, determineCC cc)
                     
                     fun nonTail (lhs, jmp as (_, liveAfter)) = let
                             (* we need to remove:
