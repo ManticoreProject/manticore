@@ -31,6 +31,9 @@ structure CFACFG : sig
 
   (* return true if the given label escapes *)
     val isEscaping : CFG.label -> bool
+    
+  (* return true if the given label is returned to by a non-tail direct-style call. *)
+    val isReturnedTo : CFG.label -> bool
 
   (* return the set of labels that a control transfer targets; 
    * NONE is used to represent unknown control flow.
@@ -132,6 +135,11 @@ structure CFACFG : sig
     val {getFn=getValue, clrFn=clrValue, peekFn=peekValue, setFn=setValue} =
           CFG.Var.newProp (fn x => valueFromType (CFG.Var.typeOf x))
     val valueOf = getValue
+  
+  (* property to track whether the label is returned to in a non-tail direct-style call. *)
+    val {getFn=getReturnedTo, setFn=setReturnedTo, ...} =
+          CFG.Label.newProp (fn _ => false)
+    val isReturnedTo = getReturnedTo
 
   (* return true if the given label escapes *)
     fun isEscaping lab = (case callSitesOf lab of Unknown => true | _ => false)
@@ -435,11 +443,16 @@ structure CFACFG : sig
                                         | CFGTy.T_StdDirFun _ =>
                                             ("Call (StdDirFun)", fn CFG.StdDirectFunc _ => true | _ => false)
                                         (* esac *))
+                                        
+                        fun doNext (_, jmp as (nextLab, _)) = (
+                                setReturnedTo (nextLab, true) ;
+                                doJump jmp
+                            )
                       in
                         doApply (f,
                                  (name ^ " {f = " ^ (CFG.Var.toString f) ^ ", ...}", chk),
                                  clos :: args);
-                        Option.app (fn (_, jmp) => doJump jmp) next
+                        Option.app doNext next
                       end
                         
                   
