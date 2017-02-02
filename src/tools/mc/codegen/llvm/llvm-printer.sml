@@ -1065,22 +1065,36 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             (* grab the return values *)
                             fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
                             
+                            val (mvAssign, lhsAssign) = determineRet lhs
+                            
+                            fun extractElm ret tyOf (i, var) = let
+                                val extr = LB.extractV b (ret, #[toC i])
+                                val extrTy = LB.toTy extr
+                                val lhsTy = tyOf var
+                            in
+                                if LT.same(lhsTy, extrTy)
+                                then extr
+                                else LB.cast b (Op.safeCast(extrTy, lhsTy)) (extr, lhsTy)
+                            end
+                            
+                            (*
                             val idxs = L.tabulate(numMachineVals + L.length lhs, toC)
                             val retVals = L.map (fn i => LB.extractV b (ret, #[i])) idxs
+                            *)
                             
                             (* update the machine vals in the env *)
-                            val newMVs = L.take(retVals, numMachineVals)
+                            val newMVs = L.map (extractElm ret machineValTy) mvAssign
                             val env = ListPair.foldlEq
-                                        (fn (mv, valu, acc) => updateMV(acc, mv, valu))
+                                        (fn ((_,mv), valu, acc) => updateMV(acc, mv, valu))
                                         env
-                                        (mvCC, newMVs)
+                                        (mvAssign, newMVs)
                             
                             (* bind the lhs values *)
-                            val rhs = L.drop(retVals, numMachineVals)
+                            val rhs = L.map (extractElm ret (LT.typeOf o CV.typeOf)) lhsAssign
                             val env = ListPair.foldlEq
-                                        (fn (lhs, rhs, acc) => insertV(acc, lhs, rhs))
+                                        (fn ((_,lhs), rhs, acc) => insertV(acc, lhs, rhs))
                                         env
-                                        (lhs, rhs)
+                                        (lhsAssign, rhs)
                             
                             (* update the env with the relocated values *)
                             val env = ListPair.foldlEq
