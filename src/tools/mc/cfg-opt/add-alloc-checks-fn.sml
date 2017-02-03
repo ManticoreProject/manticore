@@ -93,7 +93,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
                            * their own allocation checks.
 			   *)
 			    val alloc = let
-				  fun f (lab, sz) = if FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab
+				  fun f (lab, sz) = if FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab orelse CFA.hasUnknownReturn lab
 					then 0w0
 					else let
 					  val sz' = blockAlloc (valOf(CFGUtil.blockOfLabel lab))
@@ -119,7 +119,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		fun rewrite (f as CFG.FUNC{lab, entry, start as CFG.BLK{args, body, exit, ...}, body=bodyBlocks}, fs) = let
 		      fun needsCheck lab = (FB.Set.member(fbSet, lab) 
                                     orelse CFA.isEscaping lab
-                                    (*orelse (CFA.isReturnedTo lab andalso getAlloc lab > 0w0)*)
+                                    orelse CFA.hasUnknownReturn lab
                                     )
 					   (* andalso (getAlloc lab > 0w0) *)
 		      val (freeVars, args', orig, entry') = (case entry (* rename parameters *)

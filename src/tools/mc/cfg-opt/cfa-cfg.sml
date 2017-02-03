@@ -32,8 +32,8 @@ structure CFACFG : sig
   (* return true if the given label escapes *)
     val isEscaping : CFG.label -> bool
     
-  (* return true if the given label is returned to an unknown callee *)
-    val isReturnedTo : CFG.label -> bool
+  (* return true if the given label is returned to by an unknown caller *)
+    val hasUnknownReturn : CFG.label -> bool
 
   (* return the set of labels that a control transfer targets; 
    * NONE is used to represent unknown control flow.
@@ -136,15 +136,21 @@ structure CFACFG : sig
           CFG.Var.newProp (fn x => valueFromType (CFG.Var.typeOf x))
     val valueOf = getValue
   
-  (* property to track whether the block label is returned to in a non-tail direct-style call. *)
+   datatype return_info
+    = UnknownCaller
+    | KnownCaller
+    | NotReturnedTo
+  
+  (* property for block labels to track info about direct-style returns *)
     val {getFn=getReturnedTo, setFn=setReturnedTo, clrFn=clrReturnedTo, ...} =
-          CFG.Label.newProp (fn _ => false)
-    val isReturnedTo = getReturnedTo
+          CFG.Label.newProp (fn _ => NotReturnedTo)
     
-    (* property to track return-sites for direct-style functions *)
+    fun hasUnknownReturn lab = (case getReturnedTo lab of UnknownCaller => true | _ => false)
+  
+    (* property for function labels to identify all blocks the function can return to *)
       val {getFn=getReturnSites, clrFn=clrReturnSites, setFn=setReturnSites, ...} =
             CFG.Label.newProp (fn _ => Unknown)
-
+            
   (* return true if the given label escapes *)
     fun isEscaping lab = (case callSitesOf lab of Unknown => true | _ => false)
 
@@ -331,13 +337,13 @@ structure CFACFG : sig
                       (* end case *))
                 fun addJump (lab, _) = add lab
                 
-                fun doNext f (_, (retLab, _)) = (
-                    setReturnedTo(retLab, true) ;
-                    (case getValue f
-                      of LABELS callees => LSet.app (addReturn retLab) callees
-                       | _ => ()
+                fun doNext f (_, (retLab, _)) = (case getValue f
+                      of LABELS callees => (
+                          LSet.app (addReturn retLab) callees ;
+                          setReturnedTo(retLab, KnownCaller)
+                          )
+                       | _ => setReturnedTo(retLab, UnknownCaller)
                        (* esac *))
-                    )
                 and addReturn retLab callee = 
                         setReturnSites(callee, Known(case getReturnSites callee
                                    of Unknown => LSet.singleton retLab
