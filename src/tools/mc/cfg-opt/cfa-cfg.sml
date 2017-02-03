@@ -340,14 +340,21 @@ structure CFACFG : sig
                 fun doNext f (_, (retLab, _)) = (case getValue f
                       of LABELS callees => (
                           LSet.app (addReturn retLab) callees ;
-                          setReturnedTo(retLab, KnownCaller)
+                          markReturnKind(retLab, KnownCaller)
                           )
-                       | _ => setReturnedTo(retLab, UnknownCaller)
+                       | _ => markReturnKind(retLab, UnknownCaller)
                        (* esac *))
                 and addReturn retLab callee = 
                         setReturnSites(callee, Known(case getReturnSites callee
                                    of Unknown => LSet.singleton retLab
                                     | Known s => LSet.add(s, retLab)))
+                
+                (* we join the new info with the current info *)
+                and markReturnKind (retLab, newInfo) = (case (getReturnedTo retLab, newInfo)
+                    of (UnknownCaller, _) => ()
+                     | (_, UnknownCaller) => setReturnedTo(retLab, UnknownCaller)
+                     | (_, KnownCaller) => setReturnedTo(retLab, KnownCaller)
+                    (* end case *))
                 
                 in
                   case exit
