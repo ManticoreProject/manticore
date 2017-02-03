@@ -32,7 +32,7 @@ structure CFACFG : sig
   (* return true if the given label escapes *)
     val isEscaping : CFG.label -> bool
     
-  (* return true if the given label is returned to by a non-tail direct-style call. *)
+  (* return true if the given label is returned to an unknown callee *)
     val isReturnedTo : CFG.label -> bool
 
   (* return the set of labels that a control transfer targets; 
@@ -136,10 +136,14 @@ structure CFACFG : sig
           CFG.Var.newProp (fn x => valueFromType (CFG.Var.typeOf x))
     val valueOf = getValue
   
-  (* property to track whether the label is returned to in a non-tail direct-style call. *)
-    val {getFn=getReturnedTo, setFn=setReturnedTo, ...} =
+  (* property to track whether the block label is returned to in a non-tail direct-style call. *)
+    val {getFn=getReturnedTo, setFn=setReturnedTo, clrFn=clrReturnedTo, ...} =
           CFG.Label.newProp (fn _ => false)
     val isReturnedTo = getReturnedTo
+    
+    (* property to track return-sites for direct-style functions *)
+      val {getFn=getReturnSites, clrFn=clrReturnSites, setFn=setReturnSites, ...} =
+            CFG.Label.newProp (fn _ => Unknown)
 
   (* return true if the given label escapes *)
     fun isEscaping lab = (case callSitesOf lab of Unknown => true | _ => false)
@@ -150,9 +154,10 @@ structure CFACFG : sig
     fun clearInfo (CFG.MODULE{code, ...}) = let
           fun doFunct (CFG.FUNC{lab, entry, start as CFG.BLK{body=sBody,args,...}, body, ...}) = (
                 clrSites lab;
+                clrReturnSites lab;
                 List.app clrValue (CFG.paramsOfConv (entry, args));
                 List.app doExp sBody;
-                List.app (fn (b as CFG.BLK{lab, body,...}) => (clrSites lab; List.app doExp body)) body)
+                List.app (fn (b as CFG.BLK{lab, body,...}) => (clrSites lab; clrReturnedTo lab; List.app doExp body)) body)
           and doExp exp = List.app clrValue (CFG.lhsOfExp exp)
           in
             List.app doFunct code
@@ -325,6 +330,19 @@ structure CFACFG : sig
                         | _ => ()
                       (* end case *))
                 fun addJump (lab, _) = add lab
+                
+                fun doNext f (_, (retLab, _)) = (
+                    setReturnedTo(retLab, true) ;
+                    (case getValue f
+                      of LABELS callees => LSet.app (addReturn retLab) callees
+                       | _ => ()
+                       (* esac *))
+                    )
+                and addReturn retLab callee = 
+                        setReturnSites(callee, Known(case getReturnSites callee
+                                   of Unknown => LSet.singleton retLab
+                                    | Known s => LSet.add(s, retLab)))
+                
                 in
                   case exit
                    of CFG.StdApply{f, ...} => addSet f
@@ -340,7 +358,7 @@ structure CFACFG : sig
                     | CFG.AllocCCall{ret, ...} => addJump ret
                     | CFG.Call{f, next, ...} => (
                         addSet f;
-                        Option.app (fn (_, jmp) => addJump jmp) next)
+                        Option.app (doNext f) next)
                     | CFG.Return _ => ()
                   (* end case *)
                 end
@@ -443,16 +461,11 @@ structure CFACFG : sig
                                         | CFGTy.T_StdDirFun _ =>
                                             ("Call (StdDirFun)", fn CFG.StdDirectFunc _ => true | _ => false)
                                         (* esac *))
-                                        
-                        fun doNext (_, jmp as (nextLab, _)) = (
-                                setReturnedTo (nextLab, true) ;
-                                doJump jmp
-                            )
                       in
                         doApply (f,
                                  (name ^ " {f = " ^ (CFG.Var.toString f) ^ ", ...}", chk),
                                  clos :: args);
-                        Option.app doNext next
+                        Option.app (fn (_, jmp) => doJump jmp) next
                       end
                         
                   
@@ -551,29 +564,18 @@ structure CFACFG : sig
                         "labelsOf: getValue(", CFG.Var.toString f, ") = ", valueToString v
                       ])
                 (* end case *))
+                
+            fun returnSites name = (case getReturnSites name
+                of Unknown => NONE
+                 | Known s => SOME s
+                (* esac *))
           in
             case xfer
              of CFG.StdApply{f, ...} => labelSet f
               | CFG.StdThrow{k, ...} => labelSet k
               | CFG.Apply{f, ...} => labelSet f
               | CFG.Call{f, ...} => labelSet f
-              (*
-              | CFG.Call{f, next=NONE, ...} => labelSet f
-              | CFG.Call{f, next=SOME(_,(nextLab,_)), ...} => 
-                    SOME(LSet.add(Option.getOpt(labelSet f, LSet.empty), nextLab))
-                (* NOTE 
-                    ideally, for a CFG.Return, we would inspect all non-tail callsites of the
-                    enclosing function and return the set of blocks following that callsite
-                    in the other functions.
-                    
-                    The issue with how our datatypes are setup is that we don't know 
-                    which function a Return belongs to.
-                    
-                    It might be worth marking the Returns with their enclosing function
-                    so we could actually do this and give better control-flow information.
-                    In CPS this is a lot easier!
-                *)
-              *)
+              | CFG.Return{name,...} => returnSites name
               | _ => SOME (LSet.addList(LSet.empty, CFGUtil.labelsOfXfer xfer))
             (* end case *)
           end

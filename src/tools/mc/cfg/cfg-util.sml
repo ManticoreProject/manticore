@@ -124,7 +124,6 @@ structure CFGUtil : sig
       | labelsOfXfer (HeapCheckN{nogc=(lab, _), ...}) = [lab]
       | labelsOfXfer (AllocCCall{ret=(lab, _), ...}) = [lab]
       | labelsOfXfer (Return _) = []
-      (*| labelsOfXfer (Call {next=SOME(_,(lab,_)), ...}) = [lab] see NOTE in cfa-cfg's labelsOf function *)
       | labelsOfXfer (Call _) = []
 
   (* project out the parameters of a convention *)

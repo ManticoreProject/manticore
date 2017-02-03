@@ -119,7 +119,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		fun rewrite (f as CFG.FUNC{lab, entry, start as CFG.BLK{args, body, exit, ...}, body=bodyBlocks}, fs) = let
 		      fun needsCheck lab = (FB.Set.member(fbSet, lab) 
                                     orelse CFA.isEscaping lab
-                                    orelse (CFA.isReturnedTo lab andalso getAlloc lab > 0w0)
+                                    (*orelse (CFA.isReturnedTo lab andalso getAlloc lab > 0w0)*)
                                     )
 					   (* andalso (getAlloc lab > 0w0) *)
 		      val (freeVars, args', orig, entry') = (case entry (* rename parameters *)
