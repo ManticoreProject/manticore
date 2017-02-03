@@ -88,6 +88,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val module = allocChecks module
           val _ = cfaClear module
           val module = allocVecChecks module
+      val _ = CheckCFG.check ("final", module)
 	  in
 	    module
 	  end
