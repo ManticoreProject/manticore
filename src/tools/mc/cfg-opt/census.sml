@@ -83,7 +83,7 @@ structure Census : sig
 
   (* initialize the census count of a function's label *)
     fun initFun (C.FUNC{lab, start, body, ...}) = let
-        fun initBlk (block as CFG.BLK{args,...}) = clr' args
+        fun initBlk (block as CFG.BLK{lab, args,...}) = (clr' args ; clrLab lab)
     in
         initBlk start;
         List.app initBlk body;
