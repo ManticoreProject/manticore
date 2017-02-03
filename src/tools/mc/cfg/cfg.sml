@@ -111,8 +111,11 @@ structure CFG =
           next : (var list * jump) option
       }
                     
-      (* a direct-style Throw of a return continuation corresponding to a Call *)
-      | Return of var list  (* the args *)
+      (* a direct-style Throw of a return continuation corresponding to a Call.
+         We attach the name of the enclosing function to aid analysis and 
+         answer simple questions such as where this return might go to.
+       *)
+      | Return of { args : var list, name : label }
       
       | Goto of jump
       | If of (cond * jump * jump)

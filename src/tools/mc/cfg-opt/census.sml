@@ -78,7 +78,7 @@ structure Census : sig
       | doExit (C.HeapCheck{nogc, ...}) = doJump nogc
       | doExit (C.HeapCheckN{nogc, n, ...}) = (inc n; doJump nogc)
       | doExit (C.AllocCCall{lhs, f, args, ret}) = (List.app inc lhs; inc f; inc' args; doJump ret)
-      | doExit (C.Return args) = inc' args
+      | doExit (C.Return {args,...}) = inc' args
       | doExit (C.Call{f, clos, args, next}) = (inc f; inc clos; inc' args; doNext next)
 
   (* initialize the census count of a function's label *)

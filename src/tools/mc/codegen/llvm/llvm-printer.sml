@@ -983,7 +983,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     2. initialize a struct S that is "in register" with the retVals
                     3. return S
                *)
-               | C.Return vars => let
+               | C.Return {args=vars,...} => let
                     val (mvAssign, varAssign) = determineRet vars
                     
                     val vars = L.map (fn (i, v) => (i, lookupV(env, v))) varAssign

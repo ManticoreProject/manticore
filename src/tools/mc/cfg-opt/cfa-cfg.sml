@@ -434,7 +434,7 @@ structure CFACFG : sig
                         
                         (kavon, 1/2/17)
                       *)
-                  | doXfer (CFG.Return args) = List.app escape args (* see above comment *)
+                  | doXfer (CFG.Return {args, name}) = List.app escape args (* see above comment *)
                   
                   | doXfer (CFG.Call{f, clos, args, next}) = let
                         val (name, chk) = (case CFG.Var.typeOf f

@@ -100,7 +100,7 @@ structure CFGUtil : sig
       | varsOfXfer (Call{f, clos, args, next}) = 
             (* NOTE(kavon): going with the live vars here *)
             f :: clos :: args @ (fn (SOME(_,(_,fvNext))) => fvNext | (NONE) => []) next
-      | varsOfXfer (Return args) = args
+      | varsOfXfer (Return {args,...}) = args
 
    (* project the lhs variables of a control transfer *)
     fun lhsOfXfer (AllocCCall{lhs, ...}) = lhs

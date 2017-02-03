@@ -564,13 +564,18 @@ structure CheckCFG : sig
                     )
                   end
                   
-                  | CFG.Return args => ( 
+                  | CFG.Return {args, name} => ( 
                     chkVars(env, args, "Return");
+                    
                     (case L.typeOf enclF
                       of (Ty.T_StdDirFun{ret,...} | Ty.T_KnownDirFunc{ret,...}) =>
                             checkArgTypes (TyU.match, "Return", ret, typesOf args)
                        | _ => error ["Return can only appear in a direct-style fun"]
-                       (* esac *))
+                       (* esac *)) ;
+                       
+                    if L.same(enclF, name)
+                    then ()
+                    else error ["expected the name of a return to be the enclosing function."]
                      )
                   
                 (* end case *))

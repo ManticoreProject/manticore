@@ -124,7 +124,7 @@ structure Contract : sig
 	      | C.HeapCheck{hck, szb, nogc} => C.HeapCheck{hck=hck, szb=szb, nogc=contractJump nogc}
 	      | C.AllocCCall{lhs, f, args, ret} => 
                    C.AllocCCall{lhs=lhs, f=applySubst(env, f), args=applySubst'(env, args), ret=contractJump ret}
-          | C.Return args => C.Return(applySubst'(env, args))
+          | C.Return {args, name} => C.Return {args = applySubst'(env, args), name = name}
           | C.Call {f, clos, args, next} =>
                 C.Call {
                     f = applySubst(env, f),

@@ -1057,7 +1057,7 @@ structure DirectFlatClosureWithCFA : sig
                     (case CC.checkRets(k, fb)
                       of SOME(CC.ReturnCont) => 
                           (* if this is this a throw to the retk parameter of an enclosing function, it's a return. *)
-                            cvtReturnThrow(env, k, args)
+                            cvtReturnThrow(env, fb, args)
                        
                        | SOME(CC.ExnCont) => (* NOTE TODO FIXME This only works for the top-level exception handler! *)
                                                 cvtExnThrow(env, k, args)
@@ -1094,10 +1094,10 @@ structure DirectFlatClosureWithCFA : sig
 		  (argBinds, CFG.Goto(labelOf k, args))
 		end
         
-        and cvtReturnThrow (env, k, args) = let (* TODO remove the k once things are working *)
+        and cvtReturnThrow (env, CPS.FB{f,...}, args) = let
             val (argBinds, args) = lookupVars(env, args)
         in
-            (argBinds, CFG.Return args)
+            (argBinds, CFG.Return {args=args, name = labelOf f})
         end
         
         and cvtExnThrow (env, k, args) = let

@@ -252,7 +252,7 @@ structure PrintCFG : sig
           | CFG.Call {f, clos, args, next=NONE} =>
               prCall("tailcall", nil, f, clos::args)
           
-          | CFG.Return args => prReturn("return", args)
+          | CFG.Return {args, name} => prReturn("return", args, name)
            
 		  | CFG.If(cond, j1, j2) => (
 		      prl ["if ", CondUtil.fmt varUseToString cond, "\n"];
@@ -295,9 +295,10 @@ structure PrintCFG : sig
             pr "\n"
         )
         
-      and prReturn (prefix, args) = (
+      and prReturn (prefix, args, name) = (
           prl [prefix, " "];
           prList varUseToString args;
+          prl [" from ", labelUseToString name];
           pr "\n"
       )
       
