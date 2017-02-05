@@ -377,7 +377,7 @@ structure MLB : sig
             in
               if Controls.get BasicControl.direct (* TEMPORARY *)
               then (*parrayPts @ topLevelSchedPts @ runtimeBasisLibPts @ *) []
-              else (* parrayPts @ topLevelSchedPts @ runtimeBasisLibPts *) []
+              else topLevelSchedPts @ runtimeBasisLibPts
             end
           else let
 	  (* implicit-threading library *)
