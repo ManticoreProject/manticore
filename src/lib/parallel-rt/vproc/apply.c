@@ -38,6 +38,10 @@ Value_t ApplyFun (VProc_t *vp, Value_t f, Value_t arg)
 
 volatile uint64_t numGCs = 0;
 
+
+#ifndef DIRECT_STYLE
+/* CPS version, which is basically a trampoline */
+
 /* \brief Run Manticore code.
  * \param vp the host vproc
  * \param codeP the address of the code to run
@@ -49,13 +53,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   /* allocate the return and exception continuation objects
    * in the VProc's heap.
    */
-    Value_t retCont = 
-#ifdef DIRECT_STYLE
-        M_UNIT;      /* stubbing it out because its not used. */
-#else
-        WrapWord(vp, (Word_t)&ASM_Return);
-#endif
-
+    Value_t retCont = WrapWord(vp, (Word_t)&ASM_Return);
     Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
 
     while (1) {
@@ -165,3 +163,66 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
     }
 
 } /* end of RunManticore */
+
+
+
+
+
+
+#else /* DIRECT_STYLE */
+
+/* direct-style version below */
+
+extern void ASM_DS_Start (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t ek);
+// extern int ASM_Return;
+// extern int ASM_UncaughtExn;
+// extern int ASM_Resume;
+
+/* \brief Run Manticore code.
+ * \param vp the host vproc
+ * \param codeP the address of the code to run
+ * \param arg the value of the standard argument register
+ * \param envP the value of the standard environment-pointer register
+ */
+void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
+{
+  /* allocate the top-level exception handler in the heap */
+    Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
+    
+#ifndef NDEBUG
+	if (DebugFlg)
+	    SayDebug("[%2d] ASM_DS_Start(%p, %p, %p, %p, %p)\n",
+                 vp->id, (void*)vp, (void*)codeP, (void*)arg, (void*)envP, (void*)exnCont);
+#endif
+
+    LogRunThread(vp, 0);
+	RequestCode_t req = ASM_DS_Start (vp, codeP, arg, envP, exnCont);
+    
+    /* reentry to RTS is done via calls, so this return should never happen! */
+    Die("should have never returned to RunManticore");
+
+} /* end RunManticore */
+
+/* 
+ *
+ */
+VProc_t* RequestService(VProc_t* vp, RequestCode_t req) {
+    LogStopThread(vp, 0, req);
+    
+    /* somewhere, the current Stack needs to be passed to this func (perhaps via the VP) */
+    switch (req) {
+        
+        
+        case REQ_UncaughtExn:	/* raising an exception */ /* TODO move to the end later */
+  	    Die ("uncaught exception\n");
+        
+        case REQ_GC:
+        case REQ_Return:
+        case REQ_Sleep:
+        default:
+  	    Die("unknown signal %d\n", req);
+    }
+}
+
+
+#endif /* DIRECT_STYLE */
