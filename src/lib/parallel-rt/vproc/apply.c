@@ -49,7 +49,13 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   /* allocate the return and exception continuation objects
    * in the VProc's heap.
    */
-    Value_t retCont = WrapWord(vp, (Word_t)&ASM_Return);
+    Value_t retCont = 
+#ifdef DIRECT_STYLE
+        M_UNIT;      /* stubbing it out because its not used. */
+#else
+        WrapWord(vp, (Word_t)&ASM_Return);
+#endif
+
     Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
 
     while (1) {

@@ -33,6 +33,11 @@ else
   ENABLE_GC_STATS=true
   ENABLE_PERF_COUNTERS=true
 endif
+ifeq (,$(findstring direct,$(BUILD_OPTIONS)))
+  ENABLE_DIRECT=false
+else
+  ENABLE_DIRECT=true
+endif
 
 #
 # tools and flags
@@ -95,6 +100,10 @@ endif
 
 ifeq ($(ENABLE_GC_STATS),false)
   CPPFLAGS += -DNO_GC_STATS
+endif
+
+ifeq ($(ENABLE_DIRECT),true)
+  CPPFLAGS += -DDIRECT_STYLE
 endif
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS) $(CPU_SRCS)
