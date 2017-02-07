@@ -139,7 +139,8 @@ structure MLB : sig
 	    add (Controls.get BasicControl.sequential, "SEQUENTIAL",
 	    add (Controls.get BasicControl.logging, "ENABLE_LOGGING",
 	    add (not(Controls.get BasicControl.debug), "NDEBUG",
-	      [])))
+	    add (Controls.get BasicControl.direct, "DIRECT_STYLE",
+	      []))))
 	  end
 
   (* pass the file through a sequence of preprocessors *)
@@ -373,7 +374,7 @@ structure MLB : sig
           (* load the top-level scheduler *)
 	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib "no-op-scheduler", env)
 	  (* parallel array *)
-	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
+	    (*val parrayPts = loadMLB(LoadPaths.parrayLib, env)*)
             in
               if Controls.get BasicControl.direct (* TEMPORARY *)
               then (*parrayPts @ topLevelSchedPts @ runtimeBasisLibPts @ *) []
