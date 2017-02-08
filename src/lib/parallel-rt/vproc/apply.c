@@ -196,7 +196,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 #endif
 
     LogRunThread(vp, 0);
-	RequestCode_t req = ASM_DS_Start (vp, codeP, arg, envP, exnCont);
+	ASM_DS_Start (vp, codeP, arg, envP, exnCont);
     
     /* reentry to RTS is done via calls, so this return should never happen! */
     Die("should have never returned to RunManticore");

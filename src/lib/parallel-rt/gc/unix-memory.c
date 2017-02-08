@@ -28,6 +28,15 @@
 #  endif
 #endif
 
+
+/* determine guard size */
+#ifdef _SC_PAGESIZE
+# define GUARD_PAGE_BYTES _SC_PAGESIZE
+#else /* no _SC_PAGESIZE, even though unistd.h defines it. */
+# define GUARD_PAGE_BYTES 4096
+#endif /* _SC_PAGESIZE */
+
+
 STATIC_INLINE void *MapMemory (void *base, size_t szb)
 {
   /* NOTE: we use -1 as the fd argument, because Mac OS X uses the fd for
@@ -98,3 +107,70 @@ void FreeMemory (void *base, int szB)
     UnmapMemory (base, szB);
 
 } /* end of FreeMemory */
+
+// allocates a region of memory suitable for
+// use as a stack. Note that it returns the base
+// of the block so it can be freed, you must prepare
+// the stack before use. Returns 0 if failed.
+void* AllocStack(size_t numBytes) {
+    
+    // NOTE automatic resizing using MAP_GROWSDOWN has
+	// been deprecated: https://lwn.net/Articles/294001/
+    
+	size_t guardSz = GUARD_PAGE_BYTES;
+    
+    void* mem = MapMemory(0, numBytes + guardSz);
+    
+    if(mem == MAP_FAILED) {
+        return 0;
+    }
+    
+    // we protect the low end of the block to
+    // detect stack overflow. this is done manually
+    // because mmap on OS X seems to only place a protected
+    // page after the buffer, not before it.
+    if(mprotect(mem, guardSz, PROT_NONE)) {
+        // failed to initialize guard area.
+        return 0;
+    }
+    
+    return mem;
+}
+
+void FreeStack(void* base, size_t numBytes) {
+    size_t guardSz = GUARD_PAGE_BYTES;
+    
+    UnmapMemory(base, numBytes + guardSz);
+}
+
+
+// Takes a region of memory from AllocStack and returns a pointer suitable
+// for use as a stack pointer into that region of memory, ignoring any
+// data already in the region.
+//
+// The pointer returned is guarenteed to be 16-byte aligned, and
+// have the 8 bytes ahead of it available to write
+// a value such as a return address.
+// Here's a picture (where numBytes is approximate):
+//
+//                16-byte aligned
+//                      v
+// | guard |  numBytes  |bbbbbbbb |  high addresses >
+// ^                    ^
+// base ptr             returned ptr 
+//
+void* GetStackPtr(void* base, size_t numBytes) {
+    size_t guardSz = GUARD_PAGE_BYTES;
+    uint64_t align = 16ULL;	// need 16-byte alignment
+    
+    uint64_t val = (uint64_t) base;
+    uint64_t len = numBytes + guardSz;
+    
+	val = val + len - 8;			// switch sides, leaving 8 bytes
+									//   for a return address.
+	val = val & (~(align - 1));		// realign downwards if nessecary.
+
+	void* sp = (void*)val;
+
+	return sp;
+}
