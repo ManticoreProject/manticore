@@ -161,14 +161,13 @@ void FreeStack(void* base, size_t numBytes) {
 //
 void* GetStackPtr(void* base, size_t numBytes) {
     size_t guardSz = GUARD_PAGE_BYTES;
-    uint64_t align = 16ULL;	// need 16-byte alignment
     
     uint64_t val = (uint64_t) base;
     uint64_t len = numBytes + guardSz;
     
 	val = val + len - 8;			// switch sides, leaving 8 bytes
 									//   for a return address.
-	val = val & (~(align - 1));		// realign downwards if nessecary.
+	val = ROUNDDOWN(val, 16ULL);	// realign downwards if nessecary.
 
 	void* sp = (void*)val;
 
