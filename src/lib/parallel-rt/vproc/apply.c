@@ -173,12 +173,20 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
 /* direct-style version below */
 
-extern void ASM_DS_Start (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t ek);
+extern void ASM_Apply_StdDS (
+    VProc_t *vp,
+    Addr_t cp, 
+    Value_t ep,
+    Value_t exh,
+    Value_t arg);
+    
 // extern int ASM_Return;
 // extern int ASM_UncaughtExn;
 // extern int ASM_Resume;
 
-/* \brief Run Manticore code.
+/* \brief Run Manticore code. Assumption is that this function is called
+ *         only when bootstrapping the vproc with the initial function.
+ *
  * \param vp the host vproc
  * \param codeP the address of the code to run
  * \param arg the value of the standard argument register
@@ -188,18 +196,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 {
   /* allocate the top-level exception handler in the heap */
     Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
+  
+  /* allocate the main function's stack */
+  
+  /* apply the given function  */
     
-#ifndef NDEBUG
-	if (DebugFlg)
-	    SayDebug("[%2d] ASM_DS_Start(%p, %p, %p, %p, %p)\n",
-                 vp->id, (void*)vp, (void*)codeP, (void*)arg, (void*)envP, (void*)exnCont);
-#endif
-
-    LogRunThread(vp, 0);
-	ASM_DS_Start (vp, codeP, arg, envP, exnCont);
-    
-    /* reentry to RTS is done via calls, so this return should never happen! */
-    Die("should have never returned to RunManticore");
 
 } /* end RunManticore */
 
@@ -246,14 +247,7 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
                it to the scheduler fn in BOM */
     	    }
             else {
-              /* setup the return from GC */
-              /* we need to invoke the stdCont to resume after GC */
-            codeP = ValueToAddr (vp->stdCont);
-            envP = vp->stdEnvPtr;
-              /* clear the dead registers */
-            arg = M_UNIT;
-            retCont = M_UNIT;
-            exnCont = M_UNIT;
+              /* return to the current stack from GC */
             }
           
         break;  

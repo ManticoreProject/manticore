@@ -20,7 +20,101 @@
 // TODO get the right value
 #define STACK_HDR   12345
 
-    .text
+// 0xDEADBED == 233495533
+#define INVALID_RET_ADDR1 233495533
+
+// 0xCAFEBED == 212855789
+#define INVALID_RET_ADDR2 212855789
+
+    .text  
+      
+      
+// used by RequestService to invoke the scheduler,
+// since RequestService is already running on a
+// Manticore stack, and has a pointer to the stack's lock.
+    .p2align 3
+    .globl	_GSYM(ASM_Apply_StdDS)
+_GSYM(ASM_Apply_StdDS):
+    // setup standard convention registers
+    movq    %rdi, VPROC_PTR_REG
+    movq    %rsi, TMP_REG1      // code ptr
+    movq    %rdx, STD_EP_REG
+    movq    %rcx, STD_EXH_REG
+    movq    %r8, STD_ARG_REG
+    movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
+    
+    // the function we jmp to should never 
+    // return to our caller. o/w we need to
+    // save registers.
+    movq    $INVALID_RET_ADDR1, (%rsp)
+    jmp     *TMP_REG1
+    
+    
+    
+/*
+    the EP of this function is as follows:
+    ====================
+        &ASM_SwitchFrom    <------ EP
+    --------------------
+          toStack
+    ====================
+        high addresses
+        
+    it is used to resume a preempted stack.
+*/
+    .p2align 3
+    .globl	_GSYM(ASM_SwitchFrom)
+_GSYM(ASM_SwitchFrom):
+// calling convention is ds-stdfun
+// the arg is the stack we're switching from.
+// the stack we will try to switch to is
+// already in our environment.
+
+/* NOTE we should probably return to our caller
+   in the case of the stack being claimed by some
+   other thread? The difficulty is that
+   if we unlocked our own thread, and then it was
+   taken away while we were trying to acquire another
+   stack, we're hosed. To support work-stealing
+   I think we would need a more complicated protocol.
+ */
+    
+    movq    (STD_ARG_REG), TMP_REG1  // unbox the arg
+    movq    $0, (TMP_REG1)    // unlock the current stack
+    movq    8(STD_EP_REG), TMP_REG2  // grab the target stack
+    jmp     do_switch
+
+retry_switch:
+    pause
+    pause
+do_switch:
+/* NOTE probably need a cmpxchg if there's a chance two
+   threads will try unlocking the same stack,
+   to mark it as claimed?  */
+    cmpq    $0, (TMP_REG2)  // make sure its unlocked
+    jne     retry_switch
+    
+    // now we can switch
+    leaq    8(TMP_REG2), %rsp
+    
+    // set ep, arg, and exh to unit
+    movq    $0, STD_ARG_REG
+    movq    $0, STD_EP_REG
+    movq    $0, STD_EXH_REG
+    ret
+    
+/////////////////////////////////////////
+    
+    
+
+
+
+
+
+
+
+    
+    
     .p2align 3
     .globl	_GSYM(ASM_DS_Return)
 _GSYM(ASM_DS_Return):   // the Manticore main function returns here.
@@ -80,34 +174,3 @@ asm_get_service:
     movq    VPROC_PTR_REG, %rdi // rdi = arg 1
     movq    TMP_REG1, %rsi      // rsi = arg 2
     jmp     _GSYM(RequestService)
-
-
-retry_resume:
-    pause
-    pause
-    // fall-through to ResumeStack
-
-.p2align 3
-.globl	_GSYM(ASM_DS_ResumeStack)
-_GSYM(ASM_DS_ResumeStack):
-    // args: vp, stack cont, stdarg, exh, ep
-    // NOTE this function performs a longjmp, discarding
-    // the current stack pointer
-    
-    cmpq    $0, (%rsi)
-    jne     retry_resume
-    
-    /* set stack ptr */
-    leaq    8(%rsi), %rsp
-    // rsi is now dead
-    
-    /* restore manticore registers.
-       be careful about order */
-    movq    %rdi, VPROC_PTR_REG
-    movq    %rdx, STD_ARG_REG
-    movq    %rcx, STD_EXH_REG
-    movq    %r8, STD_EP_REG
-    movq    ALLOC_PTR(VPROC_PTR_REG), ALLOC_PTR_REG
-    ret
-    
-    
