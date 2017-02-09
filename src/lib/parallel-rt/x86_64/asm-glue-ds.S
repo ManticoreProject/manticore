@@ -71,7 +71,10 @@ _GSYM(ASM_Apply_StdDS):
     ====================
         &ASM_SwitchFrom    <------ EP
     --------------------
-          toStack
+     toStack's stack cont Ptr
+    --------------------
+    toStack's allocation
+       record entry Ptr
     ====================
         high addresses
         
