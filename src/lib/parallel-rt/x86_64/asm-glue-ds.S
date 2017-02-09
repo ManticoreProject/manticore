@@ -27,7 +27,26 @@
 #define INVALID_RET_ADDR2 212855789
 
     .text  
-      
+
+// Apply_StdDS using the given stackptr.
+// note that the stackptr is assumed to be
+// pointing to the 16-byte aligned return address.
+    .p2align 3
+    .globl	_GSYM(ASM_Apply_StdDS_WithStk)
+_GSYM(ASM_Apply_StdDS_WithStk):
+    movq    %r9, %rsp
+    jmp     _GSYM(ASM_Apply_StdDS)
+    
+    
+// Apply_StdDS on the current stack, but
+// returning to C is an unexpected error so
+// we overwrite the return address.
+    .p2align 3
+    .globl	_GSYM(ASM_Apply_StdDS_NoRet)
+_GSYM(ASM_Apply_StdDS_NoRet):
+    movq    $INVALID_RET_ADDR1, (%rsp)
+    jmp     _GSYM(ASM_Apply_StdDS)
+  
       
 // used by RequestService to invoke the scheduler,
 // since RequestService is already running on a
@@ -42,11 +61,7 @@ _GSYM(ASM_Apply_StdDS):
     movq    %rcx, STD_EXH_REG
     movq    %r8, STD_ARG_REG
     movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
-    
-    // the function we jmp to should never 
-    // return to our caller. o/w we need to
-    // save registers.
-    movq    $INVALID_RET_ADDR1, (%rsp)
+    // call the function
     jmp     *TMP_REG1
     
     

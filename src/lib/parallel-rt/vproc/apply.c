@@ -12,6 +12,7 @@
 #include "scheduler.h"
 #include "heap.h"
 #include "event-log.h"
+#include "os-memory.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -172,15 +173,22 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 #else /* DIRECT_STYLE */
 
 /* direct-style version below */
-
-extern void ASM_Apply_StdDS (
+extern void ASM_Apply_StdDS_NoRet (
     VProc_t *vp,
     Addr_t cp, 
     Value_t ep,
     Value_t exh,
     Value_t arg);
+
+extern void ASM_Apply_StdDS_WithStk (
+    VProc_t *vp,
+    Addr_t cp, 
+    Value_t ep,
+    Value_t exh,
+    Value_t arg,
+    Value_t stkPtr);
     
-// extern int ASM_Return;
+extern int ASM_DS_Return;
 // extern int ASM_UncaughtExn;
 // extern int ASM_Resume;
 
@@ -197,11 +205,22 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   /* allocate the top-level exception handler in the heap */
     Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
   
-  /* allocate the main function's stack */
+  /* allocate & initialize the main function's stack */
+  const size_t size = 8192;
+  void* stk = AllocStack(size);
+  void* stkPtr = GetStackPtr(stk, size);
+  
+  uint64_t* ptrToRetAddr = (uint64_t*)stkPtr;
+  *ptrToRetAddr = (uint64_t)&ASM_DS_Return;
+  
+  /* NOTE probably need to put this stack in the allocated list of the vp */
   
   /* apply the given function  */
+  LogRunThread(vp, 0);
+  ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
+  
+  Die("unexpected return to RunManticore");
     
-
 } /* end RunManticore */
 
 /* 
@@ -253,6 +272,7 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
         break;  
         /********************/
         case REQ_Return:
+            Die("Main Function successfully tried to request termination.");
         case REQ_Sleep:
         default:
             Die("unknown signal %d\n", req);
