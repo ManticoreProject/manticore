@@ -109,7 +109,7 @@ endif
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS) $(CPU_SRCS)
 C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))
 
-ASM_SRCS	= asm-glue.S asm-scheduler.S
+ASM_SRCS	= asm-glue.S asm-scheduler.S asm-glue-ds.S
 ASM_OBJS	= $(patsubst %.S,%.o,$(ASM_SRCS))
 
 OBJS		= $(C_OBJS) $(ASM_OBJS)

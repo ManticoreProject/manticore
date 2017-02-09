@@ -204,12 +204,19 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 } /* end RunManticore */
 
 /* 
+ * This function doesn't return normally. 
  *
+ * If we perform a context switch to some other stack,
+ * we place the captured stack into a closure that will
+ * effectively perform a longjmp when invoked.
+ *
+ * That closure is placed in the scheduling queue,
+ * and then another very similar closure is retrieved 
+ * from the queue and invoked. 
  */
-VProc_t* RequestService(VProc_t* vp, RequestCode_t req) {
+void RequestService(VProc_t* vp, void* allocPtr, void* curStk, RequestCode_t req) {
     LogStopThread(vp, 0, req);
     
-    /* somewhere, the current Stack needs to be passed to this func (perhaps via the VP) */
     switch (req) {
         
         
