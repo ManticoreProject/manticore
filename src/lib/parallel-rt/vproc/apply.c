@@ -214,20 +214,60 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
  * and then another very similar closure is retrieved 
  * from the queue and invoked. 
  */
-void RequestService(VProc_t* vp, void* allocPtr, void* curStk, RequestCode_t req) {
+VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     LogStopThread(vp, 0, req);
     
+    Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
+    
     switch (req) {
-        
-        
-        case REQ_UncaughtExn:	/* raising an exception */ /* TODO move to the end later */
-  	    Die ("uncaught exception\n");
-        
         case REQ_GC:
+        /* check to see if we actually need to do a GC, since this request
+         * might be from a pending signal.
+         */
+          if ((LimitPtr(vp) < vp->allocPtr) || vp->globalGCPending) {
+              /* request a minor GC */
+                MinorGC (vp);
+          }
+          
+          
+          /* check for asynchronous signals */
+    	    if (oldLimitPtr == 0) {
+    #ifndef NDEBUG
+    	      if (DebugFlg)
+    		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
+    #endif
+    	      /* an asynchronous signal has arrived */
+    	        vp->sigPending = M_TRUE;
+    	    }
+
+    	  /* is there a pending signal that we can deliver? */
+    	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
+    		/* package up the current stack and pass 
+               it to the scheduler fn in BOM */
+    	    }
+            else {
+              /* setup the return from GC */
+              /* we need to invoke the stdCont to resume after GC */
+            codeP = ValueToAddr (vp->stdCont);
+            envP = vp->stdEnvPtr;
+              /* clear the dead registers */
+            arg = M_UNIT;
+            retCont = M_UNIT;
+            exnCont = M_UNIT;
+            }
+          
+        break;  
+        /********************/
         case REQ_Return:
         case REQ_Sleep:
         default:
-  	    Die("unknown signal %d\n", req);
+            Die("unknown signal %d\n", req);
+            break;
+            
+        case REQ_UncaughtExn:
+            Die ("uncaught exception\n");
+            break;
+        
     }
 }
 
