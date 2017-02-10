@@ -237,6 +237,10 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     LogStopThread(vp, 0, req);
     
+    Value_t envP, arg, exnCont;
+    Addr_t codeP;
+    FunClosure_t* shutdownClos;
+    
     Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
     
     switch (req) {
@@ -272,7 +276,23 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
         break;  
         /********************/
         case REQ_Return:
-            Die("Main Function successfully tried to request termination.");
+                shutdownClos = ValueToClosure(vp->shutdownCont);
+                // yes, the two lines below look fishy.
+                // FunClosure_t uses {cp, ep}, but
+                // the codegen uses {ep, cp}
+        	    envP = shutdownClos->cp;
+                codeP = ValueToAddr(shutdownClos->ep);
+        	    arg = M_UNIT;
+        	    exnCont = M_UNIT;
+        	    vp->atomic = M_TRUE;
+        	    vp->sigPending = M_FALSE;
+        	    vp->shutdownPending = M_TRUE;
+                
+        	    ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+                
+                Die("Should have never gotten here. 123");
+                break;
+                
         case REQ_Sleep:
         default:
             Die("unknown signal %d\n", req);
