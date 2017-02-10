@@ -26,6 +26,13 @@
  *  | -- 48 bits -- | -- 15 bits -- | -- 1 bit -- |
  *  |	  length    |       1       |      1      |
  *  ---------------------------------------------- 
+ *
+ *  Stack object: varies depending on the repurposed "length" field
+ *
+ *  ---------------------------------------------- 
+ *  | -- 48 bits -- | -- 15 bits -- | -- 1 bit -- |
+ *  |	  length    |       2       |      1      |
+ *  ---------------------------------------------- 
  * 
  * We also have a header format for forwarding pointers.
  *
@@ -63,6 +70,7 @@
 #define TABLE_TAG	1
 #define TABLE_LEN_ID	15
 
+#define STACK_TAG_BITS 2
 #define VEC_TAG_BITS 1
 #define RAW_TAG_BITS 0
 
@@ -74,5 +82,30 @@
 
 //Raw object
 #define RAW_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((RAW_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
+
+
+// for the purposes of initializing a stack header in C, the following are available:
+
+//Stack descriptors
+#define STACK_HDR(kind)	((((Word_t)kind) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((STACK_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
+
+typedef enum {
+    /*
+    an object containing mmap information about
+    a contiguously allocated stack region.
+    In particular, this object is managed
+    using a mark-sweep strategy.
+    */
+    STK_MMapInfo=1,
+    
+    /* a stack object */
+    STK_StackData=2,
+} StackObjKind_t;
+
+// for the purposes of initializing a stack header in hand-written assembly, we also
+// provide the computed values (please keep this consistent with the above.)
+
+#define STACK_HDR_MMAPINFO  32773
+#define STACK_HDR_STKDATA   65541
 
 #endif /* !_HEADER_BITS_H_ */
