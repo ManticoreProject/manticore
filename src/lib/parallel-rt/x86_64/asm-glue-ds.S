@@ -8,17 +8,17 @@
 #include "asm-defs.h"
 #include "asm-offsets.h"
 #include "registers.h"
-// TODO move the GC header below into header-bits.h
-// #include "header-bits.h"
+
+// for the purposes of initializing a stack header, we have the precomputed
+// values below. Please keep consistent with header-bits.h !!
+#define STACK_HDR_MMAPINFO  32773
+#define STACK_HDR_STKDATA   65541
 
 /* regs rarely used by manticore (11th-13th args)
    and unused by C call-convention. */
 #define TMP_REG1            %r13    
 #define TMP_REG2            %r14
 #define TMP_REG3            %r15
-
-// TODO get the right value
-#define STACK_HDR   12345
 
 // 0xDEADBED == 233495533
 #define INVALID_RET_ADDR1 233495533
@@ -174,7 +174,7 @@ asm_get_service:
     
     // initialize metadata
     subq    $16, %rsp
-    movq    $STACK_HDR, (%rsp)
+    movq    $STACK_HDR_STKDATA, (%rsp)
     movq    $1, 8(%rsp)     // 1 == LOCKED
     
     /* TODO reorder the args of RequestService

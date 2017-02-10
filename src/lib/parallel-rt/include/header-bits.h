@@ -84,7 +84,8 @@
 #define RAW_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((RAW_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
 
-// for the purposes of initializing a stack header in C, the following are available:
+// for the purposes of initializing a stack header in C, the following are available. 
+// Note that if you change anything below, you'll need to update it in asm-glue-ds.S
 
 //Stack descriptors
 #define STACK_HDR(kind)	((((Word_t)kind) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((STACK_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
@@ -102,10 +103,6 @@ typedef enum {
     STK_StackData=2,
 } StackObjKind_t;
 
-// for the purposes of initializing a stack header in hand-written assembly, we also
-// provide the computed values (please keep this consistent with the above.)
 
-#define STACK_HDR_MMAPINFO  32773
-#define STACK_HDR_STKDATA   65541
 
 #endif /* !_HEADER_BITS_H_ */
