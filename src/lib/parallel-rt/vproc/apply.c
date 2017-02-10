@@ -245,6 +245,9 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     
     switch (req) {
         case REQ_GC:
+        
+        Die("requesting GC is not supported right now.");
+        
         /* check to see if we actually need to do a GC, since this request
          * might be from a pending signal.
          */
