@@ -148,15 +148,15 @@ void FreeStack(void* base, size_t numBytes) {
 // for use as a stack pointer into that region of memory, ignoring any
 // data already in the region.
 //
-// The pointer returned is guarenteed to be 16-byte aligned, and
-// have the 8 bytes ahead of it available to write
-// a value such as a return address.
+// The pointer p returned is guarenteed to be such that p+8 is 
+// 16-byte aligned, per the SysV ABI. The pointer returned
+// is ready to be used as a stack pointer after writing a ret addr.
 // Here's a picture (where numBytes is approximate):
 //
-//                16-byte aligned
-//                      v
-// | guard |  numBytes  |bbbbbbbb |  high addresses >
-// ^                    ^
+//                            16-byte aligned
+//                                   v
+// | guard |  numBytes-ish  |bbbbbbbb|  high addresses >
+// ^                        ^
 // base ptr             returned ptr 
 //
 void* GetStackPtr(void* base, size_t numBytes) {
@@ -165,10 +165,10 @@ void* GetStackPtr(void* base, size_t numBytes) {
     uint64_t val = (uint64_t) base;
     uint64_t len = numBytes + guardSz;
     
-	val = val + len - 8;			// switch sides, leaving 8 bytes
-									//   for a return address.
-	val = ROUNDDOWN(val, 16ULL);	// realign downwards if nessecary.
-
+    val = val + len - 8;			// switch sides, leaving some headroom.
+    val = ROUNDDOWN(val, 16ULL);	// realign downwards.
+    val = val - 8;					// make space for return addr.
+    
 	void* sp = (void*)val;
 
 	return sp;
