@@ -723,10 +723,10 @@ structure DirectFlatClosureWithCFA : sig
             | stdFuncConvention (env, args, rets) =
                 raise Fail "non-standard apply convention"
         (* create a known function convention for a list of parameters *)
-          and kwnFuncConvention (env, args, [ret, exh]) = let
+          and kwnFuncConvention (env, args, ret::maybeExh) = let
                 val env = envWithFreshEP env
                 val (env, args) = newLocals (env, args)
-                val (env, exh) = newLocal (env, exh)
+                val (env, maybeExh) = newLocals (env, maybeExh)
                 val env = insertVar(env, ret, RetCont)
                 val retTys = retTyOf ret
                 val clos = envPtrOf env
@@ -736,11 +736,11 @@ structure DirectFlatClosureWithCFA : sig
                       }
                 val convTy = CFGTy.T_KnownDirFunc {
                         clos = CFG.Var.typeOf clos,
-                        args = List.map CFG.Var.typeOf (args @ [exh]),
+                        args = List.map CFG.Var.typeOf (args @ maybeExh),
                         ret = retTys
                       }
                 in
-                  (env, args @ [exh], conv, convTy)
+                  (env, args @ maybeExh, conv, convTy)
                 end
         (* convert bound functions *)
           and cvtFunc (env, fbs) = let
