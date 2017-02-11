@@ -168,7 +168,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
 
 
-
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 #else /* DIRECT_STYLE */
@@ -214,7 +214,13 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   uint64_t* ptrToRetAddr = (uint64_t*)stkPtr;
   *ptrToRetAddr = (uint64_t)&ASM_DS_Return;
   
-  /* NOTE probably need to put this stack in the allocated list of the vp */
+  /*
+    TODO 
+    - initialize the vp->allocdStks list with 'info'.
+    - if not already done, vp->freeStks list should be NULL / 0
+    - write 'info' to vp->stdCont to establish that it is the current stack.
+    
+  */
   
   /* apply the given function  */
   LogRunThread(vp, 0);
