@@ -19,6 +19,20 @@
 #include <stdio.h>
 #endif
 
+#ifdef DIRECT_STYLE
+
+// on Linux, there is an extra "_" prepended to global names
+//
+#ifdef __linux__
+#  define STACK_MAPS    __LLVM_StackMaps
+#else
+#  define STACK_MAPS    _LLVM_StackMaps
+#endif
+
+extern int STACK_MAPS;
+
+#endif
+
 Mutex_t		HeapLock;	/* lock for protecting heap data structures */
 
 Addr_t		GlobalVM;	/* amount of memory allocated to Global heap (including */
@@ -35,6 +49,8 @@ MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
 NodeHeap_t  *NodeHeaps; /*!< list of per-node heap information */
 
 uint32_t	NumGlobalGCs = 0;
+
+statepoint_table_t* SPTbl = NULL;  // the statepoint table
 
 
 /* Heap sizing parameters.  The normal to-space size is computed as
@@ -156,6 +172,11 @@ void HeapInit (Options_t *opts)
     }
 
     InitGlobalGC ();
+    
+#ifdef DIRECT_STYLE
+    /* initialize the statepoint table */
+    SPTbl = generate_table((void*)&STACK_MAPS, 0.7);
+#endif
 
 } /* end of HeapInit */
 

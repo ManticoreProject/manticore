@@ -11,6 +11,7 @@
 
 #include "manticore-rt.h"
 #include "heap.h"
+#include "statepoints.h"
 
 typedef enum {
     FREE_CHUNK,			/*!< chunk that is available for allocation */
@@ -88,6 +89,8 @@ extern Addr_t		HeapScaleNum;
 extern Addr_t		HeapScaleDenom;
 extern Addr_t		BaseHeapSzB;
 extern Addr_t		PerVprocHeapSzb;
+
+extern statepoint_table_t* SPTbl; // the statepoint table
 
 extern void UpdateBIBOP (MemChunk_t *chunk);
 
