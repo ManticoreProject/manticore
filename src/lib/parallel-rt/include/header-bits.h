@@ -27,7 +27,7 @@
  *  |	  length    |       1       |      1      |
  *  ---------------------------------------------- 
  *
- *  Stack object: varies depending on the repurposed "length" field
+ *  Stack closure object.
  *
  *  ---------------------------------------------- 
  *  | -- 48 bits -- | -- 15 bits -- | -- 1 bit -- |
@@ -83,25 +83,8 @@
 //Raw object
 #define RAW_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((RAW_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
-
-// for the purposes of initializing a stack header in C, the following are available. 
-// Note that if you change anything below, you'll need to update it in asm-glue-ds.S
-
-//Stack descriptors
-#define STACK_HDR(kind)	((((Word_t)kind) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((STACK_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
-
-typedef enum {
-    /*
-    an object containing mmap information about
-    a contiguously allocated stack region.
-    In particular, this object is managed
-    using a mark-sweep strategy.
-    */
-    STK_MMapInfo=1,
-    
-    /* a stack object */
-    STK_StackData=2,
-} StackObjKind_t;
+//Stack closure object
+#define STACK_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((STACK_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
 
 

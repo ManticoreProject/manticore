@@ -9,11 +9,6 @@
 #include "asm-offsets.h"
 #include "registers.h"
 
-// for the purposes of initializing a stack header, we have the precomputed
-// values below. Please keep consistent with header-bits.h !!
-#define STACK_HDR_MMAPINFO  32773
-#define STACK_HDR_STKDATA   65541
-
 /* regs rarely used by manticore (11th-13th args)
    and unused by C call-convention. */
 #define TMP_REG1            %r13    
