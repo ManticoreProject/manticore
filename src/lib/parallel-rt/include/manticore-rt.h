@@ -82,6 +82,7 @@ typedef struct struct_opts Options_t;
 typedef struct struct_vproc VProc_t;
 typedef struct struct_chunk MemChunk_t;
 typedef struct struct_logbuf LogBuffer_t;
+typedef struct struct_stackinfo StackInfo_t;
 
 /*! \brief a location specifies a hardware thread, core, and node in the system
  *

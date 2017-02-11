@@ -108,18 +108,33 @@ void FreeMemory (void *base, int szB)
 
 } /* end of FreeMemory */
 
-// allocates a region of memory suitable for
-// use as a stack. Note that it returns the base
-// of the block so it can be freed, you must prepare
-// the stack before use. Returns 0 if failed.
-void* AllocStack(size_t numBytes) {
+// Allocates a region of memory suitable for
+// use as a stack. 
+//
+// Through the parameter 'info', returns the pointer 
+// to the mmap information of the stack for GC tracking, etc.
+//
+// The stack pointer p returned is guarenteed to be such that p+8 is 
+// 16-byte aligned, per the SysV ABI. The pointer returned
+// is ready to be used as a stack pointer after writing a ret addr.
+// Here's a picture (where numBytes is approximate):
+//
+//                            16-byte aligned
+//                                   v
+// | guard |  numBytes-ish  |bbbbbbbb| ... StackInfo_t ... |  high addresses >
+//                          ^
+//                 returned stack ptr 
+//
+void* AllocStack(size_t numBytes, StackInfo_t** info) {
     
     // NOTE automatic resizing using MAP_GROWSDOWN has
 	// been deprecated: https://lwn.net/Articles/294001/
     
 	size_t guardSz = GUARD_PAGE_BYTES;
+    size_t stackLen = numBytes + guardSz;
+    size_t totalSz = stackLen + sizeof(StackInfo_t);
     
-    void* mem = MapMemory(0, numBytes + guardSz);
+    void* mem = MapMemory(0, totalSz);
     
     if(mem == MAP_FAILED) {
         return 0;
@@ -134,42 +149,26 @@ void* AllocStack(size_t numBytes) {
         return 0;
     }
     
-    return mem;
-}
-
-void FreeStack(void* base, size_t numBytes) {
-    size_t guardSz = GUARD_PAGE_BYTES;
+    uint64_t val = (uint64_t) mem;
     
-    UnmapMemory(base, numBytes + guardSz);
-}
-
-
-// Takes a region of memory from AllocStack and returns a pointer suitable
-// for use as a stack pointer into that region of memory, ignoring any
-// data already in the region.
-//
-// The pointer p returned is guarenteed to be such that p+8 is 
-// 16-byte aligned, per the SysV ABI. The pointer returned
-// is ready to be used as a stack pointer after writing a ret addr.
-// Here's a picture (where numBytes is approximate):
-//
-//                            16-byte aligned
-//                                   v
-// | guard |  numBytes-ish  |bbbbbbbb|  high addresses >
-// ^                        ^
-// base ptr             returned ptr 
-//
-void* GetStackPtr(void* base, size_t numBytes) {
-    size_t guardSz = GUARD_PAGE_BYTES;
+    // initialize the stack's info descriptor
+    StackInfo_t* infoP = (StackInfo_t*)(val + stackLen);
+    infoP->mmapBase = mem;
+    infoP->mmapSize = totalSz;
+    infoP->marked = false;
+    infoP->next = NULL;
+    *info = infoP;
     
-    uint64_t val = (uint64_t) base;
-    uint64_t len = numBytes + guardSz;
-    
-    val = val + len - 8;			// switch sides, leaving some headroom.
+    // setup stack pointer
+    val = val + stackLen - 16;		// switch sides, leaving some headroom.
     val = ROUNDDOWN(val, 16ULL);	// realign downwards.
     val = val - 8;					// make space for return addr.
     
 	void* sp = (void*)val;
+    
+    return sp;
+}
 
-	return sp;
+void FreeStack(StackInfo_t* info) {
+    UnmapMemory(info->mmapBase, info->mmapSize);
 }

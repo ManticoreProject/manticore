@@ -39,26 +39,9 @@ extern void FreeMemory (void *base, int szB);
 // use as a stack. Note that it returns the base
 // of the block so it can be freed, you must prepare
 // the stack before use. Returns 0 if failed.
-extern void* AllocStack(size_t numBytes);
+extern void* AllocStack(size_t numBytes, StackInfo_t** info);
 
 // frees a stack allocated by AllocStack.
-extern void FreeStack(void* base, size_t numBytes);
-
-// Takes a region of memory from AllocStack and returns a pointer suitable
-// for use as a stack pointer into that region of memory, ignoring any
-// data already in the region.
-//
-// The pointer returned is guarenteed to be 16-byte aligned, and
-// have the 8 bytes ahead of it available to write
-// a value such as a return address.
-// Here's a picture (where numBytes is approximate):
-//
-//                16-byte aligned
-//                      v
-// | guard |  numBytes  |bbbbbbbb |  high addresses >
-// ^                    ^
-// base ptr             returned ptr 
-//
-extern void* GetStackPtr(void* base, size_t numBytes);
+extern void FreeStack(StackInfo_t* info);
 
 #endif /* !_OS_MEMORY_H_ */

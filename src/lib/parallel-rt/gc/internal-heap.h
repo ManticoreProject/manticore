@@ -53,6 +53,15 @@ typedef struct {
     MemChunk_t *freeChunks;  //!< free chunks allocated on this node
 } NodeHeap_t;
 
+struct struct_stackinfo {
+    void* mmapBase;
+    size_t mmapSize;
+    bool marked;
+    StackInfo_t* next;  // link to next stack
+};
+
+
+
 /********** Global heap **********/
 
 /* default global-heap-size constants */

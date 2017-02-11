@@ -102,6 +102,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
 	  /* is there a pending signal that we can deliver? */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
+            // TODO(kavon): replace this alloc with a specialized version for this retk.
 		Value_t resumeK = AllocNonUniform (vp, 3,
                                            INT(PtrToValue(&ASM_Resume)),
                                            INT(PtrToValue(vp->stdCont)),
@@ -207,8 +208,8 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   
   /* allocate & initialize the main function's stack */
   const size_t size = 8192;
-  void* stk = AllocStack(size);
-  void* stkPtr = GetStackPtr(stk, size);
+  StackInfo_t* info;
+  void* stkPtr = AllocStack(size, &info);
   
   uint64_t* ptrToRetAddr = (uint64_t*)stkPtr;
   *ptrToRetAddr = (uint64_t)&ASM_DS_Return;
