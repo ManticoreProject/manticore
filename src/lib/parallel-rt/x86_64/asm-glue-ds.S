@@ -135,11 +135,19 @@ _GSYM(ASM_DS_Return):   // the Manticore main function returns here.
     jmp     asm_get_service
     
 
-.p2align 3
-.globl	_GSYM(ASM_DS_UncaughtExn)
-_GSYM(ASM_DS_UncaughtExn):   // the Manticore main function returns here.
-movq    $REQ_UncaughtExn, TMP_REG1
-jmp     asm_get_service
+    .p2align 3
+    .globl	_GSYM(ASM_DS_UncaughtExn)
+_GSYM(ASM_DS_UncaughtExn):
+    movq    $REQ_UncaughtExn, TMP_REG1
+    jmp     asm_get_service
+
+
+    .p2align 3
+    .globl	_GSYM(TriggerGC)
+_GSYM(TriggerGC):
+    movq    $REQ_GC, TMP_REG1
+    jmp     asm_get_service
+
 
 /*
     ~~~~~~~~~~~~~~~~~~~

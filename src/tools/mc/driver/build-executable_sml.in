@@ -142,7 +142,7 @@ Pass Arguments:  -domtree
     (* TOOLS *)
     val cat = String.concatWith " "
     
-    val direct = Controls.get BasicControl.direct
+    fun isDirect() = Controls.get BasicControl.direct
     
     fun pathToBin binaryName = let
         val dir = "@LLVM_DIR@"
@@ -250,7 +250,7 @@ Pass Arguments:  -domtree
     
     (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
-        val firstPasses = if direct then [] else ["-stack-alignment=8"]
+        val firstPasses = if isDirect() then [] else ["-stack-alignment=8"]
         val statsPasses = ["-time-passes"] (* NOTE llc supports "-stats" but in Release mode it throws an error *)
         
         val passes = (case passes 
