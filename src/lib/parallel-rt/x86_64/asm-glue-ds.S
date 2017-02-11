@@ -155,9 +155,10 @@ jmp     asm_get_service
                         low addrs
 */
 
-/* TODO consider writing a magic value to where
-   the return address would be after adding an addl 16 bytes
-   to the metadata. for debugging purposes. */
+/* TODO update the above comment. i think 
+   all we might need is a stack tag to indicate
+   what type of stack the GC is about to crawl.
+ */
 
 asm_get_service:
 // live-ins
@@ -165,23 +166,21 @@ asm_get_service:
 //      alloc, vproc, exh, stdArg
 // 2. TMP_REG1 -- request code
     // save the current stack cont to TMP_REG2
-    leaq    -8(%rsp), TMP_REG2  
+    // leaq    -8(%rsp), TMP_REG2  
     
     // initialize metadata
-    subq    $16, %rsp
-    movq    $STACK_HDR_STKDATA, (%rsp)
-    movq    $1, 8(%rsp)     // 1 == LOCKED
-    
-    /* TODO reorder the args of RequestService
-       and pass via registers */
-    
+    // subq    $16, %rsp
+    // movq    $STACK_HDR_STKDATA, (%rsp)
+    // movq    $1, 8(%rsp)     // 1 == LOCKED
+
       /* save Manticore state */
     movq    ALLOC_PTR_REG, ALLOC_PTR(VPROC_PTR_REG)
-    movq    TMP_REG2, STD_CONT(VPROC_PTR_REG)
     movq    STD_EXH_REG, STD_EXH(VPROC_PTR_REG)
     movq    STD_ARG_REG, STD_ARG(VPROC_PTR_REG)
-    /* NOTE one thing we don't set is the STD_EP field,
-       since the roots are already in the stack. */
+    movq    %rsp, STD_EP(VPROC_PTR_REG)
+    /* in essence, the environment (with all roots)
+       is the stack. the stack's descriptor should
+       already be in STD_CONT. */
     
     /* move vproc and request code to the right registers */
     movq    VPROC_PTR_REG, %rdi // rdi = arg 1
