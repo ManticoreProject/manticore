@@ -52,6 +52,25 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
 static void CheckMinorGC (VProc_t *self, Value_t **roots);
 #endif
 
+void ScanStackMinor (
+    void* stkPtr,
+    StackInfo_t* stkInfo,
+    Addr_t nurseryBase,  
+    Addr_t allocSzB,
+    Word_t **nextW) {
+        
+        // TODO i need the stack map.
+    
+    // forward the pointer p
+    // Value_t p = *roots[i];
+    // 
+    // if (isPtr(p) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
+    //     *roots[i] = ForwardObjMinor(p, nextW);
+    // }
+    
+    return;
+}
+
 /* MinorGC:
  */
 void MinorGC (VProc_t *vp)
@@ -96,7 +115,13 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->sndQHd);
     *rp++ = &(vp->sndQTl);
     *rp++ = &(vp->landingPad);
+
+#ifndef DIRECT_STYLE
+    /* with the DS runtime, the env ptr holds the current stack pointer,
+       and this root is handled seperately. */
     *rp++ = &(vp->stdEnvPtr);
+#endif // DIRECT_STYLE
+    
     rp = M_AddDequeEltsToLocalRoots(vp, rp);
     *rp++ = 0;
 
@@ -115,6 +140,15 @@ void MinorGC (VProc_t *vp)
         }
 
     }
+    
+#ifdef DIRECT_STYLE
+    /* scan the current stack. */
+    StackInfo_t* stkInfo = vp->stdCont;
+    void* stkPtr = vp->stdEnvPtr;
+    ScanStackMinor(stkPtr, stkInfo, nurseryBase, allocSzB, &nextW);
+#endif
+    
+    Die("-- got to end-marker --");
 
   /* scan to space */
     while (nextScan < nextW-1) {

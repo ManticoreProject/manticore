@@ -214,11 +214,14 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   uint64_t* ptrToRetAddr = (uint64_t*)stkPtr;
   *ptrToRetAddr = (uint64_t)&ASM_DS_Return;
   
+  // write 'info' to vp->stdCont to establish that it is the current stack.
+  vp->stdCont = info;
+    
   /*
     TODO 
     - initialize the vp->allocdStks list with 'info'.
     - if not already done, vp->freeStks list should be NULL / 0
-    - write 'info' to vp->stdCont to establish that it is the current stack.
+    - 
     
   */
   
@@ -263,7 +266,8 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     switch (req) {
         case REQ_GC:
         
-        Die("requesting GC is not supported right now.");
+        MinorGC (vp);
+        Die("finished GC");
         
         /* check to see if we actually need to do a GC, since this request
          * might be from a pending signal.
