@@ -5,6 +5,8 @@
  *
  */
 
+#ifdef DIRECT_STYLE
+
 #include "asm-defs.h"
 #include "asm-offsets.h"
 #include "registers.h"
@@ -194,3 +196,6 @@ asm_get_service:
     movq    VPROC_PTR_REG, %rdi // rdi = arg 1
     movq    TMP_REG1, %rsi      // rsi = arg 2
     jmp     _GSYM(RequestService)
+
+
+#endif   // DIRECT_STYLE
