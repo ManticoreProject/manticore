@@ -53,21 +53,59 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots);
 #endif
 
 void ScanStackMinor (
-    void* stkPtr,
+    void* origStkPtr,
     StackInfo_t* stkInfo,
     Addr_t nurseryBase,  
     Addr_t allocSzB,
     Word_t **nextW) {
+
+#define DEBUG_STACK_SCAN
         
-        // TODO i need the stack map.
+    frame_info_t* frame;
+    uint64_t stackPtr = (uint64_t)origStkPtr;
     
-    // forward the pointer p
-    // Value_t p = *roots[i];
-    // 
-    // if (isPtr(p) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-    //     *roots[i] = ForwardObjMinor(p, nextW);
-    // }
+    /* NOTE TEMPORARY UNTIL WE FIX HOW WE EMIT GC CHECKS AS STATEPOINT CALLS  */
+    // find the top of the stack
+    while (lookup_return_address(SPTbl, *(uint64_t*)(stackPtr)) == 0) {
+        stackPtr += sizeof(uint64_t);
+    }
     
+    while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
+
+#ifdef DEBUG_STACK_SCAN
+        print_frame(stderr, frame);    
+#endif
+        
+        // step into frame
+        stackPtr += sizeof(uint64_t);
+        
+        // process pointers
+        for (uint16_t i = 0; i < frame->numSlots; i++) {
+            pointer_slot_t slotInfo = frame->slots[i];
+            if (slotInfo.kind >= 0) {
+                assert(false && "unexpected derived pointer\n");
+            }
+            
+            Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
+            Value_t p = *root;
+            
+            if (isPtr(p) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
+#ifdef DEBUG_STACK_SCAN
+                fprintf(stderr, "[%p] forward %p --> %p\n", root, p, *nextW);
+#endif
+                *root = ForwardObjMinor(p, nextW);
+            }
+        } // end for
+        
+#ifdef DEBUG_STACK_SCAN
+        fprintf(stderr, "------------------------------------------\n");
+#endif
+        
+        // move to next frame
+        stackPtr += frame->frameSize;
+        
+    } // end while
+
     return;
 }
 
