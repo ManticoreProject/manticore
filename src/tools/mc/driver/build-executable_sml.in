@@ -143,11 +143,12 @@ Pass Arguments:  -domtree
     (* LLVM does not make the stackmap section global in the output asm, so as a simple
      * workaround, we are just going to find/replace it
      *)
-    fun makeStackMapGlobl asmFile =
+    fun makeStackMapGlobl verbose asmFile =
 	let
         (* TODO shouldn't the output name be different on linux vs mac? *)
-	    val stat = OS.Process.system(
-		    "perl -i -pe \"s/__LLVM_StackMaps:/.globl __LLVM_StackMaps\n__LLVM_StackMaps:/\" " ^ asmFile)
+        val cmd = "perl -i -pe \"s/__LLVM_StackMaps:/.globl __LLVM_StackMaps\n__LLVM_StackMaps:/\" " ^ asmFile
+        val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
+	    val stat = OS.Process.system cmd
 	in () end
     
     
@@ -321,7 +322,7 @@ Pass Arguments:  -domtree
         end
         
         val _ = if isDirect()
-                    then (makeStackMapGlobl llcOutput)
+                    then makeStackMapGlobl verbose llcOutput
                     else ()
             
         (* reuse the MLRISC linking etc *)
