@@ -320,9 +320,9 @@ Pass Arguments:  -domtree
             (* esac *))
         end
         
-        val _ = (if isDirect()
+        val _ = if isDirect()
                     then (makeStackMapGlobl llcOutput)
-                    else ()) ;
+                    else ()
             
         (* reuse the MLRISC linking etc *)
         val result = BuildExecutableMLRISC.build {verbose=verbose, asmFile=llcOutput, outFile=outFile}
