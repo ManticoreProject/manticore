@@ -423,64 +423,179 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              (though some remnants of that pass I wrote are around).  ~kavon
       *)
         datatype space_needed = SN_Const of word | SN_Var of LB.instr
+        
+        (* FIXME: this value should come from the runtime constants
+           CURRENT SOURCE: alloc64-fn.sml. slop space is 4kb, and we leave 512b
+           for spilling values. might not be enough tbh? *)
+        val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
+        val limitPtrOffset = Spec.ABI.limitPtr
+        
+        (* wraps an i1 value with an annotation that tells the optimizer that its expected
+          to be i1 0 *)
+        fun expectFalse b condInstr = let
+           val falseC = LB.iconst LT.i1 0
+           val (expectLab, _) = LR.expect_i1
+           val annotated = LB.call b (LB.fromV expectLab, #[condInstr, falseC])
+        in
+           annotated
+        end
+        
+        fun notEnoughSpace b vproc allocPtr (SN_Const szb) = let 
+            val mk = LB.mk b AS.empty
+            val cast = LB.cast b
+            
+            val limitPtrAddr = LPU.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
+            val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
+            
+            val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
+            
+            val diff = mk Op.Sub #[limitPtrVal, allocPtrVal]
+            
+            val zero = LB.iconst LT.i64 0
+            val szbC = LB.iconst LT.i64 (Word.toInt szb)
+        in
+            if szb <= heapSlopSzB
+            then (* just check if the diff is negative,
+                   which should be more efficient *)
+                mk (Op.Icmp(Op.S Op.LE)) #[diff, zero]
+                
+            else (* check for the headroom *)
+                mk (Op.Icmp(Op.S Op.LE)) #[diff, szbC]
+            
+        end
+      | notEnoughSpace b vproc allocPtr (SN_Var szb) = let 
+              val mk = LB.mk b AS.empty
+              val cast = LB.cast b
+              
+              val limitPtrAddr = LPU.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
+              val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
+              
+              (* val allocPtr = lookupMV(env, MV_Alloc) *)
+              val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
+              
+              val diff = mk Op.Sub #[limitPtrVal, allocPtrVal]
+          in
+               mk (Op.Icmp(Op.S Op.LE)) #[diff, szb]
+          end
+      (* end of notEnoughSpace *)
+      
+      (* NOTE for reference
+      fun nonTail (lhs, jmp as (_, liveAfter)) = let
+              (* we need to remove:
+                  1. the lhs vars from the liveAfter list
+                  2. any non-pointer values. 
+              *)
+              val lives = L.filter 
+                          (fn v => 
+                              not(L.exists (fn x => CV.same(v, x)) lhs)
+                              andalso
+                              LPU.isHeapPointer(CV.typeOf v)
+                          ) 
+                          liveAfter
+                          
+              val lives_llvm = L.map (fn v => lookupV(env, v)) lives
+              
+              val {ret, relos} = LLVMStatepoint.call { 
+                                    blk = b,
+                                    conv = LB.jwaCC,
+                                    func = f,
+                                    args = allArgs,
+                                    lives = lives_llvm
+                                  }
+                                  
+              (* grab the return values *)
+              fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
+              
+              val (mvAssign, lhsAssign) = determineRet lhs
+              
+              fun extractElm ret tyOf (i, var) = let
+                  val extr = LB.extractV b (ret, #[toC i])
+                  val extrTy = LB.toTy extr
+                  val lhsTy = tyOf var
+              in
+                  if LT.same(lhsTy, extrTy)
+                  then extr
+                  else LB.cast b (Op.safeCast(extrTy, lhsTy)) (extr, lhsTy)
+              end
+              
+              (* update the machine vals in the env *)
+              val newMVs = L.map (extractElm ret machineValTy) mvAssign
+              val env = ListPair.foldlEq
+                          (fn ((_,mv), valu, acc) => updateMV(acc, mv, valu))
+                          env
+                          (mvAssign, newMVs)
+              
+              (* bind the lhs values *)
+              val rhs = L.map (extractElm ret (LT.typeOf o CV.typeOf)) lhsAssign
+              val env = ListPair.foldlEq
+                          (fn ((_,lhs), rhs, acc) => insertV(acc, lhs, rhs))
+                          env
+                          (lhsAssign, rhs)
+              
+              (* update the env with the relocated values *)
+              val env = ListPair.foldlEq
+                          (fn (live, relo, acc) => insertV(acc, live, relo))
+                          env
+                          (lives, relos)
+                          
+              (* do the jump *)
+              val (targ, _) = markPred env jmp
+         in
+              (fn () => [LB.br b targ])
+         end (* end nonTail *)
+      
+      NOTE above is for reference, delete later!
+      *)
+    
+        fun dsHeapCheckHelper env szb (nogc as (_, lives)) = let
+            
+            (* this enoughSpaceCond is for the initial heap check. *)
+            val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc)) szb)
+            
+            val (nogcTarg, nogcArgs) = markPred env nogc
+            val nogcBB = lookupBB(env, nogcTarg)
+            
+            (* now we create a new block to do GC *)
+            val bbLab = LV.new("doGC", LT.labelTy)
+            val gcLoopBB = LB.copy' bbLab nogcBB
+            val env = insertBB(env, bbLab, gcLoopBB)
+            
+            (* establish the b -> gcLoopBB edge *)
+            val _ = markPredFrom b env (bbLab, nogcArgs)
+            
+            (** "enter" the gcLoopBB **)
+            val params = L.map LB.fromV (LB.paramsOf gcLoopBB)
+            val nonMVParams = L.drop(params, numMachineVals)    (* mvs are always prepended *)
+            val env = ListPair.foldlEq
+                        (fn (live, param, acc) => insertV(acc, live, param))
+                        env
+                        (lives, nonMVParams)
+            
+            val mvParams = L.take(params, numMachineVals)
+            val env = ListPair.foldlEq
+                        (fn (mv, valu, acc) => updateMV(acc, mv, valu))
+                        env
+                        (mvCC, mvParams)
+            
+            (* TODO setup the call to the RTS *)
+            val gcPtrs = L.filter (LPU.isHeapPointer o CV.typeOf) lives
+            val gcPtrs = L.map (fn v => lookupV(env, v)) gcPtrs
+            
+            (* retrieve new mvs *)
+            
+            (* reload gcPtrs *)
+            
+            (* test for GC *)
+            
+            (* establish the gcLoopBB -> gcLoopBB edge if not enough space *)
+            (* establish the gcLoopBB -> nogcTarg edge if success *)
+            
+        in
+            (fn () => [LB.retVoid b]) (* return a thunk that will emit the condBr *)
+        end
     
     (************* start heapCheckHelper ****************)  
-        fun heapCheckHelper env szb nogc = let
-             (* FIXME: this value should come from the runtime constants
-                CURRENT SOURCE: alloc64-fn.sml. slop space is 4kb, and we leave 512b
-                for spilling values. might not be enough tbh? *)
-             val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
-             val limitPtrOffset = Spec.ABI.limitPtr
-             
-             (* wraps an i1 value with an annotation that tells the optimizer that its expected
-               to be i1 0 *)
-             fun expectFalse b condInstr = let
-                val falseC = LB.iconst LT.i1 0
-                val (expectLab, _) = LR.expect_i1
-                val annotated = LB.call b (LB.fromV expectLab, #[condInstr, falseC])
-             in
-                annotated
-             end
-             
-             fun notEnoughSpace b vproc allocPtr (SN_Const szb) = let 
-                     val mk = LB.mk b AS.empty
-                     val cast = LB.cast b
-                     
-                     val limitPtrAddr = LPU.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
-                     val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
-                     
-                     (* val allocPtr = lookupMV(env, MV_Alloc) *)
-                     val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
-                     
-                     val diff = mk Op.Sub #[limitPtrVal, allocPtrVal]
-                     
-                     val zero = LB.iconst LT.i64 0
-                     val szbC = LB.iconst LT.i64 (Word.toInt szb)
-                 in
-                     if szb <= heapSlopSzB
-                     then (* just check if the diff is negative,
-                            which should be more efficient *)
-                         mk (Op.Icmp(Op.S Op.LE)) #[diff, zero]
-                         
-                     else (* check for the headroom *)
-                         mk (Op.Icmp(Op.S Op.LE)) #[diff, szbC]
-                     
-                 end
-               | notEnoughSpace b vproc allocPtr (SN_Var szb) = let 
-                       val mk = LB.mk b AS.empty
-                       val cast = LB.cast b
-                       
-                       val limitPtrAddr = LPU.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
-                       val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
-                       
-                       (* val allocPtr = lookupMV(env, MV_Alloc) *)
-                       val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
-                       
-                       val diff = mk Op.Sub #[limitPtrVal, allocPtrVal]
-                   in
-                        mk (Op.Icmp(Op.S Op.LE)) #[diff, szb]
-                   end
-               (* end of notEnoughSpace *)
+        and heapCheckHelper env szb nogc = let
              
              fun doGC constBytesNeeded (incoming as [incFrame, incAlloc, incVp]) = let
                  val bbLab = LV.new("doGC", LT.labelTy)
@@ -963,7 +1078,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     => raise Fail "global heap checks not implemented in MLRISC backend either."
                
                | C.HeapCheck {hck = C.HCK_Local, szb, nogc} => 
-                    heapCheckHelper env (SN_Const szb) nogc
+                    (if Controls.get BasicControl.direct
+                    then dsHeapCheckHelper
+                    else heapCheckHelper) env (SN_Const szb) nogc
 
                | (C.HeapCheckN {hck = C.HCK_Local, nogc, n, szb}) => let
                     val n = lookupV(env, n)
@@ -973,7 +1090,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     val sum = mk Op.Add #[nZxt, LB.iconst LT.i64 4]
                     val totalNeeded = mk Op.Mul #[sum, LB.iconst LT.i64 (Word.toInt szb)]
                in
-                    heapCheckHelper env (SN_Var totalNeeded) nogc
+                    (if Controls.get BasicControl.direct
+                    then dsHeapCheckHelper
+                    else heapCheckHelper) env (SN_Var totalNeeded) nogc
                end
                 
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."

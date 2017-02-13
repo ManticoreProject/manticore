@@ -40,6 +40,9 @@ structure LLVMBuilder : sig
     (* produces a copy of the given BB with a fresh name
        and fresh parameter names (but keeps parameter types the same). *)
     val copy : t -> t
+    
+    (* same as copy, but you can provide your own name (var should have label ty) *)
+    val copy' : var -> t -> t
 
     (* generate textual representation of the BB *)
     val toString : bb -> string
@@ -1271,11 +1274,13 @@ structure LLVMBuilder : sig
   
   (* produces a copy of the given BB with a fresh name
      and fresh parameter names (but keeps parameter types the same). *)
-  fun copy oldBlk = let
-        val newLab = LV.copy(labelOf oldBlk)
+  fun copy oldBlk = copy' (LV.copy(labelOf oldBlk)) oldBlk
+        
+  and copy' newLab oldBlk = let
         val newParams = L.map LV.copy (paramsOf oldBlk)
       in
         new(newLab, newParams)
       end
+  
 
 end
