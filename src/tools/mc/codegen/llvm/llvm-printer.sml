@@ -559,11 +559,16 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             val bbLab = LV.new("doGC", LT.labelTy)
             val gcLoopBB = LB.copy' bbLab nogcBB
             val env = insertBB(env, bbLab, gcLoopBB)
+            (* NOTE if the szb is a non-constant integer value,
+               it is fine that we don't add it as a parameter
+               to the gcLoopBB even though we'll reference it after 
+               the call in a loop, because we do not modify the value
+               (its not a GC pointer). *)
             
             (* establish the b -> gcLoopBB edge *)
             val _ = markPredFrom b env (bbLab, nogcArgs)
             
-            (** "enter" the gcLoopBB **)
+            (*** establish and enter the gcLoopBB env ***)
             val params = L.map LB.fromV (LB.paramsOf gcLoopBB)
             val nonMVParams = L.drop(params, numMachineVals)    (* mvs are always prepended *)
             val env = ListPair.foldlEq
@@ -577,15 +582,45 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                         env
                         (mvCC, mvParams)
             
-            (* TODO setup the call to the RTS *)
-            val gcPtrs = L.filter (LPU.isHeapPointer o CV.typeOf) lives
-            val gcPtrs = L.map (fn v => lookupV(env, v)) gcPtrs
+            (*** setup the call to the RTS ***)
+            val cfgGCPtrs = L.filter (LPU.isHeapPointer o CV.typeOf) lives
+            val gcPtrs = L.map (fn v => lookupV(env, v)) cfgGCPtrs
+            
+            (* lookup mvs *)
+            val args = L.map (fn mv => lookupMV(env, mv)) mvCC
+            
+            (* do the call *)
+            val (func, SOME conv) = LR.dsInvokeGC
+            val {ret, relos} = LLVMStatepoint.call { 
+                                  blk = gcLoopBB,
+                                  conv = conv,
+                                  func = LB.fromV(func),
+                                  args = args,
+                                  lives = gcPtrs
+                                }
+            
+            fun getMV ret (mv, acc) = let
+                val idx = LB.intC(LT.i32, IntInf.fromInt(machineValIdx mv))
+                val valu = LB.extractV gcLoopBB (ret, #[idx])
+            in
+                updateMV(acc, mv, valu)
+            end
             
             (* retrieve new mvs *)
+            val env = L.foldl (getMV ret) env mvCC
             
-            (* reload gcPtrs *)
+            (* get relocated gcPtrs *)
+            val env = ListPair.foldlEq
+                        (fn (gcPtr, relo, acc) => insertV(acc, gcPtr, relo))
+                        env
+                        (cfgGCPtrs, relos)
             
-            (* test for GC *)
+            (* test for GC again *)
+            val retNotEnoughSpaceCond = expectFalse gcLoopBB (notEnoughSpace 
+                        gcLoopBB 
+                        (lookupMV(env, MV_Vproc)) 
+                        (lookupMV(env, MV_Alloc)) 
+                        szb)
             
             (* establish the gcLoopBB -> gcLoopBB edge if not enough space *)
             (* establish the gcLoopBB -> nogcTarg edge if success *)

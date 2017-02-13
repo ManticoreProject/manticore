@@ -54,8 +54,12 @@ structure LLVMRuntime =
             val stdRegSet = [LT.allocPtrTy, LT.vprocTy, LT.uniformTy]
             val retStructTy = LT.mkUStruct(stdRegSet)
             
+            val stdRegSetDS = [LT.allocPtrTy, LT.vprocTy]
+            val retStructTyDS = LT.mkUStruct(stdRegSetDS)
+            
     (* we need a special InvokeGC for LLVM *)
     val invokeGC : LV.var * (LB.convention option) = (mkLabel "ASM_InvokeGC_LLVM" (retStructTy :: stdRegSet), SOME LB.jwaCC)
+    val dsInvokeGC : LV.var * (LB.convention option) = (mkLabel "ASM_InvokeGC_DS_LLVM" (retStructTyDS :: stdRegSetDS), SOME LB.jwaCC)
         end
         
     
