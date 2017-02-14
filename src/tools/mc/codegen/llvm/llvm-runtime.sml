@@ -95,6 +95,7 @@ structure LLVMRuntime =
        will automatically output anything in these lists for you. *)
     val runtime = [ promote,
                     invokeGC,
+                    dsInvokeGC,
                     
                     (* Some of the below array/vector allocation externs are commented
                        out because they're already included in the BOM module, and this

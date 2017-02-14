@@ -576,18 +576,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                         env
                         (lives, nonMVParams)
             
+            (* no real need to put the mvs in the env as they're about to die *)
             val mvParams = L.take(params, numMachineVals)
-            val env = ListPair.foldlEq
-                        (fn (mv, valu, acc) => updateMV(acc, mv, valu))
-                        env
-                        (mvCC, mvParams)
             
             (*** setup the call to the RTS ***)
             val cfgGCPtrs = L.filter (LPU.isHeapPointer o CV.typeOf) lives
             val gcPtrs = L.map (fn v => lookupV(env, v)) cfgGCPtrs
-            
-            (* lookup mvs *)
-            val args = L.map (fn mv => lookupMV(env, mv)) mvCC
             
             (* do the call *)
             val (func, SOME conv) = LR.dsInvokeGC
@@ -595,7 +589,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                   blk = gcLoopBB,
                                   conv = conv,
                                   func = LB.fromV(func),
-                                  args = args,
+                                  args = mvParams,
                                   lives = gcPtrs
                                 }
             
@@ -622,11 +616,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                         (lookupMV(env, MV_Alloc)) 
                         szb)
             
-            (* establish the gcLoopBB -> gcLoopBB edge if not enough space *)
-            (* establish the gcLoopBB -> nogcTarg edge if success *)
+            val mvs = L.map (fn mv => lookupMV(env, mv)) mvCC
+            val args = L.map (fn v => lookupV(env, v)) lives
+            val allArgs = mvs @ args
+            
+            (* establish outgoing edges from gcLoopBB *)
+            val _ = markPredFrom gcLoopBB env (bbLab, allArgs)
+            val _ = markPredFrom gcLoopBB env (nogcTarg, allArgs)
+            
+            (* create terminators *)
+            val gcLoopTerm = (fn () => LB.condBr gcLoopBB (retNotEnoughSpaceCond, bbLab, nogcTarg))
+            val heapCheckTerm = (fn () => LB.condBr b (notEnoughSpaceCond, bbLab, nogcTarg))
             
         in
-            (fn () => [LB.retVoid b]) (* return a thunk that will emit the condBr *)
+            (fn () => [heapCheckTerm(), gcLoopTerm()])
         end
     
     (************* start heapCheckHelper ****************)  

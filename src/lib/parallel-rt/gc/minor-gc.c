@@ -64,12 +64,6 @@ void ScanStackMinor (
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
     
-    /* NOTE TEMPORARY UNTIL WE FIX HOW WE EMIT GC CHECKS AS STATEPOINT CALLS  */
-    // find the top of the stack
-    while (lookup_return_address(SPTbl, *(uint64_t*)(stackPtr)) == 0) {
-        stackPtr += sizeof(uint64_t);
-    }
-    
     while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
 
 #ifdef DEBUG_STACK_SCAN

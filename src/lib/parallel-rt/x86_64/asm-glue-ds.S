@@ -144,6 +144,17 @@ _GSYM(ASM_DS_UncaughtExn):
     jmp     asm_get_service
 
 
+/* TODO: this function only accepts vproc and alloc ptrs.
+   clear the other registers so they're not seen as ptrs.
+   Do that also in the CPS version. */
+   
+    .p2align 3
+    .globl	_GSYM(ASM_InvokeGC_DS_LLVM)
+_GSYM(ASM_InvokeGC_DS_LLVM):
+    movq    $REQ_GC, TMP_REG1
+    jmp     asm_get_service
+
+
     .p2align 3
     .globl	_GSYM(TriggerGC)
 _GSYM(TriggerGC):
