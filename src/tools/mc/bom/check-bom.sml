@@ -121,7 +121,10 @@ structure CheckBOM : sig
 	  val anyWarnings = ref false
       (* the following indicates whether to ensure conts are used in a restricted way
          so that efficient stack allocation is possible. See the BOL paper. *)
-      val secondClassConts = Controls.get BasicControl.direct
+         (* TODO remove this functionality later. it turns out that
+            this check is not precise enough to ensure the conts are
+            only used in a diciplined way. *)
+      val secondClassConts = false (** Controls.get BasicControl.direct **)
 	(* report an error *)
 	  fun error msg = (
 		if !anyErrors orelse !anyWarnings then ()
