@@ -180,7 +180,14 @@ void MinorGC (VProc_t *vp)
     ScanStackMinor(stkPtr, stkInfo, nurseryBase, allocSzB, &nextW);
 #endif
     
-    Die("-- got to end-marker --");
+    Die("-- got to end-marker --"); 
+    /* TODO: 
+        - check for the stack cont header while scanning the to space
+        - scan the allocated stack list after finishing scanning in order 
+          determine which ones haven't been encountered in order to free
+          that memory onto the free list.
+        - the stack scanner should stop at the high water mark during a minor scan.
+    */
 
   /* scan to space */
     while (nextScan < nextW-1) {
