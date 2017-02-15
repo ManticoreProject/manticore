@@ -7,21 +7,37 @@
  * captures so they may be emitted correctly by the code generator. In particular,
  * we perform the following type of eta-expansion
  *
- *  A
- *  cont k(x) = B
- *  in
- *    C
+ *  fun outerF(.. / retK, exnK) =
+ *    A
+ *    cont k(x) = B   <- an Other or Goto cont.
+ *    in
+ *      C
  *
  *      ===>
  *
- *	A
- *  cont k'(x) = B
- *  in
- *    fun manipK(k) = C
- *    apply manipK(k')
+ *  fun outerF(.. / retK : cont(t), exnK) =
+ *    A
+ *    cont k(x : t) = B   <-- now classified as a join cont
+ *    in
+ *      cont retKWrap (regularRet, arg : t) =     <-- a ret cont
+ *       if regularRet 
+ *         then throw retK arg
+ *         else throw k arg
+ *      in
+ *        fun manipK(k' : cont(t) / retK', exnK') = C (where [k -> k', retK -> retK', exnK -> exnK')
+ *        callec ( manipK / retKWrap, exnK)
  *
- *  the apply that is introduced is marked specially as well. we could have introduced
- *  a 'capture_apply' construct to make this look nicer.
+ *  the callec construct generates code that calls a special shim function.
+ *  The shim will allocate the following continuation to represent 'k':
+ *
+ *  - [ ASM_Resume | stackPtr (@retKWrap) | false ]
+ *    When invoked, the closure passes the arg its given 
+ *    to the stack frame pointed to, passing "false" in addition 
+ *    to jump to the right block.
+ *
+ *  - during translation, within the expression C, any 'throw retK (val)' 
+ *    is changed to 'throw retK' [true, val]'
+ *  
  *
  *)
 
