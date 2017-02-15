@@ -64,6 +64,13 @@ void ScanStackMinor (
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
     
+    uint64_t deepest = (uint64_t)stkInfo->deepestScan;
+    if(deepest < (uint64_t)origStkPtr) {
+        return; // this part of the stack has already been scanned.
+    }
+    
+    stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
+    
     while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
 
 #ifdef DEBUG_STACK_SCAN

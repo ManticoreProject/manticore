@@ -57,7 +57,7 @@ typedef struct {
 struct struct_stackinfo {
     void* mmapBase;
     size_t mmapSize;
-    bool marked;
+    void* deepestScan;
     StackInfo_t* next;  // link to next stack
 };
 
