@@ -92,6 +92,9 @@ struct struct_vproc {
     OSThread_t	hostID;		//!< PThread ID of host
     Location_t	location;	//!< the physical location that hosts this vproc.
 
+    StackInfo_t* allocdStacks;
+    StackInfo_t* freeStacks;
+
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state
     Cond_t	wait;		//!< for waiting when idle

@@ -186,6 +186,9 @@ void InitVProcHeap (VProc_t *vp)
 {
     vp->globAllocChunk = (MemChunk_t *)0;
     vp->globalGCPending = false;
+    
+    vp->freeStacks = NULL;
+    vp->allocdStacks = NULL;
 
   /* allocate the initial chunk for the vproc */
     AllocToSpaceChunk (vp);
