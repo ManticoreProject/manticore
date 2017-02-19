@@ -25,7 +25,7 @@
  *         else throw k arg
  *      in
  *        fun manipK (k' : cont(t) / landingPad' : cont(bool, any), deadExh) = 
- *          cont manipRetk (a1, a2, ...) =                  <-- a ret cont
+ *          cont manipRetk (a1, a2, ...) =                  <-- a join/ret cont
                 let x = alloc(a1, a2, ...)                  <-- only if more than 1 arg
  *              throw landingPad' (true, x)
  *          in
@@ -58,9 +58,11 @@ structure WrapCaptures : sig
     structure VMap = CV.Map
     structure VSet = CV.Set
     structure ST = Stats
-    structure Census = CPSCensus
     structure L = List
     structure K = ClassifyConts
+    
+    (********** Counters for statistics **********)
+    val cntExpand = ST.newCounter "wrap-captures:expand"
     
     (***** environment utils *****)
     datatype environment = E of { sub : cont_kind VMap.map, retk : CV.var }
@@ -155,8 +157,24 @@ structure WrapCaptures : sig
              in
                 C.Switch(var, L.map doArm arms, Option.map doDflt dflt)
              end)
-         | C.Apply (f, args, rets) => wrap (
-            C.Apply(f, L.map (subst env) args, L.map (subst env) rets))
+         | C.Apply (f, args, rets) => let
+                (* an Apply may change from being in tail position 
+                   to non-tail due to manipKRetk, which are the only types of retk's
+                   in the environment in the case of a substution in an Apply. *)
+                
+                val newRetk = ref false
+                
+                fun substRet env v = (case lookupKind(env, v)
+                    of SOME(RetCont newV) => (newRetk := true ; newV)
+                     | SOME(EscapeCont _) => raise Fail "should not appear in the rets!"
+                     | NONE => v)
+                
+                val applyExp = wrap (C.Apply(f, L.map (subst env) args, L.map (substRet env) rets))
+             in
+                if !newRetk
+                then (K.setTailApply(applyExp, false) ; applyExp)
+                else applyExp
+             end
             
          | C.Throw (k, args) => wrap(C.Throw(subst env k, L.map (subst env) args))
          
@@ -182,7 +200,7 @@ structure WrapCaptures : sig
                     *)
                     val _ = if L.length params > 1 then
                                 raise Fail ("escape cont " ^ (CV.nameOf f) ^ " takes more than 1 parameter!")
-                            else ()
+                            else ST.tick cntExpand
                     
                     val retk = getRet env
                     val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
@@ -198,6 +216,9 @@ structure WrapCaptures : sig
                     val (manipFB as C.FB{f=manipK,...}) = mkManipFun(f, retk, mkManipKBody env)
                     
                     val contBody = doExp(env, body)
+                    
+                    (* set/update classifications *)
+                    val _ = (K.setKind(retkWrap, K.ReturnCont) ; K.setKind(f, K.JoinCont))
                  in
                     C.Cont(C.FB{f=f,params=params,rets=rets, body=contBody},
                         C.mkCont(padFB, 
@@ -263,6 +284,7 @@ structure WrapCaptures : sig
         (* build the invoke return cont *)
         val invokeRet = CV.new("invokeRetk", CV.typeOf origRetk)
         val invokeParams = L.map (fn ty => CV.new("param", ty)) (MK.argTysOf origRetk)
+        val _ = K.setKind(invokeRet, K.JoinCont)
         
         fun mkInvokeRet k = 
             C.mkCont(C.FB {
@@ -291,8 +313,13 @@ structure WrapCaptures : sig
 
     (* ClassifyConts must be run before this transform. *)
     fun transform (m as C.MODULE{name, externs, body}) = 
-        if Controls.get BasicControl.direct
-        then C.MODULE{name=name,externs=externs,body = start body }
-        else m
+        if not(Controls.get BasicControl.direct)
+        then m
+        else let
+            val m = C.MODULE{name=name,externs=externs,body = start body }
+            val _ = CPSCensus.census m
+        in
+            m
+        end
 
   end

@@ -37,6 +37,8 @@ structure ClassifyConts : sig
   (* return the kind of  a continuation *)
     val kindOfCont : CPS.var -> cont_kind
     
+    val setKind : (CPS.var * cont_kind) -> unit
+    
   (* Given a throw of some var k, returns the immediately enclosing function at that site. *)
     val contextOfThrow : CPS.var -> CPS.Var.Set.set
     
@@ -55,6 +57,8 @@ structure ClassifyConts : sig
     val isReturnThrow : CPS.var -> bool
     
     val isTailApply : CPS.exp -> bool
+    
+    val setTailApply : (CPS.exp * bool) -> unit
 
   end = struct
 
@@ -172,6 +176,8 @@ structure ClassifyConts : sig
            of SOME OtherCont => ()
             | _ => (setFn(k, OtherCont); clrUses k)
           (* end case *))
+          
+    val setKind = setFn
     end
     
     (* check/mark whether an Apply is in a tail position *)
@@ -450,5 +456,7 @@ structure ClassifyConts : sig
     
 
     fun isTailApply (C.Exp(ppt, C.Apply _)) = checkTail ppt
+    
+    fun setTailApply (C.Exp(ppt, C.Apply _), status) = markTail (ppt, status)
 
   end
