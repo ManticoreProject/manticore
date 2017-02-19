@@ -37,30 +37,6 @@
  *
  *  - during translation, within the expression C, any 'throw retK (val)' 
  *    is changed to 'throw retK' [true, val]'
- *  
- *
- *  If in BOM, the code in C is not allowed to return, then perhaps a 
- *  lower effort alternative with the same results would be the following BOM to BOM
- *  rewriting manually in the basis:
- *
- *  A
- *  cont k(x : t) = B
- *  in
- *    C
- *
- *   ===>
- *
- *    fun manipK(k : cont(t)) = C
- *    in
- *      A
- *      val _ : unit = ccall SpecialExternName (manipK)
- *      B
- *      
- *    Then, we write a CFG pass similar to alloc-c-calls-fn where we determine
- *    the live vars in B and attach it to the special ccall just before codegen. 
- *    Then, during codegen, we look for such ccalls to the special extern name and
- *    implement a special lowering that uses a statepoint call to an ASM routine that
- *    allocates the closure as above, and then calls manipK with it.
  *    
  *
  *)
@@ -74,9 +50,154 @@ structure WrapCaptures : sig
     structure C = CPS
     structure CV = C.Var
     structure VMap = CV.Map
+    structure VSet = CV.Set
     structure ST = Stats
     structure Census = CPSCensus
+    structure L = List
+    structure K = ClassifyConts
+    
+    (***** environment utils *****)
+    datatype environment = E of { sub : cont_kind VMap.map, retk : CV.var }
+        and cont_kind = RetCont of CV.var
+                      | EscapeCont of CV.var
+    
+    fun emptyEnv () = E{ sub = VMap.empty, retk = CV.new("wrongRetk", CPSTy.T_Any) }
+    
+    fun setRet ((E{sub, retk}), r) = E{sub=sub, retk=r}
+    fun getRet (E{retk,...}) = retk
+    
+    fun lookupKind (E{sub,...}, k) = VMap.find(sub, k)
+    
+    fun lookupV(E{sub,...}, v) = (case VMap.find(sub, v)
+        of SOME(RetCont newV) => newV
+         | SOME(EscapeCont newV) => newV
+         | NONE => v)
+    
+    fun subst env v = lookupV(env, v)
+    
+    (***** end of environment utils *****)
+    
+    
+    (* I would use bool but I don't want to mess with the enum stuff. *)
+    val indicatorTy = CPSTy.T_Raw(RawTypes.T_Int)
+    val falseVal = Literal.Int 0
+    
+    
+    (****** helper funs to build expressions ******)
+    structure MK = struct
+        fun fresh(ty, k) = k (CV.new("t", ty))
+             
+        fun cast(var, targTy, k) = fresh(targTy, fn lhs => 
+                                C.mkLet([lhs], C.Cast(targTy, var), k lhs))
+                                
+        fun selectAll(tys, tup, k) = let
+            fun get (_, [], args) = k (L.rev args)
+              | get (i, t::ts, args) = 
+                    fresh(t, fn a => 
+                      C.mkLet([a], C.Select(i, tup), get(i+1, ts, a::args)))
+        in
+            get(0, tys, [])
+        end 
+    end (* end MK *)
+    
+    
+    fun doExp (env, C.Exp(ppt, t)) = let
+        fun wrap term = C.Exp(ppt, term)
+    in
+    (case t
+        of C.Let (vars, rhs, e) => wrap (C.Let(vars, CPSUtil.mapRHS (subst env) rhs, doExp(env, e)))
+         | C.Fun (lambdas, e) => wrap (C.Fun(L.map (doFun env) lambdas, doExp(env, e)))
+         | C.If (cond, e1, e2) => wrap (C.If (cond, doExp(env, e1), doExp(env, e2)))
+         | C.Switch(var, arms, dflt) => wrap (let
+                fun doArm (tag, e) = (tag, doExp(env, e))
+                fun doDflt e = doExp(env, e)
+             in
+                C.Switch(var, L.map doArm arms, Option.map doDflt dflt)
+             end)
+         | C.Apply (f, args, rets) => wrap (
+            C.Apply(f, L.map (subst env) args, L.map (subst env) rets))
+            
+         | C.Throw (k, args) => let
+                val args = L.map (subst env) args
+                
+                fun escapeArgs([], k) = k [] (* NOTE kind of unexpected but okay *)
+                  | escapeArgs([a], k) = k [a]
+                  | escapeArgs(args, k) = let (* we need to bundle them up *)
+                        val allocTy = CPSTy.T_Tuple(false, L.map CV.typeOf args)
+                        val lhs = CV.new("bundle", allocTy)
+                      in
+                        C.mkLet([lhs], C.Alloc(allocTy, args), k [lhs])
+                      end
+                
+             in
+                case lookupKind(env, k)
+                   of NONE => wrap(C.Throw(k, args))
+                    | SOME(EscapeCont newK) => escapeArgs (args, fn newArgs => wrap(C.Throw(newK, newArgs)))
+                    | SOME(RetCont retk) => raise Fail "need to add another arg to throw"
+             end
+         
+         | C.Cont (C.FB{f, params, rets, body}, e) => wrap (case K.kindOfCont f
+             of (K.GotoCont | K.OtherCont) => let
+                    val padFB = mkLandingPad(getRet env, f)
+                 in
+                    raise Fail "todo"
+                 end
+             
+              | _ => C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)}, doExp(env, e))
+             (* esac *))
+        (* esac *))
+    end
+    
+    (* the tricky part here is that we need to merge the type of the arguments
+       to these two continuations so we can longjmp or return to the same block.
+       Of course, we do not know all throw sites of an escape cont, so we need a
+       uniform calling convention.
+       
+       The approach we're taking is that if there is more than 1 arg,
+       then it must be bundled up as a tuple. Once we enter the landing pad, 
+       we unbundle and throw.
+    *)
+    and mkLandingPad (retk, kont) = let
+        
+        fun argTysOf cont = (case CV.typeOf cont
+            of CPSTy.T_Cont tys => tys
+             | _ => raise Fail "not a cont")
+        
+        val padTy = CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
+        val padVar = CV.new("setjmpLandingPad", padTy)
+        
+        val boolParam = CV.new("regularRet", indicatorTy)
+        val valParam = CV.new("arg", CPSTy.T_Any)
+        
+        fun branch(trueExp, falseExp) = 
+            MK.fresh(indicatorTy, fn fals => 
+              C.mkLet([fals], C.Const(falseVal, indicatorTy),
+                C.mkIf(Prim.I32NEq(boolParam, fals), trueExp, falseExp)))
+        
+        fun dispatch cont = (case argTysOf cont
+            of [] => C.mkThrow(cont, []) (* weird but okay i guess *)
+            
+             | [ty] => MK.cast(valParam, ty, fn arg => C.mkThrow(cont, [arg]))
+             
+             | tys => MK.cast(valParam, CPSTy.T_Tuple(false, tys), fn tup =>
+                        MK.selectAll(tys, tup, fn args =>
+                          C.mkThrow(cont, args)))
+             (* esac *))
+    in
+        C.FB{f = padVar, params = [boolParam, valParam], rets = [],
+                body = branch(dispatch retk, dispatch kont)}
+    end
+        
+    and doFun env (C.FB{f, params, rets as (retk::_), body}) =
+            C.FB{f=f,params=params,rets=rets, body= doExp(setRet(env, retk), body) }
 
-    fun transform (m as C.MODULE{name, externs, body}) = m
+
+    and start moduleBody = doFun (emptyEnv()) moduleBody
+
+    (* ClassifyConts must be run before this transform. *)
+    fun transform (m as C.MODULE{name, externs, body}) = 
+        if Controls.get BasicControl.direct
+        then C.MODULE{name=name,externs=externs,body = start body }
+        else m
 
   end
