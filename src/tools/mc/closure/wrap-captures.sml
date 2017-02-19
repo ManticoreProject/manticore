@@ -7,30 +7,36 @@
  * captures so they may be emitted correctly by the code generator. In particular,
  * we perform the following type of eta-expansion
  *
- *  fun outerF(.. / retK, exnK) =
+ *  fun outerF(.. / retK : cont(t', t'', ...)) =
  *    A
- *    cont k(x) = B   <- an Other or Goto cont.
+ *    cont k (x : t) = B   <- an Other or Goto cont.
  *    in
  *      C
  *
  *      ===>
  *
- *  fun outerF(.. / retK : cont(t), exnK) =
+ *  fun outerF (.. / retK : cont(t', t'', ...)) =
  *    A
- *    cont k(x : t) = B   <-- now classified as a join cont
+ *    cont k (x : t) = B                                    <-- now classified as a join cont!
  *    in
- *      cont retKWrap (regularRet, arg : t) =     <-- a ret cont
+ *      cont landingPad (regularRet : bool, arg : any) =    <-- a ret cont
  *       if regularRet 
- *         then throw retK arg
+ *         then throw retK (#1(arg), #2(arg), ...)
  *         else throw k arg
  *      in
- *        fun manipK(k' : cont(t) / retK', exnK') = C (where [k -> k', retK -> retK', exnK -> exnK')
- *        callec ( manipK / retKWrap, exnK)
+ *        fun manipK (k' : cont(t) / landingPad' : cont(bool, any), deadExh) = 
+ *          cont manipRetk (a1, a2, ...) =                  <-- a ret cont
+                let x = alloc(a1, a2, ...)                  <-- only if more than 1 arg
+ *              throw landingPad' (true, x)
+ *          in
+ *            [ C / k -> k', retK -> manipRetk ]
+ *        (* end manipK *)
+ *        callec ( manipK / landingPad, deadExh)
  *
  *  the callec construct generates code that calls a special shim function.
  *  The shim will allocate the following continuation to represent 'k':
  *
- *  - [ ASM_Resume | stackPtr (@retKWrap) | stackInfo | false ]
+ *  - [ ASM_Resume | stackPtr (@landingPad) | stackInfo | false ]
  *    When invoked, the closure passes the arg its given 
  *    to the stack frame pointed to, passing "false" in addition 
  *    to jump to the right block.
@@ -106,6 +112,16 @@ structure WrapCaptures : sig
             get(0, tys, [])
         end 
         
+        (* this should match up with 'dispatch' below *)
+        fun bundle ([], k) = k [] (* NOTE kind of unexpected but okay *)
+          | bundle ([a], k) = k [a]
+          | bundle (args, k) = let (* we need to bundle them up *)
+                val allocTy = CPSTy.T_Tuple(false, L.map CV.typeOf args)
+                val lhs = CV.new("bundle", allocTy)
+              in
+                C.mkLet([lhs], C.Alloc(allocTy, args), k [lhs])
+              end
+        
         fun dummyExh k = let
             val exhTy = CPSTy.T_Cont([CPSTy.T_Any])
             val exh = CV.new("deadExh", CPSTy.T_Any)
@@ -118,6 +134,10 @@ structure WrapCaptures : sig
             fresh(indicatorTy, fn lhs =>
                 C.mkLet([lhs], C.Const(trueVal, indicatorTy),
                     k lhs))
+                    
+        fun argTysOf cont = (case CV.typeOf cont
+            of CPSTy.T_Cont tys => tys
+             | _ => raise Fail "not a cont")
                     
     end (* end MK *)
     
@@ -138,31 +158,32 @@ structure WrapCaptures : sig
          | C.Apply (f, args, rets) => wrap (
             C.Apply(f, L.map (subst env) args, L.map (subst env) rets))
             
-         | C.Throw (k, args) => let
-                val args = L.map (subst env) args
-                
-                fun bundle ([], k) = k [] (* NOTE kind of unexpected but okay *)
-                  | bundle ([a], k) = k [a]
-                  | bundle (args, k) = let (* we need to bundle them up *)
-                        val allocTy = CPSTy.T_Tuple(false, L.map CV.typeOf args)
-                        val lhs = CV.new("bundle", allocTy)
-                      in
-                        C.mkLet([lhs], C.Alloc(allocTy, args), k [lhs])
-                      end
-                
-             in
-                case lookupKind(env, k)
-                   of NONE => wrap(C.Throw(k, args))
-                    | SOME(EscapeCont newK) => bundle (args, fn newArgs => wrap(C.Throw(newK, newArgs)))
-                    | SOME(RetCont retk) => 
-                        bundle(args, fn newArgs =>
-                            MK.bindTrue(fn tru =>
-                                wrap(C.Throw(retk, tru::newArgs))))        
-                        
-             end
+         | C.Throw (k, args) => wrap(C.Throw(subst env k, L.map (subst env) args))
          
          | C.Cont (C.FB{f, params, rets, body}, e) => wrap (case K.kindOfCont f
              of (K.GotoCont | K.OtherCont) => let   (* TODO change the classification of f, set the classification of retkWrap *)
+                    
+                    (* The reason for the check below is that this continuation has unknown call sites.
+                       By the nature of how these continuations are captured in direct-style, we
+                       must merge the types of the parameters to the return continuation and 
+                       this continuation so they have the same calling convention (both must return
+                       to the same basic block in the end, just like setjmp/longjmp).
+                       
+                       We can (and do) eta-expand the throw to the original return cont to match up
+                       the calling convention with the landing pad. However, we _cannot_ do the
+                       same for this escape cont, because then the cont we wrapped around the throw
+                       would be used as a Goto/Other cont, and we're back where we started!
+                       
+                       If we were to simply change every Throw exp using an escape cont, by bundling up
+                       the arguments, we would break code where the cont came from somewhere else
+                       (read from memory, passed as a param, etc) and our simple renaming operation
+                       with the parameter of manipK would not be sufficient. We would need to throughly
+                       change the types of all such unknown cont vars in the program.
+                    *)
+                    val _ = if L.length params > 1 then
+                                raise Fail ("escape cont " ^ (CV.nameOf f) ^ " takes more than 1 parameter!")
+                            else ()
+                    
                     val retk = getRet env
                     val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
                     
@@ -174,7 +195,7 @@ structure WrapCaptures : sig
                         doExp(env, e)
                     end
                     
-                    val (manipFB as C.FB{f=manipK,...}) = mkManipFun(CV.nameOf f, mkManipKBody env)
+                    val (manipFB as C.FB{f=manipK,...}) = mkManipFun(f, retk, mkManipKBody env)
                     
                     val contBody = doExp(env, body)
                  in
@@ -201,10 +222,6 @@ structure WrapCaptures : sig
     *)
     and mkLandingPad (retk, kont) = let
         
-        fun argTysOf cont = (case CV.typeOf cont
-            of CPSTy.T_Cont tys => tys
-             | _ => raise Fail "not a cont")
-        
         val padTy = CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
         val padVar = CV.new("setjmpLandingPad", padTy)
         
@@ -216,7 +233,8 @@ structure WrapCaptures : sig
               C.mkLet([fals], C.Const(falseVal, indicatorTy),
                 C.mkIf(Prim.I32NEq(boolParam, fals), trueExp, falseExp)))
         
-        fun dispatch cont = (case argTysOf cont
+        (* this should match up with MK.bundle !! *)
+        fun dispatch cont = (case MK.argTysOf cont
             of [] => C.mkThrow(cont, []) (* weird but okay i guess *)
             
              | [ty] => MK.cast(valParam, ty, fn arg => C.mkThrow(cont, [arg]))
@@ -232,21 +250,36 @@ structure WrapCaptures : sig
     
     (* the reason manipK takes an exh that will be unused is because it will use
        the standard calling convention (its caller is actually an unknown fun). *)
-    and mkManipFun(contName, k) = let
+    and mkManipFun(origLetCont, origRetk, k) = let
         val contAny = CPSTy.T_Cont([CPSTy.T_Any])
         val retkTy = CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
         
-        val contP = CV.new(contName, contAny)
-        val retkP = CV.new("retK", retkTy)
-        val exnP = CV.new("exnK", contAny)
+        val contP = CV.copy origLetCont
+        val retkP = CV.new("landingPadK", retkTy)
+        val exnP = CV.new("deadExnK", contAny)
         
-        val fname = CV.new("manipK", CPSTy.T_Fun([contAny], [retkTy, contAny]))
+        val fname = CV.new("manipK", CPSTy.T_Fun([CV.typeOf contP], [retkTy, contAny]))
+        
+        (* build the invoke return cont *)
+        val invokeRet = CV.new("invokeRetk", CV.typeOf origRetk)
+        val invokeParams = L.map (fn ty => CV.new("param", ty)) (MK.argTysOf origRetk)
+        
+        fun mkInvokeRet k = 
+            C.mkCont(C.FB {
+                f = invokeRet,
+                params = invokeParams,
+                rets = [],
+                body = MK.bundle(invokeParams, fn newArgs =>
+                        MK.bindTrue(fn tru =>
+                          C.mkThrow(retkP, tru::newArgs)))},
+                k invokeRet)
+            
     in
         C.FB {
             f = fname,
             params = [contP],
             rets = [retkP, exnP],
-            body = k (contP, retkP)
+            body = mkInvokeRet(fn invokeRet => k (contP, invokeRet))
         }
     end
         
