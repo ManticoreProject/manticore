@@ -72,6 +72,8 @@ structure WrapCaptures : sig
         of SOME(RetCont newV) => newV
          | SOME(EscapeCont newV) => newV
          | NONE => v)
+         
+    fun insertV (E{sub,retk}, var, valu) = E{sub = VMap.insert(sub, var, valu), retk=retk}
     
     fun subst env v = lookupV(env, v)
     
@@ -81,14 +83,19 @@ structure WrapCaptures : sig
     (* I would use bool but I don't want to mess with the enum stuff. *)
     val indicatorTy = CPSTy.T_Raw(RawTypes.T_Int)
     val falseVal = Literal.Int 0
+    val trueVal = Literal.Int 1
     
     
     (****** helper funs to build expressions ******)
     structure MK = struct
         fun fresh(ty, k) = k (CV.new("t", ty))
              
-        fun cast(var, targTy, k) = fresh(targTy, fn lhs => 
-                                C.mkLet([lhs], C.Cast(targTy, var), k lhs))
+        fun cast(var, targTy, k) = let
+            val lhs = CV.new(CV.nameOf var, targTy)
+        in
+            C.mkLet([lhs], C.Cast(targTy, var), k lhs)
+        end
+                                
                                 
         fun selectAll(tys, tup, k) = let
             fun get (_, [], args) = k (L.rev args)
@@ -98,6 +105,20 @@ structure WrapCaptures : sig
         in
             get(0, tys, [])
         end 
+        
+        fun dummyExh k = let
+            val exhTy = CPSTy.T_Cont([CPSTy.T_Any])
+            val exh = CV.new("deadExh", CPSTy.T_Any)
+        in
+            C.mkLet([exh], C.Const(Literal.unitLit, CPSTy.T_Any),
+              cast(exh, exhTy, k))
+        end
+        
+        fun bindTrue k = 
+            fresh(indicatorTy, fn lhs =>
+                C.mkLet([lhs], C.Const(trueVal, indicatorTy),
+                    k lhs))
+                    
     end (* end MK *)
     
     
@@ -120,9 +141,9 @@ structure WrapCaptures : sig
          | C.Throw (k, args) => let
                 val args = L.map (subst env) args
                 
-                fun escapeArgs([], k) = k [] (* NOTE kind of unexpected but okay *)
-                  | escapeArgs([a], k) = k [a]
-                  | escapeArgs(args, k) = let (* we need to bundle them up *)
+                fun bundle ([], k) = k [] (* NOTE kind of unexpected but okay *)
+                  | bundle ([a], k) = k [a]
+                  | bundle (args, k) = let (* we need to bundle them up *)
                         val allocTy = CPSTy.T_Tuple(false, L.map CV.typeOf args)
                         val lhs = CV.new("bundle", allocTy)
                       in
@@ -132,15 +153,36 @@ structure WrapCaptures : sig
              in
                 case lookupKind(env, k)
                    of NONE => wrap(C.Throw(k, args))
-                    | SOME(EscapeCont newK) => escapeArgs (args, fn newArgs => wrap(C.Throw(newK, newArgs)))
-                    | SOME(RetCont retk) => raise Fail "need to add another arg to throw"
+                    | SOME(EscapeCont newK) => bundle (args, fn newArgs => wrap(C.Throw(newK, newArgs)))
+                    | SOME(RetCont retk) => 
+                        bundle(args, fn newArgs =>
+                            MK.bindTrue(fn tru =>
+                                wrap(C.Throw(retk, tru::newArgs))))        
+                        
              end
          
          | C.Cont (C.FB{f, params, rets, body}, e) => wrap (case K.kindOfCont f
-             of (K.GotoCont | K.OtherCont) => let
-                    val padFB = mkLandingPad(getRet env, f)
+             of (K.GotoCont | K.OtherCont) => let   (* TODO change the classification of f, set the classification of retkWrap *)
+                    val retk = getRet env
+                    val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
+                    
+                    fun mkManipKBody env (newF, newRetk) = let
+                        val env = insertV(env, retk, RetCont retk)
+                        val env = insertV(env, f, EscapeCont newF)
+                        val env = setRet(env, newRetk)
+                    in
+                        doExp(env, e)
+                    end
+                    
+                    val (manipFB as C.FB{f=manipK,...}) = mkManipFun(CV.nameOf f, mkManipKBody env)
+                    
+                    val contBody = doExp(env, body)
                  in
-                    raise Fail "todo"
+                    C.Cont(C.FB{f=f,params=params,rets=rets, body=contBody},
+                        C.mkCont(padFB, 
+                            C.mkFun([manipFB],
+                                MK.dummyExh(fn unitExh =>
+                                    C.mkApply(manipK, [], [retkWrap, unitExh])))))
                  end
              
               | _ => C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)}, doExp(env, e))
@@ -186,6 +228,26 @@ structure WrapCaptures : sig
     in
         C.FB{f = padVar, params = [boolParam, valParam], rets = [],
                 body = branch(dispatch retk, dispatch kont)}
+    end
+    
+    (* the reason manipK takes an exh that will be unused is because it will use
+       the standard calling convention (its caller is actually an unknown fun). *)
+    and mkManipFun(contName, k) = let
+        val contAny = CPSTy.T_Cont([CPSTy.T_Any])
+        val retkTy = CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
+        
+        val contP = CV.new(contName, contAny)
+        val retkP = CV.new("retK", retkTy)
+        val exnP = CV.new("exnK", contAny)
+        
+        val fname = CV.new("manipK", CPSTy.T_Fun([contAny], [retkTy, contAny]))
+    in
+        C.FB {
+            f = fname,
+            params = [contP],
+            rets = [retkP, exnP],
+            body = k (contP, retkP)
+        }
     end
         
     and doFun env (C.FB{f, params, rets as (retk::_), body}) =
