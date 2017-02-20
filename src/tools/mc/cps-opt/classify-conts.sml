@@ -39,8 +39,11 @@ structure ClassifyConts : sig
     
     val setKind : (CPS.var * cont_kind) -> unit
     
-  (* Given a throw of some var k, returns the immediately enclosing function at that site. *)
+  (* Given a continuation var, returns the set of all immediately enclosing functions
+     from which a throw to the cont was found. *)
     val contextOfThrow : CPS.var -> CPS.Var.Set.set
+    
+    val setContextOfThrow : (CPS.var * CPS.Var.Set.set) -> unit
     
     (* helper for contextOfThrow. will check the rets of the lambda to see if
        the given var matches one of those. *)
@@ -210,8 +213,8 @@ structure ClassifyConts : sig
               CV.newProp (fn _ => CV.Set.empty)
     in
         val contextOfThrow = getFn
-        val markThrowContext = setFn
-        fun addThrowContext (k, CPS.FB{f,...}) = markThrowContext(k, CV.Set.add(contextOfThrow k, f))
+        val setContextOfThrow = setFn
+        fun addThrowContext (k, CPS.FB{f,...}) = setContextOfThrow(k, CV.Set.add(contextOfThrow k, f))
     end
 
   (* given a binding context for a continuation, check uses to see

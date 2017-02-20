@@ -284,7 +284,23 @@ structure WrapCaptures : sig
         (* build the invoke return cont *)
         val invokeRet = CV.new("invokeRetk", CV.typeOf origRetk)
         val invokeParams = L.map (fn ty => CV.new("param", ty)) (MK.argTysOf origRetk)
-        val _ = K.setKind(invokeRet, K.JoinCont)
+        
+        (* set kind. also need to set contexts since this is a ParamCont *)
+        val _ = (K.setKind(invokeRet, K.JoinCont) ; 
+                 K.setContextOfThrow(retkP, VSet.singleton fname) ;
+                 K.setContextOfThrow(contP, VSet.singleton fname))
+                 
+                 (* TODO: more accurately:
+                        contextsOf(contP) := 
+                            if enclosingFunOf(origLetCont) in contextsOf(origLetCont)
+                                then union({ fname },
+                                        contextsOf(origLetCont) \ { enclosingFunOf(origLetCont) })
+                                else contextsOf(origLetCont)
+                    
+                    not really critical though since closure conversion doesn't care if
+                    its a non-ret param. We just have to have at least one context that
+                    tells closure conversion it's not a ret param.
+                  *)
         
         fun mkInvokeRet k = 
             C.mkCont(C.FB {

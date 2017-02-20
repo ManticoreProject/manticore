@@ -1018,56 +1018,40 @@ structure DirectFlatClosureWithCFA : sig
           in
             (case CC.kindOfCont k
                   of CC.ParamCont => let
-                        (* NOTE in this code, we wanted to check the set of contexts that
-                           throws to this continuation occur in, and ensure that the
-                           throw is only to a single context, namely, the immediately enclosing
-                           function's parameter list. It turns out that the inliner may decide
-                           to inline the return continuation into a function, making the calls
-                           to that function a tail call, and thus the throw to a retk might
-                           be to an outer function's parameter list, [[but still it is safe to
-                           turn it into a return.]] <- this proved to not be true, it's sometimes unsafe,
-                           so we changed the inliner to not inline throws for direct-style.
-                           *)
-                        
-                        
-                        val fncxts = CC.contextOfThrow k
-                        (* TODO: multiple contexts are okay if it's bound as an exnh, so
-                           we need to fold/map over the list of funs to see if they're all
-                           ExnConts or not. not exactly critical since we don't support 
-                           handle right now *)
-                        val fb = (case CPS.Var.Set.listItems fncxts
-                                   of nil => raise Fail "throw must occur in some function!"
-                                    | [funV] => (case CPS.Var.kindOf funV
-                                                 of CPS.VK_Fun fb => fb
-                                                  | _ => raise Fail "expected only Funs!"
-                                                (* esac *))
-                                    | funs =>
-                                        raise Fail 
-                                    (String.concatWith " " 
-                                        (["throws to retk/exnh", CPS.Var.toString k, 
-                                        "occur in multiple contexts:\n"] @ (List.map CPS.Var.toString funs) @ ["\n"]))
-                                 (* esac *))
-                        (*
-                        val fb = (case CPS.Var.kindOf k
+                        val initialFB = (case CPS.Var.kindOf k
                                     of CPS.VK_Param fb => fb
                                      | _ => raise Fail "expected this to be a param bound cont"
                                     (* esac *))
-                        *)
                   in
-                    (case CC.checkRets(k, fb)
-                      of SOME(CC.ReturnCont) => 
-                          (* if this is this a throw to the retk parameter of an enclosing function, it's a return. *)
-                            cvtReturnThrow(env, fb, args)
-                       
-                       | SOME(CC.ExnCont) => (* NOTE TODO FIXME This only works for the top-level exception handler! *)
-                                                cvtExnThrow(env, k, args)
-                       
-                       | NONE => raise Fail "throw to a ret/exn continuation that's not the enclosing function's!"
+                    (case CC.checkRets(k, initialFB)
+                      of SOME(CC.ReturnCont) => let
+                                (* throws should only appear in one function. we double check *)
+                                val _ = if CPS.Var.Set.numItems (CC.contextOfThrow k) = 1
+                                        then ()
+                                        else raise Fail "a return-cont param was thrown to from multiple funs!"
+                            in
+                                cvtReturnThrow(env, initialFB, args)
+                            end
+
+                       | SOME(CC.ExnCont) => (* not sure if a check is worth doing or even possible *)
+                                cvtExnThrow(env, k, args)  
+                        
+                        (* Must be an escape cont. We translate this to a throw just like an exn,
+                            i.e., we jump to the continuation just like in CPS.
+                            
+                            The actual routine invoked for escape conts is an assembly routine
+                            that will cut the stack correctly, etc.
+                            
+                            CFA should have found out no information about any escape conts, 
+                            so it should turn into a std throw.
+                            
+                        *)
+                       | NONE => cvtExnThrow(env, k, args)
                        (* esac *))
                   end
                   
-                  
                   | (CC.JoinCont | CC.ReturnCont) => cvtJoinThrow (env, k, args)
+                  
                   | _ => raise Fail (
                       "encountered a throw that I can't handle: "
                       ^ (CC.kindToString o CC.kindOfCont) k
