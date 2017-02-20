@@ -224,7 +224,7 @@ structure WrapCaptures : sig
                         C.mkCont(padFB, 
                             C.mkFun([manipFB],
                                 MK.dummyExh(fn unitExh =>
-                                    C.mkApply(manipK, [], [retkWrap, unitExh])))))
+                                    C.mkCallec(manipK, [retkWrap, unitExh])))))
                  end
              
               | _ => C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)}, doExp(env, e))

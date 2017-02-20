@@ -36,6 +36,7 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
           }
           
     val cfa = analyze {passName = "cfa", pass = CFACPS.analyze}
+    val cfaClear = analyze {passName = "cfa-clear", pass = CFACPS.clearInfo}
     val freeVars = analyze {passName = "freeVars", pass = FreeVars.analyze}
     val classify = analyze {passName = "classify-conts", pass = ClassifyConts.analyze}
     
@@ -94,7 +95,8 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
 
     fun convert module = let
         val _ = classify module
-        val _ = wrapCaptures module
+        val module = wrapCaptures module
+        val _ = cfaClear module
         val _ = cfa module
         val _ = freeVars module 
     in

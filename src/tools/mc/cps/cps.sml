@@ -21,6 +21,7 @@ structure CPS =
       | If of (cond * exp * exp)
       | Switch of (var * (tag * exp) list * exp option)
       | Apply of (var * var list * var list)
+      | Callec of (var * var list)  (* callec(func / rets), for direct-style conversion (see wrap-captures.sml) *)
       | Throw of (var * var list)
 
     and rhs
@@ -143,6 +144,7 @@ structure CPS =
     fun mkIf arg = mkExp(If arg)
     fun mkSwitch arg = mkExp(Switch arg)
     fun mkApply arg = mkExp(Apply arg)
+    fun mkCallec arg = mkExp(Callec arg)
     fun mkThrow arg = mkExp(Throw arg)
 
     fun mkCFun arg = let

@@ -75,6 +75,10 @@ structure PrintCPS : sig
 		      pr " / ";
 		      prList' varUseToString rets;
 		      pr ")\n")
+		  | CPS.Callec(f, rets) => (
+		      prl["callec (", varUseToString f, " / "];
+		      prList' varUseToString rets;
+		      pr ")\n")
 		  | CPS.Throw(k, args) => (
 		      prl["throw ", varUseToString k, " "];
 		      prList varUseToString args;

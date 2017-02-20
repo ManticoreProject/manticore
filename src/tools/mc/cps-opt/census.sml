@@ -64,6 +64,9 @@ structure CPSCensus : sig
 		      appUse f;
 		      List.app inc args;
 		      List.app inc rets)
+		  | (C.Callec(f, rets)) => (
+		      inc f;  (* NOTE its a use, not an app *)
+		      List.app inc rets)
 		  | (C.Throw(k, args)) => (
 		      appUse k;
 		      List.app inc args)
@@ -114,6 +117,9 @@ structure CPSCensus : sig
 		  | (C.Apply(f, args, rets)) => (
 		      decApp f;
 		      List.app dec args;
+		      List.app dec rets)
+		  | (C.Callec(f, rets)) => (
+		      dec f;
 		      List.app dec rets)
 		  | (C.Throw(k, args)) => (
 		      decApp k;
