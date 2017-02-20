@@ -135,6 +135,16 @@ structure FreeVars : sig
             else 
                 addVars(VSet.empty, f::args@rets)
         
+	    | CPS.Callec(f, rets) => if not(!checkDS) 
+            then raise Fail "how did a Callec appear without using direct-style?"
+            else let 
+                val fv = addVars(VSet.empty, f :: (List.tl rets))
+                (* callec should always be non-tail call, so we include
+                   the return cont's fvs as used here. *)
+                val fv = VSet.union(fv, (getFV o List.hd) rets)
+            in
+                fv
+            end 
         
         
 	    | CPS.Throw(k, args) => let
@@ -227,6 +237,9 @@ structure FreeVars : sig
 	      | (CPS.Apply(f, args, rets)) => (
 		clearFV f;
 		List.app clearFV args;
+		List.app clearFV rets)
+	      | (CPS.Callec(f, rets)) => (
+		clearFV f;
 		List.app clearFV rets)
 	      | (CPS.Throw(k, args)) => (
 		clearFV k;
