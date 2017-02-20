@@ -619,6 +619,11 @@ structure DirectFlatClosureWithCFA : sig
                             in
                                 (CFG.mkBlock(lab, params, rev (binds@stms), xfer), [])
                             end
+                          | CPS.Callec(f, rets) => let
+                                val (binds, xfer) = cvtCallec (env, f, rets)
+                            in
+                                (CFG.mkBlock(lab, params, rev (binds@stms), xfer), [])
+                            end
                         (* end case *)
                       end
                 in
@@ -885,6 +890,17 @@ structure DirectFlatClosureWithCFA : sig
                  | CC.ExnCont => cvtExnK ()
                  | x => raise Fail ((CC.kindToString x) ^ " conts are unexpected.")
             (* esac *))
+          end
+          
+          and cvtCallec(env, funarg, [retk, exhk]) = let
+                val (argBinds, funarg) = lookupVar(env, funarg)
+                val (exnBinds, exnk) = lookupVar(env, exhk)
+                (* TODO we need a transfer in CFG to appropriate for this callec.
+                   I'm not sure if we can piggyback on CFG.Call in this case because
+                   the function we're actually calling is an external manticore func.
+                *)
+          in
+            raise Fail "do the same kinds of things in doCall below for a non-tail call."
           end
           
         (* convert an apply *)
