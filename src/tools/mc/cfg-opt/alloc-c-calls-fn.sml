@@ -85,9 +85,9 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
             CFG.mkFunc (lab, entry, start, rest, export)
 	  end
 			       
-    fun transform (CFG.MODULE{name, externs, code}) = let
+    fun transform (CFG.MODULE{name, externs, mantiExterns, code}) = let
 	  val code = List.map rewriteFunc code
-	  val module = CFG.mkModule (name, externs, code)
+	  val module = CFG.mkModule (name, externs, mantiExterns, code)
 	  in
 	    Census.census module;
 	    module

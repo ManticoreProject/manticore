@@ -46,7 +46,7 @@ structure CheckCFG : sig
     fun typesOf xs = List.map V.typeOf xs
 
     fun check (phase, module) = let
-          val CFG.MODULE{name, externs, code} = module
+          val CFG.MODULE{name, externs, mantiExterns, code} = module
 	  val anyErrors = ref false
 	(* report an error *)
 	  fun pr s = TextIO.output(TextIO.stdErr, concat s)

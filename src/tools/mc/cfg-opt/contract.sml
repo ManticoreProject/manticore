@@ -324,7 +324,7 @@ structure Contract : sig
 	      end
     end
 
-    fun transform (C.MODULE{name, externs, code}) = let
+    fun transform (C.MODULE{name, externs, mantiExterns=mantiExterns, code}) = let
 	(* iterate contraction until we reach a fixed point *)
 	  fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
 	  fun loop (body, prevSum) = let
@@ -339,7 +339,7 @@ structure Contract : sig
 	  val code = loop (code, ticks())
 	  in
 	    ST.tick cntPhases;
-	    C.MODULE{name = name, externs = externs, code = code}
+	    C.MODULE{name = name, externs = externs, mantiExterns=mantiExterns, code = code}
 	  end
 
   end

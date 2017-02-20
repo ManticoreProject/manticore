@@ -50,6 +50,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
 
 fun output (outS, module as C.MODULE { name = module_name,
                                        externs = module_externs,
+                                       mantiExterns,        (* TODO emit these *)
                                        code = module_code } ) = let
   
   (* print/string utils *)

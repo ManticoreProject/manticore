@@ -92,9 +92,9 @@ functor AddAllocVecChecksFn (Target : TARGET_SPEC) : sig
 	 CFG.mkFunc (lab, entry, start', body', export)
        end
 			       
-    fun transform (m as CFG.MODULE{name, externs, code}) = let
+    fun transform (m as CFG.MODULE{name, externs, mantiExterns, code}) = let
        val code = List.map rewriteFunc code
-       val module = CFG.mkModule (name, externs, code)
+       val module = CFG.mkModule (name, externs, mantiExterns, code)
        in
 	 Census.census module;
 	 module

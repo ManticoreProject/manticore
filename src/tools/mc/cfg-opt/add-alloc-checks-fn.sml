@@ -72,7 +72,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
     fun gExpAlloc (CFG.E_GAlloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
       | gExpAlloc _ = 0w0
 
-    fun transform (CFG.MODULE{name, externs, code}) = let
+    fun transform (CFG.MODULE{name, externs, mantiExterns, code}) = let
 	  val graph = makeGraph code
 	  val fbSet = FB.feedback graph
         (* add allocation checks as needed to a function *)
@@ -204,7 +204,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		  rewrite
 		end
 	  val code = List.foldr (addAllocChecks CFG.HCK_Local) [] code
-	  val module = CFG.mkModule(name, externs, code)
+	  val module = CFG.mkModule(name, externs, mantiExterns, code)
 	  in
 	  (* recompute the census counts *)
 	    Census.census module;

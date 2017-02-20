@@ -40,7 +40,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
 
    fun wrapRaw rt = CFGTy.T_Tuple(false, [CFGTy.T_Raw rt])
 
-   fun transform (m as CFG.MODULE{name, externs, code}) = let
+   fun transform (m as CFG.MODULE{name, externs, mantiExterns, code}) = let
          fun regsTyNonUniformArg (arg : CFGTy.ty) : {gprs: int, fprs: int} =
             let
                fun return (gprs, fprs) = {gprs = gprs, fprs = fprs}
@@ -479,7 +479,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                 in
                    CFG.mkFunc (lab, entry, start, body, export)
                 end
-          val module = CFG.mkModule (name, externs, List.map transFunc code)
+          val module = CFG.mkModule (name, externs, mantiExterns, List.map transFunc code)
           in
             module
           end

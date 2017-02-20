@@ -2657,7 +2657,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 		val _ = CFACPS.clearInfo m
 		val _ = FreeVars.clear m
 	    in
-	      CFG.mkModule(name, externs, init::(!blocks))
+	      CFG.mkModule(name, externs, [], init::(!blocks))
 	    end
           end
 

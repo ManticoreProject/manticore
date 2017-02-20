@@ -71,7 +71,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN =
     fun annotate (stm, "") = stm
       | annotate (stm, msg) = T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
 
-    fun codeGen {dst, code=M.MODULE{name, externs, code}} = let
+    fun codeGen {dst, code=M.MODULE{name, externs, mantiExterns=unsupported, code}} = let
 	  val annotateFlg = Controls.get annotateInstrs
 	  val annotate = if annotateFlg
 		then annotate

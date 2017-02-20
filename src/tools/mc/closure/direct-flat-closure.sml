@@ -1179,7 +1179,7 @@ structure DirectFlatClosureWithCFA : sig
                 val (lab, conv, (start, body)) = cvtModLambda body
 	        val init = CFG.mkExportFunc(lab, conv, start, body, Atom.toString name ^ "_init")
 	    in
-	      CFG.mkModule(name, externs, init::(!blocks))
+	      CFG.mkModule(name, externs, [], init::(!blocks)) (* TODO include the manti externs, if any *)
 	    end
           end
 

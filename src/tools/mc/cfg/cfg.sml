@@ -153,6 +153,7 @@ structure CFG =
     datatype module = MODULE of {
 	name : Atom.atom,
 	externs : cfun list,
+	mantiExterns : label list,    (* external Manticore functions *)
 	code : func list	(* first function is initialization *)
       }
 
@@ -285,10 +286,16 @@ structure CFG =
     fun mkCFun arg = (
 	  Label.setKind (#var arg, LK_Extern(#name arg));
 	  CFunctions.CFun arg)
+      
+    fun mkMantiExtern lab = (
+	  Label.setKind (lab, LK_Extern(Label.nameOf lab)) ;
+      lab)
+      
 
-    fun mkModule (name, externs, code) = MODULE{
+    fun mkModule (name, externs, mantiExterns, code) = MODULE{
 	    name = name,
 	    externs = externs,
+	    mantiExterns = mantiExterns,
 	    code = code
 	  }
 

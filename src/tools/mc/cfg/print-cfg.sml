@@ -24,7 +24,7 @@ structure PrintCFG : sig
     
     type flags = {counts : bool, types : verbosity, preds : bool}
 
-    fun output (flags : flags) (outS, CFG.MODULE{name, externs, code}) = let
+    fun output (flags : flags) (outS, CFG.MODULE{name, externs, mantiExterns, code}) = let
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl s = pr(String.concat s)
 	  fun prIndent 0 = ()
@@ -304,6 +304,14 @@ structure PrintCFG : sig
       
         
 	  fun prExtern cf = prl["  ", CFunctions.cfunToString cf, "\n"]
+      
+      fun prManiExtern lab = let
+            val (CFG.LK_Extern name) = CFG.Label.kindOf lab
+            val ty = CFG.Label.typeOf lab 
+      in
+        prl ["  ", name, " : ", CFGTyUtil.toString ty, "\n"]
+      end
+      
 (*
 	  fun prExtern (CFunctions.CFun{var, ...}) = prl[
 		  "  extern ", labelUseToString var, " : ",
@@ -313,6 +321,7 @@ structure PrintCFG : sig
 	  in
 	    prl ["module ", Atom.toString name, " {\n"];
 	    List.app prExtern externs;
+	    List.app prManiExtern mantiExterns;
 	    List.app prFunc code;
 	    pr "}\n"
 	  end
@@ -322,6 +331,7 @@ structure PrintCFG : sig
     fun printFunc f = let
           val m = CFG.MODULE {name = Atom.atom "ad-hoc",
 			      externs = [],
+			      mantiExterns = [],
 			      code = [f]}
           in
             print m
