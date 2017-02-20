@@ -464,6 +464,21 @@ structure DirectFlatClosureWithCFA : sig
     fun convert (m as CPS.MODULE{name, externs, body}) = let
           val blocks = ref []
         (* construct an initial environment that maps the CPS externs to CFG labels *)
+        
+        val (mantiExterns, asm_callec_cfg) = let
+                  (* see wrap-captures.sml for details. *)
+                  val asm_callecTy_cfg = CFGTy.T_StdDirFun {
+                                  clos = CFGTy.unitTy,
+                                  args = [CFGTy.T_Any],
+                                  ret = [CFGTy.T_Raw RawTypes.T_Int, CFGTy.T_Any],
+                                  exh = cvtTy (CPSTy.T_Cont[CPSTy.T_Any], CFACPS.TOP)
+                              }
+                  val asm_callec_cfg = CFG.mkMantiExtern(CFG.Label.new("ASM_Callec", asm_callecTy_cfg))
+                  
+            in
+              ([asm_callec_cfg], asm_callec_cfg)
+            end
+        
           val (externs, externEnv) = let
                 fun cvt (CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}, (cfs, env)) = let
                       val lab = CFG.Label.new(name, cvtTyOfVar var)
@@ -892,16 +907,65 @@ structure DirectFlatClosureWithCFA : sig
             (* esac *))
           end
           
-          and cvtCallec(env, funarg, [retk, exhk]) = let
-                val (argBinds, funarg) = lookupVar(env, funarg)
-                val (exnBinds, exnk) = lookupVar(env, exhk)
-                (* TODO we need a transfer in CFG to appropriate for this callec.
-                   I'm not sure if we can piggyback on CFG.Call in this case because
-                   the function we're actually calling is an external manticore func.
-                *)
+          and cvtCallec(env, funarg, [retk, exnh]) = let
+            val (bindLab, cp) = bindLabel asm_callec_cfg
+            
+            val (bindEP, ep) = let
+                    val epTy = CFGTy.unitTy
+                    val ep = newEP epTy
+                    val bindEP = CFG.mkConst(ep, Literal.Enum 0w0, epTy)
+                in
+                    (bindEP, ep)
+                end
+                
+            (* args to callec *)
+            val (exnBinds, exnh) = lookupVar(env, exnh)
+            val (argBinds, funarg) = lookupVar(env, funarg)
+            
+            (* handle the retk args *)
+            val needsEP = ref false
+            
+            fun f (x, args) = (case findVar(env, x)
+                    of Local x' => x' :: args
+                     | Extern _ => raise Fail "unexpected extern in free-var list"
+                     | (RetCont | JoinCont) => args
+                     | _ => (needsEP := true; args)
+                    (* end case *))
+            
+            
+            val freeVars = CPS.Var.Set.foldr f nil (FreeVars.envOfFun retk)
+            
+            (* bindings for the values from the return throw *)
+            val lhs = let
+                    val argTys = retTyOf retk
+                                  
+                    fun fresh ty = CFG.Var.new ("rv", ty)
+                in
+                    List.map fresh argTys
+                end
+            
+            (* ep, free vars, retk's params *)
+            val retkArgs = freeVars @ lhs 
+            val retkArgs = if !needsEP then envPtrOf env :: retkArgs else retkArgs
+            (* done handling retk args *)
+                                
+            
+            val xfer = CFG.Call {
+                    f = cp,
+                    clos = ep,
+                    args = [funarg, exnh],
+                    next = SOME (lhs, (labelOf retk, retkArgs))
+                  }
           in
-            raise Fail "do the same kinds of things in doCall below for a non-tail call."
+            (bindLab :: bindEP :: exnBinds @ argBinds, xfer)
           end
+          
+          (*let
+            
+            val (applyBinds, xfer) = cvtApply(env, f, funarg, rets, false)    
+          in
+            
+          end *)
           
         (* convert an apply *)
           and cvtApply (env, f, args, rets, isTail) = (case CFA.valueOf f
@@ -1179,7 +1243,7 @@ structure DirectFlatClosureWithCFA : sig
                 val (lab, conv, (start, body)) = cvtModLambda body
 	        val init = CFG.mkExportFunc(lab, conv, start, body, Atom.toString name ^ "_init")
 	    in
-	      CFG.mkModule(name, externs, [], init::(!blocks)) (* TODO include the manti externs, if any *)
+	      CFG.mkModule(name, externs, mantiExterns, init::(!blocks))
 	    end
           end
 
