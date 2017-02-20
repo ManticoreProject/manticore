@@ -429,6 +429,7 @@ structure CFACPS : sig
                          Option.app doExp dflt)
                     | CPS.Apply (f, _, _) => (print "Apply:: "; printValueOf f)
                     | CPS.Throw (f, _) => (print "Throw:: "; printValueOf f)
+                    | CPS.Callec (f, _) => (print "Callec:: "; printValueOf f)
                   (* end case *)
                 end
           and printLambda (CPS.FB {f, params, rets, body, ...}) = (
@@ -484,6 +485,7 @@ structure CFACPS : sig
 			    Option.app doExp dflt)
 			| (CPS.Apply(f, _, _)) => doCall f
 			| (CPS.Throw(f, _)) => doCall f
+			| (CPS.Callec _) => ()
 		      (* end case *))
                 in
                   doExp e
@@ -531,6 +533,7 @@ structure CFACPS : sig
                       (List.app (doExp o #2) cases; Option.app doExp dflt)
                   | CPS.Apply _ => ()
                   | CPS.Throw _ => ()
+                  | CPS.Callec _ => ()
                 (* end case *))
           in
             doLambda body
@@ -573,6 +576,7 @@ structure CFACPS : sig
 			    (List.app (doExp o #2) cases; Option.app doExp dflt)
 			| (CPS.Apply (f, args, conts)) => doApply (f, args, conts)
 			| (CPS.Throw (f, args)) => doThrow (f, args)
+			| (CPS.Callec (f, conts)) => (escape f ; List.app escape conts)
 		      (* end case *))
                 and doRhs (xs, CPS.Var ys) = ListPair.appEq eqInfo' (xs, ys)
                   | doRhs ([x], CPS.Cast (ty, y)) = eqInfo' (x, y)
@@ -695,10 +699,10 @@ structure CFACPS : sig
 		      Option.app doExp dflt)
                   | CPS.Apply _ => ()
                   | CPS.Throw _ => ()
+                  | CPS.Callec _ => ()
                 (* end case *))
           in
             doLambda body
           end
 
   end
-
