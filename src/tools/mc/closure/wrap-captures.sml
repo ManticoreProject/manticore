@@ -181,10 +181,10 @@ structure WrapCaptures : sig
                 
                 (* it turns out that if the retk was eliminated, then it is
                    replaced with unit casted to the type of the retk in the enclosing
-                   fun. This becomes a problem for us because when we wrap C in
-                   a new function, the type of the retk changes, and a simple substitute
+                   fun. This becomes a problem for us because when we wrap C 
+                   with manipK, the type of the retk changes. So a simple substitute
                    becomes ineffective. Thus, we specifically detect this case and
-                   introduce a new unit retk casted to the right type. *)
+                   change the retk to the currently active retk (as opposed to the enclosing fun's). *)
                 fun substRets (env, [retk, exnk], k) = 
                         replaceRetk(env, retk, fn newRetk => k [newRetk, exnk])
                   | substRets (env, [retk], k) = 
@@ -200,16 +200,21 @@ structure WrapCaptures : sig
                              | C.VK_Let(C.Const _) => true
                              | _ => false
                             (* esac *))
-
-                        val oldTy = CV.typeOf oldRetk
-                        val enclosingTy = CV.typeOf (getParamRet env)
-                        val _ = print ("inspecting: " ^ CV.toString oldRetk ^ " VS " ^ CV.toString (getParamRet env) ^ " ... ")
-                     in
-                        if CPSTyUtil.match(oldTy, enclosingTy)
-                        then (print "match\n" ; k oldRetk)
                         
-                        else if isConst oldRetk
-                        then (print "replace\n" ; MK.unitRetk(enclosingTy, k))
+                        val curRet = getRet env
+                        val paramRet = getParamRet env
+                        (* DEBUG
+                        val _ = print ("inspecting: " 
+                                    ^ CV.toString oldRetk 
+                                    ^ " VS paramRet " ^ CV.toString paramRet 
+                                    ^ " VS curRet " ^ CV.toString curRet ^ " ... \n")
+                        *)
+                     in
+                        if CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf paramRet)
+                        then k oldRetk
+                        
+                        else if isConst oldRetk andalso CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf curRet)
+                        then k (newRetk := true ; curRet)
                         
                         else raise Fail "bogus CPS"
                      end
@@ -331,8 +336,9 @@ structure WrapCaptures : sig
         val fname = CV.new("manipK", CPSTy.T_Fun([CV.typeOf contP], [retkTy, contAny]))
         
         (* build the invoke return cont *)
-        val invokeRet = CV.new("invokeRetk", CV.typeOf origRetk)
-        val invokeParams = L.map (fn ty => CV.new("param", ty)) (MK.argTysOf origRetk)
+        val invokeParamTys = L.map (fn _ => CPSTy.T_Any) (MK.argTysOf origRetk)
+        val invokeRet = CV.new("invokeRetk", CPSTy.T_Cont invokeParamTys)
+        val invokeParams = L.map (fn ty => CV.new("param", ty)) invokeParamTys
         
         (* set kind. also need to set contexts since this is a ParamCont *)
         val _ = (K.setKind(invokeRet, K.JoinCont) ; 
