@@ -500,7 +500,8 @@ structure CFACFG : sig
                 and doLabel (lab, chk, args) = (case CFG.Label.kindOf lab
                        of CFG.LK_Func{func, ...} => doFunc (func, chk, args)
                         | CFG.LK_Block block => doBlock (block, (#1 chk), args)
-                        | _ => raise Fail "xfer to unknown label"
+                        | CFG.LK_Extern _ => List.app escape args
+                        | _ => raise Fail ("xfer to unknown label: " ^ CFG.Label.toString lab)
                       (* end case *))
                 and doBlock (start as CFG.BLK{lab, args=params, ...}, dbg, args) = let
                       fun debugMsg () = print (concat[
