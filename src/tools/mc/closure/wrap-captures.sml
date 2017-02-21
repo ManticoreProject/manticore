@@ -65,14 +65,22 @@ structure WrapCaptures : sig
     val cntExpand = ST.newCounter "wrap-captures:expand"
     
     (***** environment utils *****)
-    datatype environment = E of { sub : cont_kind VMap.map, retk : CV.var }
+    datatype environment = E of { sub : cont_kind VMap.map, retk : CV.var, paramRetk : CV.var }
         and cont_kind = RetCont of CV.var
                       | EscapeCont of CV.var
     
-    fun emptyEnv () = E{ sub = VMap.empty, retk = CV.new("wrongRetk", CPSTy.T_Any) }
+    fun emptyEnv () = E{ sub = VMap.empty, 
+                         retk = CV.new("wrongRetk", CPSTy.T_Any),
+                         paramRetk = CV.new("wrongRetk", CPSTy.T_Any)
+                       }
     
-    fun setRet ((E{sub, retk}), r) = E{sub=sub, retk=r}
+    (* get and set the "active" retk *)
+    fun setRet ((E{sub, retk, paramRetk}), r) = E{sub=sub, retk=r, paramRetk=paramRetk}
     fun getRet (E{retk,...}) = retk
+    
+    (* get and set the enclosing function's retk; for the hack in Apply. *)
+    fun setParamRet ((E{sub, retk, paramRetk}), r) = E{sub=sub, retk=retk, paramRetk=r}
+    fun getParamRet (E{paramRetk,...}) = paramRetk
     
     fun lookupKind (E{sub,...}, k) = VMap.find(sub, k)
     
@@ -81,7 +89,7 @@ structure WrapCaptures : sig
          | SOME(EscapeCont newV) => newV
          | NONE => v)
          
-    fun insertV (E{sub,retk}, var, valu) = E{sub = VMap.insert(sub, var, valu), retk=retk}
+    fun insertV (E{sub,retk,paramRetk}, var, valu) = E{sub = VMap.insert(sub, var, valu), retk=retk, paramRetk=paramRetk}
     
     fun subst env v = lookupV(env, v)
     
@@ -132,6 +140,13 @@ structure WrapCaptures : sig
               cast(exh, exhTy, k))
         end
         
+        fun unitRetk(ty, k) = let
+            val retk = CV.new("unitRetk", CPSTy.T_Any)
+        in
+            C.mkLet([retk], C.Const(Literal.unitLit, CPSTy.T_Any),
+              cast(retk, ty, k))
+        end
+        
         fun bindTrue k = 
             fresh(indicatorTy, fn lhs =>
                 C.mkLet([lhs], C.Const(trueVal, indicatorTy),
@@ -164,16 +179,49 @@ structure WrapCaptures : sig
                 
                 val newRetk = ref false
                 
-                fun substRet env v = (case lookupKind(env, v)
-                    of SOME(RetCont newV) => (newRetk := true ; newV)
-                     | SOME(EscapeCont _) => raise Fail "should not appear in the rets!"
-                     | NONE => v)
-                
-                val applyExp = wrap (C.Apply(f, L.map (subst env) args, L.map (substRet env) rets))
+                (* it turns out that if the retk was eliminated, then it is
+                   replaced with unit casted to the type of the retk in the enclosing
+                   fun. This becomes a problem for us because when we wrap C in
+                   a new function, the type of the retk changes, and a simple substitute
+                   becomes ineffective. Thus, we specifically detect this case and
+                   introduce a new unit retk casted to the right type. *)
+                fun substRets (env, [retk, exnk], k) = 
+                        replaceRetk(env, retk, fn newRetk => k [newRetk, exnk])
+                  | substRets (env, [retk], k) = 
+                        replaceRetk(env, retk, fn newRetk => k [newRetk])
+                  
+                and replaceRetk (env, oldRetk, k) = (case lookupKind(env, oldRetk)
+                    of SOME(EscapeCont _) => raise Fail "should not appear as a ret!"
+                     | SOME(RetCont newV) => k (newRetk := true ; newV)
+                     | NONE => let
+                        (* check if the oldRetk is unit *)
+                        fun isConst v = (case CV.kindOf v
+                            of C.VK_Let(C.Cast(_, v)) => isConst v
+                             | C.VK_Let(C.Const _) => true
+                             | _ => false
+                            (* esac *))
+
+                        val oldTy = CV.typeOf oldRetk
+                        val enclosingTy = CV.typeOf (getParamRet env)
+                        val _ = print ("inspecting: " ^ CV.toString oldRetk ^ " VS " ^ CV.toString (getParamRet env) ^ " ... ")
+                     in
+                        if CPSTyUtil.match(oldTy, enclosingTy)
+                        then (print "match\n" ; k oldRetk)
+                        
+                        else if isConst oldRetk
+                        then (print "replace\n" ; MK.unitRetk(enclosingTy, k))
+                        
+                        else raise Fail "bogus CPS"
+                     end
+                     (* esac *))
              in
-                if !newRetk
-                then (K.setTailApply(applyExp, false) ; applyExp)
-                else applyExp
+                substRets(env, rets, fn rets => let
+                        val applyExp = wrap (C.Apply(f, L.map (subst env) args, rets))
+                    in
+                        if !newRetk
+                        then (K.setTailApply(applyExp, false) ; applyExp)
+                        else applyExp
+                    end)
              end
             
          | C.Throw (k, args) => wrap(C.Throw(subst env k, L.map (subst env) args))
@@ -205,10 +253,11 @@ structure WrapCaptures : sig
                     val retk = getRet env
                     val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
                     
-                    fun mkManipKBody env (newF, newRetk) = let
+                    fun mkManipKBody env (newF, newActiveRetk, manipKRetParam) = let
                         val env = insertV(env, retk, RetCont retk)
                         val env = insertV(env, f, EscapeCont newF)
-                        val env = setRet(env, newRetk)
+                        val env = setRet(env, newActiveRetk)
+                        val env = setParamRet(env, manipKRetParam)
                     in
                         doExp(env, e)
                     end
@@ -317,12 +366,17 @@ structure WrapCaptures : sig
             f = fname,
             params = [contP],
             rets = [retkP, exnP],
-            body = mkInvokeRet(fn invokeRet => k (contP, invokeRet))
+            body = mkInvokeRet(fn invokeRet => k (contP, invokeRet, retkP))
         }
     end
         
-    and doFun env (C.FB{f, params, rets as (retk::_), body}) =
-            C.FB{f=f,params=params,rets=rets, body= doExp(setRet(env, retk), body) }
+    and doFun env (C.FB{f, params, rets as (retk::_), body}) = let
+        val env = setRet(env, retk)
+        val env = setParamRet(env, retk)
+    in
+        C.FB{f=f,params=params,rets=rets, body= doExp(env, body) }
+    end
+            
 
 
     and start moduleBody = doFun (emptyEnv()) moduleBody
