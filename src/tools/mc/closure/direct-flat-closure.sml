@@ -960,13 +960,6 @@ structure DirectFlatClosureWithCFA : sig
             (bindLab :: bindEP :: exnBinds @ argBinds, xfer)
           end
           
-          (*let
-            
-            val (applyBinds, xfer) = cvtApply(env, f, funarg, rets, false)    
-          in
-            
-          end *)
-          
         (* convert an apply *)
           and cvtApply (env, f, args, rets, isTail) = (case CFA.valueOf f
                  of CFA.TOP => cvtApplyAux (env, f, NONE, args, rets, isTail)
