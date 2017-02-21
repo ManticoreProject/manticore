@@ -446,9 +446,13 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                             (case CFG.Var.typeOf f
                                 of CFGTy.T_KnownDirFunc _ => transActualKFncArgs args
                                  | CFGTy.T_StdDirFun _ => let
-                                    val (binds, arg) = transActualStdArgs args
+                                    val len = List.length args
+                                    val exh = List.drop(args, len-1)
+                                    
+                                    val actualArgs = List.take(args, len-1)
+                                    val (binds, actualArgs) = transActualStdArgs actualArgs
                                     in
-                                        (binds, [arg])
+                                        (binds, actualArgs :: exh)
                                     end
                                  (* end case *))
                     in
