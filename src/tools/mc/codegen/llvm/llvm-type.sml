@@ -499,7 +499,10 @@ structure LLVMType : sig
         end
       
       | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
-      | CT.T_StdCont _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
+      | CT.T_StdCont _ => (* we use T_StdCont in both direct and CPS *)
+            if Controls.get BasicControl.direct
+            then  mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
+            else  mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
       | CT.T_KnownFunc _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
       | CT.T_KnownDirFunc _ => 
             mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))

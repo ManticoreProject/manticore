@@ -339,6 +339,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 
                 (* TODO make this body a func so that we don't have a ... pattern for the record for saftey. *)
             | (C.StdCont { clos } | C.KnownFunc { clos } | C.KnownDirectFunc {clos, ...}) => let
+                (* NOTE direct-style uses the KnownDirectFunc conv for cont throws, and
+                   those throws come into this func as StdCont, so you should keep those cases matched up. *)
             
             (* NOTE there is no exn handler or retk, so we need to add artifical padding
                in order to shift the args into the right registers according to LLVM *)
