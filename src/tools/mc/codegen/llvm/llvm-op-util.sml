@@ -61,8 +61,8 @@ local
                 val _ = LPU.saveAllocPtr bb loc alloc
 
                 (* call C routine to do the allocation, with bitcasts as needed *)
-                val res = asTy bb resTy (LB.call bb 
-                    (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ]))
+                val res = asTy bb resTy (valOf(LB.call bb 
+                    (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ])))
                     
                 (* retrieve the modified allocation pointer *)
                 val newAlloc = LPU.restoreAllocPtr bb loc
@@ -218,11 +218,11 @@ in (case p
        
        
         *)
-  | P.F32Sqrt _ => (fn [a] => LB.call bb (fv (#1(LR.sqrt_f32)), #[a]))
-  | P.F64Sqrt _ => (fn [a] => LB.call bb (fv (#1(LR.sqrt_f64)), #[a]))
+  | P.F32Sqrt _ => (fn [a] => valOf(LB.call bb (fv (#1(LR.sqrt_f32)), #[a])))
+  | P.F64Sqrt _ => (fn [a] => valOf(LB.call bb (fv (#1(LR.sqrt_f64)), #[a])))
   
-  | P.F32Abs _ => (fn [a] => LB.call bb (fv (#1(LR.abs_f32)), #[a]))
-  | P.F64Abs _ => (fn [a] => LB.call bb (fv (#1(LR.abs_f64)), #[a]))
+  | P.F32Abs _ => (fn [a] => valOf(LB.call bb (fv (#1(LR.abs_f32)), #[a])))
+  | P.F64Abs _ => (fn [a] => valOf(LB.call bb (fv (#1(LR.abs_f64)), #[a])))
 
 
   | (P.I8RSh _ | P.I16RSh _ | P.I32RSh _ | P.I64RSh _ )
@@ -394,8 +394,8 @@ in (case p
                     
                     (* call C routine to do the allocation, with bitcasts as needed *)
                     val res = asTy bb resTy (
-                        LB.call bb (fv label, #[c Op.BitCast (vproc, LT.voidStar),
-                                             c (Op.equivCast(LB.toTy xs, LT.voidStar)) (xs, LT.voidStar)]))
+                        valOf(LB.call bb (fv label, #[c Op.BitCast (vproc, LT.voidStar),
+                                             c (Op.equivCast(LB.toTy xs, LT.voidStar)) (xs, LT.voidStar)])))
                         
                     (* retrieve the modified allocation pointer *)
                     val newAlloc = LPU.restoreAllocPtr bb loc
@@ -412,7 +412,7 @@ in (case p
     | P.AllocFloatArray _ => allocXArray bb LR.allocFloatArray
     | P.AllocDoubleArray _ => allocXArray bb LR.allocDoubleArray
         
-    | P.TimeStampCounter => (fn _ => LB.call bb (fv (#1(LR.readtsc)), #[]))
+    | P.TimeStampCounter => (fn _ => valOf(LB.call bb (fv (#1(LR.readtsc)), #[])))
     
     | P.Pause => (fn _ => f e Op.Pause #[])
     

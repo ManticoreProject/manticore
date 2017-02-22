@@ -51,11 +51,6 @@ structure LLVMBuilder : sig
 
     (* Terminators *)
 
-    (* all tail calls are marked 'musttail' and followed by a 'ret void' automatically,
-       so this is not a general tail call, it's for CPS style tail calls, and the jwaCC
-       is implicit *)
-    val tailCall : t -> (instr * instr vector) -> bb
-
     val unreachable : t -> bb
 
     val retVoid : t -> bb
@@ -150,13 +145,13 @@ structure LLVMBuilder : sig
         or something but I don't have time to refactor ~kavon *)
 
     (* calls which return, without a specific calling convention *)
-    val call : t -> (instr * instr vector) -> instr
+    val call : t -> (instr * instr vector) -> instr option
     
     (* call with a specific convention *)
-    val callAs : t -> convention -> (instr * instr vector) -> instr
+    val callAs : t -> convention -> (instr * instr vector) -> instr option
     
     (* call with a specific convention and attributes *)
-    val callAs' : t -> (attrs * convention) -> (instr * instr vector) -> instr
+    val callAs' : t -> (attrs * convention) -> (instr * instr vector) -> instr option
 
     (* calling convention goodies *)
     val jwaCC : convention  (* the Manticore calling convention *)
@@ -243,7 +238,6 @@ structure LLVMBuilder : sig
     | OP_Return
     | OP_Br
     | OP_CondBr
-    | OP_TailCall
     | OP_Call of convention option
     | OP_Unreachable
     | OP_Switch of switch_arms
@@ -789,19 +783,6 @@ structure LLVMBuilder : sig
                        " [\n", armString, "\t\t]"
                     ]
                  end
-                 
-             
-             | (OP_TailCall, NONE) => let
-                 val (funcName, funcTy) = break (V.sub(args, 0))
-                 val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
-                                 fn i => getArgStr true (V.sub(args, i+1))))
-               in   
-
-                (* FIXME TODO(kavon): currently doesn't include any attributes, also its only safe
-                   to omit the function ty if it is not var arg and doesn't return a pointer or something. *)
-
-                 S.concat ["musttail call ", jwaCC , " void ", funcName, "(", paramStr, ")"]
-               end
                
         (* a NOTE about Call syntax as of LLVM 4.0+
                 
@@ -1027,26 +1008,6 @@ structure LLVMBuilder : sig
         atr = AS.empty
       })
 
-  (* NOTE(kavon): All tail calls are marked `musttail` and followed by a `ret void` automatically
-     in order to have tail call optimization performed on it. One must be careful
-     to not allow `unreachable` to be placed after a musttail call because it will
-     not be correctly lowered to a `jmp` as of LLVM 3.6 (see notes for more info)  *)
-
-  (* tailCall : t -> (instr * instr vector) -> bb *)
-  fun tailCall blk = fn (func, args) => 
-    (* TODO(kavon): ensure the arg and func types match! *)
-    (push(blk, INSTR {
-        result = R_None,
-        kind = OP_TailCall,
-        args = (V.tabulate((V.length args) + 1,
-                fn 0 => func 
-                 | i => V.sub(args, i-1)
-               )),
-        atr = AS.empty
-     });
-     retVoid blk
-    )
-
   (*val br : t -> var -> bb*)
   fun br blk targ =
     ( typeCheck "br" (LT.labelTy, LV.typeOf targ) ;
@@ -1237,26 +1198,26 @@ structure LLVMBuilder : sig
 
       val funTy = LV.typeOf funcVar
 
-      val result = (case LT.returnTy funTy
+      val (result, isNone) = (case LT.returnTy funTy
                      of SOME t => (case LT.node t
-                        of Ty.T_Void => R_None
-                         | _ => R_Var (LV.new("ret", t))
+                        of Ty.T_Void => (R_None, true)
+                         | _ => (R_Var (LV.new("ret", t)), false)
                         (* esac *))
                       | NONE => raise Fail "expected a function type."
                    (* esac *))
-
+      val instr = push(blk,
+                    INSTR {
+                      result = result,
+                      kind = OP_Call cc,
+                      args = (V.tabulate((V.length args) + 1,
+                            fn 0 => func 
+                             | i => V.sub(args, i-1)
+                           )),
+                      atr = atr
+                    }
+                  )
     in
-      push(blk,
-        INSTR {
-          result = result,
-          kind = OP_Call cc,
-          args = (V.tabulate((V.length args) + 1,
-                fn 0 => func 
-                 | i => V.sub(args, i-1)
-               )),
-          atr = atr
-        }
-      )
+      if isNone then NONE else SOME instr
     end
     
   and callAs blk cc = buildCall blk (SOME cc) AS.empty

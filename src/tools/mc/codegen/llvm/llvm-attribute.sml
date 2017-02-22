@@ -52,7 +52,7 @@ structure LLVMAttribute = struct
      | AllowRecip   => "arcp"
      | FastMath     => "fast"
      | SeqCst       => "seq_cst"
-     | Tail         => "tail"
+     | Tail         => "musttail"
     (* esac *))
 
   fun id (x : t) : int = (case x

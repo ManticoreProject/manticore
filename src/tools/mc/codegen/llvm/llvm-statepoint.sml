@@ -150,13 +150,13 @@ end = struct
         val spArgs = spPrefix @ lives
         val intrinsic = LB.fromV(getStatepointVar funTy)
     in
-        (LB.callAs blk conv (intrinsic, Vector.fromList spArgs), liveStartIdx)
+        (valOf(LB.callAs blk conv (intrinsic, Vector.fromList spArgs)), liveStartIdx)
     end
     
     and relocate (blk, tok, from) (live, (i, rest)) = let
         val intrinsic = LB.fromV (getRelocateVar (LB.toTy live))
         val offset = LB.iconst LT.i32 i
-        val relo = LB.call blk (intrinsic, #[tok, offset, offset])
+        val SOME relo = LB.call blk (intrinsic, #[tok, offset, offset])
         val relo = from relo (* do a cast *)
     in
         (i+1, relo::rest)
@@ -166,7 +166,7 @@ end = struct
         val SOME retTy = LT.returnTy (LB.toTy func)
         val intrinsic = LB.fromV (getResultVar retTy)
     in
-        LB.call blk (intrinsic, #[tok])
+        valOf(LB.call blk (intrinsic, #[tok]))
     end
     
     and spaceCast (blk, to) instr = (case LT.node(LB.toTy instr)

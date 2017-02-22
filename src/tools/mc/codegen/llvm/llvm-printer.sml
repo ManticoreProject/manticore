@@ -436,7 +436,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         fun expectFalse b condInstr = let
            val falseC = LB.iconst LT.i1 0
            val (expectLab, _) = LR.expect_i1
-           val annotated = LB.call b (LB.fromV expectLab, #[condInstr, falseC])
+           val SOME annotated = LB.call b (LB.fromV expectLab, #[condInstr, falseC])
         in
            annotated
         end
@@ -661,7 +661,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     llvm-runtime.sml and the actual ASM *)
                  val gcArgs = #[ allocPtr, vprocPtr, castedFP ] 
                  
-                 val res = LB.callAs myBB cc (LB.fromV gcFun, gcArgs)
+                 val SOME res = LB.callAs myBB cc (LB.fromV gcFun, gcArgs)
                  
                  fun extract strct i = LB.extractV myBB (strct, #[LB.intC(LT.i32, Int.toLarge i)])
                  
@@ -986,8 +986,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             
         and mantiFnCall x = let
                 val (llFun, allCvtdArgs) = setupCall x
+                val conv = (AS.singleton A.Tail, LB.jwaCC)
             in
-                (fn () => [LB.tailCall b (llFun, V.fromList allCvtdArgs)])
+                case (LB.callAs' b conv (llFun, V.fromList allCvtdArgs))
+                of SOME result => (fn () => [LB.ret b result])
+                 | NONE => (fn () => [LB.retVoid b])
             end
             
       in
@@ -1264,9 +1267,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                        
                        fun tail _ = let
                             val conv = (AS.singleton A.Tail, LB.jwaCC)
-                            val result = LB.callAs' b conv (f, V.fromList allArgs)
                        in
-                            (fn () => [LB.ret b result])
+                            case (LB.callAs' b conv (f, V.fromList allArgs))
+                            of SOME result => (fn () => [LB.ret b result])
+                             | NONE => (fn () => [LB.retVoid b])
                        end
                    
                    in
@@ -1516,7 +1520,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val _ = LPU.saveAllocPtr b loc alloc
         
         (* do call *)
-        val llCall = LB.call b (llFunc, V.fromList llArgs)
+        val SOME llCall = LB.call b (llFunc, V.fromList llArgs)
             
         val env = updateMV(env, MV_Alloc, LPU.restoreAllocPtr b loc)
         
@@ -1593,11 +1597,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                         end
             
           in
-            (case results
-              of nil => env
-               | [res] => let
+            (case (results, llCall)
+              of (nil, NONE) => env
+               | ([res], SOME llRes) => let
                         val lhsTy = (LT.typeOf o CV.typeOf) res
-                        val llRes = cast (Op.equivCast (LB.toTy llCall, lhsTy)) (llCall, lhsTy)
+                        val llRes = cast (Op.equivCast (LB.toTy llRes, lhsTy)) (llRes, lhsTy)
                     in
                         insertV(env, res, llRes)
                     end
