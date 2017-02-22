@@ -50,7 +50,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
 
 fun output (outS, module as C.MODULE { name = module_name,
                                        externs = module_externs,
-                                       mantiExterns,        (* TODO emit these *)
+                                       mantiExterns = manti_externs,        (* TODO emit these *)
                                        code = module_code } ) = let
   
   (* print/string utils *)
@@ -1232,7 +1232,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             in
                                 if LT.same(lhsTy, extrTy)
                                 then extr
-                                else LB.cast b (Op.safeCast(extrTy, lhsTy)) (extr, lhsTy)
+                                else LB.cast b (Op.simpleCast(extrTy, lhsTy)) (extr, lhsTy)
                             end
                             
                             (* update the machine vals in the env *)
@@ -1841,6 +1841,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
          var,
          asLLV)
       end
+      
+    fun mantiDecl lab = let
+        val asLLV = LV.convertLabel lab
+        val llvmAttrs = "" (* maybe some are needed? *)
+    in
+        ( (LT.declOf (LV.typeOf asLLV) "" (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
+         lab,
+         asLLV)
+    end
 
     val (targetTriple, dataLayout) = let
         (* NOTE it turns out that the code generator does not respect datalayout strings! NOTE
@@ -1894,7 +1903,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
           end
 
 
-    val convertedExterns = List.map toLLVMDecl module_externs
+    val convertedExterns = (L.map toLLVMDecl module_externs) @ (L.map mantiDecl manti_externs)
     val externDecls = S.concat (List.map (fn (s, _, _) => s) convertedExterns)
     
     (* now we add the magic llvm runtime stuff that are not actually part of the CFG module. *)
