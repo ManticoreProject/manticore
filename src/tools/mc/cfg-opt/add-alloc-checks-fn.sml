@@ -218,6 +218,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		      val body = List.foldl (fn (b as CFG.BLK{lab, args, ...}, rr) =>
 						if needsCheck lab
 						then let
+                        
+                            val _ = if Controls.get CFGOptControls.debug
+          			                then print (CFG.Label.toString lab ^ " got a check.\n")
+          			                else ()
+                              
 							val args' = List.map CFG.Var.copy args
 							val (a,b) = convertBlock (b, args', args', args)
 						    in

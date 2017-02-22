@@ -399,12 +399,22 @@ structure CFACFG : sig
                         end)
                       else addInfo
                 val addInfo' = fn (x, y) => addInfo (x, getValue y)
+                
+                fun isExternLabel lab = (case CFG.Label.kindOf lab
+                    of CFG.LK_Extern _ => true
+                     | _ => false
+                     (* end case *))
+                     
               (* record that a given variable escapes *)
                 fun escape x = escapingValue (getValue x)
                 fun doExp (CFG.E_Var(xs, ys)) = ListPair.appEq addInfo' (xs, ys)
                   | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, getValue y)
                   | doExp (CFG.E_Const (x, _, _)) = addInfo(x, TOP)
-                  | doExp (CFG.E_Label(x, lab)) = addInfo(x, LABELS(LSet.singleton lab))
+                  | doExp (CFG.E_Label(x, lab)) = 
+                        if isExternLabel lab
+                        then addInfo(x, TOP)    (* unknown label *)
+                        else addInfo(x, LABELS(LSet.singleton lab))
+                        
                   | doExp (CFG.E_Select(x, i, y)) = addInfo(x, select(i, y))
                   | doExp (CFG.E_Update(i, y, z)) = (escape z; addInfo(y, update(i, y, getValue z)))
                   | doExp (CFG.E_AddrOf(x, i, y)) = (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
