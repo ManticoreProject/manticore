@@ -28,14 +28,21 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 
     structure FB = FeedbackFn (Vertex)
     structure VSet = FB.Set
+    structure LSet = CFG.Label.Set
     structure ABI = Target.ABI
+
+
+    fun notExtern (CFG.LK_Extern _) = false
+      | notExtern _ = true
+      
+    val noExterns = notExtern o CFG.Label.kindOf
 
   (* construct the flow graph for a module *)
     fun makeGraph code = let
 	(* return the outgoing targets of a function *)
 	  fun nodeFromBlock (CFG.BLK{lab, exit, ...}) = (case CFA.labelsOf exit
                  of NONE => (lab, [])
-                  | SOME ls => (lab, CFG.Label.Set.listItems ls)
+                  | SOME ls => (lab, LSet.listItems (LSet.filter noExterns ls))
                 (* end case *))
           val nodeFromBlock= fn b => if Controls.get CFGOptControls.debug
                 then let
@@ -71,6 +78,21 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
   (* the amount of storage allocated by an expression *)
     fun gExpAlloc (CFG.E_GAlloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
       | gExpAlloc _ = 0w0
+      
+    fun xferAlloc (CFG.Call{f,...}) = let
+            (* this is only here because the only external label expected
+               is ASM_Callec, which is hand-written assembly whose allocation
+               should be accounted for. *)
+            fun isExternLab v = (case CFG.Var.kindOf v
+                of CFG.VK_Let(CFG.E_Label(_, lab)) => not(noExterns lab)
+                 | _ => false
+                (* esac *))
+        in
+            if isExternLab f
+            then Word.fromLargeInt ABI.wordSzB * Word.fromInt(5)
+            else 0w0
+        end
+      | xferAlloc _ = 0w0
 
     fun transform (CFG.MODULE{name, externs, mantiExterns, code}) = let
 	  val graph = makeGraph code
@@ -103,13 +125,19 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				  in
 				    case CFA.labelsOf exit
 				     of NONE => 0w0
-				      | SOME labs => CFG.Label.Set.foldl f 0w0 labs
+				      | SOME labs => LSet.foldl f 0w0 (LSet.filter noExterns labs)
 				    (* end case *)
 				  end
 			  (* add in any data allocated in this block *)
 			    val alloc = List.foldl (fn (e, sz) => sz + expAlloc e) alloc body
+			  (* add in any data allocated by the transfer *)
+			    val alloc = alloc + xferAlloc exit
 			    in
-			      setAlloc (lab, alloc); alloc
+			      (if Controls.get CFGOptControls.debug
+			          then print (CFG.Label.toString lab ^ " allocs " ^ Word.toString alloc ^ "\n")
+			          else () ;
+			      setAlloc (lab, alloc) ; 
+			      alloc)
 			    end
 			| SOME alloc => alloc
 		      (* end case *))
