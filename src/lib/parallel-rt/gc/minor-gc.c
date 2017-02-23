@@ -61,6 +61,8 @@ void ScanStackMinor (
 
 #define DEBUG_STACK_SCAN
 
+    uint64_t framesSeen = 0;
+
 /* TODO: 
     - the stack scanner should stop at the high water mark during a minor scan.
 */
@@ -69,7 +71,7 @@ void ScanStackMinor (
     uint64_t stackPtr = (uint64_t)origStkPtr;
     
     uint64_t deepest = (uint64_t)stkInfo->deepestScan;
-    if(deepest < (uint64_t)origStkPtr) {
+    if(deepest <= (uint64_t)origStkPtr) {
         return; // this part of the stack has already been scanned.
     }
     
@@ -78,6 +80,7 @@ void ScanStackMinor (
     while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
 
 #ifdef DEBUG_STACK_SCAN
+        framesSeen++;
         print_frame(stderr, frame);    
 #endif
         
@@ -110,6 +113,12 @@ void ScanStackMinor (
         stackPtr += frame->frameSize;
         
     } // end while
+    
+#ifdef DEBUG_STACK_SCAN
+        if (framesSeen == 0) {
+            Die("Should have seen at least one frame!");
+        }
+#endif
 
     return;
 }
