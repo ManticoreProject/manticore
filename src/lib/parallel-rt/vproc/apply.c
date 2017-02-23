@@ -289,9 +289,6 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
     #endif
     
-    // TEMP
-    Say("Asynchronous signal arrived at vproc %d\n", vp->id);
-    
     	      /* an asynchronous signal has arrived */
     	        vp->sigPending = M_TRUE;
     	    }
