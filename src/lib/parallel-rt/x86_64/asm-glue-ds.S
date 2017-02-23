@@ -62,7 +62,48 @@ _GSYM(ASM_Apply_StdDS):
     jmp     *TMP_REG1
     
     
+.p2align 3
+.globl	_GSYM(ASM_DS_EscapeThrow)
+_GSYM(ASM_DS_EscapeThrow):
+    // set the stack ptr. set the stack descriptor in the vproc.
+    movq    8(STD_EP_REG), %rsp
+    movq    16(STD_EP_REG), TMP_REG1
+    movq    TMP_REG1, STD_CONT(VPROC_PTR_REG)
     
+    // setup args
+    movq    STD_ARG_REG, %rdx       // shift the arg to the 2nd arg reg
+    movq    $0, STD_ARG_REG         // set 1st arg reg to 0 indicating an escape throw
+    ret                             // do a pop;jmp to resume invoke the stack
+
+
+.p2align 3
+.globl	_GSYM(ASM_Callec)
+_GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
+    
+    /***** alloc cont object ****/
+    
+    // get additional values
+    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1           // load the stack descriptor
+    leaq    _GSYM(ASM_DS_EscapeThrow)(%rip), TMP_REG2    // load the resume address
+    
+    // initialize allocation
+    movq    $1234, -8(ALLOC_PTR_REG)            // init header    <- TODO get the right number!
+    movq    TMP_REG2, (ALLOC_PTR_REG)           // init code ptr
+    movq    %rsp, 8(ALLOC_PTR_REG)              // save stack ptr
+    movq    TMP_REG1, 16(ALLOC_PTR_REG)         // save stack descriptor
+    
+    // update pointers
+    movq    ALLOC_PTR_REG, TMP_REG3             // save ptr to the cont object
+    addq    $32, ALLOC_PTR_REG                  // bump alloc ptr, (numItems * 8) + 8
+    
+    /***** invoke the function we were given *****/
+    movq    (STD_ARG_REG), STD_EP_REG       // load environment pointer
+    movq    8(STD_ARG_REG), TMP_REG1        // load code pointer
+    movq    TMP_REG3, STD_ARG_REG           // pass the cont object
+    jmp     *TMP_REG1                       // do the call, leaving stack pointer as-is
+    
+    
+
 /*
     the EP of this function is as follows:
     ====================
