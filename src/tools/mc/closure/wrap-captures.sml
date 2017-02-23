@@ -210,13 +210,9 @@ structure WrapCaptures : sig
                                     ^ " VS curRet " ^ CV.toString curRet ^ " ... \n")
                         *)
                      in
-                        if CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf paramRet)
-                        then k oldRetk
-                        
-                        else if isConst oldRetk andalso CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf curRet)
+                        if isConst oldRetk andalso CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf curRet)
                         then k (newRetk := true ; curRet)
-                        
-                        else raise Fail "bogus CPS"
+                        else k oldRetk
                      end
                      (* esac *))
              in
