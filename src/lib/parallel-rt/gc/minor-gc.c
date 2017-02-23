@@ -141,7 +141,7 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
         nextChk = allocd->next;
         
         if ((allocd->age <= epoch)  // young enough
-            && (allocd->mmapBase == allocd->deepestScan) // unmarked
+            && (allocd->deepestScan == allocd) // unmarked
            ) {
             
             freedBytes += allocd->mmapSize;
@@ -173,7 +173,7 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
 void UnmarkStacks(VProc_t *vp) {
     StackInfo_t* cur = vp->allocdStacks;
     while (cur != NULL) {
-        cur->deepestScan = cur->mmapBase;
+        cur->deepestScan = cur;
         cur = cur->next;
     }
     return;

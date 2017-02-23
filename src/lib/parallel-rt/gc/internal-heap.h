@@ -63,7 +63,7 @@ typedef enum {
 struct struct_stackinfo {
     void* mmapBase;
     size_t mmapSize;
-    void* deepestScan;  // unscanned <=> deepestScan = mmapBase
+    void* deepestScan;  // unscanned <=> deepestScan == ptr to its own StackInfo_t
     Age_t age;
     StackInfo_t* next;  // link to next stack
 };

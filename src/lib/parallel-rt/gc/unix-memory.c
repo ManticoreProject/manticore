@@ -155,7 +155,7 @@ void* AllocStack(size_t numBytes, StackInfo_t** info) {
     StackInfo_t* infoP = (StackInfo_t*)(val + stackLen);
     infoP->mmapBase = mem;
     infoP->mmapSize = totalSz;
-    infoP->deepestScan = mem;
+    infoP->deepestScan = infoP;
     infoP->age = AGE_Minor;
     infoP->next = NULL;
     *info = infoP;
