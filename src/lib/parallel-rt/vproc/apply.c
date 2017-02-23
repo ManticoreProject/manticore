@@ -258,11 +258,6 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     /*
         vp->stdEp == current stack pointer
         vp->stdCont == current stack's descriptor.
-        
-        NOTE that you should save these fields and clear them
-        if you decide to do GC since it considers
-        these to be roots. In the case of a preemption
-        you'll just allocate the stack closure, etc.
     */
     
     Value_t envP, arg, exnCont;
