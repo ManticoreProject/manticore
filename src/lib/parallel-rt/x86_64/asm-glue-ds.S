@@ -75,6 +75,13 @@ _GSYM(ASM_Resume_Stack):
     movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
     ret
     
+.p2align 3
+.globl	_GSYM(ASM_LongJmp)
+_GSYM(ASM_LongJmp):
+    // setup args
+    movq    STD_ARG_REG, %rdx       // shift the arg to the 2nd arg reg
+    movq    $0, STD_ARG_REG         // set 1st arg reg to 0 indicating an escape throw
+    // **** fall-through to EscapeThrow ****
     
 .p2align 3
 .globl	_GSYM(ASM_DS_EscapeThrow)
@@ -83,10 +90,6 @@ _GSYM(ASM_DS_EscapeThrow):
     movq    8(STD_EP_REG), %rsp
     movq    16(STD_EP_REG), TMP_REG1
     movq    TMP_REG1, STD_CONT(VPROC_PTR_REG)
-    
-    // setup args
-    movq    STD_ARG_REG, %rdx       // shift the arg to the 2nd arg reg
-    movq    $0, STD_ARG_REG         // set 1st arg reg to 0 indicating an escape throw
     ret                             // do a pop;jmp to resume invoke the stack
 
 
@@ -95,11 +98,11 @@ _GSYM(ASM_DS_EscapeThrow):
 #define STACK_HDR    196613
 
 /*
-    the layout of continuation passed by callec is as follows
+    the layout of stack continuation is as follows
     ======================
           GC header
     ----------------------
-     &ASM_DS_EscapeThrow    <------ cont ptr
+          CODE PTR           <------ cont ptr
     ----------------------
         stack ptr
     ----------------------
@@ -114,8 +117,8 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
     /***** alloc cont object ****/
     
     // get additional values
-    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1           // load the stack descriptor
-    leaq    _GSYM(ASM_DS_EscapeThrow)(%rip), TMP_REG2    // load the resume address
+    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1     // load the stack descriptor
+    leaq    _GSYM(ASM_LongJmp)(%rip), TMP_REG2    // load the resume address
     
     // initialize allocation
     movq    $STACK_HDR, -8(ALLOC_PTR_REG)       // init header
