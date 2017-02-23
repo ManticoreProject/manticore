@@ -60,6 +60,10 @@ void ScanStackMinor (
     Word_t **nextW) {
 
 #define DEBUG_STACK_SCAN
+
+/* TODO: 
+    - the stack scanner should stop at the high water mark during a minor scan.
+*/
         
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
@@ -107,6 +111,62 @@ void ScanStackMinor (
         
     } // end while
 
+    return;
+}
+
+/*
+ * We perform a pass over the allocated list of stacks,
+ * freeing any unmarked stacks who are young enough.
+ *
+ * The value returned indicates how many bytes were reclaimed.
+ *
+ * This function is also used by later GCs.
+ */
+size_t FreeStacks(VProc_t *vp, Age_t epoch) {
+    StackInfo_t* allocd = vp->allocdStacks;
+    StackInfo_t* prev = NULL;
+    StackInfo_t* nextChk;
+    size_t freedBytes = 0;
+    
+    while (allocd != NULL) {
+        nextChk = allocd->next;
+        
+        if ((allocd->age <= epoch)  // young enough
+            && (allocd->mmapBase == allocd->deepestScan) // unmarked
+           ) {
+            
+            freedBytes += allocd->mmapSize;
+            
+            // unlink
+            if (prev != NULL) {
+                prev->next = nextChk;
+            }
+            
+            // put allocd on free list
+            StackInfo_t* freeTop = vp->freeStacks;
+            allocd->next = freeTop;
+            allocd->age = AGE_Minor;
+            vp->freeStacks = allocd;
+            
+            // look at next one, prev remains the same
+            allocd = nextChk;
+            
+        } else {
+            // advance position
+            prev = allocd;
+            allocd = nextChk;
+        }
+    }
+    return freedBytes;
+}
+
+/* unmarks all stacks in the alloc'd list (for the ones who survived). */
+void UnmarkStacks(VProc_t *vp) {
+    StackInfo_t* cur = vp->allocdStacks;
+    while (cur != NULL) {
+        cur->deepestScan = cur->mmapBase;
+        cur = cur->next;
+    }
     return;
 }
 
@@ -235,14 +295,11 @@ void MinorGC (VProc_t *vp)
         }
 
     }
-    
-    /* TODO: 
-        - scan the allocated stack list after finishing scanning in order 
-          determine which ones whose oldest generation is the minor heap and were
-          not marked, and place them on the free list.
-          
-        - the stack scanner should stop at the high water mark during a minor scan.
-    */
+
+#ifdef DIRECT_STYLE
+    /* try to free unreachable stacks */
+    int numFreed = FreeStacks(vp, AGE_Minor);
+#endif
 
     assert ((Addr_t)nextScan >= vp->heapBase);
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - vp->heapBase);
@@ -283,6 +340,12 @@ void MinorGC (VProc_t *vp)
     if (HeapCheck >= GC_DEBUG_MINOR) {
         CheckMinorGC (vp, roots);
     }
+#endif
+
+
+#ifdef DIRECT_STYLE
+    /* unmark all surviving stacks */
+    UnmarkStacks(vp);
 #endif
 
     /* reset the allocation pointer */
