@@ -65,21 +65,23 @@ structure WrapCaptures : sig
     val cntExpand = ST.newCounter "wrap-captures:expand"
     
     (***** environment utils *****)
-    datatype environment = E of { sub : cont_kind VMap.map, retk : CV.var, paramRetk : CV.var }
+    datatype environment = E of { sub : cont_kind VMap.map, retk : CV.var, paramRetk : CV.var, manipScope : bool }
         and cont_kind = RetCont of CV.var
                       | EscapeCont of CV.var
     
     fun emptyEnv () = E{ sub = VMap.empty, 
                          retk = CV.new("wrongRetk", CPSTy.T_Any),
-                         paramRetk = CV.new("wrongRetk", CPSTy.T_Any)
+                         paramRetk = CV.new("wrongRetk", CPSTy.T_Any),
+                         manipScope = false
                        }
     
     (* get and set the "active" retk *)
-    fun setRet ((E{sub, retk, paramRetk}), r) = E{sub=sub, retk=r, paramRetk=paramRetk}
+    fun setRet ((E{sub, retk, paramRetk, manipScope}), r) = 
+        E{sub=sub, retk=r, paramRetk=paramRetk, manipScope=manipScope}
     fun getRet (E{retk,...}) = retk
     
     (* get and set the enclosing function's retk; for the hack in Apply. *)
-    fun setParamRet ((E{sub, retk, paramRetk}), r) = E{sub=sub, retk=retk, paramRetk=r}
+    fun setParamRet ((E{sub, retk, paramRetk,manipScope}), r) = E{sub=sub, retk=retk, paramRetk=r, manipScope=manipScope}
     fun getParamRet (E{paramRetk,...}) = paramRetk
     
     fun lookupKind (E{sub,...}, k) = VMap.find(sub, k)
@@ -89,7 +91,12 @@ structure WrapCaptures : sig
          | SOME(EscapeCont newV) => newV
          | NONE => v)
          
-    fun insertV (E{sub,retk,paramRetk}, var, valu) = E{sub = VMap.insert(sub, var, valu), retk=retk, paramRetk=paramRetk}
+    fun inManipScope (E{manipScope,...}) = manipScope
+    fun setManipScope (E{sub, retk, paramRetk, manipScope}, flag) = 
+        E{sub=sub, retk=retk, paramRetk=paramRetk, manipScope=flag}
+         
+    fun insertV (E{sub,retk,paramRetk,manipScope}, var, valu) = 
+        E{sub = VMap.insert(sub, var, valu), retk=retk, paramRetk=paramRetk, manipScope=manipScope}
     
     fun subst env v = lookupV(env, v)
     
@@ -210,8 +217,12 @@ structure WrapCaptures : sig
                                     ^ " VS curRet " ^ CV.toString curRet ^ " ... \n")
                         *)
                      in
-                        if isConst oldRetk andalso CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf curRet)
+                        if inManipScope env 
+                            andalso isConst oldRetk 
+                            andalso CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf curRet)
+                        
                         then k (newRetk := true ; curRet)
+                        
                         else k oldRetk
                      end
                      (* esac *))
@@ -259,6 +270,7 @@ structure WrapCaptures : sig
                         val env = insertV(env, f, EscapeCont newF)
                         val env = setRet(env, newActiveRetk)
                         val env = setParamRet(env, manipKRetParam)
+                        val env = setManipScope(env, true)
                     in
                         doExp(env, e)
                     end
@@ -281,6 +293,18 @@ structure WrapCaptures : sig
              (* esac *))
         (* esac *))
     end
+    
+    and doFun env (C.FB{f, params, rets as (retk::_), body}) = let
+        val env = setRet(env, retk)
+        val env = setParamRet(env, retk)
+        val env = setManipScope(env, false)
+    in
+        C.FB{f=f,params=params,rets=rets, body= doExp(env, body) }
+    end
+            
+
+
+    and start moduleBody = doFun (emptyEnv()) moduleBody
     
     (* the tricky part here is that we need to merge the type of the arguments
        to these two continuations so we can longjmp or return to the same block.
@@ -371,17 +395,6 @@ structure WrapCaptures : sig
             body = mkInvokeRet(fn invokeRet => k (contP, invokeRet, retkP))
         }
     end
-        
-    and doFun env (C.FB{f, params, rets as (retk::_), body}) = let
-        val env = setRet(env, retk)
-        val env = setParamRet(env, retk)
-    in
-        C.FB{f=f,params=params,rets=rets, body= doExp(env, body) }
-    end
-            
-
-
-    and start moduleBody = doFun (emptyEnv()) moduleBody
 
     (* ClassifyConts must be run before this transform. *)
     fun transform (m as C.MODULE{name, externs, body}) = 

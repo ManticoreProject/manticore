@@ -1098,10 +1098,15 @@ structure DirectFlatClosureWithCFA : sig
                   in
                     (case CC.checkRets(k, initialFB)
                       of SOME(CC.ReturnCont) => let
-                                (* throws should only appear in one function. we double check *)
-                                val _ = if CPS.Var.Set.numItems (CC.contextOfThrow k) = 1
-                                        then ()
-                                        else raise Fail "a return-cont param was thrown to from multiple funs!"
+                                (* throws should only appear in at most one function. we double check.
+                                    NOTE that sometimes wrap-captures introduces a throw for a ret cont
+                                    for which no throw previously existed, but it is always in the right
+                                    context. We don't update the context set for that throw in that pass
+                                    out of pure laziness.
+                                *)
+                                val _ = if CPS.Var.Set.numItems (CC.contextOfThrow k) > 1
+                                        then raise Fail ("return-cont param " ^ CPS.Var.toString k ^ " was thrown to from multiple funs!")
+                                        else ()
                             in
                                 cvtReturnThrow(env, initialFB, args)
                             end
