@@ -53,6 +53,7 @@ extern Value_t AllocNonUniform (VProc_t *vp, int nItems, ...);
 extern Value_t WrapWord (VProc_t *vp, Word_t i);
 extern Value_t AllocString (VProc_t *vp, const char *s);
 extern Value_t AllocRaw (VProc_t *vp, uint32_t sz);
+extern Value_t AllocStkCont (VProc_t *vp, Addr_t codeP, Value_t stkPtr, Value_t stkInfo);
 
 STATIC_INLINE Value_t ManticoreBool (bool b)  { return b ? M_TRUE : M_FALSE; }
 

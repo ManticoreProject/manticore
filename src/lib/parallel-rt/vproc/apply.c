@@ -197,6 +197,7 @@ extern void ASM_Resume_Stack (
     Value_t arg);
     
 extern int ASM_DS_Return;
+extern int ASM_DS_EscapeThrow;
 // extern int ASM_UncaughtExn;
 // extern int ASM_Resume;
 
@@ -266,7 +267,7 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     
     Value_t envP, arg, exnCont;
     Addr_t codeP;
-    FunClosure_t* shutdownClos;
+    FunClosure_t* closObj;
     
     Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
     
@@ -281,48 +282,62 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
                 MinorGC (vp);
           }
           
-          /* NOTE right now, totally ignoring signals and just returning */
-          
-          /* setup the return from GC */
-		codeP = vp->stdEnvPtr; // actually the stack pointer
-		envP = M_UNIT;		
-		exnCont = M_UNIT;
-        arg = M_UNIT;
-        
-        ASM_Resume_Stack (vp, codeP, envP, exnCont, arg);
-        // no return
-        assert(false);
-          
-          
-          
           /* check for asynchronous signals */
     	    if (oldLimitPtr == 0) {
     #ifndef NDEBUG
     	      if (DebugFlg)
     		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
     #endif
+    
+    // TEMP
+    Say("Asynchronous signal arrived at vproc %d\n", vp->id);
+    
     	      /* an asynchronous signal has arrived */
     	        vp->sigPending = M_TRUE;
     	    }
 
     	  /* is there a pending signal that we can deliver? */
     	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
-    		/* package up the current stack and pass 
-               it to the scheduler fn in BOM */
+                Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
+                                                    vp->stdEnvPtr, // stack ptr
+                                                    vp->stdCont); // stack info
+                
+    	      /* pass the signal to scheduling code in the BOM runtime */
+            
+            closObj = ValueToClosure(vp->schedCont);
+            // yes, the two lines below look fishy.
+            // FunClosure_t uses {cp, ep}, but
+            // the codegen uses {ep, cp}
+            envP = closObj->cp;
+            codeP = ValueToAddr(closObj->ep);
+            arg = resumeK;
+            exnCont = M_UNIT;
+            vp->atomic = M_TRUE;
+            vp->sigPending = M_FALSE;
+            LogPreemptSignal(vp);
+            
+            ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+            
     	    }
-            else {
-              /* return to the current stack from GC */
-            }
-          
-        break;  
+    	    else {
+    	     /* setup the return from GC */
+                codeP = vp->stdEnvPtr; // actually the stack pointer
+                envP = M_UNIT;		
+                exnCont = M_UNIT;
+                arg = M_UNIT;
+                ASM_Resume_Stack (vp, codeP, envP, exnCont, arg);
+    	    }
+    	    
+            Die("unreachable in REQ_GC");
+            break;  
         /********************/
         case REQ_Return:
-                shutdownClos = ValueToClosure(vp->shutdownCont);
+                closObj = ValueToClosure(vp->shutdownCont);
                 // yes, the two lines below look fishy.
                 // FunClosure_t uses {cp, ep}, but
                 // the codegen uses {ep, cp}
-        	    envP = shutdownClos->cp;
-                codeP = ValueToAddr(shutdownClos->ep);
+        	    envP = closObj->cp;
+                codeP = ValueToAddr(closObj->ep);
         	    arg = M_UNIT;
         	    exnCont = M_UNIT;
         	    vp->atomic = M_TRUE;
@@ -331,7 +346,7 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
                 
         	    ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
                 
-                Die("Should have never gotten here. 123");
+                Die("unreachable in REQ_Return");
                 break;
                 
         case REQ_Sleep:

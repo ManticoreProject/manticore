@@ -139,6 +139,28 @@ Value_t AllocRaw (VProc_t *vp, uint32_t len)
 
 }
 
+/*! \brief allocate and initialize a stack cont in the nursery
+ *  \return the allocated heap object
+ */
+Value_t AllocStkCont (VProc_t *vp, Addr_t codeP, Value_t stkPtr, Value_t stkInfo)
+{
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
+    
+    const int nWords = 3;
+    
+    EnsureNurserySpace (vp, nWords);
+
+    obj[-1] = STACK_HDR(nWords);
+    obj[0] = codeP;
+    obj[1] = stkPtr;
+    obj[2] = stkInfo;
+    
+    vp->allocPtr += WORD_SZB * (nWords+1);
+
+    return PtrToValue(obj);
+
+}
+
 /*! \brief allocate in the local heap an array of raw values
  *  \param vp the host vproc
  *  \param nElems the length of the array
