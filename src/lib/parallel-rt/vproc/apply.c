@@ -189,6 +189,13 @@ extern void ASM_Apply_StdDS_WithStk (
     Value_t arg,
     Value_t stkPtr);
     
+extern void ASM_Resume_Stack (
+    VProc_t *vp,
+    Addr_t stk, 
+    Value_t ep,
+    Value_t exh,
+    Value_t arg);
+    
 extern int ASM_DS_Return;
 // extern int ASM_UncaughtExn;
 // extern int ASM_Resume;
@@ -266,9 +273,6 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     switch (req) {
         case REQ_GC:
         
-        MinorGC (vp);
-        Die("finished GC");
-        
         /* check to see if we actually need to do a GC, since this request
          * might be from a pending signal.
          */
@@ -276,6 +280,19 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
               /* request a minor GC */
                 MinorGC (vp);
           }
+          
+          /* NOTE right now, totally ignoring signals and just returning */
+          
+          /* setup the return from GC */
+		codeP = vp->stdEnvPtr; // actually the stack pointer
+		envP = M_UNIT;		
+		exnCont = M_UNIT;
+        arg = M_UNIT;
+        
+        ASM_Resume_Stack (vp, codeP, envP, exnCont, arg);
+        // no return
+        assert(false);
+          
           
           
           /* check for asynchronous signals */

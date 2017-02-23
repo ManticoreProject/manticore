@@ -61,6 +61,20 @@ _GSYM(ASM_Apply_StdDS):
     // call the function
     jmp     *TMP_REG1
     
+
+// called by RequestService to return from GC
+    .p2align 3
+    .globl	_GSYM(ASM_Resume_Stack)
+_GSYM(ASM_Resume_Stack):
+    // setup standard convention registers
+    movq    %rdi, VPROC_PTR_REG
+    movq    %rsi, %rsp          // change the stack ptr
+    movq    %rdx, STD_EP_REG
+    movq    %rcx, STD_EXH_REG
+    movq    %r8, STD_ARG_REG
+    movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
+    ret
+    
     
 .p2align 3
 .globl	_GSYM(ASM_DS_EscapeThrow)

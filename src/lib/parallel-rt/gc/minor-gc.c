@@ -186,15 +186,6 @@ void MinorGC (VProc_t *vp)
     void* stkPtr = vp->stdEnvPtr;
     ScanStackMinor(stkPtr, stkInfo, nurseryBase, allocSzB, &nextW);
 #endif
-    
-    Die("-- got to end-marker --"); 
-    /* TODO: 
-        - check for the stack cont header while scanning the to space
-        - scan the allocated stack list after finishing scanning in order 
-          determine which ones haven't been encountered in order to free
-          that memory onto the free list.
-        - the stack scanner should stop at the high water mark during a minor scan.
-    */
 
   /* scan to space */
     while (nextScan < nextW-1) {
@@ -220,6 +211,20 @@ void MinorGC (VProc_t *vp)
             
         } else if (isRawHdr(hdr)) {
             nextScan += GetLength(hdr);
+            
+        } else if (isStackHdr(hdr)) {
+            
+            int len = GetLength(hdr);
+            const int expectedLen = 3;
+            assert(len == expectedLen && "ASM code doesn't match GC assumptions");
+            
+            void* stkPtr = nextScan[1];
+            StackInfo_t* stkInfo = nextScan[2];
+            
+            ScanStackMinor(stkPtr, stkInfo, nurseryBase, allocSzB, &nextW);
+            
+            nextScan += expectedLen;
+            
         } else {
             //printf("MinorGC id = %d, length = %d, scan = %p\n",getID(hdr),GetLength(hdr),(void *)nextScan);
             
@@ -230,6 +235,14 @@ void MinorGC (VProc_t *vp)
         }
 
     }
+    
+    /* TODO: 
+        - scan the allocated stack list after finishing scanning in order 
+          determine which ones whose oldest generation is the minor heap and were
+          not marked, and place them on the free list.
+          
+        - the stack scanner should stop at the high water mark during a minor scan.
+    */
 
     assert ((Addr_t)nextScan >= vp->heapBase);
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - vp->heapBase);
@@ -257,6 +270,9 @@ void MinorGC (VProc_t *vp)
 
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
         /* time to do a major collection. */
+        
+        Die("-- tried to do a Major GC --");
+        
         MajorGC (vp, roots, (Addr_t)nextScan);
     } else {
         /* remember information about the final state of the heap */
