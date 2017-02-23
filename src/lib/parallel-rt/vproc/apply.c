@@ -224,14 +224,8 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   
   // write 'info' to vp->stdCont to establish that it is the current stack.
   vp->stdCont = info;
-    
-  /*
-    TODO 
-    - initialize the vp->allocdStks list with 'info'.
-    - if not already done, vp->freeStks list should be NULL / 0
-    - 
-    
-  */
+  vp->allocdStacks = info;
+  vp->freeStacks = NULL;
   
   /* apply the given function  */
   LogRunThread(vp, 0);

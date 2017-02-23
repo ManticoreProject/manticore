@@ -54,10 +54,17 @@ typedef struct {
     MemChunk_t *freeChunks;  //!< free chunks allocated on this node
 } NodeHeap_t;
 
+typedef enum {
+    AGE_Minor = 0x1,
+    AGE_Major = 0x2,
+    AGE_Global = 0x4
+} Age_t;
+
 struct struct_stackinfo {
     void* mmapBase;
     size_t mmapSize;
-    void* deepestScan;
+    void* deepestScan;  // unscanned <=> deepestScan = mmapBase
+    Age_t age;
     StackInfo_t* next;  // link to next stack
 };
 
