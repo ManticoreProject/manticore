@@ -64,7 +64,9 @@ void ScanStackMinor (
     uint64_t framesSeen = 0;
 
 /* TODO: 
-    - the stack scanner should stop at the high water mark during a minor scan.
+    - the stack scanner should overwrite nursery water marks (the zeros) of frames
+        it encounters
+    - the stack scanner should stop at the high water mark of nursery frame roots.
 */
         
     frame_info_t* frame;
@@ -113,6 +115,9 @@ void ScanStackMinor (
         stackPtr += frame->frameSize;
         
     } // end while
+    
+    // the roots have been forwarded out of the nursery.
+    stkInfo->age = AGE_Major;
     
 #ifdef DEBUG_STACK_SCAN
         if (framesSeen == 0) {
