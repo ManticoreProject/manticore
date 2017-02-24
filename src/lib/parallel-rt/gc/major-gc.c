@@ -115,7 +115,7 @@ void ScanStackMajor (
     VProc_t *vp,
     bool scanningGlobalToSpace) {
 
-#define DEBUG_STACK_SCAN_MAJOR
+// #define DEBUG_STACK_SCAN_MAJOR
 
     uint64_t framesSeen = 0;
 

@@ -59,7 +59,7 @@ void ScanStackMinor (
     Addr_t allocSzB,
     Word_t **nextW) {
 
-// #define DEBUG_STACK_SCAN_MINOR
+#define DEBUG_STACK_SCAN_MINOR
 
     uint64_t framesSeen = 0;
 
@@ -101,7 +101,7 @@ void ScanStackMinor (
             
             if (isPtr(p) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
 #ifdef DEBUG_STACK_SCAN_MINOR
-                fprintf(stderr, "[%p] forward %p --> %p\n", root, p, *nextW);
+                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, *nextW);
 #endif
                 *root = ForwardObjMinor(p, nextW);
             }
@@ -123,6 +123,7 @@ void ScanStackMinor (
         if (framesSeen == 0) {
             Die("MinorGC: Should have seen at least one frame!");
         }
+        fprintf(stderr, "##########################################\n");
 #endif
 
     return;
