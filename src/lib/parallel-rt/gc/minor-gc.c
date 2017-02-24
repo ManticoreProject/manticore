@@ -59,7 +59,7 @@ void ScanStackMinor (
     Addr_t allocSzB,
     Word_t **nextW) {
 
-#define DEBUG_STACK_SCAN
+// #define DEBUG_STACK_SCAN_MINOR
 
     uint64_t framesSeen = 0;
 
@@ -81,7 +81,7 @@ void ScanStackMinor (
     
     while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
 
-#ifdef DEBUG_STACK_SCAN
+#ifdef DEBUG_STACK_SCAN_MINOR
         framesSeen++;
         print_frame(stderr, frame);    
 #endif
@@ -100,14 +100,14 @@ void ScanStackMinor (
             Value_t p = *root;
             
             if (isPtr(p) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-#ifdef DEBUG_STACK_SCAN
+#ifdef DEBUG_STACK_SCAN_MINOR
                 fprintf(stderr, "[%p] forward %p --> %p\n", root, p, *nextW);
 #endif
                 *root = ForwardObjMinor(p, nextW);
             }
         } // end for
         
-#ifdef DEBUG_STACK_SCAN
+#ifdef DEBUG_STACK_SCAN_MINOR
         fprintf(stderr, "------------------------------------------\n");
 #endif
         
@@ -119,9 +119,9 @@ void ScanStackMinor (
     // the roots have been forwarded out of the nursery.
     stkInfo->age = AGE_Major;
     
-#ifdef DEBUG_STACK_SCAN
+#ifdef DEBUG_STACK_SCAN_MINOR
         if (framesSeen == 0) {
-            Die("Should have seen at least one frame!");
+            Die("MinorGC: Should have seen at least one frame!");
         }
 #endif
 
@@ -286,7 +286,10 @@ void MinorGC (VProc_t *vp)
         } else if (isRawHdr(hdr)) {
             nextScan += GetLength(hdr);
             
-        } else if (isStackHdr(hdr)) {
+        }
+        
+#ifdef DIRECT_STYLE
+        else if (isStackHdr(hdr)) {
             
             int len = GetLength(hdr);
             const int expectedLen = 3;
@@ -299,7 +302,10 @@ void MinorGC (VProc_t *vp)
             
             nextScan += expectedLen;
             
-        } else {
+        }
+#endif
+        
+        else {
             //printf("MinorGC id = %d, length = %d, scan = %p\n",getID(hdr),GetLength(hdr),(void *)nextScan);
             
             // TODO assert its a mixed header
@@ -341,9 +347,6 @@ void MinorGC (VProc_t *vp)
 
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
         /* time to do a major collection. */
-        
-        Die("-- tried to do a Major GC --");
-        
         MajorGC (vp, roots, (Addr_t)nextScan);
     } else {
         /* remember information about the final state of the heap */
