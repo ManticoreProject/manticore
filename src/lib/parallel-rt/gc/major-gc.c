@@ -106,6 +106,110 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
     return scanChunk;
 }
 
+
+void ScanStackMajor (
+    void* origStkPtr,
+    StackInfo_t* stkInfo,
+    Addr_t heapBase,  
+    Addr_t oldSzB,
+    VProc_t *vp,
+    bool scanningGlobalToSpace) {
+
+#define DEBUG_STACK_SCAN_MAJOR
+
+    uint64_t framesSeen = 0;
+
+/* TODO: 
+    - the stack scanner should overwrite water marks it encounters
+    - the stack scanner should stop at the high water mark of global frame roots.
+*/
+        
+    frame_info_t* frame;
+    uint64_t stackPtr = (uint64_t)origStkPtr;
+    
+    uint64_t deepest = (uint64_t)stkInfo->deepestScan;
+    if(deepest <= (uint64_t)origStkPtr) {
+        return; // this part of the stack has already been scanned.
+    }
+    
+    stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
+    
+    while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
+
+#ifdef DEBUG_STACK_SCAN_MAJOR
+        framesSeen++;
+        print_frame(stderr, frame);    
+#endif
+        
+        // step into frame
+        stackPtr += sizeof(uint64_t);
+        
+        // process pointers
+        for (uint16_t i = 0; i < frame->numSlots; i++) {
+            pointer_slot_t slotInfo = frame->slots[i];
+            if (slotInfo.kind >= 0) {
+                assert(false && "unexpected derived pointer\n");
+            }
+            
+            Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
+            Value_t p = *root;
+            Value_t newP;
+            
+            if(scanningGlobalToSpace) {
+                if (isPtr(p) && inVPHeap(heapBase, ValueToAddr(p))) {
+                    newP = ForwardObjMajor(vp, p);
+                    *root = newP;
+#ifdef DEBUG_STACK_SCAN_MAJOR
+                fprintf(stderr, "[%p] forward %p --> %p\n", root, p, newP);
+#endif
+                }
+            }
+            else {
+                if (isPtr(p)) {
+                    if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
+                        newP = ForwardObjMajor(vp, p);
+                        *root = newP;
+#ifdef DEBUG_STACK_SCAN_MAJOR
+                fprintf(stderr, "[%p] forward %p --> %p\n", root, p, newP);
+#endif
+                    }
+                    else if (inVPHeap(heapBase, ValueToAddr(p))) {
+                        // p points to another object in the "young" region,
+                        // so adjust it.
+                        newP = AddrToValue(ValueToAddr(p) - oldSzB);
+                        *root = newP;
+#ifdef DEBUG_STACK_SCAN_MAJOR
+                fprintf(stderr, "[%p] adjust %p --> %p\n", root, p, newP);
+#endif
+                    }
+                }
+            }
+            
+            
+        } // end for
+        
+#ifdef DEBUG_STACK_SCAN_MAJOR
+        fprintf(stderr, "------------------------------------------\n");
+#endif
+        
+        // move to next frame
+        stackPtr += frame->frameSize;
+        
+    } // end while
+    
+    // the roots have been forwarded to the global heap
+    stkInfo->age = AGE_Global;
+    
+#ifdef DEBUG_STACK_SCAN_MAJOR
+        if (framesSeen == 0) {
+            Die("MajorGC: Should have seen at least one frame!");
+        }
+#endif
+
+    return;
+}
+
+
 /*! \brief Perform a major collection on a vproc's local heap.
  *  \param vp the vproc that is performing the collection.
  *  \param roots a null-terminated array of root addresses.
@@ -138,6 +242,17 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR)
 	SayDebug("[%2d] Major GC starting\n", vp->id);
+#endif
+
+
+#ifdef DIRECT_STYLE
+    /* unmark all stacks from the minor collection earlier */
+    UnmarkStacks(vp);
+    
+    /* scan the current stack. */
+    StackInfo_t* stkInfo = vp->stdCont;
+    void* stkPtr = vp->stdEnvPtr;
+    ScanStackMajor(stkPtr, stkInfo, heapBase, oldSzB, vp, false);
 #endif
 
   /* process the roots */
@@ -183,7 +298,25 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 		} else if (isRawHdr(hdr)) {
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
-		} else {
+            
+        } 
+        
+#ifdef DIRECT_STYLE
+        else if (isStackHdr(hdr)) {
+            int len = GetLength(hdr);
+            const int expectedLen = 3;
+            assert(len == expectedLen && "ASM code doesn't match GC assumptions");
+            
+            void* stkPtr = nextScan[1];
+            StackInfo_t* stkInfo = nextScan[2];
+            
+            ScanStackMajor(stkPtr, stkInfo, heapBase, oldSzB, vp, false);
+            
+            nextScan += expectedLen;
+        } 
+#endif
+
+        else {
 			
 			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
 			
@@ -229,10 +362,21 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     }
 #endif
 
+
+#ifdef DIRECT_STYLE
+    size_t freedBytes = FreeStacks(vp, AGE_Major);
+    /* NOTE our caller will unmark stacks when we return. */
+#endif
+
+
     LogMajorGCEnd (vp, nBytesCopied, 0); /* FIXME: nCopiedBytes, nAvailBytes */
 
-    if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
-	StartGlobalGC (vp, roots);
+    if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit)) {
+        
+        Die(" tried to do a Global GC ");
+        
+        StartGlobalGC (vp, roots);
+    }
 
 } /* end of MajorGC */
 
@@ -349,7 +493,25 @@ static void ScanGlobalToSpace (
                 } else if (isRawHdr(hdr)) {
                     assert (isRawHdr(hdr));
                     scanPtr += GetLength(hdr);
-                } else {
+                
+                }
+                
+#ifdef DIRECT_STYLE
+                else if (isStackHdr(hdr)) {
+                    int len = GetLength(hdr);
+                    const int expectedLen = 3;
+                    assert(len == expectedLen && "ASM code doesn't match GC assumptions");
+                    
+                    void* stkPtr = scanPtr[1];
+                    StackInfo_t* stkInfo = scanPtr[2];
+                    
+                    ScanStackMajor(stkPtr, stkInfo, heapBase, 0, vp, true);
+                    
+                    scanPtr += expectedLen;
+                }
+#endif
+                
+                else {
                     scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
                 }
             }
