@@ -27,7 +27,7 @@
 
 // Apply_StdDS using the given stackptr.
 // note that the stackptr is assumed to be
-// pointing to the 16-byte aligned return address.
+// pointing to the return address.
     .p2align 3
     .globl	_GSYM(ASM_Apply_StdDS_WithStk)
 _GSYM(ASM_Apply_StdDS_WithStk):
