@@ -140,7 +140,13 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
     
     .p2align 3
     .globl	_GSYM(ASM_DS_Return)
-_GSYM(ASM_DS_Return):   // the Manticore main function returns here.
+_GSYM(ASM_DS_Return):
+    // the Manticore main function returns here.
+    // When it does perform a retq on this address,
+    // the stack is 16-byte aligned, and we
+    // push a dummy return address before jumping
+    // to RequestService to preserve ABI requirements.
+    pushq   $INVALID_RET_ADDR2
     movq    $REQ_Return, TMP_REG1
     jmp     asm_get_service
     
