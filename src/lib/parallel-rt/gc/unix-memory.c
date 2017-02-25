@@ -111,8 +111,7 @@ void FreeMemory (void *base, int szB)
 // Allocates a region of memory suitable for
 // use as a stack. 
 //
-// Through the parameter 'info', returns the pointer 
-// to the mmap information of the stack for GC tracking, etc.
+// Returns the pointer to the mmap information of the stack for GC tracking, etc.
 //
 // The stack pointer p returned is guarenteed to be such that p+8 is 
 // 16-byte aligned, per the SysV ABI. The pointer returned
@@ -123,9 +122,10 @@ void FreeMemory (void *base, int szB)
 //                                   v
 // | guard |  numBytes-ish  |bbbbbbbb| ... StackInfo_t ... |  high addresses >
 //                          ^
-//                 returned stack ptr 
+//                   info->initialSP 
 //
-void* AllocStack(size_t numBytes, StackInfo_t** info) {
+StackInfo_t* AllocStack(size_t numBytes) {
+    StackInfo_t* info;
     
     // NOTE automatic resizing using MAP_GROWSDOWN has
 	// been deprecated: https://lwn.net/Articles/294001/
@@ -152,13 +152,12 @@ void* AllocStack(size_t numBytes, StackInfo_t** info) {
     uint64_t val = (uint64_t) mem;
     
     // initialize the stack's info descriptor
-    StackInfo_t* infoP = (StackInfo_t*)(val + stackLen);
-    infoP->mmapBase = mem;
-    infoP->mmapSize = totalSz;
-    infoP->deepestScan = infoP;
-    infoP->age = AGE_Minor;
-    infoP->next = NULL;
-    *info = infoP;
+    info = (StackInfo_t*)(val + stackLen);
+    info->mmapBase = mem;
+    info->mmapSize = totalSz;
+    info->deepestScan = info;
+    info->age = AGE_Minor;
+    info->next = NULL;
     
     // setup stack pointer
     val = val + stackLen - 16;		// switch sides, leaving some headroom.
@@ -167,7 +166,9 @@ void* AllocStack(size_t numBytes, StackInfo_t** info) {
     
 	void* sp = (void*)val;
     
-    return sp;
+    info->initialSP = sp;
+    
+    return info;
 }
 
 void FreeStack(StackInfo_t* info) {

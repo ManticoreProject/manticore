@@ -63,6 +63,7 @@ GC_SRCS = 	minor-gc.c \
 		unix-memory.c \
 		alloc.c \
 		statepoints.c \
+		stacks.c \
 		work-stealing-deque.c
 
 VPROC_SRCS =	vproc.c

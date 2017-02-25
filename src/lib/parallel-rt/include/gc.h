@@ -16,5 +16,7 @@ extern void MinorGC (VProc_t *vp);
 extern void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top);
 extern void StartGlobalGC (VProc_t *vp, Value_t **roots);
 extern Value_t PromoteObj (VProc_t *vp, Value_t root);
+extern Value_t NewStack (VProc_t *vp, Value_t finishClos, Value_t funClos);
+extern StackInfo_t* NewMainStack (VProc_t *vp, void** initialSP);
 
 #endif /* !_GC_H_ */

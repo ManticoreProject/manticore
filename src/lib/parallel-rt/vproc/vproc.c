@@ -292,6 +292,8 @@ void *NewVProc (void *arg)
     vproc->limitPtr = LimitPtr(vproc);
     SetAllocPtr (vproc);
     vproc->currentFLS = M_NIL;
+    vproc->allocdStacks = NULL;
+    vproc->freeStacks = NULL;
 
     MutexInit (&(vproc->lock));
     CondInit (&(vproc->wait));

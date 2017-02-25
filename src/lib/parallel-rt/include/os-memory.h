@@ -36,10 +36,9 @@ extern void FreeMemory (void *base, int szB);
 // the functions below involving stacks do not require that the HeapLock is held.
 
 // allocates a region of memory suitable for
-// use as a stack. Note that it returns the base
-// of the block so it can be freed, you must prepare
-// the stack before use. Returns 0 if failed.
-extern void* AllocStack(size_t numBytes, StackInfo_t** info);
+// use as a stack, returning its descriptor. 
+// Returns 0 if failed.
+extern StackInfo_t* AllocStack(size_t numBytes);
 
 // frees a stack allocated by AllocStack.
 extern void FreeStack(StackInfo_t* info);

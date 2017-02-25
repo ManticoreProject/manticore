@@ -204,7 +204,6 @@ extern void ASM_Resume_Stack (
     Value_t exh,
     Value_t arg);
     
-extern int ASM_DS_Return;
 extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_UncaughtExn;
 // extern int ASM_Resume;
@@ -222,18 +221,12 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   /* allocate the top-level exception handler in the heap */
     Value_t exnCont = WrapWord(vp, (Word_t)&ASM_DS_UncaughtExn);
   
-  /* allocate & initialize the main function's stack */
-  const size_t size = 10485760;  // 10MB stack, for testing FIXME
-  StackInfo_t* info;
-  void* stkPtr = AllocStack(size, &info);
-  
-  uint64_t* ptrToRetAddr = (uint64_t*)stkPtr;
-  *ptrToRetAddr = (uint64_t)&ASM_DS_Return;
-  
+  /* allocate the main function's stack */
+  void* stkPtr;
+  StackInfo_t* info = NewMainStack(vp, &stkPtr);
+    
   // write 'info' to vp->stdCont to establish that it is the current stack.
   vp->stdCont = info;
-  vp->allocdStacks = info;
-  vp->freeStacks = NULL;
   
   /* apply the given function  */
   LogRunThread(vp, 0);
