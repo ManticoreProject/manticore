@@ -206,7 +206,7 @@ extern void ASM_Resume_Stack (
     
 extern int ASM_DS_Return;
 extern int ASM_DS_EscapeThrow;
-// extern int ASM_UncaughtExn;
+extern int ASM_DS_UncaughtExn;
 // extern int ASM_Resume;
 
 /* \brief Run Manticore code. Assumption is that this function is called
@@ -220,7 +220,7 @@ extern int ASM_DS_EscapeThrow;
 void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 {
   /* allocate the top-level exception handler in the heap */
-    Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
+    Value_t exnCont = WrapWord(vp, (Word_t)&ASM_DS_UncaughtExn);
   
   /* allocate & initialize the main function's stack */
   const size_t size = 10485760;  // 10MB stack, for testing FIXME

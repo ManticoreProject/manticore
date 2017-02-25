@@ -503,7 +503,17 @@ structure LLVMType : sig
             if Controls.get BasicControl.direct
             then  mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
             else  mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
-      | CT.T_KnownFunc _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
+      | CT.T_KnownFunc _ => (* KnownFuncs may still appear when in direct-style,
+                               but only when applying an exception handler
+                               in tail position.
+                               
+                               FIXME TODO ideally we'd translate all exception capture/throws
+                               as callec's as well, so this wouldn't happen at all, 
+                               but i'm not concerned with exceptions right now.
+                            *)
+            if Controls.get BasicControl.direct
+            then  mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
+            else  mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
       | CT.T_KnownDirFunc _ => 
             mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
                             
