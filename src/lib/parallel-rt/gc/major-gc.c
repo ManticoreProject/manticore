@@ -373,9 +373,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     LogMajorGCEnd (vp, nBytesCopied, 0); /* FIXME: nCopiedBytes, nAvailBytes */
 
     if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit)) {
-        
-        Die(" tried to do a Global GC ");
-        
         StartGlobalGC (vp, roots);
     }
 

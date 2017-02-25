@@ -104,6 +104,86 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 	
 }
 
+void ScanStackGlobal (
+    void* origStkPtr,
+    StackInfo_t* stkInfo,
+    VProc_t* vp) {
+
+// #define DEBUG_STACK_SCAN_GLOBAL
+
+    uint64_t framesSeen = 0;
+
+/* TODO: 
+    - the stack scanner should overwrite nursery water marks (the zeros) of frames
+        it encounters
+    - the stack scanner should stop at the high water mark of nursery frame roots.
+*/
+        
+    frame_info_t* frame;
+    uint64_t stackPtr = (uint64_t)origStkPtr;
+    
+    // NOTE we might need to do an atomic update on the deepestScan field?
+    
+    uint64_t deepest = (uint64_t)stkInfo->deepestScan;
+    if(deepest <= (uint64_t)origStkPtr) {
+        return; // this part of the stack has already been scanned.
+    }
+    
+    stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
+    
+    while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
+
+#ifdef DEBUG_STACK_SCAN_GLOBAL
+        framesSeen++;
+        print_frame(stderr, frame);    
+#endif
+        
+        // step into frame
+        stackPtr += sizeof(uint64_t);
+        
+        // process pointers
+        for (uint16_t i = 0; i < frame->numSlots; i++) {
+            pointer_slot_t slotInfo = frame->slots[i];
+            if (slotInfo.kind >= 0) {
+                assert(false && "unexpected derived pointer\n");
+            }
+            
+            Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
+            Value_t p = *root;
+            Value_t newP;
+            
+            if (isFromSpacePtr(p)) {
+                newP = ForwardObjGlobal(vp, p);
+                *root = newP;
+                
+#ifdef DEBUG_STACK_SCAN_GLOBAL
+                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, newP);
+#endif
+            }
+        } // end for
+        
+#ifdef DEBUG_STACK_SCAN_GLOBAL
+        fprintf(stderr, "------------------------------------------\n");
+#endif
+        
+        // move to next frame
+        stackPtr += frame->frameSize;
+        
+    } // end while
+    
+    // the roots have been forwarded to another part of the global heap
+    stkInfo->age = AGE_Global;
+    
+#ifdef DEBUG_STACK_SCAN_GLOBAL
+        if (framesSeen == 0) {
+            Die("GlobalGC: Should have seen at least one frame!");
+        }
+        fprintf(stderr, "##########################################\n");
+#endif
+
+    return;
+}
+
 /* \brief initialize the data structures that support global GC
  */
 void InitGlobalGC ()
@@ -254,6 +334,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
     /* finish the GC setup for this vproc */
 	self->globAllocChunk = (MemChunk_t *)0;
+    
+#ifdef DIRECT_STYLE
+    /* unmark all stacks from the major collection earlier */
+    UnmarkStacks(self);
+#endif
 
     /* synchronize on every vproc finishing setup (so we know all
        from spaces are appropraitely tagged). */
@@ -355,6 +440,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		self->id, (unsigned long)(ToSpaceLimit >> 20));
 #endif
     }
+    
+#ifdef DIRECT_STYLE
+    /* another part of phase 4 is for each vproc to reclaim unmarked stacks */
+    size_t freedBytes = FreeStacks(self, AGE_Global);
+#endif
 
   /* synchronize on from-space being reclaimed */
     BarrierWait (&GCBarrier2);
@@ -391,6 +481,14 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 
   /* collect roots that were pruned away from the minor collector's root set */
     M_AddDequeEltsToGlobalRoots(vp, roots);
+    
+    
+#ifdef DIRECT_STYLE
+    /* scan the current stack. */
+    StackInfo_t* stkInfo = vp->stdCont;
+    void* stkPtr = vp->stdEnvPtr;
+    ScanStackGlobal(stkPtr, stkInfo, vp);
+#endif
 
     /* Phase 2
      * scan the vproc's roots */
@@ -443,7 +541,24 @@ static void ScanVProcHeap (VProc_t *vp)
 		}else if (isRawHdr(hdr)) {
 			assert (isRawHdr(hdr));
 			scanPtr += GetLength(hdr);
-		}else {
+        }
+            
+#ifdef DIRECT_STYLE
+        else if (isStackHdr(hdr)) {
+            int len = GetLength(hdr);
+            const int expectedLen = 3;
+            assert(len == expectedLen && "ASM code doesn't match GC assumptions");
+            
+            void* stkPtr = scanPtr[1];
+            StackInfo_t* stkInfo = scanPtr[2];
+            
+            ScanStackGlobal(stkPtr, stkInfo, vp);
+            
+            scanPtr += expectedLen;
+        }
+#endif
+            
+		else {
 			
 			scanPtr = table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
 
@@ -552,7 +667,24 @@ static void ScanGlobalToSpace (VProc_t *vp)
                 } else if (isRawHdr(hdr)) {
                     assert (isRawHdr(hdr));
                     scanPtr += GetLength(hdr);
-                } else {
+                    
+                }
+                
+#ifdef DIRECT_STYLE
+                else if (isStackHdr(hdr)) {
+                    int len = GetLength(hdr);
+                    const int expectedLen = 3;
+                    assert(len == expectedLen && "ASM code doesn't match GC assumptions");
+                    
+                    void* stkPtr = scanPtr[1];
+                    StackInfo_t* stkInfo = scanPtr[2];
+                    
+                    ScanStackGlobal(stkPtr, stkInfo, vp);
+                    
+                    scanPtr += expectedLen;
+                }
+#endif
+                else {
                     scanPtr = table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
                 }
             }
@@ -811,4 +943,3 @@ void CheckToSpacesAfterGlobalGC (VProc_t *self)
 }
 
 #endif
-
