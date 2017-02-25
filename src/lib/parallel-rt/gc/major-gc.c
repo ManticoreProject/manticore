@@ -160,7 +160,7 @@ void ScanStackMajor (
                     newP = ForwardObjMajor(vp, p);
                     *root = newP;
 #ifdef DEBUG_STACK_SCAN_MAJOR
-                fprintf(stderr, "[%p] forward %p --> %p\n", root, p, newP);
+                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, newP);
 #endif
                 }
             }
@@ -170,7 +170,7 @@ void ScanStackMajor (
                         newP = ForwardObjMajor(vp, p);
                         *root = newP;
 #ifdef DEBUG_STACK_SCAN_MAJOR
-                fprintf(stderr, "[%p] forward %p --> %p\n", root, p, newP);
+                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, newP);
 #endif
                     }
                     else if (inVPHeap(heapBase, ValueToAddr(p))) {
@@ -179,7 +179,7 @@ void ScanStackMajor (
                         newP = AddrToValue(ValueToAddr(p) - oldSzB);
                         *root = newP;
 #ifdef DEBUG_STACK_SCAN_MAJOR
-                fprintf(stderr, "[%p] adjust %p --> %p\n", root, p, newP);
+                fprintf(stderr, "[slot %u : %p] adjust %p --> %p\n", i, root, p, newP);
 #endif
                     }
                 }
@@ -204,6 +204,7 @@ void ScanStackMajor (
         if (framesSeen == 0) {
             Die("MajorGC: Should have seen at least one frame!");
         }
+        fprintf(stderr, "##########################################\n");
 #endif
 
     return;
