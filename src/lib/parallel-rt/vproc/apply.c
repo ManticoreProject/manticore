@@ -86,7 +86,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	  /* check to see if we actually need to do a GC, since this request
 	   * might be from a pending signal.
 	   */
-	    if ((LimitPtr(vp) < vp->allocPtr) || vp->globalGCPending) {
+	    if ((LimitPtr(vp) <= vp->allocPtr) || vp->globalGCPending) {
 	      /* request a minor GC */
 		MinorGC (vp);
 	    }
@@ -274,7 +274,7 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
         /* check to see if we actually need to do a GC, since this request
          * might be from a pending signal.
          */
-          if ((LimitPtr(vp) < vp->allocPtr) || vp->globalGCPending) {
+          if ((LimitPtr(vp) <= vp->allocPtr) || vp->globalGCPending) {
               /* request a minor GC */
                 MinorGC (vp);
           }
