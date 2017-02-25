@@ -170,13 +170,6 @@ _GSYM(ASM_InvokeGC_DS_LLVM):
     jmp     asm_get_service
 
 
-    .p2align 3
-    .globl	_GSYM(TriggerGC)
-_GSYM(TriggerGC):
-    movq    $REQ_GC, TMP_REG1
-    jmp     asm_get_service
-
-
 asm_get_service:
 // live-ins
 // 1. these std-ds calling convention registers: 
