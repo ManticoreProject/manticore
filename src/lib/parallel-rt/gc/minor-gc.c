@@ -59,7 +59,7 @@ void ScanStackMinor (
     Addr_t allocSzB,
     Word_t **nextW) {
 
-#define DEBUG_STACK_SCAN_MINOR
+// #define DEBUG_STACK_SCAN_MINOR
 
     uint64_t framesSeen = 0;
 
