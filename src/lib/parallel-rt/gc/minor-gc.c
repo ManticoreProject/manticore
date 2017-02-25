@@ -319,7 +319,7 @@ void MinorGC (VProc_t *vp)
 
 #ifdef DIRECT_STYLE
     /* try to free unreachable stacks */
-    int numFreed = FreeStacks(vp, AGE_Minor);
+    size_t freedBytes = FreeStacks(vp, AGE_Minor);
 #endif
 
     assert ((Addr_t)nextScan >= vp->heapBase);
