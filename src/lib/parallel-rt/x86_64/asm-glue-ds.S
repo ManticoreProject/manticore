@@ -24,6 +24,17 @@
 #define INVALID_RET_ADDR2 212855789
 
     .text  
+    
+.p2align 3
+.globl	_GSYM(ASM_DS_ApplyClos)
+_GSYM(ASM_DS_ApplyClos):
+    // this is a special manticore routine used to start a NewStack.
+    popq    TMP_REG1                // retrieve the closure from our stack frame
+                                    // and adjust SP so it points to an invalid ret addr.
+    movq    (TMP_REG1), STD_EP_REG  // set EP
+    movq    8(TMP_REG1), TMP_REG2   // grab the CP
+    jmp     *TMP_REG2
+    
 
 // Apply_StdDS using the given stackptr.
 // note that the stackptr is assumed to be
