@@ -117,7 +117,11 @@ void ScanStackMinor (
     } // end while
     
     // the roots have been forwarded out of the nursery.
-    stkInfo->age = AGE_Major;
+    // we are careful to make sure the age doesn't go down.
+    if(stkInfo->age < AGE_Major) {
+        stkInfo->age = AGE_Major;
+    }
+    
     
 #ifdef DEBUG_STACK_SCAN_MINOR
         if (framesSeen == 0) {
