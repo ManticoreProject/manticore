@@ -13,7 +13,7 @@
 /***** Hash table API *****/
 static statepoint_table_t* new_table (float loadFactor, uint64_t expectedElms);
 
-static void insert_key (statepoint_table_t* table, uint64_t key, frame_info_t* value);
+void insert_key (statepoint_table_t* table, uint64_t key, frame_info_t* value);
 
 static size_t size_of_frame (uint16_t numSlots);
 
@@ -426,7 +426,7 @@ void destroy_table(statepoint_table_t* table) {
 // NOTE value must be a base pointer to a malloc operation, and the act of inserting
 // the key is considered the final use of the pointer (i.e., value will be freed by the
 // function).
-static void insert_key(statepoint_table_t* table, uint64_t key, frame_info_t* value) {
+void insert_key(statepoint_table_t* table, uint64_t key, frame_info_t* value) {
     uint64_t idx = computeBucketIndex(table, key);
     table_bucket_t *bucket = table->buckets + idx;
 

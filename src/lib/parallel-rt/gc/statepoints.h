@@ -104,6 +104,13 @@ statepoint_table_t* generate_table(void* map, float load_factor);
 void destroy_table(statepoint_table_t* table);
 
 
+/* Exposing the ability to insert a custom key value pair.
+   NOTE the value _must_ be a malloc'd pointer, because insert_key
+   will attempt to free it after it's been inserted.
+ */
+void insert_key (statepoint_table_t* table, uint64_t key, frame_info_t* value);
+
+
 
 /**** Debugging Functions ****/
 

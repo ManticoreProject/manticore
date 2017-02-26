@@ -51,6 +51,7 @@ NodeHeap_t  *NodeHeaps; /*!< list of per-node heap information */
 uint32_t	NumGlobalGCs = 0;
 
 statepoint_table_t* SPTbl = NULL;  // the statepoint table
+extern int ASM_DS_ApplyClos;
 
 
 /* Heap sizing parameters.  The normal to-space size is computed as
@@ -176,6 +177,29 @@ void HeapInit (Options_t *opts)
 #ifdef DIRECT_STYLE
     /* initialize the statepoint table */
     SPTbl = generate_table((void*)&STACK_MAPS, 0.7);
+    
+    // insert a custom frame for ASM_DS_ApplyClos (see stacks.c for details)
+    // I have written a general version of initialization in case we need more pointers.
+    
+    uint64_t retAddr = &ASM_DS_ApplyClos;
+    uint16_t numPtrs = 1;
+    
+    frame_info_t* frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
+    frame->retAddr = retAddr;
+    frame->frameSize = sizeof(uint64_t) * numPtrs;
+    frame->numSlots = numPtrs;
+    
+    pointer_slot_t* currentSlot = frame->slots;
+    for(uint16_t i = 0; i < numPtrs; i++) {
+        currentSlot->kind = -1; // base ptr
+        currentSlot->offset = i * sizeof(uint64_t);
+        currentSlot++;
+    }
+    
+    insert_key(SPTbl, retAddr, frame);
+    
+    // print_table(stderr, SPTbl, true);
+    
 #endif
 
 } /* end of HeapInit */
