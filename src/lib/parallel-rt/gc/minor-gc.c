@@ -140,36 +140,35 @@ void ScanStackMinor (
 size_t FreeStacks(VProc_t *vp, Age_t epoch) {
     StackInfo_t* allocd = vp->allocdStacks;
     StackInfo_t* prev = NULL;
-    StackInfo_t* nextChk;
     size_t freedBytes = 0;
     
-    while (allocd != NULL) {
-        nextChk = allocd->next;
-        
+    while (allocd != NULL) {        
         if ((allocd->age <= epoch)  // young enough
             && (allocd->deepestScan == allocd) // unmarked
            ) {
             
             freedBytes += allocd->mmapSize;
             
-            // unlink
-            if (prev != NULL) {
-                prev->next = nextChk;
-            }
+            // save next link
+            StackInfo_t* allocdNext = allocd->next;
             
-            // put allocd on free list
-            StackInfo_t* freeTop = vp->freeStacks;
-            allocd->next = freeTop;
-            allocd->age = AGE_Minor;
+            // demote and put allocd on free list
+            allocd->age = AGE_Minor; // demote
+            allocd->next = vp->freeStacks;
             vp->freeStacks = allocd;
             
-            // look at next one, prev remains the same
-            allocd = nextChk;
+            // update prev, and look at the next one.
+            if (prev != NULL) {
+                prev->next = allocdNext;
+            } else {
+                vp->allocdStacks = allocdNext;
+            }
+            allocd = allocdNext;
             
         } else {
             // advance position
             prev = allocd;
-            allocd = nextChk;
+            allocd = allocd->next;
         }
     }
     return freedBytes;
