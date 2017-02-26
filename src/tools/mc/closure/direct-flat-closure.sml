@@ -1130,6 +1130,8 @@ structure DirectFlatClosureWithCFA : sig
                   
                   | (CC.JoinCont | CC.ReturnCont) => cvtJoinThrow (env, k, args)
                   
+                  | CC.OtherCont => cvtExnThrow(env, k, args)
+                  
                   | _ => raise Fail (
                       "encountered a throw that I can't handle: "
                       ^ (CC.kindToString o CC.kindOfCont) k
