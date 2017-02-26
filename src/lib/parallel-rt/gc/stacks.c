@@ -50,18 +50,18 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
     uint64_t* sp = (uint64_t*)(info->initialSP);
     
     /* we initialize one frame:
-        high                                            low
-        
-      16-byte                    16-byte
-        v                          v 
-        [invalidRetAddr ][ funClos | &ApplyClos ]
-                        ^                       ^
-                    initial sp             returned stkPtr
+        low                                            high
+                                              16-byte
+                                                 v
+        [ &ApplyClos | funClos ][ invalidRetAddr ]
+        ^                       ^
+  returned stkPtr            initial sp             
                                                                  
     */
-    *sp = invalidRetAddr; // funClos should not try to return!
-    *(sp--) = funClos;
-    *(sp--) = &ASM_DS_ApplyClos;
+    sp[0] = invalidRetAddr; // funClos should not try to return!
+    sp[-1] = funClos;
+    sp[-2] = &ASM_DS_ApplyClos;
+    sp = sp - 2;
     
     // now we need to allocate the stack cont object
     Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
