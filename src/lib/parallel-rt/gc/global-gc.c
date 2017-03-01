@@ -141,6 +141,10 @@ void ScanStackGlobal (
         // step into frame
         stackPtr += sizeof(uint64_t);
         
+        // everything is being forwarded to another part of global heap
+        uint64_t* watermark = (uint64_t*)stackPtr;
+        *watermark = AGE_Global;
+        
         // process pointers
         for (uint16_t i = 0; i < frame->numSlots; i++) {
             pointer_slot_t slotInfo = frame->slots[i];

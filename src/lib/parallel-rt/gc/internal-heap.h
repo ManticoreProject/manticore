@@ -55,9 +55,9 @@ typedef struct {
 } NodeHeap_t;
 
 typedef enum {
-    AGE_Minor = 0x1,
-    AGE_Major = 0x2,
-    AGE_Global = 0x4
+    AGE_Minor = 0x0,
+    AGE_Major = 0x1,
+    AGE_Global = 0x2
 } Age_t;
 
 struct struct_stackinfo {

@@ -134,7 +134,17 @@ void ScanStackMajor (
     
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
     
-    while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
+    enum LimitState {
+        LS_NoMark,
+        LS_MarkSeen,
+        LS_Stop
+    };
+    
+    Age_t promoteGen = AGE_Global;
+    enum LimitState state = LS_NoMark;
+    
+    while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
+           && state != LS_Stop) {
 
 #ifdef DEBUG_STACK_SCAN_MAJOR
         framesSeen++;
@@ -143,6 +153,21 @@ void ScanStackMajor (
         
         // step into frame
         stackPtr += sizeof(uint64_t);
+        
+        // handle watermark
+        uint64_t* watermark = (uint64_t*)stackPtr;
+        
+        if (state == LS_MarkSeen) {
+            // this is the last frame we'll check.
+            state = LS_Stop;
+        } else if (*watermark >= promoteGen) {
+            // saw the limit in this frame.
+            state = LS_MarkSeen;
+        } else {
+            // overwrite the watermark
+            assert(*watermark == 0 && "should only overwrite zero watermarks!");
+            *watermark = promoteGen;
+        }
         
         // process pointers
         for (uint16_t i = 0; i < frame->numSlots; i++) {
@@ -198,7 +223,7 @@ void ScanStackMajor (
     } // end while
     
     // the roots have been forwarded to the global heap
-    stkInfo->age = AGE_Global;
+    stkInfo->age = promoteGen;
     
 #ifdef DEBUG_STACK_SCAN_MAJOR
         if (framesSeen == 0) {
