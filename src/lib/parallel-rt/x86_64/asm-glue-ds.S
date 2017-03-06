@@ -16,6 +16,7 @@
 #define TMP_REG1            %r13    
 #define TMP_REG2            %r14
 #define TMP_REG3            %r15
+#define TMP_REG4            %r12
 
 // 0xDEADBED == 233495533
 #define INVALID_RET_ADDR1 233495533
@@ -102,6 +103,76 @@ _GSYM(ASM_DS_EscapeThrow):
     movq    16(STD_EP_REG), TMP_REG1
     movq    TMP_REG1, STD_CONT(VPROC_PTR_REG)
     ret                             // do a pop;jmp to resume invoke the stack
+    
+    
+    
+/*
+
+    caller2 addr
+    ==========      -|
+        ...          |     frame sz
+     frame sz        |
+     watermark      _|
+    caller addr
+    ===========
+    resume addr
+    -----------  <- RSP
+*/
+
+
+
+// stack descriptor offsets
+#define CUR_SP      0
+#define PREV_SEG    8
+#define LIST_NEXT   16
+#define INIT_SP     24
+
+// probably should be a compiler parameter
+#define MAX_FRAMES  4
+
+
+
+// This version is for segmented stacks a la Bruggeman et al.
+.p2align 3
+.globl	_GSYM(__manti_growstack)
+_GSYM(__manti_growstack):
+    leaq    8(%rsp), %r15   // clobber r15 to save the current top of segment
+    // save manticore registers
+    // NOTE: we are omitting xmm registers here!
+    pushq   ALLOC_PTR_REG
+    pushq   VPROC_PTR_REG
+    pushq   STD_EP_REG
+    pushq   STD_EXH_REG
+    pushq   STD_ARG_REG
+    pushq   %rdx            // arg 2
+    pushq   %rcx            // arg 3
+    pushq   %r10            // arg 4
+    // the rest of the manticore registers are 
+    // saved by the C callee
+    subq    $8, %rsp        // realign
+    // setup args
+    movq    VPROC_PTR_REG, %rdi     // vproc is arg 1
+    movq    %r15, %rsi              // current top is arg 2
+    callq   _GSYM(StkSegmentOverflow)
+    
+    movq    %rax, %r15  // move new SP out of the way
+    
+    // restore manticore registers
+    addq    $8, %rsp
+    popq    %r10
+    popq    %rcx
+    popq    %rdx
+    popq   STD_ARG_REG
+    popq   STD_EXH_REG
+    popq   STD_EP_REG
+    popq   VPROC_PTR_REG
+    popq   ALLOC_PTR_REG
+    
+    // swap out the stack pointer
+    xchgq   %rsp, %r15
+    movq    (%r15), %r15 // load return addr
+    jmpq    *%r15        // resume
+
 
 
 // note: this has been computed manually for the object below (len = 3 words)

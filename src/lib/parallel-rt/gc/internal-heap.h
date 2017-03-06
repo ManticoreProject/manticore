@@ -60,13 +60,22 @@ typedef enum {
     AGE_Global = 0x2
 } Age_t;
 
+// we have some hand-written ASM that accesses this struct
+// assuming all fields are 8 bytes wide.
+#define ALIGN_8  __attribute__ ((aligned (8)))
+
 struct struct_stackinfo {
-    void* mmapBase;
-    size_t mmapSize;
-    void* initialSP;
-    void* deepestScan;  // unscanned <=> deepestScan == ptr to its own StackInfo_t
-    Age_t age;
-    StackInfo_t* next;  // link to next stack
+    // these fields are only used by segmented stacks.
+    void* currentSP             ALIGN_8;    
+    StackInfo_t* prevSegment    ALIGN_8;
+    
+    // fields used by all stacks
+    StackInfo_t* next   ALIGN_8;  // link to next stack in the free/allocated list
+    void* initialSP     ALIGN_8;
+    void* deepestScan   ALIGN_8;  // unscanned <=> deepestScan == ptr to its own StackInfo_t
+    Age_t age           ALIGN_8;
+    void* mmapBase      ALIGN_8;
+    size_t mmapSize     ALIGN_8;
 };
 
 
