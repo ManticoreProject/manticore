@@ -183,7 +183,7 @@ StackInfo_t* AllocStack(size_t numBytes) {
 //
 //                 16-byte aligned --| |-- dummy watermark
 //                                   v v 
-// | guard |  STACK_REGION  |bbbbbbbb| 3 | -1 | ... StackInfo_t ... |  high addresses >
+// | guard |  STACK_REGION  |bbbbbbbb| 3 | ~0 | ... StackInfo_t ... |  high addresses >
 //                          ^              ^
 //                   info->initialSP     invalid frame size
 //
@@ -202,7 +202,12 @@ StackInfo_t* AllocStackSegment(size_t numBytes) {
 	// been deprecated: https://lwn.net/Articles/294001/
     
 	size_t guardSz = GUARD_PAGE_BYTES;
-    size_t stackLen = numBytes + guardSz;
+    size_t slopSz = 128;
+    size_t ccallSz = 1024;
+    size_t bonusSz = 8 * sizeof(uint64_t);  // watermark + frame size + max realign
+    
+    size_t totalRegion = ccallSz + slopSz + numBytes + bonusSz;
+    size_t stackLen = guardSz + totalRegion;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
     
     void* mem = MapMemory(0, totalSz);
@@ -229,15 +234,31 @@ StackInfo_t* AllocStackSegment(size_t numBytes) {
     info->deepestScan = info;
     info->age = AGE_Minor;
     info->next = NULL;
+    info->prevSegment = NULL;
+    info->currentSP = NULL;
     
     // setup stack pointer
     val = val + stackLen - 16;		// switch sides, leaving some headroom.
     val = ROUNDDOWN(val, 16ULL);	// realign downwards.
-    val = val - 8;					// make space for return addr.
+        
+    uint8_t* valP = (uint8_t*)val;
     
-	void* sp = (void*)val;
+    // push an invalid frame size
+    valP -= sizeof(uint64_t);
+    *((uint64_t*)valP) = ~0ULL;
+    
+    // push a dummy watermark
+    valP -= sizeof(uint64_t);
+    *((uint64_t*)valP) = AGE_Global;
+    
+    // leave space for a return addr
+    valP -= sizeof(uint64_t);
+    
+	void* sp = (void*)valP;
+    void* spLim = (void*)(valP - numBytes);
     
     info->initialSP = sp;
+    info->stkLimit = spLim;
     
     return info;
 }
