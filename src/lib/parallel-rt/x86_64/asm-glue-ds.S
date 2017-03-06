@@ -136,6 +136,8 @@ _GSYM(ASM_DS_EscapeThrow):
 .p2align 3
 .globl	_GSYM(__manti_growstack)
 _GSYM(__manti_growstack):
+    // NOTE we actually start off with RSP 16-byte aligned!
+    
     leaq    8(%rsp), %r15   // clobber r15 to save the current top of segment
     // save manticore registers
     // NOTE: we are omitting xmm registers here!
@@ -149,7 +151,6 @@ _GSYM(__manti_growstack):
     pushq   %r10            // arg 4
     // the rest of the manticore registers are 
     // saved by the C callee
-    subq    $8, %rsp        // realign
     // setup args
     movq    VPROC_PTR_REG, %rdi     // vproc is arg 1
     movq    %r15, %rsi              // current top is arg 2
@@ -158,7 +159,6 @@ _GSYM(__manti_growstack):
     movq    %rax, %r15  // move new SP out of the way
     
     // restore manticore registers
-    addq    $8, %rsp
     popq    %r10
     popq    %rcx
     popq    %rdx

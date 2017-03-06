@@ -103,6 +103,13 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
         bytesToCopy += sz + sizeof(uint64_t); // include the return addr.
     }
     
+    // TODO current failure in memcpy is that in Main_init we
+    // immediately try to copy frames, and the frame before
+    // main init is not properly setup as an overflow handler.
+    // we need to also check to see if we run into the overflow
+    // handler when computing the bytes to stop early.
+    fprintf(stderr, "copying %llu bytes\n", bytesToCopy);
+    
     // stkPtr now points to the ret addr of the new top of old segment
     
     /* Goal:
