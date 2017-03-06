@@ -30,7 +30,11 @@ StackInfo_t* GetStack(VProc_t *vp) {
     StackInfo_t* info;
     if (vp->freeStacks == NULL) {
         // get a fresh stack
+#ifdef SEGSTACK
+        info = AllocStackSegment(dfltStackSz);
+#else
         info = AllocStack(dfltStackSz);
+#endif
     } else {
         // pop an existing stack
         info = vp->freeStacks;
