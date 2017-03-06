@@ -551,6 +551,7 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-log-debug, [logging debug])
     MK_BUILD_DIR(mcrt-stats, [stats])
     MK_BUILD_DIR(mcrt-direct, [direct])
+    MK_BUILD_DIR(mcrt-segstack, [direct segstack])
 if test $OS != darwin; then
     MK_BUILD_DIR(mcrt-perf, [perf])
 fi

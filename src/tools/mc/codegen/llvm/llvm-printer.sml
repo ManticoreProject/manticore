@@ -1789,13 +1789,17 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     
     val attrs = ""
     
+    val stackKind = if Controls.get BasicControl.segstack
+                    then "\"manti-segstack\""
+                    else "\"manti-contig\""
+    
     (* string building code *)
     val linkage = linkageOf lab
     val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " "  (* TODO it's likely that we need a direct-style Manticore CC in LLVM *)
     val llName = LV.toString(lookupL(initEnv, lab))
     val decl = ["define ", linkage, ccStr,
                 retTyStr, " ", llName, "(", (stringify allAssign), ") ",
-                attrs, " \"manti-segstack\" gc \"statepoint-example\" {\n"]
+                attrs, " ", stackKind, " gc \"statepoint-example\" {\n"]
                 
                 (* FIXME put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
     

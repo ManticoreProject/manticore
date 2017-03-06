@@ -38,6 +38,11 @@ ifeq (,$(findstring direct,$(BUILD_OPTIONS)))
 else
   ENABLE_DIRECT=true
 endif
+ifeq (,$(findstring segstack,$(BUILD_OPTIONS)))
+  ENABLE_SEGSTACK=false
+else
+  ENABLE_SEGSTACK=true
+endif
 
 #
 # tools and flags
@@ -106,6 +111,10 @@ endif
 
 ifeq ($(ENABLE_DIRECT),true)
   CPPFLAGS += -DDIRECT_STYLE
+endif
+
+ifeq ($(ENABLE_SEGSTACK),true)
+  CPPFLAGS += -DSEGSTACK
 endif
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS) $(CPU_SRCS)

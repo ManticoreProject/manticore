@@ -29,6 +29,9 @@ structure BasicControl :  sig
   (* use the direct-style codegen *)
     val direct : bool Controls.control
     
+  (* use segmented stack codegen *)
+    val segstack : bool Controls.control
+    
   (* optimization level used by LLVM backend *)
     val llopt : int Controls.control
 
@@ -170,7 +173,16 @@ structure BasicControl :  sig
         name = "direct",
         pri = [0, 1, 1], (* TODO: What do these values mean? *)
         obscurity = 0,
-        help = "use direct-style code generation",
+        help = "use direct-style code generation (with contiguous stacks)",
+        default = false
+      }
+      
+  (* segmented stacks *)
+    val segstack : bool Controls.control = Controls.genControl {
+        name = "segstack",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "use segmented stacks (uses direct-style conversion)",
         default = false
       }
 
@@ -252,6 +264,10 @@ structure BasicControl :  sig
         };
       ControlRegistry.register topRegistry {
           ctl = Controls.stringControl ControlUtil.Cvt.bool direct,
+          envName = NONE
+        };
+      ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool segstack,
           envName = NONE
         };
 	  ControlRegistry.register topRegistry {
