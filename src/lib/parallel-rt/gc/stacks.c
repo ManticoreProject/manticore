@@ -94,15 +94,13 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
     const int maxFrames = 4; // TODO make this a parameter of the compiler
     
     for(int i = 0; i < maxFrames; i++) {
-        uint64_t sizeFieldBump = 2 * sizeof(uint64_t);
-        
         // adjust SP
-        old_stkPtr += sizeFieldBump; // move to the frame size field
+        old_stkPtr += 2 * sizeof(uint64_t); // move to the frame size field
         uint64_t sz = *((uint64_t*)old_stkPtr);
         old_stkPtr += sz;
         
         // update count
-        bytesToCopy += sz + sizeFieldBump;
+        bytesToCopy += sz + sizeof(uint64_t); // include the return addr.
     }
     
     // stkPtr now points to the ret addr of the new top of old segment
