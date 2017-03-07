@@ -257,7 +257,6 @@ StackInfo_t* AllocStackSegment(size_t numBytes) {
     info->initialSP = sp;
     info->stkLimit = spLim;
     
-    fprintf(stderr, "allocsegment: info = %llu \n", (uint64_t)info);
     return info;
 }
 

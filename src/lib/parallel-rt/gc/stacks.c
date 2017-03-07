@@ -32,7 +32,6 @@ StackInfo_t* GetStack(VProc_t *vp) {
         // get a fresh stack
 #ifdef SEGSTACK
         info = AllocStackSegment(dfltStackSz);
-        fprintf(stderr, "allocated stack descriptor %llu \n", (uint64_t)info);
 #else
         info = AllocStack(dfltStackSz);
 #endif
