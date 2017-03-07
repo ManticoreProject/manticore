@@ -40,6 +40,11 @@ extern void FreeMemory (void *base, int szB);
 // Returns 0 if failed.
 extern StackInfo_t* AllocStack(size_t numBytes);
 
+// allocates a region of memory suitable for
+// use as a stack segment, returning its descriptor. 
+// Returns 0 if failed.
+extern StackInfo_t* AllocStackSegment(size_t numBytes);
+
 // frees a stack allocated by AllocStack.
 extern void FreeStack(StackInfo_t* info);
 
