@@ -183,7 +183,7 @@ StackInfo_t* AllocStack(size_t numBytes) {
 //
 //                 16-byte aligned --| |-- dummy watermark
 //                                   v v 
-// | guard |  STACK_REGION  |bbbbbbbb| 3 | ~0 | ... StackInfo_t ... |  high addresses >
+// | guard |  STACK_REGION  |bbbbbbbb| 2 | ~0 | ... StackInfo_t ... |  high addresses >
 //                          ^              ^
 //                   info->initialSP     invalid frame size
 //
@@ -197,9 +197,6 @@ StackInfo_t* AllocStack(size_t numBytes) {
 //
 StackInfo_t* AllocStackSegment(size_t numBytes) {
     StackInfo_t* info;
-    
-    // NOTE automatic resizing using MAP_GROWSDOWN has
-	// been deprecated: https://lwn.net/Articles/294001/
     
 	size_t guardSz = GUARD_PAGE_BYTES;
     size_t slopSz = 128;
@@ -260,6 +257,7 @@ StackInfo_t* AllocStackSegment(size_t numBytes) {
     info->initialSP = sp;
     info->stkLimit = spLim;
     
+    fprintf(stderr, "allocsegment: info = %llu \n", (uint64_t)info);
     return info;
 }
 

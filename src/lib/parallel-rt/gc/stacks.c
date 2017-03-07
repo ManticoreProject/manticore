@@ -32,6 +32,7 @@ StackInfo_t* GetStack(VProc_t *vp) {
         // get a fresh stack
 #ifdef SEGSTACK
         info = AllocStackSegment(dfltStackSz);
+        fprintf(stderr, "allocated stack descriptor %llu \n", (uint64_t)info);
 #else
         info = AllocStack(dfltStackSz);
 #endif
@@ -89,23 +90,26 @@ StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
 }
 
 StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
-    // TODO GetStack needs to be a version specialized for seg stacks.
     StackInfo_t* fresh = GetStack(vp);
     StackInfo_t* old = vp->stdCont;
     
     uint8_t* old_stkPtr = old_origStkPtr;
-    uint64_t bytesToCopy = 0;
     const int maxFrames = 4; // TODO make this a parameter of the compiler
+    const uint64_t szOffset = 2 * sizeof(uint64_t);
     
     for(int i = 0; i < maxFrames; i++) {
-        // adjust SP
-        old_stkPtr += 2 * sizeof(uint64_t); // move to the frame size field
-        uint64_t sz = *((uint64_t*)old_stkPtr);
-        old_stkPtr += sz;
+        // grab the size field
+        uint64_t* p = (uint64_t*)(old_stkPtr + szOffset); 
+        uint64_t sz = *p;
         
-        // update count
-        bytesToCopy += sz + sizeof(uint64_t); // include the return addr.
+        if(sz == ~0ULL)
+            break; // hit the end of the segment
+        
+        // include this frame
+        old_stkPtr += sz + sizeof(uint64_t);
     }
+    
+    uint64_t bytesToCopy = old_stkPtr - old_origStkPtr;
     
     // TODO current failure in memcpy is that in Main_init we
     // immediately try to copy frames, and the frame before
@@ -113,6 +117,7 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
     // we need to also check to see if we run into the overflow
     // handler when computing the bytes to stop early.
     fprintf(stderr, "copying %llu bytes\n", bytesToCopy);
+    Die("-- got to marker --");
     
     // stkPtr now points to the ret addr of the new top of old segment
     
