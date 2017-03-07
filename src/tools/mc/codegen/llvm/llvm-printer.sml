@@ -1790,7 +1790,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val attrs = ""
     
     val stackKind = if Controls.get BasicControl.segstack
-                    then "\"manti-segstack\""
+                    (* we have re-purposed the stdEnvPtr field to hold the stack limit *)
+                    then "\"manti-segstack\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""
                     else "\"manti-contig\""
     
     (* string building code *)

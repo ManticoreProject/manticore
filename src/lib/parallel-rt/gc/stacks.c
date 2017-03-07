@@ -158,3 +158,7 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
     // return the new SP in the new segment
     return newStkPtr;
 }
+
+void* GetStkLimit(StackInfo_t* info) {
+    return info->stkLimit;
+}

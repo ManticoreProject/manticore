@@ -227,6 +227,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
     
   // write 'info' to vp->stdCont to establish that it is the current stack.
   vp->stdCont = info;
+
+#ifdef SEGSTACK
+  // set stack limit
+  vp->stdEnvPtr = GetStkLimit(info);
+#endif
   
   /* apply the given function  */
   LogRunThread(vp, 0);
@@ -303,6 +308,11 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
             vp->sigPending = M_FALSE;
             LogPreemptSignal(vp);
             
+            #ifdef SEGSTACK
+              // set stack limit
+              vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+            #endif
+            
             ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
             
     	    }
@@ -312,6 +322,12 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
                 envP = M_UNIT;		
                 exnCont = M_UNIT;
                 arg = M_UNIT;
+                
+                #ifdef SEGSTACK
+                  // set stack limit
+                  vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+                #endif
+                
                 ASM_Resume_Stack (vp, codeP, envP, exnCont, arg);
     	    }
     	    
@@ -330,6 +346,11 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
         	    vp->atomic = M_TRUE;
         	    vp->sigPending = M_FALSE;
         	    vp->shutdownPending = M_TRUE;
+                
+                #ifdef SEGSTACK
+                  // set stack limit
+                  vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+                #endif
                 
         	    ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
                 
