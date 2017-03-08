@@ -14,6 +14,7 @@
 #include "os-threads.h"
 #include "options.h"
 #include "internal-heap.h"
+#include "unistd.h"
 #ifndef NO_GC_STATS
 #include <string.h>
 #include <stdio.h>
@@ -173,6 +174,8 @@ void HeapInit (Options_t *opts)
     }
 
     InitGlobalGC ();
+    
+    GUARD_PAGE_BYTES = sysconf(_SC_PAGESIZE);
     
 #ifdef DIRECT_STYLE
     /* initialize the statepoint table */

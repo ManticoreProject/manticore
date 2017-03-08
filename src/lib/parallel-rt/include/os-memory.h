@@ -48,4 +48,6 @@ extern StackInfo_t* AllocStackSegment(size_t numBytes);
 // frees a stack allocated by AllocStack.
 extern void FreeStack(StackInfo_t* info);
 
+extern long GUARD_PAGE_BYTES;
+
 #endif /* !_OS_MEMORY_H_ */

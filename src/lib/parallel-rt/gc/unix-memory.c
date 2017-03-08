@@ -28,14 +28,8 @@
 #  endif
 #endif
 
-
-/* determine guard size */
-#ifdef _SC_PAGESIZE
-# define GUARD_PAGE_BYTES _SC_PAGESIZE
-#else /* no _SC_PAGESIZE, even though unistd.h defines it. */
-# define GUARD_PAGE_BYTES 4096
-#endif /* _SC_PAGESIZE */
-
+// initialized using sysconf call in heap.c
+long GUARD_PAGE_BYTES = 0;
 
 STATIC_INLINE void *MapMemory (void *base, size_t szb)
 {

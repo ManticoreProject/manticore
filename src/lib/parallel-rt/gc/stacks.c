@@ -23,7 +23,7 @@ extern int ASM_DS_EscapeThrow;
 
 uint64_t invalidRetAddr = 0xDEADACE;
 
-size_t dfltStackSz = 1048576; // TODO make this a parameter of the compiler
+size_t dfltStackSz = 4096; // TODO make this a parameter of the compiler
 
 // Retrieves an unused stack for the given vproc.
 StackInfo_t* GetStack(VProc_t *vp) {
