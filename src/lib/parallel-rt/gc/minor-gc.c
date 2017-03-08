@@ -168,37 +168,44 @@ void ScanStackMinor (
  */
 size_t FreeStacks(VProc_t *vp, Age_t epoch) {
     StackInfo_t* allocd = vp->allocdStacks;
-    StackInfo_t* prev = NULL;
     size_t freedBytes = 0;
     
-    while (allocd != NULL) {        
+    while (allocd != NULL) {
+        
+        StackInfo_t* nextIter = allocd->next;
+        
         if ((allocd->age <= epoch)  // young enough
             && (allocd->deepestScan == allocd) // unmarked
            ) {
             
             freedBytes += allocd->mmapSize;
             
-            // save next link
+            // save links
             StackInfo_t* allocdNext = allocd->next;
+            StackInfo_t* allocdPrev = allocd->prev;
             
             // demote and put allocd on free list
+            // note that we don't bother with prev links
+            // on the free list since we never unlink
+            // in the middle.
             allocd->age = AGE_Minor; // demote
             allocd->next = vp->freeStacks;
+            allocd->prev = NULL;
             vp->freeStacks = allocd;
             
-            // update prev, and look at the next one.
-            if (prev != NULL) {
-                prev->next = allocdNext;
+            // update links in next/prev
+            if (allocdNext != NULL)
+                allocdNext->prev = allocdPrev;
+            
+            
+            if (allocdPrev != NULL) {
+                allocdPrev->next = allocdNext;
             } else {
                 vp->allocdStacks = allocdNext;
             }
-            allocd = allocdNext;
-            
-        } else {
-            // advance position
-            prev = allocd;
-            allocd = allocd->next;
         }
+        // advance position
+        allocd = nextIter;
     }
     return freedBytes;
 }
@@ -348,6 +355,7 @@ void MinorGC (VProc_t *vp)
 #ifdef DIRECT_STYLE
     /* try to free unreachable stacks */
     size_t freedBytes = FreeStacks(vp, AGE_Minor);
+    // fprintf(stderr, "freed %llu bytes of stack\n", freedBytes);
 #endif
 
     assert ((Addr_t)nextScan >= vp->heapBase);

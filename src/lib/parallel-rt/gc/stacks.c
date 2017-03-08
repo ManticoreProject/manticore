@@ -43,7 +43,13 @@ StackInfo_t* GetStack(VProc_t *vp) {
     }
     
     // push on alloc'd list
-    info->next = vp->allocdStacks;
+    StackInfo_t* cur = vp->allocdStacks;
+    if (cur != NULL) {
+        cur->prev = info;
+    }
+    info->next = cur;
+    info->prev = NULL;
+    
     vp->allocdStacks = info;
     
     return info;

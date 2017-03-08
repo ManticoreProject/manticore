@@ -152,6 +152,7 @@ StackInfo_t* AllocStack(size_t numBytes) {
     info->deepestScan = info;
     info->age = AGE_Minor;
     info->next = NULL;
+    info->prev = NULL;
     
     // setup stack pointer
     val = val + stackLen - 16;		// switch sides, leaving some headroom.
@@ -225,6 +226,7 @@ StackInfo_t* AllocStackSegment(size_t numBytes) {
     info->deepestScan = info;
     info->age = AGE_Minor;
     info->next = NULL;
+    info->prev = NULL;
     info->prevSegment = NULL;
     info->currentSP = NULL;
     

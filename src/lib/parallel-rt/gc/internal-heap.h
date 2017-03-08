@@ -73,6 +73,7 @@ struct struct_stackinfo {
     StackInfo_t* next   ALIGN_8;  // link to next stack in the free/allocated list
     void* initialSP     ALIGN_8;
     void* stkLimit      ALIGN_8;
+    StackInfo_t* prev   ALIGN_8;  // link to previous stack in the list
     void* deepestScan   ALIGN_8;  // unscanned <=> deepestScan == ptr to its own StackInfo_t
     Age_t age           ALIGN_8;
     void* mmapBase      ALIGN_8;
