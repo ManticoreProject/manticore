@@ -24,7 +24,7 @@ extern int ASM_DS_SegUnderflow;
 
 uint64_t invalidRetAddr = 0xDEADACE;
 
-size_t dfltStackSz = 4096; // TODO make this a parameter of the compiler
+size_t dfltStackSz = 512; // TODO make this a parameter of the compiler
 
 // Retrieves an unused stack for the given vproc.
 StackInfo_t* GetStack(VProc_t *vp) {
@@ -100,19 +100,37 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
     StackInfo_t* old = vp->stdCont;
     
     uint8_t* old_stkPtr = old_origStkPtr;
+    uint64_t bytesSeen = 0;
+    
+    // NOTE what if the default segment size < size of the frame that
+    // caused the overflow? Should we take the size as an argument to
+    // this function and allocate a segment that is larger if nessecary?
+    // This will complicate the free list as segments will have various
+    // sizes. I think in practice this is unnessecary since a realistic segment
+    // size will always be much larger than any one frame in the program.
+    
+    const uint64_t maxBytes = dfltStackSz / 2;  
     const int maxFrames = 4; // TODO make this a parameter of the compiler
     const uint64_t szOffset = 2 * sizeof(uint64_t);
     
-    for(int i = 0; i < maxFrames; i++) {
+    for(int i = 0; i < maxFrames && bytesSeen < maxBytes; i++) {
         // grab the size field
         uint64_t* p = (uint64_t*)(old_stkPtr + szOffset); 
         uint64_t sz = *p;
         
-        if(sz == ~0ULL)
-            break; // hit the end of the segment
+        // hit the end of the segment?
+        if(sz == ~0ULL) {
+            // copying the whole segment to the new one defeats the
+            // purpose of this optimization, so
+            // we will simply provide an empty segment.
+            old_stkPtr = old_origStkPtr;
+            break;
+        }
         
         // include this frame
-        old_stkPtr += sz + sizeof(uint64_t);
+        uint64_t bytes = sz + sizeof(uint64_t);
+        old_stkPtr += bytes;
+        bytesSeen += bytes;
     }
     
     uint64_t bytesToCopy = old_stkPtr - old_origStkPtr;
