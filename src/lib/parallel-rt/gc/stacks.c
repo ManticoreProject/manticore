@@ -111,13 +111,7 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
     
     uint64_t bytesToCopy = old_stkPtr - old_origStkPtr;
     
-    // TODO current failure in memcpy is that in Main_init we
-    // immediately try to copy frames, and the frame before
-    // main init is not properly setup as an overflow handler.
-    // we need to also check to see if we run into the overflow
-    // handler when computing the bytes to stop early.
-    fprintf(stderr, "copying %llu bytes\n", bytesToCopy);
-    Die("-- got to marker --");
+    // fprintf(stderr, "copying %llu bytes\n", bytesToCopy);
     
     // stkPtr now points to the ret addr of the new top of old segment
     
@@ -143,11 +137,14 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
         
     */
     
-    
-    // TODO install the underflow handler and realign.
     uint8_t* newStkPtr = fresh->initialSP;
-    newStkPtr -= bytesToCopy; // pull pointer down
-    memcpy(newStkPtr, old_origStkPtr, bytesToCopy); // copy frames to fresh
+    
+    // install underflow handler
+    *((uint64_t*)newStkPtr) = &ASM_DS_SegUnderflow;
+    // pull pointer down
+    newStkPtr -= bytesToCopy; 
+    // copy frames to fresh segment. realignment should be unnessecary
+    memcpy(newStkPtr, old_origStkPtr, bytesToCopy); 
     
     // initialize backwards link and save old segment's new top
     fresh->prevSegment = old;
@@ -155,6 +152,7 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
     
     // install the fresh segment as the current stack descriptor
     vp->stdCont = fresh;
+    vp->stdEnvPtr = fresh->stkLimit;
     
     // return the new SP in the new segment
     return newStkPtr;
