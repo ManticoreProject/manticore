@@ -112,6 +112,14 @@ void ScanStackGlobal (
 // #define DEBUG_STACK_SCAN_GLOBAL
 
     uint64_t framesSeen = 0;
+    
+#ifdef SEGSTACK
+  stkInfo->currentSP = origStkPtr;
+        
+  while (stkInfo != NULL) {
+        
+    origStkPtr = stkInfo->currentSP;
+#endif // SEGSTACK
 
 /* TODO: 
     - the stack scanner should overwrite nursery water marks (the zeros) of frames
@@ -126,7 +134,7 @@ void ScanStackGlobal (
     
     uint64_t deepest = (uint64_t)stkInfo->deepestScan;
     if(deepest <= (uint64_t)origStkPtr) {
-        return; // this part of the stack has already been scanned.
+        goto nextIter; // this part of the stack has already been scanned.
     }
     
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
@@ -177,6 +185,18 @@ void ScanStackGlobal (
     
     // the roots have been forwarded to another part of the global heap
     stkInfo->age = AGE_Global;
+    
+nextIter:
+#ifdef SEGSTACK
+    stkInfo = stkInfo->prevSegment;
+    
+    #ifdef DEBUG_STACK_SCAN_GLOBAL
+        // end of a stack segment
+        fprintf(stderr, "=============================================\n");
+    #endif
+
+  } // end stkInfo while
+#endif // SEGSTACK
     
 #ifdef DEBUG_STACK_SCAN_GLOBAL
         if (framesSeen == 0) {
