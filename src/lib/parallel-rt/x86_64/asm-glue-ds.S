@@ -126,6 +126,7 @@ _GSYM(ASM_DS_EscapeThrow):
 #define PREV_SEG    8
 #define LIST_NEXT   16
 #define INIT_SP     24
+#define STK_LIM     32
 
 // probably should be a compiler parameter
 #define MAX_FRAMES  4
@@ -178,7 +179,25 @@ _GSYM(__manti_growstack):
 .p2align 3
 .globl	_GSYM(ASM_DS_SegUnderflow)
 _GSYM(ASM_DS_SegUnderflow):
+    // TODO should we eagerly unlink this descriptor
+    // and push it on the free list?
+    // it may help with cache locality.
+    // this would require the alloc'd list to
+    // be a doubly-linked list.
+    
+    // grab the previous segment descriptor
+    movq    STD_CONT(VPROC_PTR_REG), %rbp
+    movq    PREV_SEG(%rbp), %rbp
+    
+    // install the segment descriptor
+    movq    %rbp, STD_CONT(VPROC_PTR_REG)
+    
+    // change the SP and limit, then return
+    movq    CUR_SP(%rbp), %rsp
+    movq    STK_LIM(%rbp), %rbp
+    movq    %rbp, STD_EP(VPROC_PTR_REG)
     retq
+    
 
 
 // note: this has been computed manually for the object below (len = 3 words)
