@@ -113,7 +113,7 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
     const int maxFrames = 4; // TODO make this a parameter of the compiler
     const uint64_t szOffset = 2 * sizeof(uint64_t);
     
-    for(int i = 0; i < maxFrames && bytesSeen < maxBytes; i++) {
+    for(int i = 0; i < maxFrames; i++) {
         // grab the size field
         uint64_t* p = (uint64_t*)(old_stkPtr + szOffset); 
         uint64_t sz = *p;
@@ -127,10 +127,17 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
             break;
         }
         
+        uint64_t frameBytes = sz + sizeof(uint64_t);
+        bytesSeen += frameBytes;
+        
+        if (bytesSeen >= maxBytes) {
+            // do not include this frame.
+            // it would put us over the max.
+            break;
+        }
+        
         // include this frame
-        uint64_t bytes = sz + sizeof(uint64_t);
-        old_stkPtr += bytes;
-        bytesSeen += bytes;
+        old_stkPtr += frameBytes;
     }
     
     uint64_t bytesToCopy = old_stkPtr - old_origStkPtr;
