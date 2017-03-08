@@ -24,6 +24,13 @@
 // 0xCAFEBED == 212855789
 #define INVALID_RET_ADDR2 212855789
 
+// stack descriptor offsets
+#define CUR_SP      0
+#define PREV_SEG    8
+#define LIST_NEXT   16
+#define INIT_SP     24
+#define STK_LIM     32
+
     .text  
     
 .p2align 3
@@ -98,11 +105,18 @@ _GSYM(ASM_LongJmp):
 .p2align 3
 .globl	_GSYM(ASM_DS_EscapeThrow)
 _GSYM(ASM_DS_EscapeThrow):
-    // set the stack ptr. set the stack descriptor in the vproc.
+    // set the stack ptr.
     movq    8(STD_EP_REG), %rsp
-    movq    16(STD_EP_REG), TMP_REG1
-    movq    TMP_REG1, STD_CONT(VPROC_PTR_REG)
-    ret                             // do a pop;jmp to resume invoke the stack
+    // set stack descriptor
+    movq    16(STD_EP_REG), %rbp
+    movq    %rbp, STD_CONT(VPROC_PTR_REG)
+#ifdef SEGSTACK
+    // set the stack limit
+    movq    STK_LIM(%rbp), %rbp
+    movq    %rbp, STD_EP(VPROC_PTR_REG)
+#endif
+    // do a pop;jmp to resume the stack
+    ret
     
     
     
@@ -118,20 +132,6 @@ _GSYM(ASM_DS_EscapeThrow):
     resume addr
     -----------  <- RSP
 */
-
-
-
-// stack descriptor offsets
-#define CUR_SP      0
-#define PREV_SEG    8
-#define LIST_NEXT   16
-#define INIT_SP     24
-#define STK_LIM     32
-
-// probably should be a compiler parameter
-#define MAX_FRAMES  4
-
-
 
 // This version is for segmented stacks a la Bruggeman et al.
 .p2align 3
