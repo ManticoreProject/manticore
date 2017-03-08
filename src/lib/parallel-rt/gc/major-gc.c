@@ -118,6 +118,23 @@ void ScanStackMajor (
 // #define DEBUG_STACK_SCAN_MAJOR
 
     uint64_t framesSeen = 0;
+    
+    enum LimitState {
+        LS_NoMark,
+        LS_MarkSeen,
+        LS_Stop
+    };
+    
+    Age_t promoteGen = AGE_Global;
+    enum LimitState state = LS_NoMark;
+    
+#ifdef SEGSTACK
+  stkInfo->currentSP = origStkPtr;
+        
+  while (stkInfo != NULL) {
+        
+    origStkPtr = stkInfo->currentSP;
+#endif // SEGSTACK
 
 /* TODO: 
     - the stack scanner should overwrite water marks it encounters
@@ -129,19 +146,10 @@ void ScanStackMajor (
     
     uint64_t deepest = (uint64_t)stkInfo->deepestScan;
     if(deepest <= (uint64_t)origStkPtr) {
-        return; // this part of the stack has already been scanned.
+        goto nextIter; // this part of the stack has already been scanned.
     }
     
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
-    
-    enum LimitState {
-        LS_NoMark,
-        LS_MarkSeen,
-        LS_Stop
-    };
-    
-    Age_t promoteGen = AGE_Global;
-    enum LimitState state = LS_NoMark;
     
     while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
            && state != LS_Stop) {
@@ -224,6 +232,18 @@ void ScanStackMajor (
     
     // the roots have been forwarded to the global heap
     stkInfo->age = promoteGen;
+    
+nextIter:
+#ifdef SEGSTACK
+    stkInfo = stkInfo->prevSegment;
+    
+    #ifdef DEBUG_STACK_SCAN_MAJOR
+        // end of a stack segment
+        fprintf(stderr, "=============================================\n");
+    #endif
+
+  } // end stkInfo while
+#endif // SEGSTACK
     
 #ifdef DEBUG_STACK_SCAN_MAJOR
         if (framesSeen == 0) {
