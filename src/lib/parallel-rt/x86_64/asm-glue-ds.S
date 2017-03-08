@@ -174,6 +174,12 @@ _GSYM(__manti_growstack):
     jmpq    *%r15        // resume
 
 
+// This version is for segmented stacks a la Bruggeman et al.
+.p2align 3
+.globl	_GSYM(ASM_DS_SegUnderflow)
+_GSYM(ASM_DS_SegUnderflow):
+    retq
+
 
 // note: this has been computed manually for the object below (len = 3 words)
 // hdr = (len << 16 | 2 << 1 | 1)

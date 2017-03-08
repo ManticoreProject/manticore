@@ -20,6 +20,7 @@
 extern int ASM_DS_Return;
 extern int ASM_DS_ApplyClos;
 extern int ASM_DS_EscapeThrow;
+extern int ASM_DS_SegUnderflow;
 
 uint64_t invalidRetAddr = 0xDEADACE;
 

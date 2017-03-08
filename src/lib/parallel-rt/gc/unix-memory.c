@@ -194,7 +194,7 @@ StackInfo_t* AllocStackSegment(size_t numBytes) {
     
 	size_t guardSz = GUARD_PAGE_BYTES;
     size_t slopSz = 128;
-    size_t ccallSz = 1024;
+    size_t ccallSz = 8192;
     size_t bonusSz = 8 * sizeof(uint64_t);  // watermark + frame size + max realign
     
     size_t totalRegion = ccallSz + slopSz + numBytes + bonusSz;
