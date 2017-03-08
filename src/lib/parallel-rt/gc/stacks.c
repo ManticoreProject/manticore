@@ -24,7 +24,12 @@ extern int ASM_DS_SegUnderflow;
 
 uint64_t invalidRetAddr = 0xDEADACE;
 
-size_t dfltStackSz = 512; // TODO make this a parameter of the compiler
+// TODO make this a parameter of the compiler
+#ifdef SEGSTACK
+size_t dfltStackSz = 4096;
+#else
+size_t dfltStackSz = 1048576;
+#endif
 
 // Retrieves an unused stack for the given vproc.
 StackInfo_t* GetStack(VProc_t *vp) {
