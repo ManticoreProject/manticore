@@ -100,49 +100,53 @@ StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
     return info;
 }
 
-StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
+StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
     StackInfo_t* fresh = GetStack(vp);
     StackInfo_t* old = vp->stdCont;
     
     uint8_t* old_stkPtr = old_origStkPtr;
-    uint64_t bytesSeen = 0;
     
-    // NOTE what if the default segment size < size of the frame that
-    // caused the overflow? Should we take the size as an argument to
-    // this function and allocate a segment that is larger if nessecary?
-    // This will complicate the free list as segments will have various
-    // sizes. I think in practice this is unnessecary since a realistic segment
-    // size will always be much larger than any one frame in the program.
+    if (shouldCopy) {
     
-    const uint64_t maxBytes = dfltStackSz / 2;  
-    const int maxFrames = 4; // TODO make this a parameter of the compiler
-    const uint64_t szOffset = 2 * sizeof(uint64_t);
-    
-    for(int i = 0; i < maxFrames; i++) {
-        // grab the size field
-        uint64_t* p = (uint64_t*)(old_stkPtr + szOffset); 
-        uint64_t sz = *p;
+        uint64_t bytesSeen = 0;
         
-        // hit the end of the segment?
-        if(sz == ~0ULL) {
-            // copying the whole segment to the new one defeats the
-            // purpose of this optimization, so
-            // we will simply provide an empty segment.
-            old_stkPtr = old_origStkPtr;
-            break;
+        // NOTE what if the default segment size < size of the frame that
+        // caused the overflow? Should we take the size as an argument to
+        // this function and allocate a segment that is larger if nessecary?
+        // This will complicate the free list as segments will have various
+        // sizes. I think in practice this is unnessecary since a realistic segment
+        // size will always be much larger than any one frame in the program.
+        
+        const uint64_t maxBytes = dfltStackSz / 2;  
+        const int maxFrames = 4; // TODO make this a parameter of the compiler
+        const uint64_t szOffset = 2 * sizeof(uint64_t);
+        
+        for(int i = 0; i < maxFrames; i++) {
+            // grab the size field
+            uint64_t* p = (uint64_t*)(old_stkPtr + szOffset); 
+            uint64_t sz = *p;
+            
+            // hit the end of the segment?
+            if(sz == ~0ULL) {
+                // copying the whole segment to the new one defeats the
+                // purpose of this optimization, so
+                // we will simply provide an empty segment.
+                old_stkPtr = old_origStkPtr;
+                break;
+            }
+            
+            uint64_t frameBytes = sz + sizeof(uint64_t);
+            bytesSeen += frameBytes;
+            
+            if (bytesSeen >= maxBytes) {
+                // do not include this frame.
+                // it would put us over the max.
+                break;
+            }
+            
+            // include this frame
+            old_stkPtr += frameBytes;
         }
-        
-        uint64_t frameBytes = sz + sizeof(uint64_t);
-        bytesSeen += frameBytes;
-        
-        if (bytesSeen >= maxBytes) {
-            // do not include this frame.
-            // it would put us over the max.
-            break;
-        }
-        
-        // include this frame
-        old_stkPtr += frameBytes;
     }
     
     uint64_t bytesToCopy = old_stkPtr - old_origStkPtr;
@@ -177,10 +181,13 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr) {
     
     // install underflow handler
     *((uint64_t*)newStkPtr) = &ASM_DS_SegUnderflow;
-    // pull pointer down
-    newStkPtr -= bytesToCopy; 
-    // copy frames to fresh segment. realignment should be unnessecary
-    memcpy(newStkPtr, old_origStkPtr, bytesToCopy); 
+    
+    if (bytesToCopy) {
+        // pull pointer down
+        newStkPtr -= bytesToCopy; 
+        // copy frames to fresh segment. realignment should be unnessecary
+        memcpy(newStkPtr, old_origStkPtr, bytesToCopy); 
+    }
     
     // initialize backwards link and save old segment's new top
     fresh->prevSegment = old;

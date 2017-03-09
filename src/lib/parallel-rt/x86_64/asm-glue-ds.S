@@ -138,8 +138,11 @@ _GSYM(ASM_DS_EscapeThrow):
 .globl	_GSYM(__manti_growstack)
 _GSYM(__manti_growstack):
     // NOTE we actually start off with RSP 16-byte aligned!
+    movq    $1, TMP_REG3      // 0 indicates no copying. NOTE the clobber!
     
-    leaq    8(%rsp), %r15   // clobber r15 to save the current top of segment
+_GSYM(__manti_growstack_noimplicitcopy):
+    
+    leaq    8(%rsp), %rbp   // save the current top of segment
     // save manticore registers
     // NOTE: we are omitting xmm registers here!
     pushq   ALLOC_PTR_REG
@@ -154,10 +157,11 @@ _GSYM(__manti_growstack):
     // saved by the C callee
     // setup args
     movq    VPROC_PTR_REG, %rdi     // vproc is arg 1
-    movq    %r15, %rsi              // current top is arg 2
+    movq    %rbp, %rsi              // current top is arg 2
+    movq    TMP_REG3, %rdx              // whether to copy is arg 3
     callq   _GSYM(StkSegmentOverflow)
     
-    movq    %rax, %r15  // move new SP out of the way
+    movq    %rax, %rbp  // move new SP out of the way
     
     // restore manticore registers
     popq    %r10
@@ -170,9 +174,9 @@ _GSYM(__manti_growstack):
     popq   ALLOC_PTR_REG
     
     // swap out the stack pointer
-    xchgq   %rsp, %r15
-    movq    (%r15), %r15 // load return addr
-    jmpq    *%r15        // resume
+    xchgq   %rsp, %rbp
+    movq    (%rbp), %rbp // load return addr
+    jmpq    *%rbp        // resume
 
 
 // This version is for segmented stacks a la Bruggeman et al.
@@ -220,18 +224,32 @@ _GSYM(ASM_DS_SegUnderflow):
 .p2align 3
 .globl	_GSYM(ASM_Callec)
 _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
+
+    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1     // grab the stack descriptor
     
+#ifdef SEGSTACK
+    movq    %rsp, TMP_REG4                      // save the SP
+    // switch to a new segment without copying
+    xorq    TMP_REG3, TMP_REG3              // 0 in TMP_REG3 indicates no copying
+    callq   _GSYM(__manti_growstack_noimplicitcopy)
+    // at this point we're operating in a new stack segment.
+    // TMP_REG1 and TMP_REG4 were preserved by growstack.
+#endif
+
     /***** alloc cont object ****/
-    
-    // get additional values
-    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1     // load the stack descriptor
     leaq    _GSYM(ASM_LongJmp)(%rip), TMP_REG2    // load the resume address
     
-    // initialize allocation
+    // ** initialize allocation **
     movq    $STACK_HDR, -8(ALLOC_PTR_REG)       // init header
     movq    TMP_REG2, (ALLOC_PTR_REG)           // init code ptr
-    movq    %rsp, 8(ALLOC_PTR_REG)              // save stack ptr
-    movq    TMP_REG1, 16(ALLOC_PTR_REG)         // save stack descriptor
+    
+#ifdef SEGSTACK
+    movq    TMP_REG4, 8(ALLOC_PTR_REG)          // init captured stack ptr
+#else
+    movq    %rsp, 8(ALLOC_PTR_REG)              // capture current stack ptr
+#endif
+    movq    TMP_REG1, 16(ALLOC_PTR_REG)         // init stack descriptor
+    // ** done with initialization **
     
     // update pointers
     movq    ALLOC_PTR_REG, TMP_REG3             // save ptr to the cont object
