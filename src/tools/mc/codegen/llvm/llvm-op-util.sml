@@ -365,7 +365,7 @@ in (case p
                 
                 (* do operation and get the value *)
                 val xchg = f e Op.CmpXchg #[llTarg, llCmp, llNew]
-                val extr = LB.extractV bb (xchg, #[LB.intC(i32, 0)])
+                val extr = LB.extractV_fullName bb (xchg, #[LB.intC(i32, 0)])
                 
                 (* restore the type *)
                 val res = c (Op.equivCast(LB.toTy extr, resTy)) (extr, resTy)
@@ -513,7 +513,7 @@ in (case p
                    
                    (* do operation and get the value *)
                    val xchg = f e Op.CmpXchg #[llTarg, llCmp, llNew]
-                   val extr = LB.extractV bb (xchg, #[LB.intC(i32, 1)])
+                   val extr = LB.extractV_fullName bb (xchg, #[LB.intC(i32, 1)])
                    
                in
                    extr

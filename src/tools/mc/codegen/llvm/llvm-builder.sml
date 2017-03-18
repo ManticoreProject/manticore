@@ -134,6 +134,9 @@ structure LLVMBuilder : sig
     (* (struct, #[offset1, offset2, ...]) *)
     val extractV : t -> (instr * constant vector) -> instr
     
+    (* ugly, but nessecary because cmpxchg returns a { i64, i1 } and LLVM considers type aliases to be unique *)
+    val extractV_fullName : t -> (instr * constant vector) -> instr
+    
     (* (struct, value, #[offset1, offset2, ...]) *)
     val insertV : t -> (instr * instr * constant vector) -> instr 
 
@@ -233,7 +236,7 @@ structure LLVMBuilder : sig
     = OP of op_code
     | OP_GEP
     | OP_GEP_IB
-    | OP_ExtractVal
+    | OP_ExtractVal of bool  (* bool indicates whether to print the full type or not *)
     | OP_InsertVal
     | OP_Return
     | OP_Br
@@ -721,15 +724,18 @@ structure LLVMBuilder : sig
              
              | (OP_GEP_IB, SOME info) => mkGEP(true, info)
              
-             | (OP_ExtractVal, SOME (resName, resTy)) => (let
+             | (OP_ExtractVal needFullName, SOME (resName, resTy)) => (let
                      val (aggName, aggTy) = break (V.sub(args, 0))
                      val offsets = L.tabulate ((V.length args) - 1,
                                      fn i => getArgStr false (V.sub(args, i+1)))
                      val offsets = S.concatWith ", " offsets
+                     val aggTyName = if needFullName
+                                       then LT.fullNameOf aggTy
+                                       else LT.nameOf aggTy
                    in
                      S.concat
                        [ resName, " = extractvalue ",
-                         LT.nameOf aggTy, " ", aggName, ", ",
+                         aggTyName, " ", aggName, ", ",
                          offsets
                        ]
                    end)
@@ -1115,7 +1121,7 @@ structure LLVMBuilder : sig
 
         val tyy = (case mode
                     of (OP_GEP | OP_GEP_IB) => LT.gepType(argTy, seq)
-                     | OP_ExtractVal => LT.gevType(argTy, seq)
+                     | OP_ExtractVal _ => LT.gevType(argTy, seq)
                      | _ => raise Fail "invalid"
                   (* esac *))
 
@@ -1153,7 +1159,8 @@ structure LLVMBuilder : sig
     
     
     
-    val extractV = genGep OP_ExtractVal stripI32 fromC
+    val extractV = genGep (OP_ExtractVal false) stripI32 fromC
+    val extractV_fullName = genGep (OP_ExtractVal true) stripI32 fromC
 
   end
   
