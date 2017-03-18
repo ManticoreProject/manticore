@@ -259,7 +259,7 @@ structure WrapCaptures : sig
                        change the types of all such unknown cont vars in the program.
                     *)
                     val _ = if L.length params > 1 then
-                                raise Fail ("escape cont " ^ (CV.nameOf f) ^ " takes more than 1 parameter!")
+                                raise Fail ("escape cont " ^ (CV.toString f) ^ " takes more than 1 parameter!")
                             else ST.tick cntExpand
                     
                     val retk = getRet env
