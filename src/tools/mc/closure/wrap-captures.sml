@@ -118,6 +118,13 @@ structure WrapCaptures : sig
         in
             C.mkLet([lhs], C.Cast(targTy, var), k lhs)
         end
+        
+        fun atLeastOneArg (args, k) = 
+            if L.null args
+            then fresh(CPSTy.T_Any, fn argv =>
+                    C.mkLet([argv], C.Const(Literal.unitLit, CPSTy.T_Any),
+                        k [argv]))
+            else k args
                                 
                                 
         fun selectAll(tys, tup, k) = let
@@ -383,8 +390,9 @@ structure WrapCaptures : sig
                 params = invokeParams,
                 rets = [],
                 body = MK.bundle(invokeParams, fn newArgs =>
-                        MK.bindTrue(fn tru =>
-                          C.mkThrow(retkP, tru::newArgs)))},
+                         MK.atLeastOneArg(newArgs, fn paddedArgs =>
+                           MK.bindTrue(fn tru =>
+                             C.mkThrow(retkP, tru::paddedArgs))))},
                 k invokeRet)
             
     in
