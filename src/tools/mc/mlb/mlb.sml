@@ -382,7 +382,7 @@ structure MLB : sig
           (* runtime library *)
             val runtimeBasisLibPts = loadMLB(LoadPaths.runtimeBasisLib, env)
           (* load the top-level scheduler *)
-	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib "no-op-scheduler", env)
+	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib "simple-round-robin", env)
         (* CML *)
   	    val cmlPts = loadMLB(LoadPaths.minicmlLib, env)
     (*
