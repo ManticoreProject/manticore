@@ -198,7 +198,7 @@ structure WrapCaptures : sig
                         replaceRetk(env, retk, fn newRetk => k [newRetk])
                   
                 and replaceRetk (env, oldRetk, k) = (case lookupKind(env, oldRetk)
-                    of SOME(EscapeCont _) => raise Fail "should not appear as a ret!"
+                    of SOME(EscapeCont _) => raise Fail (CV.toString oldRetk ^ " should not appear as a ret!")
                      | SOME(RetCont newV) => k (newRetk := true ; newV)
                      | NONE => let
                         (* check if the oldRetk is unit *)
