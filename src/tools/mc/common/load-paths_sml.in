@@ -54,6 +54,12 @@ structure LoadPaths =
 
   (* CML library *)
     val cmlLib = join (cmlDir, "cml.mlb")
+    
+  (* mini-CML *)
+    val minicmlDir = join (basisDir, "mini-cml")    
+  
+  (* mini-CML library *)
+    val minicmlLib = join (minicmlDir, "mini-cml.mlb")
 
   (* parallel array *)
     val parrayDir = join (basisDir, "parray")
