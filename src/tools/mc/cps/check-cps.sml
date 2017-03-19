@@ -206,7 +206,11 @@ structure CheckCPS : sig
 		       of CTy.T_Fun(argTys, retTys) => (
 			    chkVars (env, rets, "Callec rets");
 			    checkArgTypes (CTU.match, concat["Callec ", v2s f, " rets", vl2s rets], retTys, typesOf rets);
-			    checkArgTypes (CTU.match, concat["Callec ", v2s f, " funarg param"], argTys, [CPSTy.T_Cont([CPSTy.T_Any])])
+                (case argTys
+                  of [ CPSTy.T_Cont([]) ] => ()
+                   | [ CPSTy.T_Cont([CPSTy.T_Any]) ] => ()
+                   | _ => checkArgTypes (CTU.match, concat["Callec ", v2s f, " funarg param"], argTys, [CPSTy.T_Cont([CPSTy.T_Any])])
+                 (* esac *))
                 )
 			| ty => error[v2s f, ":", CTU.toString ty, " is not a function\n"]
 		      (* end case *))
