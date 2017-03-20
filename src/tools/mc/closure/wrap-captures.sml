@@ -121,11 +121,23 @@ structure WrapCaptures : sig
     fun setParamRet ((E{sub, retk, paramRetk,manipScope}), r) = E{sub=sub, retk=retk, paramRetk=r, manipScope=manipScope}
     fun getParamRet (E{paramRetk,...}) = paramRetk
     
-    fun lookupKind (E{sub,...}, k) = VMap.find(sub, k)
+    (* finds the latest substitution in the env *)
+    fun lookupKind (E{sub,...}, v) = let
+        fun some tycon v = SOME(tycon v)
+        fun get (tycon, v) = (case VMap.find(sub, v)
+            of SOME(RetCont newV) => get (some RetCont, newV)
+             | SOME(EscapeCont newV) => get (some EscapeCont, newV)
+             | NONE => tycon v
+            (* esac *))
+    in
+        get (fn _ => NONE, v)
+    end
+     
     
-    fun lookupV(E{sub,...}, v) = (case VMap.find(sub, v)
-        of SOME(RetCont newV) => newV
-         | SOME(EscapeCont newV) => newV
+    (* finds the latest substitution in the env *)
+    and lookupV(env as E{sub,...}, v) = (case VMap.find(sub, v)
+        of SOME(RetCont newV) => lookupV(env, newV)
+         | SOME(EscapeCont newV) => lookupV(env, newV)
          | NONE => v)
          
     fun inManipScope (E{manipScope,...}) = manipScope
@@ -397,7 +409,8 @@ structure WrapCaptures : sig
         val retkP = CV.new("landingPadK", retkTy)
         val exnP = CV.new("deadExnK", contAny)
         
-        val fname = CV.new("manipK", CPSTy.T_Fun([CV.typeOf contP], [retkTy, contAny]))
+        val num = Int.toString(ST.count cntExpand) (* aids debugging *)
+        val fname = CV.new("manipK" ^ num, CPSTy.T_Fun([CV.typeOf contP], [retkTy, contAny]))
         
         (* build the invoke return cont *)
         val invokeParamTys = L.map (fn _ => CPSTy.T_Any) (MK.argTysOf origRetk)
