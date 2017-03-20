@@ -273,7 +273,7 @@ structure WrapCaptures : sig
                     val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
                     
                     fun mkManipKBody env (newF, newActiveRetk, manipKRetParam) = let
-                        val env = insertV(env, retk, RetCont retk)
+                        val env = insertV(env, retk, RetCont newActiveRetk)
                         val env = insertV(env, f, EscapeCont newF)
                         val env = setRet(env, newActiveRetk)
                         val env = setParamRet(env, manipKRetParam)
