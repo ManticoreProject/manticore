@@ -46,6 +46,43 @@
  *    
  *
  *)
+ 
+ 
+ (* TODO FIXME 
+    
+    Consider the following
+    
+    cont joinK () = ...
+    in
+      cont otherK () = ...
+      in               
+        expA   <- contains a throw to joinK
+        
+    ===>
+    
+    cont joinK () = ...    <-- uh oh, now this is a GotoCont!
+    in
+      cont otherK () = ...
+      in
+        cont landingPad () ...
+        in
+          fun manipK( , landingPad' ) =
+            ...
+            throw joinK ()   <-- now a Goto throw.
+    
+    the solution to this is to ask for the FVs of expA and check for any Join conts 
+    in that set. For each one, assign to it an integer.
+    Then, in the landingPad, have a switch dispatch to these continuations based
+    on that integer, and replace all throws to those joinK's with a throw to the landing pad,
+    as appropriate. You could introduce sentinel conts in manipK that pick the right integer
+    for each one to hide calling convention issues.
+    
+    Because this is a rare thing to happen in my benchmarking, i.e., it only showed up
+    when I was trying to compile the round-robin scheduler, which has needless uses of
+    conts to escape loops, I haven't bothered to update the code below for this case.
+    - Kavon (3/19/17)
+ 
+ *)
 
 structure WrapCaptures : sig
 
