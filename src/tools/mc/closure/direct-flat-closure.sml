@@ -109,12 +109,16 @@ structure DirectFlatClosureWithCFA : sig
           }
       | cvtStdFunTyAuxStd ty = raise Fail(concat[
           "bogus function type ", CPSTyUtil.toString ty])
-    and cvtStdFunTyAuxKwn (CPSTy.T_Fun(argTys, [retT, exnT]), (args, [ret, exn])) = let
+    and cvtStdFunTyAuxKwn (CPSTy.T_Fun(argTys, retT :: maybExnT), (args, ret :: maybExn)) = let
+          fun cvtExn ([], []) = []
+            | cvtExn ([exnT], [exn]) = [ cvtStdContTy(exnT, CFA.valueOf exn) ]
+            | cvtExn _ = raise Fail "mismatch in whether an exn is included or not!"
+            
           fun cvtTy' (ty, x) = cvtTy (ty, CFA.valueOf x)
           in
             CFGTy.T_KnownDirFunc {
               clos = CFGTy.T_Any,
-              args = ListPair.mapEq cvtTy' (argTys, args) @ [ cvtStdContTy(exnT, CFA.valueOf exn) ],
+              args = ListPair.mapEq cvtTy' (argTys, args) @ (cvtExn (maybExnT, maybExn)),
               ret = extractArgs (cvtStdContTy(retT, CFA.valueOf ret))
             }
           end
