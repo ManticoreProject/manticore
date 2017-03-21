@@ -614,10 +614,26 @@ static void IdleVProc (VProc_t *vp, void *arg)
 #endif
 
     VProcSleep(vp);
+    
+#ifndef DIRECT_STYLE
+  
   /* Activate scheduling code on the vproc. */
     Value_t envP = vp->schedCont;
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
     RunManticore (vp, codeP, vp->dummyK, envP);
+    
+#else
+
+    /* Activate scheduling code on the vproc. */
+    FunClosure_t* closObj = ValueToClosure(vp->schedCont);
+    // yes, the two lines below look fishy.
+    // FunClosure_t uses {cp, ep}, but
+    // the codegen uses {ep, cp}
+    Value_t envP = closObj->cp;
+    Addr_t codeP = ValueToAddr(closObj->ep);
+    RunManticore (vp, codeP, vp->dummyK, envP);
+
+#endif
 
   /* should never get here! */
     assert (0);
