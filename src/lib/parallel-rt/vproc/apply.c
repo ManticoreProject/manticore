@@ -266,6 +266,28 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     
     Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
     
+doShutdown:
+    if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
+        closObj = ValueToClosure(vp->shutdownCont);
+        // yes, the two lines below look fishy.
+        // FunClosure_t uses {cp, ep}, but
+        // the codegen uses {ep, cp}
+        envP = closObj->cp;
+        codeP = ValueToAddr(closObj->ep);
+        arg = M_UNIT;
+        exnCont = M_UNIT;
+        vp->atomic = M_TRUE;
+        vp->sigPending = M_FALSE;
+        vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
+        
+        #ifdef SEGSTACK
+          // set stack limit
+          vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+        #endif
+        
+        ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+    }
+    
     switch (req) {
         case REQ_GC:
         
@@ -335,24 +357,18 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
             break;  
         /********************/
         case REQ_Return:
-                closObj = ValueToClosure(vp->shutdownCont);
-                // yes, the two lines below look fishy.
-                // FunClosure_t uses {cp, ep}, but
-                // the codegen uses {ep, cp}
-        	    envP = closObj->cp;
-                codeP = ValueToAddr(closObj->ep);
-        	    arg = M_UNIT;
-        	    exnCont = M_UNIT;
-        	    vp->atomic = M_TRUE;
-        	    vp->sigPending = M_FALSE;
-        	    vp->shutdownPending = M_TRUE;
-                
-                #ifdef SEGSTACK
-                  // set stack limit
-                  vp->stdEnvPtr = GetStkLimit(vp->stdCont);
-                #endif
-                
-        	    ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+                  /* shutdown the runtime
+                   * in the future we should create a new request code to handle shutdown.
+                   */
+                ShutdownFlg = true;
+                for (int i = 0; i < NumVProcs; i++) {
+                  /* force each vproc to check for shutdown */
+                    VProc_t *wvp = VProcs[i];
+                    VProcSendSignal(vp, wvp, wvp->currentFLS, wvp->dummyK);
+                    VProcPreempt (vp, wvp);
+                }
+        
+                goto doShutdown;
                 
                 Die("unreachable in REQ_Return");
                 break;
