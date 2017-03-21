@@ -87,7 +87,7 @@ _GSYM(ASM_Apply):
 #else
     /* write the return address at proper alignment */
     subq	$DS_RETSETUP, %rsp
-    leaq	_ASM_Return(%rip), TMP_REG1
+    leaq	_GSYM(ASM_Return)(%rip), TMP_REG1
     pushq	TMP_REG1              /* we do a push-jmp instead of a call. */
 #endif
 	
