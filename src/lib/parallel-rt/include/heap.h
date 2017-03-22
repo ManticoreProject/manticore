@@ -48,6 +48,20 @@ STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
     return ValueToAddr(oldLimitPtr);
 }
 
+STATIC_INLINE void ZeroLimitPtr (VProc_t *vp)
+{
+    Value_t* ptr = (Value_t*)&(vp->limitPtr);
+    
+    __asm__ __volatile__ (
+    "xorq %%rax, %%rax\n"	        /* rax = 0ULL */
+	"xchgq %%rax, %0\n"  	        /* xchgq result,ptr */
+	: "+m" (*ptr)
+    :
+	: "rax"
+    );
+    
+}
+
 /* return true of the given address is within the given vproc heap */
 /* TODO: the check for heapBase is because there's a heapBase sneaking
    into a data type. We need to find out what and why, then remove

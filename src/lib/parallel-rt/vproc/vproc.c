@@ -478,7 +478,7 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
 #endif
   */
     LogPreemptVProc (vp, vp->id);
-    SetLimitPtr (vp, 0);
+    ZeroLimitPtr (vp);
 }
 
 /*! \brief interrupt a remote vproc to take part in a global collection.
