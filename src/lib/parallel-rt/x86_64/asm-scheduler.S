@@ -9,6 +9,8 @@
 #include "asm-offsets.h"
 #include "registers.h"	
 
+#ifndef DIRECT_STYLE
+
 /* ASM_Resume:
  *
  * This function is the code for the resume continuation created by preemption.
@@ -30,3 +32,5 @@ _GSYM(ASM_Resume):
 	movq	8(STD_EP_REG),%r9		/* fetch code address */
 	movq	16(STD_EP_REG),STD_EP_REG	/* set EP to point to GC root */
 	jmpq	*%r9				/* jump to the GC return code */
+
+#endif DIRECT_STYLE

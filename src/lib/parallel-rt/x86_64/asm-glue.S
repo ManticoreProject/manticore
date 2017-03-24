@@ -9,6 +9,8 @@
 #include "asm-offsets.h"
 #include "registers.h"
 
+#ifndef DIRECT_STYLE
+
 #define TMP_REG1            %r10          /* must be caller save */
 #define TMP_REG2            %r15          /* must be caller save */	
 
@@ -55,7 +57,6 @@
 #define R14_OFF		(5*8)	/* offset off for saving %r14 */
 #define R15_OFF		(6*8)	/* offset off for saving %r15 */
 #define CALLEE_END  (7*8)
-#define DS_RETSETUP  (7*8)   /* needs to be 8 bytes shy of 16-byte alignment */
 
 /* ASM_Apply:
  *
@@ -80,16 +81,9 @@ _GSYM(ASM_Apply):
 	movq	%r14, -R14_OFF(%rsp)
 	movq	%r15, -R15_OFF(%rsp)
 
-#ifndef DIRECT_STYLE	
 	/* setup frame for spills */
 	leaq    -CALLEE_END(%rsp), %rbp
 	subq    $FRAME_SZB, %rsp
-#else
-    /* write the return address at proper alignment */
-    subq	$DS_RETSETUP, %rsp
-    leaq	_GSYM(ASM_Return)(%rip), TMP_REG1
-    pushq	TMP_REG1              /* we do a push-jmp instead of a call. */
-#endif
 	
 	/* setup standard arguments to the Manticore function */
 	movq	%rdi,VPROC_PTR_REG	/* set vproc pointer */
@@ -179,11 +173,7 @@ continue_to_c:
 	movq	STD_EXH_REG,STD_EXH(VPROC_PTR_REG)
 	movq	ALLOC_PTR_REG,ALLOC_PTR(VPROC_PTR_REG)
     
-#ifndef DIRECT_STYLE
     addq   $FRAME_SZB, %rsp       /* unbump stack pointer */
-#else
-    addq   $DS_RETSETUP, %rsp     /* unbump stack pointer */
-#endif
     
     /* restore C callee-save registers.  */
     movq	-RBP_OFF(%rsp),%rbp
@@ -258,3 +248,5 @@ _GSYM(ASM_GetTimeStamp):
 	ret
 
 #endif /* ENABLE_LOGGING */
+
+#endif /* not DIRECT_STYLE */
