@@ -59,7 +59,7 @@ void ScanStackMinor (
     Addr_t allocSzB,
     Word_t **nextW) {
 
-// #define DEBUG_STACK_SCAN_MINOR
+#define DEBUG_STACK_SCAN_MINOR
 
     uint64_t framesSeen = 0;
     
@@ -89,12 +89,18 @@ void ScanStackMinor (
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
     
-    uint64_t deepest = (uint64_t)stkInfo->deepestScan;
-    if(deepest <= (uint64_t)origStkPtr) {
-        goto nextIter; // this part of the stack has already been scanned.
-    }
+    // uint64_t deepest = (uint64_t)stkInfo->deepestScan;
+    // if(deepest <= (uint64_t)origStkPtr) {
+    //     // this part of the stack has already been scanned.
+    //     framesSeen++;
+    //     goto nextIter;
+    // }
     
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
+    
+    fprintf(stderr, "In Minor GC\n");
+    fprintf(stderr, "Starting scan of stack pointer: %llx \n", (uint64_t)stackPtr);
+    fprintf(stderr, "First frame of this segment has ret addr: %llx \n", *(uint64_t*)(stackPtr));
     
     while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
            && state != LS_Stop) {
@@ -174,6 +180,8 @@ nextIter:
           fprintf(stderr, "###########################################################\n");
   #endif
 
+  fprintf(stderr, "Done. top of stack has address: %llx \n", *(uint64_t*)(origStkPtr));
+
     return;
 }
 
@@ -189,6 +197,8 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
     StackInfo_t* allocd = vp->allocdStacks;
     size_t freedBytes = 0;
     
+    return freedBytes;
+    /*
     while (allocd != NULL) {
         
         StackInfo_t* nextIter = allocd->next;
@@ -227,6 +237,7 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
         allocd = nextIter;
     }
     return freedBytes;
+    */
 }
 
 /* unmarks all stacks in the alloc'd list (for the ones who survived). */
@@ -348,7 +359,9 @@ void MinorGC (VProc_t *vp)
             
             int len = GetLength(hdr);
             const int expectedLen = 3;
-            assert(len == expectedLen && "ASM code doesn't match GC assumptions");
+            if(len != expectedLen) {
+                Die("MinorGC: found an improper stack hdr object");
+            }
             
             void* stkPtr = nextScan[1];
             StackInfo_t* stkInfo = nextScan[2];

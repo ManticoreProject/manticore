@@ -109,7 +109,7 @@ void ScanStackGlobal (
     StackInfo_t* stkInfo,
     VProc_t* vp) {
 
-// #define DEBUG_STACK_SCAN_GLOBAL
+#define DEBUG_STACK_SCAN_GLOBAL
 
     uint64_t framesSeen = 0;
     
@@ -132,12 +132,18 @@ void ScanStackGlobal (
     
     // NOTE we might need to do an atomic update on the deepestScan field?
     
-    uint64_t deepest = (uint64_t)stkInfo->deepestScan;
-    if(deepest <= (uint64_t)origStkPtr) {
-        goto nextIter; // this part of the stack has already been scanned.
-    }
+    // uint64_t deepest = (uint64_t)stkInfo->deepestScan;
+    // if(deepest <= (uint64_t)origStkPtr) {
+    //     // this part of the stack has already been scanned.
+    //     framesSeen++;
+    //     goto nextIter;
+    // }
     
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
+    
+    fprintf(stderr, "In Global GC\n");
+    fprintf(stderr, "Starting scan of stack pointer: %llx \n", (uint64_t)stackPtr);
+    fprintf(stderr, "First frame of this segment has ret addr: %llx \n", *(uint64_t*)(stackPtr));
     
     while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
 
@@ -204,6 +210,8 @@ nextIter:
         }
         fprintf(stderr, "##########################################\n");
 #endif
+
+fprintf(stderr, "Done. top of stack has address: %llx \n", *(uint64_t*)(origStkPtr));
 
     return;
 }
@@ -571,7 +579,9 @@ static void ScanVProcHeap (VProc_t *vp)
         else if (isStackHdr(hdr)) {
             int len = GetLength(hdr);
             const int expectedLen = 3;
-            assert(len == expectedLen && "ASM code doesn't match GC assumptions");
+            if(len != expectedLen) {
+                Die("GlobalGC: found an improper stack hdr object");
+            }
             
             void* stkPtr = scanPtr[1];
             StackInfo_t* stkInfo = scanPtr[2];
@@ -698,7 +708,9 @@ static void ScanGlobalToSpace (VProc_t *vp)
                 else if (isStackHdr(hdr)) {
                     int len = GetLength(hdr);
                     const int expectedLen = 3;
-                    assert(len == expectedLen && "ASM code doesn't match GC assumptions");
+                    if(len != expectedLen) {
+                        Die("GlobalGC: found an improper stack hdr object");
+                    }
                     
                     void* stkPtr = scanPtr[1];
                     StackInfo_t* stkInfo = scanPtr[2];

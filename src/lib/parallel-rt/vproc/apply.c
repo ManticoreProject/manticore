@@ -13,6 +13,7 @@
 #include "heap.h"
 #include "event-log.h"
 #include "os-memory.h"
+#include "stdio.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -264,6 +265,8 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     Addr_t codeP;
     FunClosure_t* closObj;
     
+    fprintf(stderr, "Request Service: current SP is %llx \n", (uint64_t)(vp->stdEnvPtr));
+    
     Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
     
 doShutdown:
@@ -285,7 +288,8 @@ doShutdown:
           vp->stdEnvPtr = GetStkLimit(vp->stdCont);
         #endif
         
-        ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+        // ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+        Die("trying to shutdown");
     }
     
     switch (req) {
@@ -335,7 +339,8 @@ doShutdown:
               vp->stdEnvPtr = GetStkLimit(vp->stdCont);
             #endif
             
-            ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+            // ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+            ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, vp->stdEnvPtr);
             
     	    }
     	    else {
