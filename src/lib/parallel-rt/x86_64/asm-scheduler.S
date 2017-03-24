@@ -33,4 +33,4 @@ _GSYM(ASM_Resume):
 	movq	16(STD_EP_REG),STD_EP_REG	/* set EP to point to GC root */
 	jmpq	*%r9				/* jump to the GC return code */
 
-#endif DIRECT_STYLE
+#endif /* DIRECT_STYLE */

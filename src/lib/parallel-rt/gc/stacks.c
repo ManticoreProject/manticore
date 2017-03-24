@@ -15,6 +15,7 @@
 #include "gc.h"
 #include "internal-heap.h"
 #include "value.h"
+#include "string.h"
 #include <stdio.h>
 
 extern int ASM_DS_Return;
