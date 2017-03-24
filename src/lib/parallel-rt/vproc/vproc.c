@@ -57,7 +57,11 @@ bool                    ShutdownFlg = false;
 int                     *NumVProcsPerNode;
 int                     *MinVProcPerNode;
 
-extern int ASM_VProcSleep;
+#ifdef DIRECT_STYLE
+    extern int ASM_DS_VProcSleep;
+#else
+    extern int ASM_VProcSleep;
+#endif
 
 /*! \brief Items in the ready-queue lists and on the landing pad */
 typedef struct struct_queue_item QueueItem_t;
@@ -726,5 +730,11 @@ VProc_t* GetNthVProc (int n)
  */
 Value_t SleepCont (VProc_t *self)
 {
+    
+#ifdef DIRECT_STYLE
+    return WrapWord(self, (Word_t)&ASM_DS_VProcSleep);
+#else
     return WrapWord(self, (Word_t)&ASM_VProcSleep);
+#endif
+    
 }

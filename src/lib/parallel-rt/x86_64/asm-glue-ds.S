@@ -281,6 +281,13 @@ _GSYM(ASM_DS_Return):
 _GSYM(ASM_DS_UncaughtExn):
     movq    $REQ_UncaughtExn, TMP_REG1
     jmp     asm_get_service
+    
+
+    .p2align 3
+    .globl	_GSYM(ASM_DS_VProcSleep)
+_GSYM(ASM_DS_VProcSleep):
+    movq    $REQ_Sleep, TMP_REG1
+    jmp     asm_get_service
 
 
 /* NOTE: this function only accepts vproc and alloc ptrs.
