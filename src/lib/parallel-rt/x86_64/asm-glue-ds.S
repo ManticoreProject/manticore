@@ -184,13 +184,7 @@ _GSYM(__manti_growstack_noimplicitcopy):
 // This version is for segmented stacks a la Bruggeman et al.
 .p2align 3
 .globl	_GSYM(ASM_DS_SegUnderflow)
-_GSYM(ASM_DS_SegUnderflow):
-    // TODO should we eagerly unlink this descriptor
-    // and push it on the free list?
-    // it may help with cache locality.
-    // this would require the alloc'd list to
-    // be a doubly-linked list.
-    
+_GSYM(ASM_DS_SegUnderflow):    
     // grab current segment
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
     
