@@ -30,6 +30,8 @@
 #define LIST_NEXT   16
 #define INIT_SP     24
 #define STK_LIM     32
+#define LIST_PREV   40
+#define AGE         56
 
     .text  
     
@@ -189,17 +191,59 @@ _GSYM(ASM_DS_SegUnderflow):
     // this would require the alloc'd list to
     // be a doubly-linked list.
     
-    // grab the previous segment descriptor
-    movq    STD_CONT(VPROC_PTR_REG), %rbp
-    movq    PREV_SEG(%rbp), %rbp
+    // grab current segment
+    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
+    
+    /////////
+    // remove current segment from allocated list, 
+    // which is doubly linked to support this operation.
+    // refer to FreeStacks in minor-gc.c
+    /////////
+    
+    movq    LIST_NEXT(TMP_REG1), TMP_REG2  // get allocdNext
+    movq    LIST_PREV(TMP_REG1), TMP_REG3  // get allocdPrev
+    
+    // allocdNext == NULL?
+    testq   TMP_REG2, TMP_REG2
+    jz  nextIsNull
+    // allocdNext->prev = allocdPrev
+    movq    TMP_REG3, LIST_PREV(TMP_REG2)
+nextIsNull:
+    // allocdPrev == NULL?
+    testq   TMP_REG3, TMP_REG3
+    jz      prevIsNull
+    // allocdPrev->next = allocdNext
+    movq    TMP_REG2, LIST_NEXT(TMP_REG3)
+    jmp     prevTestJoin
+    
+prevIsNull:
+    // vp->allocdStacks = allocdNext
+    movq    TMP_REG2, ALLOCD_STKS(VPROC_PTR_REG)
+
+prevTestJoin:
+
+    // now, we demote the segment we removed
+    movq    $0, AGE(TMP_REG1)         // info->age = AGE_Minor
+    movq    $0, LIST_PREV(TMP_REG1)   // info->prev = NULL
+    // push it on the free list
+    movq    FREE_STKS(VPROC_PTR_REG), TMP_REG2
+    movq    TMP_REG2, LIST_NEXT(TMP_REG1)
+    movq    TMP_REG1, FREE_STKS(VPROC_PTR_REG)
+    
+    // done with freeing the current segment
+    /////////////
+    
+    // grab the previous segment descriptor 
+    // from the current segment
+    movq    PREV_SEG(TMP_REG1), TMP_REG1
     
     // install the segment descriptor
-    movq    %rbp, STD_CONT(VPROC_PTR_REG)
+    movq    TMP_REG1, STD_CONT(VPROC_PTR_REG)
     
     // change the SP and limit, then return
-    movq    CUR_SP(%rbp), %rsp
-    movq    STK_LIM(%rbp), %rbp
-    movq    %rbp, STD_EP(VPROC_PTR_REG)
+    movq    CUR_SP(TMP_REG1), %rsp
+    movq    STK_LIM(TMP_REG1), TMP_REG1
+    movq    TMP_REG1, STD_EP(VPROC_PTR_REG)
     retq
     
 

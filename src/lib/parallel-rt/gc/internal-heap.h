@@ -55,7 +55,7 @@ typedef struct {
 } NodeHeap_t;
 
 typedef enum {
-    AGE_Minor = 0x0,
+    AGE_Minor = 0x0, // ASM & LLVM rely on this being zero !!
     AGE_Major = 0x1,
     AGE_Global = 0x2
 } Age_t;
