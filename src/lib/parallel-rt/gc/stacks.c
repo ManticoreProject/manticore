@@ -27,7 +27,7 @@ uint64_t invalidRetAddr = 0xDEADACE;
 
 // TODO make this a parameter of the compiler
 #ifdef SEGSTACK
-size_t dfltStackSz = 4096;
+size_t dfltStackSz = 16384;
 #else
 size_t dfltStackSz = 1048576;
 #endif
@@ -204,4 +204,18 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t 
 
 void* GetStkLimit(StackInfo_t* info) {
     return info->stkLimit;
+}
+
+void WarmUpFreeList(VProc_t* vp, unsigned int N) {
+    StackInfo_t* info;
+    for(unsigned int i = 0; i < N; i++) {
+#ifdef SEGSTACK
+        info = AllocStackSegment(dfltStackSz);
+#else
+        info = AllocStack(dfltStackSz);
+#endif
+        // push
+        info->next = vp->freeStacks;
+        vp->freeStacks = info;
+    }
 }

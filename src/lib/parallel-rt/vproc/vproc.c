@@ -331,6 +331,11 @@ void *NewVProc (void *arg)
     TIMER_Init (&(vproc->promoteTimer));
 #endif
 
+#ifdef DIRECT_STYLE
+    /* warm up the stack cache */
+    WarmUpFreeList(vproc, 50);
+#endif
+
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);
 
