@@ -376,6 +376,12 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Addr_t youngSzB = top - vp->oldTop;
     memmove ((void *)heapBase, (void *)(vp->oldTop), youngSzB);
     vp->oldTop = vp->heapBase + youngSzB;
+    
+    
+#ifdef DIRECT_STYLE
+    size_t freedBytes = FreeStacks(vp, AGE_Major);
+    /* NOTE our caller will unmark stacks when we return. */
+#endif
 
 #ifndef NO_GC_STATS
   // compute the number of bytes copied into the global heap
@@ -406,12 +412,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	CheckAfterGlobalGC (vp, roots);
         CheckToSpacesAfterGlobalGC (vp);
     }
-#endif
-
-
-#ifdef DIRECT_STYLE
-    size_t freedBytes = FreeStacks(vp, AGE_Major);
-    /* NOTE our caller will unmark stacks when we return. */
 #endif
 
 
