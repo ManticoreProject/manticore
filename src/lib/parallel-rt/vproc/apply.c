@@ -181,14 +181,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
 #else /* DIRECT_STYLE */
 
-/* direct-style version below */
-extern void ASM_Apply_StdDS_NoRet (
-    VProc_t *vp,
-    Addr_t cp, 
-    Value_t ep,
-    Value_t exh,
-    Value_t arg);
-
 extern void ASM_Apply_StdDS_WithStk (
     VProc_t *vp,
     Addr_t cp, 
@@ -263,6 +255,7 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     Value_t envP, arg, exnCont;
     Addr_t codeP;
     FunClosure_t* closObj;
+    Value_t stkPtr;
     
     Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
     
@@ -280,12 +273,14 @@ doShutdown:
         vp->sigPending = M_FALSE;
         vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
         
+        stkPtr = vp->stdEnvPtr;
+        
         #ifdef SEGSTACK
           // set stack limit
           vp->stdEnvPtr = GetStkLimit(vp->stdCont);
         #endif
         
-        ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+        ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
     }
     
     switch (req) {
@@ -330,12 +325,14 @@ doShutdown:
             vp->sigPending = M_FALSE;
             LogPreemptSignal(vp);
             
+            stkPtr = vp->stdEnvPtr;
+            
             #ifdef SEGSTACK
               // set stack limit
               vp->stdEnvPtr = GetStkLimit(vp->stdCont);
             #endif
             
-            ASM_Apply_StdDS_NoRet(vp, codeP, envP, exnCont, arg);
+            ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
             
     	    }
     	    else {
@@ -374,12 +371,15 @@ doShutdown:
                 break;
                 
         case REQ_Sleep:
-        default:
-            Die("unknown signal %d\n", req);
+            Die("TODO: tried to request sleep\n");
             break;
             
         case REQ_UncaughtExn:
             Die ("uncaught exception\n");
+            break;
+            
+        default:
+            Die("unknown signal %d\n", req);
             break;
         
     }

@@ -46,33 +46,13 @@ _GSYM(ASM_DS_ApplyClos):
     jmp     *TMP_REG2
     
 
-// Apply_StdDS using the given stackptr.
-// note that the stackptr is assumed to be
-// pointing to the return address.
+// used by RequestService to call a function on the given stack,
+// and additionally pop any data RequestService placed on the stack.
     .p2align 3
     .globl	_GSYM(ASM_Apply_StdDS_WithStk)
 _GSYM(ASM_Apply_StdDS_WithStk):
-    movq    %r9, %rsp
-    jmp     _GSYM(ASM_Apply_StdDS)
-    
-    
-// Apply_StdDS on the current stack, but
-// returning to C is an unexpected error so
-// we overwrite the return address.
-    .p2align 3
-    .globl	_GSYM(ASM_Apply_StdDS_NoRet)
-_GSYM(ASM_Apply_StdDS_NoRet):
-    movq    $INVALID_RET_ADDR1, (%rsp)
-    jmp     _GSYM(ASM_Apply_StdDS)
-  
-      
-// used by RequestService to invoke the scheduler,
-// since RequestService is already running on a
-// Manticore stack, and has a pointer to the stack's lock.
-    .p2align 3
-    .globl	_GSYM(ASM_Apply_StdDS)
-_GSYM(ASM_Apply_StdDS):
     // setup standard convention registers
+    movq    %r9, %rsp
     movq    %rdi, VPROC_PTR_REG
     movq    %rsi, TMP_REG1      // code ptr
     movq    %rdx, STD_EP_REG
