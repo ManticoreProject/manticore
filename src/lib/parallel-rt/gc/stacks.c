@@ -29,7 +29,7 @@ uint64_t invalidRetAddr = 0xDEADACE;
 #ifdef SEGSTACK
 size_t dfltStackSz = 16384;
 #else
-size_t dfltStackSz = 1048576;
+size_t dfltStackSz = 2097152;
 #endif
 
 // Retrieves an unused stack for the given vproc.
