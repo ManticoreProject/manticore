@@ -281,6 +281,7 @@ doShutdown:
           vp->stdEnvPtr = GetStkLimit(vp->stdCont);
         #endif
         
+        LogRunThread(vp, 0);
         ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
     }
     
@@ -333,6 +334,7 @@ doShutdown:
               vp->stdEnvPtr = GetStkLimit(vp->stdCont);
             #endif
             
+            LogRunThread(vp, 0);
             ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
             
     	    }
@@ -348,6 +350,7 @@ doShutdown:
                   vp->stdEnvPtr = GetStkLimit(vp->stdCont);
                 #endif
                 
+                LogRunThread(vp, 0);
                 ASM_Resume_Stack (vp, codeP, envP, exnCont, arg);
     	    }
     	    
@@ -395,6 +398,7 @@ doShutdown:
                vp->stdEnvPtr = GetStkLimit(vp->stdCont);
              #endif
              
+             LogRunThread(vp, 0);
              ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
              
              Die("unreachable in REQ_Sleep");
