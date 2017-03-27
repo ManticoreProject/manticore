@@ -332,8 +332,8 @@ void *NewVProc (void *arg)
 #endif
 
 #ifdef DIRECT_STYLE
-    /* warm up the stack cache */
-    WarmUpFreeList(vproc, 50);
+    /* warm up the stack cache to avoid mmap calls */
+    WarmUpFreeList(vproc, 8192);
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */

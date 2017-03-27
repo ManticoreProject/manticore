@@ -144,19 +144,20 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */
 	    {
-	       Value_t status = M_TRUE;
-	       Time_t timeToSleep = *((Time_t*)(vp->stdArg));
-	       if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */
-		   VProcSleep(vp);
-	       else
-		   status = VProcNanosleep(vp, timeToSleep);
-	       assert (vp->wakeupCont != M_NIL);
-	       envP = vp->wakeupCont;
-	       codeP = ValueToAddr (ValueToCont(envP)->cp);
-	       arg = AllocNonUniform (vp, 1, PTR(status));
-	       retCont = M_UNIT;
-	       exnCont = M_UNIT;
-	       vp->wakeupCont = M_NIL;
+             Value_t status = M_TRUE;
+             Time_t timeToSleep = *((Time_t*)(vp->stdArg));
+             if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */
+                VProcSleep(vp);
+             else
+                status = VProcNanosleep(vp, timeToSleep);
+                
+             assert (vp->wakeupCont != M_NIL);
+             envP = vp->wakeupCont;
+             codeP = ValueToAddr (ValueToCont(envP)->cp);
+             arg = AllocNonUniform (vp, 1, PTR(status));
+             retCont = M_UNIT;
+             exnCont = M_UNIT;
+             vp->wakeupCont = M_NIL;
 	    }
 	    break;
 	  default:
@@ -371,7 +372,33 @@ doShutdown:
                 break;
                 
         case REQ_Sleep:
-            Die("TODO: tried to request sleep\n");
+            /* make the VProc idle */
+          {
+             Value_t status = M_TRUE;
+             Time_t timeToSleep = *((Time_t*)(vp->stdArg));
+             if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */
+                VProcSleep(vp);
+             else
+                status = VProcNanosleep(vp, timeToSleep);
+                
+             assert (vp->wakeupCont != M_NIL);
+             envP = vp->wakeupCont;
+             codeP = ValueToAddr (ValueToCont(envP)->cp);
+             arg = AllocNonUniform (vp, 1, PTR(status));
+             exnCont = M_UNIT;
+             vp->wakeupCont = M_NIL;
+             
+             stkPtr = vp->stdEnvPtr;
+             
+             #ifdef SEGSTACK
+               // set stack limit
+               vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+             #endif
+             
+             ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
+             
+             Die("unreachable in REQ_Sleep");
+          }
             break;
             
         case REQ_UncaughtExn:
