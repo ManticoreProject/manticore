@@ -96,7 +96,7 @@ StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
     return info;
 }
 
-StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
+__attribute__ ((hot)) StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
     StackInfo_t* fresh = GetStack(vp);
     StackInfo_t* old = vp->stdCont;
     
@@ -113,7 +113,7 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t 
         // sizes. I think in practice this is unnessecary since a realistic segment
         // size will always be much larger than any one frame in the program.
         
-        const uint64_t maxBytes = dfltStackSz / 2;  
+        const uint64_t maxBytes = dfltStackSz / 8;  
         const int maxFrames = 4; // TODO make this a parameter of the compiler
         const uint64_t szOffset = 2 * sizeof(uint64_t);
         
@@ -181,7 +181,17 @@ StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t 
     if (bytesToCopy) {
         // pull pointer down
         newStkPtr -= bytesToCopy; 
+        
         // copy frames to fresh segment. realignment should be unnessecary
+        // and we know its a multiple of 8 because of alignment
+        // bytesToCopy /= 8;
+        // uint64_t* to = newStkPtr;
+        // uint64_t* from = old_origStkPtr;
+        // for(uint64_t i = 0; i < bytesToCopy; i++) {
+        //     to[i] = from[i];
+        // }
+        
+        // memcpy is faster than the loop above
         memcpy(newStkPtr, old_origStkPtr, bytesToCopy); 
     }
     
