@@ -43,6 +43,17 @@ ifeq (,$(findstring segstack,$(BUILD_OPTIONS)))
 else
   ENABLE_SEGSTACK=true
 endif
+ifeq (,$(findstring lazyunderflow,$(BUILD_OPTIONS)))
+  ENABLE_LAZY_UNDERFLOW=false
+else
+  ENABLE_LAZY_UNDERFLOW=true
+endif
+
+ifeq (,$(findstring nocopyoverflow,$(BUILD_OPTIONS)))
+  ENABLE_NOCOPY_OVERFLOW=false
+else
+  ENABLE_NOCOPY_OVERFLOW=true
+endif
 
 #
 # tools and flags
@@ -115,6 +126,14 @@ endif
 
 ifeq ($(ENABLE_SEGSTACK),true)
   CPPFLAGS += -DSEGSTACK
+endif
+
+ifeq ($(ENABLE_LAZY_UNDERFLOW),true)
+  CPPFLAGS += -DLAZY_UNDERFLOW
+endif
+
+ifeq ($(ENABLE_NOCOPY_OVERFLOW),true)
+  CPPFLAGS += -DNOCOPY_OVERFLOW
 endif
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS) $(CPU_SRCS)

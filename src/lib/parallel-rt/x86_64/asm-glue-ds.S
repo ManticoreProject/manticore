@@ -120,7 +120,12 @@ _GSYM(ASM_DS_EscapeThrow):
 .globl	_GSYM(__manti_growstack)
 _GSYM(__manti_growstack):
     // NOTE we actually start off with RSP 16-byte aligned!
+#ifdef NOCOPY_OVERFLOW
+    movq    $0, TMP_REG3
+#else
     movq    $1, TMP_REG3      // 0 indicates no copying. NOTE the clobber!
+#endif
+    
     
 _GSYM(__manti_growstack_noimplicitcopy):
     
@@ -167,7 +172,8 @@ _GSYM(__manti_growstack_noimplicitcopy):
 _GSYM(ASM_DS_SegUnderflow):    
     // grab current segment
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
-    
+
+#ifndef LAZY_UNDERFLOW
     /////////
     // remove current segment from allocated list, 
     // which is doubly linked to support this operation.
@@ -206,6 +212,7 @@ prevTestJoin:
     
     // done with freeing the current segment
     /////////////
+#endif
     
     // grab the previous segment descriptor 
     // from the current segment

@@ -267,6 +267,8 @@ functor MainFn (
       \    -direct          use direct-style code generation (contiguous stacks)\n\
       \    -segstack        use segmented stacks (implies direct-style codegen)\n\
       \    -noras           emit pop/push jmp instead of call/ret for stacks\n\
+      \    -lazyunderflow   segstack -- do not free on underflow\n\
+      \    -nocopyoverflow  segstack -- do not copy on overflow\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
 
@@ -363,6 +365,8 @@ functor MainFn (
         | "-direct" => set BasicControl.direct
         | "-segstack" => (Controls.set(BasicControl.direct, true) ; set BasicControl.segstack)
         | "-noras" => set BasicControl.noras
+        | "-lazyunderflow" => set BasicControl.lazyunderflow
+        | "-nocopyoverflow" => set BasicControl.nocopyoverflow
 		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
 		| "-log" => set BasicControl.logging
 		| "-gcstats" => set BasicControl.gcStats

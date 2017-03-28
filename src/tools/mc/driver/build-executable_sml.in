@@ -74,6 +74,8 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
 	  val perf = Controls.get BasicControl.perf
       val direct = Controls.get BasicControl.direct
       val segstack = Controls.get BasicControl.segstack
+      val lazyunderflow = Controls.get BasicControl.lazyunderflow
+      val nocopyoverflow = Controls.get BasicControl.nocopyoverflow
 	  
 	  val filename = OS.FileSys.tmpName()
           val filenamec = concat[filename,".c"]
@@ -105,7 +107,14 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
           | (_, false, false, false, false, false) => (cFlags, "mcrt")
           | (false, false, false, false, true, false) => (cFlags, "mcrt-direct")
           | (true, false, false, false, true, false) => (cFlags, "mcrt-direct-stats")
-          | (false, false, false, false, true, true) => (cFlags, "mcrt-segstack")
+          | (false, false, false, false, true, true) => 
+                (case (lazyunderflow, nocopyoverflow)
+                  of (false, false) => (cFlags, "mcrt-segstack")
+                   | (true, false) => (cFlags, "mcrt-segstack-lazyunderflow")
+                   | (false, true) => (cFlags, "mcrt-segstack-nocopyoverflow")
+                   | (true, true) => (cFlags, "mcrt-segstack-lazyunderflow-nocopyoverflow")
+                   (* end case *))
+                
           | (true, false, false, false, true, true) => (cFlags, "mcrt-segstack-stats")
           | (_, true, false, false, false, false) => (cFlags, "mcrt-log")
           | (_, false, true, false, false, false) => ("-g "^cFlags^" -O0", "mcrt-debug")

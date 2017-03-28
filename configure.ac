@@ -554,6 +554,9 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-direct-stats, [stats direct])
     MK_BUILD_DIR(mcrt-segstack, [direct segstack])
     MK_BUILD_DIR(mcrt-segstack-stats, [stats direct segstack])
+    MK_BUILD_DIR(mcrt-segstack-lazyunderflow, [direct segstack lazyunderflow])
+    MK_BUILD_DIR(mcrt-segstack-nocopyoverflow, [direct segstack nocopyoverflow])
+    MK_BUILD_DIR(mcrt-segstack-lazyunderflow-nocopyoverflow, [direct segstack lazyunderflow nocopyoverflow])
 if test $OS != darwin; then
     MK_BUILD_DIR(mcrt-perf, [perf])
 fi

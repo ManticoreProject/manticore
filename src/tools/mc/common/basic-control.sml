@@ -35,6 +35,9 @@ structure BasicControl :  sig
   (* no return-address stack; emit pop/push jmps instead *)
     val noras : bool Controls.control
     
+    val lazyunderflow : bool Controls.control
+    val nocopyoverflow : bool Controls.control
+    
   (* optimization level used by LLVM backend *)
     val llopt : int Controls.control
 
@@ -197,6 +200,23 @@ structure BasicControl :  sig
         help = "emit pop/push jmp instead of call/ret for stack management",
         default = false
       }
+      
+    val lazyunderflow : bool Controls.control = Controls.genControl {
+        name = "lazyunderflow",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "segstack -- do not automatically free on underflow",
+        default = false
+      }
+    
+    val nocopyoverflow : bool Controls.control = Controls.genControl {
+        name = "nocopyoverflow",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "segstack -- do not copy on overflow",
+        default = false
+      }
+    
 
   (* llvm backend *)
     val llvm : bool Controls.control = Controls.genControl {
