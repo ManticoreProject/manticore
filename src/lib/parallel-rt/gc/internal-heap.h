@@ -108,6 +108,7 @@ extern Addr_t		HeapScaleNum;
 extern Addr_t		HeapScaleDenom;
 extern Addr_t		BaseHeapSzB;
 extern Addr_t		PerVprocHeapSzb;
+extern size_t		dfltStackSz;
 
 extern statepoint_table_t* SPTbl; // the statepoint table
 

@@ -107,6 +107,14 @@ void HeapInit (Options_t *opts)
     MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, MaxNurserySzB);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
+    
+#ifdef SEGSTACK
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 16 * ONE_K);
+#else
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 2 * ONE_MEG);
+#endif
+
+    fprintf(stderr, "dfltStackSz = %llu\n", dfltStackSz);
 
     MajorGCThreshold = GetSizeConfig ("MAJOR_GC_THRESHOLD", ONE_K, VP_HEAP_SZB / 10);
     if (MajorGCThreshold < MIN_NURSERY_SZB)
