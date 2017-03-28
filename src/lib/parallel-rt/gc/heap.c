@@ -110,7 +110,7 @@ void HeapInit (Options_t *opts)
     
 #ifdef SEGSTACK
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 16 * ONE_K);
-#else
+#elif DIRECT_STYLE
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 2 * ONE_MEG);
 #endif
 
