@@ -19,6 +19,6 @@ extern Value_t PromoteObj (VProc_t *vp, Value_t root);
 extern Value_t NewStack (VProc_t *vp, Value_t funClos);
 extern StackInfo_t* NewMainStack (VProc_t *vp, void** initialSP);
 extern void* GetStkLimit (StackInfo_t* info);
-extern void WarmUpFreeList(VProc_t* vp, unsigned int N);
+extern void WarmUpFreeList(VProc_t* vp, uint64_t numBytes);
 
 #endif /* !_GC_H_ */

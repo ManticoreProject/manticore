@@ -49,6 +49,16 @@ STATIC_INLINE void UnmapMemory (void *base, size_t szb)
     munmap (base, szb);
 }
 
+void* SimpleAlloc(size_t szb) {
+    void* mem = MapMemory(0, szb);
+    
+    if(mem == MAP_FAILED) {
+        return 0;
+    }
+    
+    return mem;
+}
+
 /* AllocMemory:
  *
  * Allocate nBlocks of blkSzB bytes (aligned on blkSzB boundary).  A
@@ -118,7 +128,7 @@ void FreeMemory (void *base, int szB)
 //                          ^
 //                   info->initialSP 
 //
-StackInfo_t* AllocStack(size_t numBytes) {
+StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
     StackInfo_t* info;
     
     // NOTE automatic resizing using MAP_GROWSDOWN has
@@ -128,10 +138,18 @@ StackInfo_t* AllocStack(size_t numBytes) {
     size_t stackLen = numBytes + guardSz;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
     
-    void* mem = MapMemory(0, totalSz);
+    totalSz = ROUNDUP(totalSz, guardSz);
     
-    if(mem == MAP_FAILED) {
-        return 0;
+    void* mem;
+    if (top == 0 || ((*top) + totalSz) >= lim) {
+        mem = MapMemory(0, totalSz);
+        
+        if(mem == MAP_FAILED) {
+            return 0;
+        }
+    } else {
+        mem = *top;
+        *top = (*top) + totalSz;
     }
     
     // we protect the low end of the block to
@@ -192,7 +210,7 @@ StackInfo_t* AllocStack(size_t numBytes) {
 //         ^          ^             ^    
 //      1kb-ish      128b      numBytes-ish
 //
-StackInfo_t* AllocStackSegment(size_t numBytes) {
+StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     StackInfo_t* info;
     
 	size_t guardSz = GUARD_PAGE_BYTES;
@@ -204,10 +222,18 @@ StackInfo_t* AllocStackSegment(size_t numBytes) {
     size_t stackLen = guardSz + totalRegion;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
     
-    void* mem = MapMemory(0, totalSz);
+    totalSz = ROUNDUP(totalSz, guardSz);
     
-    if(mem == MAP_FAILED) {
-        return 0;
+    void* mem;
+    if (top == 0 || ((*top) + totalSz) >= lim) {
+        mem = MapMemory(0, totalSz);
+        
+        if(mem == MAP_FAILED) {
+            return 0;
+        }
+    } else {
+        mem = *top;
+        *top = (*top) + totalSz;
     }
     
     // we protect the low end of the block to
@@ -258,6 +284,6 @@ StackInfo_t* AllocStackSegment(size_t numBytes) {
     return info;
 }
 
-void FreeStack(StackInfo_t* info) {
-    UnmapMemory(info->mmapBase, info->mmapSize);
-}
+// void FreeStack(StackInfo_t* info) {
+//     UnmapMemory(info->mmapBase, info->mmapSize);
+// }

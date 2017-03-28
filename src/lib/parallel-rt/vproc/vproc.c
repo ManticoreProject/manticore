@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>
+#include <unistd.h>
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
 #endif
@@ -298,6 +299,8 @@ void *NewVProc (void *arg)
     vproc->currentFLS = M_NIL;
     vproc->allocdStacks = NULL;
     vproc->freeStacks = NULL;
+    vproc->stackArea_top = NULL;
+    vproc->stackArea_lim = NULL;
 
     MutexInit (&(vproc->lock));
     CondInit (&(vproc->wait));
@@ -332,8 +335,15 @@ void *NewVProc (void *arg)
 #endif
 
 #ifdef DIRECT_STYLE
-    /* warm up the stack cache to avoid mmap calls */
-    WarmUpFreeList(vproc, 8192);
+    // initialize the stack area with one gig of space for bump alloc
+    const size_t ONE_GIG = ONE_K * ONE_K * ONE_K;
+    uint8_t* mem = SimpleAlloc(ONE_GIG);
+    
+    vproc->stackArea_top = mem;
+    vproc->stackArea_lim = mem + (ONE_GIG - 8);
+    
+    // warm up the free list with 128MB worth of stack
+    WarmUpFreeList(vproc, 128 * ONE_MEG);
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */

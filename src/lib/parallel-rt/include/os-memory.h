@@ -25,6 +25,9 @@
  */
 extern void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedBase);
 
+// simple interface to mmap
+extern void* SimpleAlloc(size_t szb);
+
 /*! \brief free a memory object allocated by AllocMemory.
  *
  * \param base the object to be freed.
@@ -38,15 +41,15 @@ extern void FreeMemory (void *base, int szB);
 // allocates a region of memory suitable for
 // use as a stack, returning its descriptor. 
 // Returns 0 if failed.
-extern StackInfo_t* AllocStack(size_t numBytes);
+extern StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim);
 
 // allocates a region of memory suitable for
 // use as a stack segment, returning its descriptor. 
 // Returns 0 if failed.
-extern StackInfo_t* AllocStackSegment(size_t numBytes);
+extern StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim);
 
 // frees a stack allocated by AllocStack.
-extern void FreeStack(StackInfo_t* info);
+// extern void FreeStack(StackInfo_t* info);
 
 extern long GUARD_PAGE_BYTES;
 

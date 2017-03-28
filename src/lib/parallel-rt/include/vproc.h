@@ -94,6 +94,8 @@ struct struct_vproc {
 
     StackInfo_t* allocdStacks;
     StackInfo_t* freeStacks;
+    uint8_t* stackArea_top;
+    uint8_t* stackArea_lim;
 
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state

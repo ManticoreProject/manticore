@@ -32,10 +32,12 @@ StackInfo_t* GetStack(VProc_t *vp) {
     StackInfo_t* info;
     if (vp->freeStacks == NULL) {
         // get a fresh stack
+        uint8_t** top = &(vp->stackArea_top);
+        uint8_t* lim = vp->stackArea_lim;
 #ifdef SEGSTACK
-        info = AllocStackSegment(dfltStackSz);
+        info = AllocStackSegment(dfltStackSz, top, lim);
 #else
-        info = AllocStack(dfltStackSz);
+        info = AllocStack(dfltStackSz, top, lim);
 #endif
     } else {
         // pop an existing stack
@@ -211,13 +213,19 @@ void* GetStkLimit(StackInfo_t* info) {
     return info->stkLimit;
 }
 
-void WarmUpFreeList(VProc_t* vp, unsigned int N) {
+void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
+    uint64_t N = numBytes / dfltStackSz;
+    // make sure we allocate at least one.
+    N = (N == 0 ? 1 : N);
+    
     StackInfo_t* info;
-    for(unsigned int i = 0; i < N; i++) {
+    uint8_t** top = &(vp->stackArea_top);
+    uint8_t* lim = vp->stackArea_lim;
+    for(uint64_t i = 0; i < N; i++) {
 #ifdef SEGSTACK
-        info = AllocStackSegment(dfltStackSz);
+        info = AllocStackSegment(dfltStackSz, top, lim);
 #else
-        info = AllocStack(dfltStackSz);
+        info = AllocStack(dfltStackSz, top, lim);
 #endif
         // push
         info->next = vp->freeStacks;
