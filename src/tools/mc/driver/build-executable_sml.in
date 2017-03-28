@@ -155,11 +155,24 @@ Pass Arguments:  -domtree
 	    val stat = OS.Process.system cmd
 	in () end
     
+    (* when disabling the use of the return-address stack, we run a script that
+     * appropriately replaces call/ret instructions with push/pop-jmp instead.
+     *)
+    fun removeCallRet verbose asmPrefix =
+	let
+        (* TODO shouldn't the output name be different on linux vs mac? *)
+        val newFile = asmPrefix ^ "_noras.s"
+        val cmd = "python @MANTICORE_SRCDIR@/tools/noras/noras.py " ^ asmPrefix ^ ".s > " ^ newFile
+        val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
+	    val stat = OS.Process.system cmd
+	in newFile end
+    
     
     (* TOOLS *)
     val cat = String.concatWith " "
     
     fun isDirect() = Controls.get BasicControl.direct
+    fun noRas() = Controls.get BasicControl.noras
     
     fun pathToBin binaryName = let
         val dir = "@LLVM_DIR@"
@@ -328,6 +341,10 @@ Pass Arguments:  -domtree
         val _ = if isDirect()
                     then makeStackMapGlobl verbose llcOutput
                     else ()
+        
+        val llcOutput = if noRas()
+                    then removeCallRet verbose asmPrefix
+                    else llcOutput
             
         (* reuse the MLRISC linking etc *)
         val result = BuildExecutableMLRISC.build {verbose=verbose, asmFile=llcOutput, outFile=outFile}

@@ -32,6 +32,9 @@ structure BasicControl :  sig
   (* use segmented stack codegen *)
     val segstack : bool Controls.control
     
+  (* no return-address stack; emit pop/push jmps instead *)
+    val noras : bool Controls.control
+    
   (* optimization level used by LLVM backend *)
     val llopt : int Controls.control
 
@@ -185,6 +188,15 @@ structure BasicControl :  sig
         help = "use segmented stacks (uses direct-style conversion)",
         default = false
       }
+      
+  (* no return-address stack *)
+    val noras : bool Controls.control = Controls.genControl {
+        name = "noras",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "emit pop/push jmp instead of call/ret for stack management",
+        default = false
+      }
 
   (* llvm backend *)
     val llvm : bool Controls.control = Controls.genControl {
@@ -268,6 +280,10 @@ structure BasicControl :  sig
         };
       ControlRegistry.register topRegistry {
           ctl = Controls.stringControl ControlUtil.Cvt.bool segstack,
+          envName = NONE
+        };
+      ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool noras,
           envName = NONE
         };
 	  ControlRegistry.register topRegistry {
