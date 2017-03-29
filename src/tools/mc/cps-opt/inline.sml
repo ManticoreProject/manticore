@@ -350,7 +350,8 @@ structure Inline : sig
                                     CFA.valueToString v ^ "\n"))
 
     fun shouldInlineThrow (E{k, s, env}, ppt, f, args) = (if !inlineDebug then inlineThrowInfo(E{k=k,s=s,env=env}, ppt, f, args) else ();
-        if (Controls.get BasicControl.direct) then NONE else (* NOTE(kavon): it's not always safe to inline a throw if using direct-style codegen *)
+        (*if (Controls.get BasicControl.direct) then NONE else (* NOTE(kavon): it's not always safe to inline a throw if using direct-style codegen *)*)
+        if true then NONE else  (* TODO disabled across the board right now *)
         (case CV.kindOf f
 	 of C.VK_Cont(fb as C.FB{body, ...}) => 
 	    if not(VSet.member (s, f)) andalso

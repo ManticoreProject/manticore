@@ -145,7 +145,10 @@ structure CFACFG : sig
     val {getFn=getReturnedTo, setFn=setReturnedTo, clrFn=clrReturnedTo, ...} =
           CFG.Label.newProp (fn _ => NotReturnedTo)
     
-    fun hasUnknownReturn lab = (case getReturnedTo lab of UnknownCaller => true | _ => false)
+    fun hasUnknownReturn lab = (case getReturnedTo lab 
+                                    of UnknownCaller => true 
+                                     | KnownCaller => true (* <- TODO would normally be false - kavon *)
+                                     | _ => false)
   
     (* property for function labels to identify all blocks the function can return to *)
       val {getFn=getReturnSites, clrFn=clrReturnSites, setFn=setReturnSites, ...} =
@@ -596,10 +599,10 @@ structure CFACFG : sig
           in
             case xfer
              of CFG.StdApply{f, ...} => labelSet f
-              | CFG.StdThrow{k, ...} => labelSet k
+              | CFG.StdThrow{k, ...} => (* labelSet k *) NONE  (* TODO doesn't produce good info atm *)
               | CFG.Apply{f, ...} => labelSet f
               | CFG.Call{f, ...} => labelSet f
-              | CFG.Return{name,...} => returnSites name
+              | CFG.Return{name,...} => (* returnSites name *) NONE  (* TODO disabled to match the above *)
               | _ => SOME (LSet.addList(LSet.empty, CFGUtil.labelsOfXfer xfer))
             (* end case *)
           end
