@@ -111,7 +111,7 @@ void HeapInit (Options_t *opts)
 #ifdef SEGSTACK
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 16 * ONE_K);
 #elif DIRECT_STYLE
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 2 * ONE_MEG);
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 100 * ONE_MEG);
 #endif
 
     MajorGCThreshold = GetSizeConfig ("MAJOR_GC_THRESHOLD", ONE_K, VP_HEAP_SZB / 10);
