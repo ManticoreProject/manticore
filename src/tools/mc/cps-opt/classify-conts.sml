@@ -333,12 +333,12 @@ structure ClassifyConts : sig
                         )
                   | _ => ());
           
-                (*if Controls.get CPSOptControls.debug then*)
+                if Controls.get CPSOptControls.debug then
                 print(concat[
                       "ClassifyConts: kindOf(", CV.toString f, ") = ",
                       kindToString(kindOf f), "\n"
                     ])
-                  (*else ()*)
+                  else ()
                   ;
                   
               (* collect statistics in one place *)
