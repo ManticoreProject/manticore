@@ -396,11 +396,11 @@ structure MLB : sig
 	    val cmlPts = loadMLB(LoadPaths.cmlLib, env)
         *)
 	  (* parallel array *)
-	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
+	    (*val parrayPts = loadMLB(LoadPaths.parrayLib, env)*)
         
             in
 	       (*parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts*)
-           parrayPts @ cmlPts @ topLevelSchedPts @ runtimeBasisLibPts
+            cmlPts @ topLevelSchedPts @ runtimeBasisLibPts
 	    end
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}
