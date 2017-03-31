@@ -233,7 +233,9 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
         }
     } else {
         mem = *top;
-        *top = (*top) + totalSz;
+        uint64_t asI = (uint64_t)mem;
+        mem = (void*) (ROUNDUP(asI, guardSz));
+        *top = mem + totalSz;
     }
     
     // we protect the low end of the block to
