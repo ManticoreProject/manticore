@@ -145,7 +145,7 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
         mem = MapMemory(0, totalSz);
         
         if(mem == MAP_FAILED) {
-            return 0;
+            return 1;
         }
     } else {
         mem = *top;
@@ -158,7 +158,7 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
     // page after the buffer, not before it.
     if(mprotect(mem, guardSz, PROT_NONE)) {
         // failed to initialize guard area.
-        return 0;
+        return 2;
     }
     
     uint64_t val = (uint64_t) mem;
@@ -229,7 +229,7 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
         mem = MapMemory(0, totalSz);
         
         if(mem == MAP_FAILED) {
-            return 0;
+            return 1;
         }
     } else {
         mem = *top;
@@ -242,7 +242,7 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     // page after the buffer, not before it.
     if(mprotect(mem, guardSz, PROT_NONE)) {
         // failed to initialize guard area.
-        return 0;
+        return 2;
     }
     
     uint64_t val = (uint64_t) mem;
