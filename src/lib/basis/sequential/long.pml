@@ -31,11 +31,16 @@ structure Long =
 	  return(alloc(I64ToI32(#0(n))))
 	;
 
+      define inline @from-int (n : ml_int / exh : exh) : ml_long =
+          return(alloc(I32ToI64(#0(n))))
+        ;
+
     )
 
     val toString : long -> string = _prim(@to-string)
     val fromString : string -> long Option.option = _prim(@from-string)
     val toInt : long -> int = _prim(@to-int)
+    val fromInt : int -> long = _prim(@from-int)
 
     fun min (x:long, y) = if x < y then x else y
     fun max (x:long, y) = if x > y then x else y
