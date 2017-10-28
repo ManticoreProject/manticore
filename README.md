@@ -11,7 +11,7 @@ build the compiler on other systems (see below), but we have not
 ported the runtime or code generator to them yet.
 
 Manticore is implemented in a mix of C and SML code.  You will need a
-recent version of SML/NJ (version 110.79+) installed.  Furthermore,
+recent version of SML/NJ (version 110.81+) installed.  Furthermore,
 your installation of SML/NJ should include the MLRISC library. If you would
 like to use the LLVM backend, follow the instructions below.
 
@@ -50,7 +50,6 @@ then, move back to the root directory with
 
 and continue with configuring and building Manticore below. Note that LLVM will now be
 installed under `./llvm/install` and you should not need to rebuild it again.
-
 
 ## BUILDING FROM SOURCE
 

@@ -73,9 +73,9 @@ functor AMD64GenFn (structure Spec : TARGET_SPEC) =
 	      in
 		  literals := (l, pOp) :: !literals;
 		  labelRef := SOME l;
-		  l
+		  AMD64MLTree.LABEL l
 	      end
-	    | SOME l => l
+	    | SOME l => AMD64MLTree.LABEL l
 	   (* end case *))
 
     (* Generates a literal of ty bits with the high bit set and returns the label
