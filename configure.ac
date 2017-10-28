@@ -234,9 +234,9 @@ dnl check that we have a compatible version of SML/NJ
 dnl
 CHECK_SMLNJ([AC_MSG_ERROR([unable to find SML/NJ installation; check your PATH or set SMLNJ_CMD])])
 if test $SMLNJ_MAJOR_VERSION -lt 110 \
-  -o $SMLNJ_MINOR_VERSION -lt 71
+  -o $SMLNJ_MINOR_VERSION -lt 81
 then
-  AC_MSG_ERROR([installation requires SML/NJ version 110.71+])
+  AC_MSG_ERROR([installation requires SML/NJ version 110.81+])
 fi
 AC_SUBST(SMLNJ_VERSION)
 
@@ -534,4 +534,3 @@ fi
 fi
 
 AC_OUTPUT
-
