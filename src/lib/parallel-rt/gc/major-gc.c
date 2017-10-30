@@ -135,11 +135,6 @@ void ScanStackMajor (
         
     origStkPtr = stkInfo->currentSP;
 #endif // SEGSTACK
-
-/* TODO: 
-    - the stack scanner should overwrite water marks it encounters
-    - the stack scanner should stop at the high water mark of global frame roots.
-*/
         
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;

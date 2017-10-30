@@ -120,12 +120,6 @@ void ScanStackGlobal (
         
     origStkPtr = stkInfo->currentSP;
 #endif // SEGSTACK
-
-/* TODO: 
-    - the stack scanner should overwrite nursery water marks (the zeros) of frames
-        it encounters
-    - the stack scanner should stop at the high water mark of nursery frame roots.
-*/
         
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
