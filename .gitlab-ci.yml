@@ -15,8 +15,8 @@ llvm:
         - cd ..
         - mkdir build install
         - cd build
-        - cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=host ../src
-        - make llc opt -j7
+        - cmake -G "Ninja" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=host -DLLVM_USE_LINKER=gold ../src
+        - ninja llc opt
         # skip install and use just build/bin
     cache:
         key: "$CI_BUILD_REF"
