@@ -1,0 +1,5 @@
+*.bc
+*.ll
+a.out.dSYM/
+LOG-*
+reports/report-*
