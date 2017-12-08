@@ -373,7 +373,9 @@ structure MLB : sig
           (* load the top-level scheduler *)
 	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib "no-op-scheduler", env)
 	  (* parallel array *)
-	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
+	    val parrayPts = if Controls.get BasicControl.noparray
+                        then []
+                        else loadMLB(LoadPaths.parrayLib, env)
             in
               parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
             end
@@ -387,7 +389,9 @@ structure MLB : sig
 	  (* CML *)
 	    val cmlPts = loadMLB(LoadPaths.cmlLib, env)
 	  (* parallel array *)
-	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
+	    val parrayPts = if Controls.get BasicControl.noparray
+                        then []
+                        else loadMLB(LoadPaths.parrayLib, env)
             in
 	       parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
 	    end
@@ -437,4 +441,3 @@ structure MLB : sig
 (* 		  | {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, emptyEnv))] *)
 (* 		  | _ => raise Fail "unknown source file extension" *)
 (* 		(\* end case *\)) *)
-

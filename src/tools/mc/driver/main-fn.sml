@@ -246,6 +246,7 @@ functor MainFn (
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -perf            build an executable with hw perf counters enabled\n\
 	  \    -sequential      compile a sequential-mode program\n\
+	  \    -noparray        disable parray basis inclusion\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
 
@@ -333,6 +334,7 @@ functor MainFn (
 		| "-gcstats" => set BasicControl.gcStats
 		| "-debug" => set BasicControl.debug
 		| "-perf" => set BasicControl.perf
+		| "-noparray" => set BasicControl.noparray
 		| _ => badopt ()
 	      (* end case *))
 	  end

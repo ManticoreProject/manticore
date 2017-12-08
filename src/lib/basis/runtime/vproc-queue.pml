@@ -155,11 +155,13 @@ structure VProcQueue (* :
 	  return (qitem)
 	;
 
-      define @queue-append (queue1 : queue_item, queue2 : queue_item) : queue_item =
-	  fun append (queue1 : queue_item) : queue_item =
+      define @queue-append (queue1 : any, queue2 : any) : queue_item =
+	  fun append (queue1 : any) : queue_item =
 	      if Equal(queue1, Q_EMPTY)
-		then return(queue2)
+		then let queue2 : queue_item = (queue_item)queue2 
+		      return(queue2)
 		else 
+		  let queue1 : queue_item = (queue_item)queue1
 		  let rest : queue_item = apply append(SELECT(LINK_OFF, queue1))
 		  let queue11 : queue_item = alloc(SELECT(FLS_OFF, queue1), SELECT(FIBER_OFF, queue1), rest)
 		  return(queue11)

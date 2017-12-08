@@ -25,6 +25,9 @@ structure BasicControl :  sig
 
   (* select the top-level thread scheduler *)
     val scheduler : string Controls.control
+    
+  (* disable parray basis *)
+    val noparray : bool Controls.control
 
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control
@@ -153,6 +156,15 @@ structure BasicControl :  sig
 	    pri = [0, 1, 1],
 	    obscurity = 0,
 	    help = "compile sequential programs",
+	    default = false
+	  }
+      
+  (* disable parray basis *)
+    val noparray : bool Controls.control = Controls.genControl {
+	    name = "noparray",
+	    pri = [0, 1, 1],
+	    obscurity = 0,
+	    help = "disable parray basis inclusion",
 	    default = false
 	  }
 
