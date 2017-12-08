@@ -246,7 +246,7 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
             withP (B.E_Ret [rv]))
     end
          
-    and doApply (env, (newPs, newRet), withP) (f, args, exh) = let
+    and doApply (env, (newPs, calleeRet), withP) (f, args, exh) = let
         (* Similar to the above, instead of introducing an alloc,
            we introduce selects for the arguments: 
            
@@ -303,7 +303,7 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
         val unboxed = L.map (fn (_, b, c) => (b, c)) unboxed
         val args' = newSignature (args, unboxed)
         
-        fun withNewRet ty = let
+        fun withBoxedRet ty = let
             val rv = BV.new("unboxRV", ty)
             val box = BV.new("rebox", BTy.T_Tuple(false, [ty]))
             val appExp = 
@@ -316,24 +316,50 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
             B.mkStmts (argBinds, appExp)
         end
         
+        fun withUnBoxedRet ty = let
+            val boxRV = BV.new("boxedRV", BTy.T_Tuple(false, [ty]))
+            val unbox = BV.new("unboxedRV", ty)
+            val appExp = 
+                B.mkLet([boxRV], withP (B.E_Apply(f, args', exh)),
+                    B.mkStmt([unbox], B.E_Select(0, boxRV),
+                        B.mkRet([unbox])))
+                        
+            val _ = (inc boxRV ; inc unbox)
+        in
+            B.mkStmts (argBinds, appExp)
+        end
+        
         (* we avoid the nested-let in this case *)
         and withoutRet () = 
             B.mkStmts (argBinds,
                 withP (B.E_Apply(f, args', exh)))
     in
-        case newRet
-          of SOME [newTy] => (case getCxtRetTy env
-              (* it's a tail apply *)
-              of SOME cxtTy => if TU.match(newTy, cxtTy)
-                    (* the encl function's type matches. *)
-                    then withoutRet ()
-                    else withNewRet newTy  (* encl type doesn't match, rebox *)
-               (* non-tail apply, rebox *)
-               | NONE => withNewRet newTy
-              (* esac *))
-              
-           (* no return type change *)
-           | NONE       => withoutRet ()
+        (case getCxt env
+            (* tail apply, so we need to analyze the callee's ret ty and context's ret ty *)
+            of (SOME _) =>  (case (calleeRet, getCxtRetTy env)
+            
+                (* both were unboxed. double-check the types. *)
+                of (SOME [calleeRty], SOME cxtRty) =>
+                    if TU.match(calleeRty, cxtRty)
+                        then withoutRet ()
+                        else raise Fail "unbox: mismatched types!"
+                        
+                 (* only the context was unboxed, so we need to unbox the ret val *)
+                 | (NONE, SOME cxtRty) => withUnBoxedRet cxtRty
+                 
+                 (* only the callee was unboxed, so we need to rebox the ret val.  *)
+                 | (SOME [calleeRty], NONE) => withBoxedRet calleeRty
+                 
+                 (* neither the context or callee's return vals were changed. *)
+                 | (NONE, NONE) => withoutRet ()
+                 (* esac *))
+            
+            (* non-tail apply, so the let binding the value returns to will remain boxed. *)
+             | NONE => (case calleeRet
+                 of SOME [newTy] => withBoxedRet newTy  (* need to rebox the callee's return val *)
+                  | NONE => withoutRet ()  (* only the args have changed. *)
+                  (* esac *))
+             (* esac *))
     end
 
     fun transform (m as B.MODULE{name, externs, hlops, rewrites, body}) = 
