@@ -22,4 +22,4 @@ mirror:
         # test ssh access
         #- ssh git@github.com
         # now try pushing
-        - git push --mirror git@github.com:ManticoreProject/pmlc.git
+        - git push --mirror git@github.com:ManticoreProject/manticore.git
