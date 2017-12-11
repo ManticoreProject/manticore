@@ -9,4 +9,4 @@
 [submodule "src/lib/basis"]
 	path = src/lib/basis
 	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/basis.git
-	branch = master
+	branch = mini-basis

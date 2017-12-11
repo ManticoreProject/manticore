@@ -11,8 +11,11 @@ build the compiler on other systems (see below), but we have not
 ported the runtime or code generator to them yet.
 
 Manticore is implemented in a mix of C and SML code.  You will need a
-recent version of SML/NJ (version 110.81+) installed.  Furthermore,
-your installation of SML/NJ should include the MLRISC library. If you would
+recent version of SML/NJ (version 110.81) installed.  Furthermore,
+your installation should include the MLRISC library.
+Note that SML/NJ 110.82's version of MLRISC is currently incompatible with our
+build system.
+If you would
 like to use the LLVM backend, follow the instructions below.
 
 ### LLVM Backend

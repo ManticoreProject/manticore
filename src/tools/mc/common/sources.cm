@@ -18,7 +18,6 @@ Library
   structure BasicControl
   structure ExpansionOpts
   structure CFunctions
-  structure ConstArith
   structure Error
   structure ExnName
   structure FloatLit
@@ -37,10 +36,14 @@ Library
   structure IEEEFloat64Params
   structure IEEEFloat128Params
   structure IEEEFloat256Params
+  structure BitwiseConstArith
+  structure SignedWrappingArith
+  structure UnsignedWrappingArith
 
   functor CheckVarCountsFn
   functor VarFn
   functor FloatToBitsFn
+  functor ConstArithGlueFn
 
   structure Memo
 
@@ -52,12 +55,13 @@ is
   $/controls-lib.cm
   $/pp-lib.cm
   $/ml-lpt-lib.cm
+  
+  constarith/sources.cm
 
   basic-control.sml
   expansion-opts.sml
   c-functions.sml
   check-var-counts-fn.sml
-  const-arith.sml
   error.sml
   exn-name.sml
   float-lit.sml

@@ -9,6 +9,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val optimize : BOM.module -> BOM.module
 
   end = struct
+  
+    structure Unbox = UnboxFn (Spec)
 
     fun checkBOM (passName, module, alwaysCheck) = 
         if alwaysCheck orelse !BOMOptControls.checkAll
@@ -127,6 +129,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val expandAll = transform {passName = "expand-all", pass = expandAll}
     val cfa = analyze {passName = "cfa", pass = CFABOM.analyze}
     val flatten = transform {passName = "flatten", pass = Flatten.transform}
+    val unbox = transform {passName = "unbox", pass = Unbox.transform}
 
     fun optimize module = let
 	  val _ = Census.census module
@@ -148,6 +151,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = inline true module
 	  val module = contract module  
 	  val module = uncurry module
+	  val module = contract module
+	  val module = unbox module
 	  val module = contract module
 	  val module = caseSimplify module
 	  val module = contract module

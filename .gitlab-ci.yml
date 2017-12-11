@@ -1,0 +1,28 @@
+# keeping it simple because this YML file is poorly documented/defined
+
+variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+
+build:
+    stage: build
+    script:
+        - uname -a
+        - autoheader -Iconfig
+        - autoconf -Iconfig
+        - ./configure
+        - make local-install
+        - ./src/regression-tests/bash-scripts/run-seq.bsh
+        - ./src/regression-tests/bash-scripts/run-par.bsh
+
+# push to the github mirror.
+mirror:
+    stage: deploy
+    script:
+        # run ssh-agent
+        - eval $(ssh-agent -s)
+        # add ssh key stored in SSH_PRIVATE_KEY variable to the agent store
+        - ssh-add <(echo "$SSH_PRIVATE_KEY")
+        # test ssh access
+        #- ssh git@github.com
+        # now try pushing
+        - git push --mirror git@github.com:ManticoreProject/manticore.git

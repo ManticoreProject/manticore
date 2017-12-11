@@ -374,7 +374,9 @@ structure MLB : sig
           (* load the top-level scheduler *)
 	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib "no-op-scheduler", env)
 	  (* parallel array *)
-	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
+	    val parrayPts = if Controls.get BasicControl.noparray
+                        then []
+                        else loadMLB(LoadPaths.parrayLib, env)
             in
               parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
             end
@@ -396,8 +398,11 @@ structure MLB : sig
 	    val cmlPts = loadMLB(LoadPaths.cmlLib, env)
         *)
 	  (* parallel array *)
-	    (*val parrayPts = loadMLB(LoadPaths.parrayLib, env)*)
-        
+      (*
+	    val parrayPts = if Controls.get BasicControl.noparray
+                        then []
+                        else loadMLB(LoadPaths.parrayLib, env)
+                        *)
             in
 	       (*parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts*)
             cmlPts @ topLevelSchedPts @ runtimeBasisLibPts

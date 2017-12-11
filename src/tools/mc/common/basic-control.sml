@@ -43,6 +43,9 @@ structure BasicControl :  sig
 
   (* select the top-level thread scheduler *)
     val scheduler : string Controls.control
+    
+  (* disable parray basis *)
+    val noparray : bool Controls.control
 
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control
@@ -234,7 +237,15 @@ structure BasicControl :  sig
             help = "choose optimization level (0 to 3) used by LLVM backend",
             default = 0
           }
-   
+          
+  (* disable parray basis *)
+    val noparray : bool Controls.control = Controls.genControl {
+	    name = "noparray",
+	    pri = [0, 1, 1],
+	    obscurity = 0,
+	    help = "disable parray basis inclusion",
+	    default = false
+	  }
 
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control = Controls.genControl {

@@ -47,6 +47,7 @@ structure Contract : sig
     val cntDeadCont             = ST.newCounter "contract:dead-cont"
     val cntEta                  = ST.newCounter "contract:eta"
     val cntIfReduce             = ST.newCounter "contract:if-reduce"
+    val cntPrimFold             = ST.newCounter "contract:prim-fold"
     val cntTrivCase             = ST.newCounter "contract:triv-case"
     val cntCaseConst            = ST.newCounter "contract:case-const"
     val cntCaseIfFold		= ST.newCounter "contract:case-if-fold"
@@ -249,7 +250,10 @@ structure Contract : sig
                       (* end case *))
                   | _ => FAIL
                 (* end case *))
-            | B.E_Prim p => PrimContract.contract (env, x, p)
+            | B.E_Prim p => (case PrimContract.contract (env, x, p)
+            of FAIL => FAIL
+             | res => (ST.tick cntPrimFold ; res)
+            (* end case *))
             | _ => FAIL
           (* end case *))
 

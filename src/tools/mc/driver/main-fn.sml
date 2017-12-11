@@ -269,6 +269,7 @@ functor MainFn (
       \    -noras           emit pop/push jmp instead of call/ret for stacks\n\
       \    -lazyunderflow   segstack -- do not free on underflow\n\
       \    -nocopyoverflow  segstack -- do not copy on overflow\n\
+      \    -noparray        disable parray basis inclusion\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
 
@@ -372,6 +373,7 @@ functor MainFn (
 		| "-gcstats" => set BasicControl.gcStats
 		| "-debug" => set BasicControl.debug
 		| "-perf" => set BasicControl.perf
+		| "-noparray" => set BasicControl.noparray
 		| _ => badopt ()
 	      (* end case *))
 	  end
