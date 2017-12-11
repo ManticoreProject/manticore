@@ -1,5 +1,8 @@
 # keeping it simple because this YML file is poorly documented/defined
 
+variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+
 build:
     stage: build
     script:
