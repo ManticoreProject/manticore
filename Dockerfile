@@ -9,7 +9,7 @@ RUN dpkg --add-architecture i386 && \
 
 # Ubuntu version of SML/NJ has problems.  Fetch the main distribution:
 RUN mkdir -p /usr/smlnj && cd /usr/smlnj && \
-    wget http://smlnj.cs.uchicago.edu/dist/working/110.80/config.tgz && \
+    wget http://smlnj.cs.uchicago.edu/dist/working/110.81/config.tgz && \
     tar xf config.tgz && rm config.tgz
 
 # Build/install SML/NJ:
