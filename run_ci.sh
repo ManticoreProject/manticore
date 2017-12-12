@@ -28,19 +28,34 @@ make local-install
 
 failed=0
 
+llvmOptions=(
+  "-llopt0"
+  "-llopt1"
+  "-llopt2"
+  "-llopt3"
+  "-llopt4"
+  "-llopt5"
+)
+
+stacks=(
+  ""
+  "-direct"
+  "-segstack"
+)
+
 echo -e "\n\n\t----- testing with MLRISC -----\n\n"
 ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
-./src/regression-tests/bash-scripts/run-par.bsh || failed=1
+# ./src/regression-tests/bash-scripts/run-par.bsh || failed=1
 echo -e "\n\n\t----- done -----\n\n"
 
-
-llvmOptions="-llvm -llopt1 -llopt2 -llopt3 -llopt4 -llopt5"
-
-for llvmKind in  $llvmOptions; do
-    echo -e "\n\n\t----- testing with $llvmKind -----\n\n"
-    BACKEND="$llvmKind" ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
-    BACKEND="$llvmKind" ./src/regression-tests/bash-scripts/run-par.bsh || failed=1
-    echo -e "\n\n\t----- done -----\n\n"
+for stack in "${stacks[@]}"; do
+    for llvm in  "${llvmOptions[@]}"; do
+        config="$llvm $stack"
+        echo -e "\n\n\t----- testing configuration: $config -----\n\n"
+        BACKEND="$config" ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
+        # BACKEND="$config" ./src/regression-tests/bash-scripts/run-par.bsh || failed=1
+        echo -e "\n\n\t----- done -----\n\n"
+    done
 done
 
 # Exit with error if any tests failed
