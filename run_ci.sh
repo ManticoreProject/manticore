@@ -60,5 +60,8 @@ done
 
 # Exit with error if any tests failed
 if [ "$failed" -ne 0 ] ; then
+    echo -e "\n\nA failure was detected!! See above output."
     exit 1
 fi
+
+echo -e "\n\nAll tests passed successfully!"
