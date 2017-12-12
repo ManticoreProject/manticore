@@ -6,7 +6,7 @@ variables:
 stages:
     - build
     - test
-    - mirror
+    - deploy
 
 build:
     stage: build
