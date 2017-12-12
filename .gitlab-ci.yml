@@ -2,6 +2,11 @@
 
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
+    
+stages:
+    - build
+    - test
+    - mirror
 
 build:
     stage: build
@@ -15,8 +20,7 @@ build:
         - make local-install
         
 test:
-    dependencies: 
-        - build
+    stage: test
     script:
         - ./src/regression-tests/bash-scripts/run-seq.bsh
         - ./src/regression-tests/bash-scripts/run-par.bsh
