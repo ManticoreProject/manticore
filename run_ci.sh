@@ -16,7 +16,7 @@ echo -e "\n\n\t----- building manticore -----\n\n"
 
 autoheader -Iconfig
 autoconf -Iconfig
-./configure
+./configure --with-llvm=./llvm/build
 make local-install
 
 
