@@ -5,12 +5,19 @@ variables:
 
 build:
     stage: build
+    artifacts:
+        untracked: true
     script:
         - uname -a
         - autoheader -Iconfig
         - autoconf -Iconfig
         - ./configure
         - make local-install
+        
+test:
+    dependencies: 
+        - build
+    script:
         - ./src/regression-tests/bash-scripts/run-seq.bsh
         - ./src/regression-tests/bash-scripts/run-par.bsh
 
