@@ -2,6 +2,8 @@
 
 # assumes that current directory is the root of the repository.
 
+set -x # echo on
+
 pushd llvm
 rm -rf build install
 mkdir build install

@@ -2,28 +2,11 @@
 
 variables:
     GIT_SUBMODULE_STRATEGY: recursive
-    
-stages:
-    - build
-    - test
-    - deploy
 
-build:
+build_and_test:
     stage: build
-    artifacts:
-        untracked: true
     script:
-        - uname -a
-        - autoheader -Iconfig
-        - autoconf -Iconfig
-        - ./configure
-        - make local-install
-        
-test:
-    stage: test
-    script:
-        - ./src/regression-tests/bash-scripts/run-seq.bsh
-        - ./src/regression-tests/bash-scripts/run-par.bsh
+        - ./run_ci.sh
 
 # push to the github mirror.
 mirror:
