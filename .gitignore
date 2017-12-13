@@ -1,10 +1,10 @@
 #ignore all cm dirs
 .cm/
-./bin
-./lib
-./autom4te.cache
-./Makefile
-./configure
-./config.status
-./config.log
+/bin
+/lib
+/autom4te.cache
+/Makefile
+/configure
+/config.status
+/config.log
 .DS_Store

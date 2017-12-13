@@ -1,4 +1,4 @@
-(* llvm-print-util.sml
+(* llvm-translator-util.sml
  *
  * COPYRIGHT (c) 2016 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -6,7 +6,7 @@
  * Utility functions used during the translation from CFG to LLVM
  *)
  
-structure LLVMPrinterUtil = struct
+structure LLVMTranslatorUtil = struct
 local
     
     
@@ -29,6 +29,24 @@ local
     structure CF = CFunctions
 
 in
+
+    fun mapSep(f, init, sep, lst) = List.foldr 
+                        (fn (x, nil) => f(x) :: nil 
+                          | (x, y) => let val fx = f(x) in
+                            if fx = "" (* skip empty strings *)
+                            then y
+                            else fx :: sep :: y
+                          end)
+                        init
+                        lst
+
+    (* links together the attribute number and the standard attribute list *)
+    datatype llvm_attributes = MantiFun | ExternCFun
+
+    fun stdAttrs (MantiFun) = "nounwind naked"
+      (* NOTE: noinline b/c I'm not sure of the effect inlining 
+               a C func into a naked func. *)
+      | stdAttrs (ExternCFun) = "noinline"
 
       
   fun calcAddr b idx llInstr = let
@@ -271,4 +289,4 @@ in
 end      
       
 end (* end local scope *)
-end (* end LLVMPrinterUtil *)
+end (* end LLVMTranslatorUtil *)

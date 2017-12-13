@@ -1,0 +1,5 @@
+/mcrt*
+/mk/common.gmk
+/Makefile
+/config/gen*
+/config/Makefile

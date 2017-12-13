@@ -9,7 +9,7 @@
 functor LLVMCodeGenFn (structure Spec : TARGET_SPEC) :> CODE_GEN = 
 struct
 
-	structure LLVMBackend = LLVMPrinter (structure Spec = Spec)
+	structure LLVMBackend = LLVMTranslator (structure Spec = Spec)
 
 	fun doCodeGen {code : CFG.module, dst : TextIO.outstream} = let
 		(* As of 3/30/16, this codegen function assumes that contract has been run on the 

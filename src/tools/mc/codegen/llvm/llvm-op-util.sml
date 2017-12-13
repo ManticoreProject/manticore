@@ -18,7 +18,7 @@ structure LLVMOpUtil = struct
   structure LR = LLVMRuntime
   structure A = LLVMAttribute
   structure Op = LLVMOp
-  structure LPU = LLVMPrinterUtil
+  structure Util = LLVMTranslatorUtil
   
   structure V = Vector
   structure L = List
@@ -58,14 +58,14 @@ local
         (fn [ n ] => raise ParrayPrim (fn {resTy, vproc, alloc, allocOffset} => let
                 val loc = {vproc=vproc, off=allocOffset}
                 
-                val _ = LPU.saveAllocPtr bb loc alloc
+                val _ = Util.saveAllocPtr bb loc alloc
 
                 (* call C routine to do the allocation, with bitcasts as needed *)
                 val res = asTy bb resTy (valOf(LB.call bb 
                     (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ])))
                     
                 (* retrieve the modified allocation pointer *)
-                val newAlloc = LPU.restoreAllocPtr bb loc
+                val newAlloc = Util.restoreAllocPtr bb loc
                 
             in
                 { alloc=newAlloc, result=res }
@@ -390,7 +390,7 @@ in (case p
             and haveStuff xs {resTy, vproc, alloc, allocOffset} = let
                     val loc = {vproc=vproc, off=allocOffset}
                     
-                    val _ = LPU.saveAllocPtr bb loc alloc
+                    val _ = Util.saveAllocPtr bb loc alloc
                     
                     (* call C routine to do the allocation, with bitcasts as needed *)
                     val res = asTy bb resTy (
@@ -398,7 +398,7 @@ in (case p
                                              c (Op.equivCast(LB.toTy xs, LT.voidStar)) (xs, LT.voidStar)])))
                         
                     (* retrieve the modified allocation pointer *)
-                    val newAlloc = LPU.restoreAllocPtr bb loc
+                    val newAlloc = Util.restoreAllocPtr bb loc
                     
                 in
                     { alloc=newAlloc, result=res }

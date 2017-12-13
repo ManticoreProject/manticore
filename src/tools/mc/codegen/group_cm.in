@@ -97,8 +97,8 @@ is
   amd64/amd64-@OS@-pseudo-ops-fn.sml
 
   llvm/llvm-codegen-fn.sml
-  llvm/llvm-printer.sml
-  llvm/llvm-printer-util.sml
+  llvm/llvm-translator.sml
+  llvm/llvm-translator-util.sml
   llvm/llvm-builder.sml
   llvm/llvm-type.sml
   llvm/llvm-ty.sml
@@ -109,3 +109,4 @@ is
   llvm/llvm-runtime.sml
   llvm/llvm-strings.sml
   llvm/llvm-statepoint.sml
+  llvm/llvm-machineval.sml

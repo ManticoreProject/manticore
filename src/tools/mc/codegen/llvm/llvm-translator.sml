@@ -1,4 +1,4 @@
-(* llvm-printer.sml
+(* llvm-translator.sml
  *
  * COPYRIGHT (c) 2015 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -11,14 +11,11 @@
  * Originally authored by Kavon Farvardin (kavon@farvard.in)
  *)
 
-functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
+functor LLVMTranslator (structure Spec : TARGET_SPEC) : sig
 
     val output : (TextIO.outstream * CFG.module) -> unit
 
   end = struct
-  
-  (* if set to true, will send CFG output to stderr for debugging purposes *)
-  val DEBUGGING = false
 
   structure C = CFG
   structure CV = CFG.Var
@@ -29,16 +26,13 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure S = String
   structure L = List
   structure V = Vector
-
-  (*  *)
-  structure LPU = LLVMPrinterUtil
+  structure Util = LLVMTranslatorUtil
   structure LV = LLVMVar
   structure LB = LLVMBuilder 
   structure LR = LLVMRuntime
   structure LS = LLVMStrings
   structure A = LLVMAttribute
   structure AS = LLVMAttribute.Set
-
   structure LT = LV.LT
   structure Ty = LLVMTy
   structure Op = LLVMOp
@@ -46,79 +40,13 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure P = Prim
   structure PU = PrimUtil
   structure CU = CondUtil
+  structure MV = LLVMMachineVal
   
-
-fun output (outS, module as C.MODULE { name = module_name,
-                                       externs = module_externs,
-                                       mantiExterns = manti_externs,        (* TODO emit these *)
-                                       code = module_code } ) = let
   
-  (* print/string utils *)
-  fun pr s = TextIO.output(outS, s)
-  fun prl s = pr(S.concat s)
+  
   val i2s = Int.toString
-
-  fun mapSep(f, init, sep, lst) = List.foldr 
-                      (fn (x, nil) => f(x) :: nil 
-                        | (x, y) => let val fx = f(x) in
-                          if fx = "" (* skip empty strings *)
-                          then y
-                          else fx :: sep :: y
-                        end)
-                      init
-                      lst
-
-
-
-  (* links together the attribute number and the standard attribute list *)
-
-  datatype llvm_attributes = MantiFun | ExternCFun
-
-  fun stdAttrs (MantiFun) = "nounwind naked"
-
-    (* NOTE: because I'm not sure of the effect inlining a C func into a naked func right now. *)
-    | stdAttrs (ExternCFun) = "noinline" 
-
-  (**)
-
-  (* translation environment utilities *)
   
-  (* lightweight management tools for 
-     the implicit machine values found in the CFG representation *)
-  
-  datatype machineVal 
-    = MV_Alloc
-    | MV_Vproc
-    
-  fun machineInfo mv = (case mv
-    of MV_Alloc => (0, "allocPtr", LT.allocPtrTy)
-     | MV_Vproc => (1, "vprocPtr", LT.vprocTy)
-    (* end case *))
-    
-  fun machineValIdx mv = #1(machineInfo mv)
-  fun machineValStr mv = #2(machineInfo mv)
-  fun machineValTy  mv = #3(machineInfo mv)
-      
-  fun IdxMachineVal n = (case n
-      of 0 => SOME MV_Alloc
-       | 1 => SOME MV_Vproc
-       | _ => NONE
-      (* end case *))
-      
-  val mvCC = [ MV_Alloc, MV_Vproc ] (* parameters added to all basic blocks 
-                                       dont change order *)
-    
-  fun freshMVs () = let
-        val fresh = (fn x => LV.new(machineValStr x, machineValTy x))
-    in
-        (mvCC, L.map fresh mvCC)
-    end
-  
-  val numMachineVals = 2
-  
-  (* end of machine value tools *)
-  
-
+  (***** translation environment utilities *****)
   datatype gamma = ENV of {
     labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
     blks : LB.t LV.Map.map,     (* LLVMVars -> basic blocks *)
@@ -127,7 +55,7 @@ fun output (outS, module as C.MODULE { name = module_name,
   }
   
   val emptyEnv = ENV {labs=CL.Map.empty, blks=LV.Map.empty, vars=CV.Map.empty, mvs=(#[])}
-
+  
   fun lookupV (ENV{vars,...}, v) = 
     (case CV.Map.find(vars, v)
       of SOME lv => lv
@@ -140,7 +68,7 @@ fun output (outS, module as C.MODULE { name = module_name,
        | NONE => raise Fail ("lookupL -- unknown CFG Label: " ^ CL.toString l)
     (* esac *))
     
-  fun lookupMV (ENV{mvs,...}, kind) = Vector.sub(mvs, machineValIdx kind)
+  fun lookupMV (ENV{mvs,...}, kind) = Vector.sub(mvs, MV.machineValIdx kind)
   
   fun lookupBB (ENV{blks,...}, llv) =
     (case LV.Map.find(blks, llv)
@@ -159,12 +87,22 @@ fun output (outS, module as C.MODULE { name = module_name,
         
   fun updateMV(ENV{vars, blks, labs, mvs}, kind, lv) =
         ENV{vars=vars, labs=labs, blks=blks,
-            mvs= Vector.update(mvs, machineValIdx kind, lv)}
+            mvs= Vector.update(mvs, MV.machineValIdx kind, lv)}
+  
+  (***** end of translation environment utilities *****)
+  
+  
+  
+  
 
-  (* end translation environment utilities *)
-  
-  
-  
+fun output (outS, module as C.MODULE { name = module_name,
+                                       externs = module_externs,
+                                       mantiExterns = manti_externs,
+                                       code = module_code } ) = let
+  (* print/string utils *)
+  fun pr s = TextIO.output(outS, s)
+  fun prl s = pr(S.concat s)
+
 
   (* Basic Blocks *)
   
@@ -197,7 +135,7 @@ fun output (outS, module as C.MODULE { name = module_name,
           (* we need to add implicit values from CFG to the "branching convention" of all other
           blocks (start block is already taken care of with the JWA CC) *)
           
-          val (newMVs as (_, mvVars)) = freshMVs()
+          val (newMVs as (_, mvVars)) = MV.freshMVs()
           
           val env = L.foldr (fn ((old, new), acc) => insertV(acc, old, LB.fromV new))
                       initialEnv
@@ -212,7 +150,6 @@ fun output (outS, module as C.MODULE { name = module_name,
           val b = LB.new (lookupL(env, lab), mvVars @ llArgs)
         in
           (b, env, fn (b, env) => fillBlock b (env, body, exit)) 
-          (* fillBlock b (env, body, exit) *)
         end
 
       fun mkStartBlock (C.BLK{body, exit, ...}, Padded (cc, ccRegs, mvRegs)) = let
@@ -236,7 +173,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                        val castPair = (LV.typeOf llReg, realTy)
                        val argPair = (LB.fromV llReg, realTy)
                        val newVar = LB.cast blk (Op.equivCast castPair) argPair
-                       val SOME mv = IdxMachineVal i
+                       val SOME mv = MV.IdxMachineVal i
                    in
                        updateMV(acc, mv, newVar)
                    end
@@ -320,14 +257,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         
         (* this is padding at the front of the convention, where we always put the machine values. *)
         val machineValPadding =
-            List.tabulate(numMachineVals, fn _ => genericPadding)
+            List.tabulate(MV.numMachineVals, fn _ => genericPadding)
         
         fun withPadding convVars = 
             machineValPadding 
             @ (List.map getTy convVars)
         
         fun determineIndices convVars = 
-            L.drop((LT.allocateToRegs o withPadding) convVars, numMachineVals)
+            L.drop((LT.allocateToRegs o withPadding) convVars, MV.numMachineVals)
     in
         (case conv
             of C.StdFunc { clos, ret, exh } => let
@@ -447,7 +384,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             val mk = LB.mk b AS.empty
             val cast = LB.cast b
             
-            val limitPtrAddr = LPU.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
+            val limitPtrAddr = Util.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
             val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
             
             val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
@@ -470,10 +407,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
               val mk = LB.mk b AS.empty
               val cast = LB.cast b
               
-              val limitPtrAddr = LPU.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
+              val limitPtrAddr = Util.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
               val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
               
-              (* val allocPtr = lookupMV(env, MV_Alloc) *)
+              (* val allocPtr = lookupMV(env, MV.MV_Alloc) *)
               val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
               
               val diff = mk Op.Sub #[limitPtrVal, allocPtrVal]
@@ -481,79 +418,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                mk (Op.Icmp(Op.S Op.LE)) #[diff, szb]
           end
       (* end of notEnoughSpace *)
-      
-      (* NOTE for reference
-      fun nonTail (lhs, jmp as (_, liveAfter)) = let
-              (* we need to remove:
-                  1. the lhs vars from the liveAfter list
-                  2. any non-pointer values. 
-              *)
-              val lives = L.filter 
-                          (fn v => 
-                              not(L.exists (fn x => CV.same(v, x)) lhs)
-                              andalso
-                              LPU.isHeapPointer(CV.typeOf v)
-                          ) 
-                          liveAfter
-                          
-              val lives_llvm = L.map (fn v => lookupV(env, v)) lives
-              
-              val {ret, relos} = LLVMStatepoint.call { 
-                                    blk = b,
-                                    conv = LB.jwaCC,
-                                    func = f,
-                                    args = allArgs,
-                                    lives = lives_llvm
-                                  }
-                                  
-              (* grab the return values *)
-              fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
-              
-              val (mvAssign, lhsAssign) = determineRet lhs
-              
-              fun extractElm ret tyOf (i, var) = let
-                  val extr = LB.extractV b (ret, #[toC i])
-                  val extrTy = LB.toTy extr
-                  val lhsTy = tyOf var
-              in
-                  if LT.same(lhsTy, extrTy)
-                  then extr
-                  else LB.cast b (Op.safeCast(extrTy, lhsTy)) (extr, lhsTy)
-              end
-              
-              (* update the machine vals in the env *)
-              val newMVs = L.map (extractElm ret machineValTy) mvAssign
-              val env = ListPair.foldlEq
-                          (fn ((_,mv), valu, acc) => updateMV(acc, mv, valu))
-                          env
-                          (mvAssign, newMVs)
-              
-              (* bind the lhs values *)
-              val rhs = L.map (extractElm ret (LT.typeOf o CV.typeOf)) lhsAssign
-              val env = ListPair.foldlEq
-                          (fn ((_,lhs), rhs, acc) => insertV(acc, lhs, rhs))
-                          env
-                          (lhsAssign, rhs)
-              
-              (* update the env with the relocated values *)
-              val env = ListPair.foldlEq
-                          (fn (live, relo, acc) => insertV(acc, live, relo))
-                          env
-                          (lives, relos)
-                          
-              (* do the jump *)
-              val (targ, _) = markPred env jmp
-         in
-              (fn () => [LB.br b targ])
-         end (* end nonTail *)
-      
-      NOTE above is for reference, delete later!
-      *)
     
         fun dsHeapCheckHelper env szb (nogc as (_, lives)) = let
             
             (* this enoughSpaceCond is for the initial heap check. *)
-            val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc)) szb)
+            val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV.MV_Vproc)) (lookupMV(env, MV.MV_Alloc)) szb)
             
             val (nogcTarg, nogcArgs) = markPred env nogc
             val nogcBB = lookupBB(env, nogcTarg)
@@ -573,17 +442,17 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             
             (*** establish and enter the gcLoopBB env ***)
             val params = L.map LB.fromV (LB.paramsOf gcLoopBB)
-            val nonMVParams = L.drop(params, numMachineVals)    (* mvs are always prepended *)
+            val nonMVParams = L.drop(params, MV.numMachineVals)    (* mvs are always prepended *)
             val env = ListPair.foldlEq
                         (fn (live, param, acc) => insertV(acc, live, param))
                         env
                         (lives, nonMVParams)
             
             (* no real need to put the mvs in the env as they're about to die *)
-            val mvParams = L.take(params, numMachineVals)
+            val mvParams = L.take(params, MV.numMachineVals)
             
             (*** setup the call to the RTS ***)
-            val cfgGCPtrs = L.filter (LPU.isHeapPointer o CV.typeOf) lives
+            val cfgGCPtrs = L.filter (Util.isHeapPointer o CV.typeOf) lives
             val gcPtrs = L.map (fn v => lookupV(env, v)) cfgGCPtrs
             
             (* do the call *)
@@ -597,14 +466,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                 }
             
             fun getMV ret (mv, acc) = let
-                val idx = LB.intC(LT.i32, IntInf.fromInt(machineValIdx mv))
+                val idx = LB.intC(LT.i32, IntInf.fromInt(MV.machineValIdx mv))
                 val valu = LB.extractV gcLoopBB (ret, #[idx])
             in
                 updateMV(acc, mv, valu)
             end
             
             (* retrieve new mvs *)
-            val env = L.foldl (getMV ret) env mvCC
+            val env = L.foldl (getMV ret) env MV.mvCC
             
             (* get relocated gcPtrs *)
             val env = ListPair.foldlEq
@@ -615,11 +484,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             (* test for GC again *)
             val retNotEnoughSpaceCond = expectFalse gcLoopBB (notEnoughSpace 
                         gcLoopBB 
-                        (lookupMV(env, MV_Vproc)) 
-                        (lookupMV(env, MV_Alloc)) 
+                        (lookupMV(env, MV.MV_Vproc)) 
+                        (lookupMV(env, MV.MV_Alloc)) 
                         szb)
             
-            val mvs = L.map (fn mv => lookupMV(env, mv)) mvCC
+            val mvs = L.map (fn mv => lookupMV(env, mv)) MV.mvCC
             val args = L.map (fn v => lookupV(env, v)) lives
             val allArgs = mvs @ args
             
@@ -688,7 +557,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                    must use the new one even if its the same value (which
                                    it will be of course). *)
                                    
-                                val SOME addr = LPU.calcAddr myBB 0 newFrame
+                                val SOME addr = Util.calcAddr myBB 0 newFrame
                                 val newSzbI = LB.mk myBB AS.empty Op.Load #[addr]
                             in
                                 SN_Var newSzbI
@@ -721,7 +590,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              fun prepareGC env (SN_Const _) ((targ, live)) = let
                         val tys = L.map CV.typeOf live
                      in
-                        prepGCHelper env (LPU.headerTag tys) (targ, prepCvt env live)
+                        prepGCHelper env (Util.headerTag tys) (targ, prepCvt env live)
                      end
                
                | prepareGC env (SN_Var szbI) ((targ, live)) = let
@@ -731,7 +600,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                         val tys = szBCFGTy :: (L.map CV.typeOf live)
                         val liveLL = szbI :: (prepCvt env live)
                      in
-                         prepGCHelper env (LPU.headerTag tys) (targ, liveLL)
+                         prepGCHelper env (Util.headerTag tys) (targ, liveLL)
                      end
                
               
@@ -754,10 +623,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                  val cast = LB.cast myBB
                  val mk = LB.mk myBB AS.empty
                  
-                 val vprocPtr = lookupMV(env, MV_Vproc)
+                 val vprocPtr = lookupMV(env, MV.MV_Vproc)
                                              
                  val {newAllocPtr=allocPtr, tupleAddr=framePtr} = 
-                     LPU.doAlloc myBB (lookupMV(env, MV_Alloc)) live tag
+                     Util.doAlloc myBB (lookupMV(env, MV.MV_Alloc)) live tag
                  
 
                  val outgoingLive = [framePtr, allocPtr, vprocPtr]
@@ -815,13 +684,13 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                              
                 (* these loads need to occur just like in a SELECT, which casts pointers as needed *)
                  val loadedInstrs = L.map 
-                     (fn (i, origTy) => case LPU.calcAddr myBB i framePtr
+                     (fn (i, origTy) => case Util.calcAddr myBB i framePtr
                        of SOME addr => mk Op.Load #[asPtrTo origTy addr]
                         | NONE => raise Fail "extractGC error"
                      ) origTys
                  
                  
-                 (* following mvCC and markPred for the block calling convention *)
+                 (* following MV.mvCC and markPred for the block calling convention *)
                  fun brTo gotoBB = (
                          LB.addIncoming gotoBB 
                              (bbLab, [allocPtr, vprocPtr] @ loadedInstrs)  ;
@@ -833,7 +702,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              end
                           
              (* this enoughSpaceCond is for the initial heap check. *)
-             val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc)) szb)
+             val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV.MV_Vproc)) (lookupMV(env, MV.MV_Alloc)) szb)
              
              val (nogcTarg, _) = markPred env nogc
              val nogcBB = lookupBB(env, nogcTarg)
@@ -916,7 +785,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 val llLab = lookupL(env, to)
         
                 val llArgs = L.map (fn a => lookupV(env, a)) args
-                val mvArgs = L.map (fn mv => lookupMV(env, mv)) mvCC
+                val mvArgs = L.map (fn mv => lookupMV(env, mv)) MV.mvCC
                 val allArgs = mvArgs @ llArgs
                 
             in
@@ -925,21 +794,21 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             
         (* determines the return convention for direct-style. returns slot assignments for
            both machine values that need to be returned, and the CFG vars *)
-        and determineRet (rets : CV.var list) : ( ((int * machineVal) list) * ((int * CV.var) list) ) = let
+        and determineRet (rets : CV.var list) : ( ((int * MV.machineVal) list) * ((int * CV.var) list) ) = let
              (* we "reserve" the clos, retk, and exh registers with padding *)
              val dummyTy = LT.toRegType LT.uniformTy
              val dummyPad = [dummyTy, dummyTy, dummyTy]
              
-             val mvTys = L.map (fn mv => LT.toRegType(machineValTy mv)) mvCC
+             val mvTys = L.map (fn mv => LT.toRegType(MV.machineValTy mv)) MV.mvCC
              val retTys = L.map (fn v => LT.toRegType(LT.typeOf(CV.typeOf v))) rets
              
              (* first slots are assigned to machine vals, and are i64s *)
              val idxs = LT.allocateToRegs (mvTys @ dummyPad @ retTys)
              
-             val mvSlots = L.take(idxs, numMachineVals)
-             val retSlots = L.drop(idxs, numMachineVals + L.length dummyPad)
+             val mvSlots = L.take(idxs, MV.numMachineVals)
+             val retSlots = L.drop(idxs, MV.numMachineVals + L.length dummyPad)
              
-             val mvAssign = ListPair.zipEq (mvSlots, mvCC)
+             val mvAssign = ListPair.zipEq (mvSlots, MV.mvCC)
              val retAssign = ListPair.zipEq (retSlots, rets)
              
         in
@@ -949,8 +818,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         and setupCall (func, (_, cc : (int * C.var) list)) = let
                 
                 val mvs = ListPair.zipEq(
-                            L.tabulate(numMachineVals, fn i => i), 
-                            L.map (fn mv => lookupMV(env, mv)) mvCC)
+                            L.tabulate(MV.numMachineVals, fn i => i), 
+                            L.map (fn mv => lookupMV(env, mv)) MV.mvCC)
                             
                 val cc = L.map (fn (i, cv) => (i, lookupV(env, cv))) cc
                 
@@ -1142,7 +1011,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
                
                (* NOTE: Return vars => 
-                    1. retVals = mvCC @ vars
+                    1. retVals = MV.mvCC @ vars
                     2. initialize a struct S that is "in register" with the retVals
                     3. return S
                *)
@@ -1211,7 +1080,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                         (fn v => 
                                             not(L.exists (fn x => CV.same(v, x)) lhs)
                                             andalso
-                                            LPU.isHeapPointer(CV.typeOf v)
+                                            Util.isHeapPointer(CV.typeOf v)
                                         ) 
                                         liveAfter
                                         
@@ -1241,7 +1110,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             end
                             
                             (* update the machine vals in the env *)
-                            val newMVs = L.map (extractElm ret machineValTy) mvAssign
+                            val newMVs = L.map (extractElm ret MV.machineValTy) mvAssign
                             val env = ListPair.foldlEq
                                         (fn ((_,mv), valu, acc) => updateMV(acc, mv, valu))
                                         env
@@ -1359,7 +1228,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                      array of bytes to turn it into an i8*. NOTE it's not
                      safe to use any other offset except 0 here because of the data
                      layout. *)
-                  val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
+                  val SOME gep = Util.calcAddr b 0 (LB.fromV llv)
              in
                   gep
              end
@@ -1371,7 +1240,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                   (* calculate the address of the first byte in this ptr to an 
                      array of bytes to turn it into an i8*. see NOTE above
                      regarding data layout *)
-                  val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
+                  val SOME gep = Util.calcAddr b 0 (LB.fromV llv)
                   val casted = cast (Op.safeCast(LB.toTy gep, lhsTy)) (gep, lhsTy)
              in
                  casted
@@ -1409,7 +1278,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let
         val llv = lookupV(env, rhsVar)
-        val addr = (case LPU.calcAddr b i llv
+        val addr = (case Util.calcAddr b i llv
                     of SOME addr => addr
                      | NONE => ( debug ("SELECT " ^ Int.toString i) rhsVar llv ; raise Fail "unrecoverable error")
                     (* esac *))
@@ -1441,7 +1310,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       and genUpdate(env, (i, ptr, var)) = let      
         val llVal = lookupV(env, var)
         val llPtr = lookupV(env, ptr)
-        val SOME addr = LPU.calcAddr b i llPtr
+        val SOME addr = Util.calcAddr b i llPtr
         
         (* we need to cast the pointer to the correct type before the store *)
           val caster = let
@@ -1462,7 +1331,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       and genAddrOf(env, (lhsVar, i, var)) = let
         val llv = lookupV(env, var)
       in
-        (case LPU.calcAddr b i llv
+        (case Util.calcAddr b i llv
             of SOME newLLVar => insertV(env, lhsVar, newLLVar)
              | NONE => ( debug ("AddrOf " ^ Int.toString i) var llv ; raise Fail "unrecoverable error" )
         (* esac *))
@@ -1480,9 +1349,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         
         val _ = if L.length llVars = 0 then raise Fail "empty alloc!" else ()
         
-        val headerTag = LPU.headerTag (L.map CV.typeOf vars)
+        val headerTag = Util.headerTag (L.map CV.typeOf vars)
         val {newAllocPtr, tupleAddr=allocatedTuple} = 
-            LPU.doAlloc b (lookupMV(env, MV_Alloc)) llVars headerTag
+            Util.doAlloc b (lookupMV(env, MV.MV_Alloc)) llVars headerTag
         
         val lhsTy = LT.typeOf ty
         val maybeCasted = if LT.same(lhsTy, LB.toTy allocatedTuple) then allocatedTuple
@@ -1490,7 +1359,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             cast Op.BitCast (allocatedTuple, lhsTy)
         
         val env = insertV(env, lhsVar, maybeCasted)
-        val env = updateMV(env, MV_Alloc, newAllocPtr)
+        val env = updateMV(env, MV.MV_Alloc, newAllocPtr)
       in
         env
       end
@@ -1504,7 +1373,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val llFunc = LB.fromV promLab
         val paramTys = (LT.argsOf o LT.deref o LB.toTy) llFunc
         
-        val args = [lookupMV(env, MV_Vproc), lookupV(env, var)]
+        val args = [lookupMV(env, MV.MV_Vproc), lookupV(env, var)]
         
         val llArgs = L.map (fn (ll, realTy) => let
                             val llty = LB.toTy ll
@@ -1515,16 +1384,16 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
 
         (* we must save and restore the allocation pointer using the vproc
            before & after the call to promote just like a c call that allocates. *)
-        val loc = { vproc = lookupMV(env, MV_Vproc),
+        val loc = { vproc = lookupMV(env, MV.MV_Vproc),
                     off   = Spec.ABI.allocPtr }
-        val alloc = lookupMV(env, MV_Alloc)
+        val alloc = lookupMV(env, MV.MV_Alloc)
         
-        val _ = LPU.saveAllocPtr b loc alloc
+        val _ = Util.saveAllocPtr b loc alloc
         
         (* do call *)
         val SOME llCall = LB.call b (llFunc, V.fromList llArgs)
             
-        val env = updateMV(env, MV_Alloc, LPU.restoreAllocPtr b loc)
+        val env = updateMV(env, MV.MV_Alloc, Util.restoreAllocPtr b loc)
         
         
         (* cast result back *)
@@ -1551,12 +1420,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val (result, env) = (cvtr llArgs, env) 
                             handle OU.ParrayPrim f => let
                                 val arg = { resTy = (LT.typeOf o CV.typeOf) lhsVar,
-                                            vproc = lookupMV(env, MV_Vproc),
-                                            alloc = lookupMV(env, MV_Alloc),
+                                            vproc = lookupMV(env, MV.MV_Vproc),
+                                            alloc = lookupMV(env, MV.MV_Alloc),
                                             allocOffset = Spec.ABI.allocPtr }
                                 val { result, alloc } = f arg
                             in
-                                (result, updateMV(env, MV_Alloc, alloc))
+                                (result, updateMV(env, MV.MV_Alloc, alloc))
                             end
       in
         insertV(env, lhsVar, result)
@@ -1580,22 +1449,22 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             val doCall = (fn () => LB.call b (llFunc, V.fromList llArgs))
             
             (* check if the C function might allocate before performing the call *)
-            val allocates = LPU.cfunDoesAlloc func
+            val allocates = Util.cfunDoesAlloc func
             
             val (llCall, env) = if not allocates then (doCall(), env)
                    else let (* we need to pass the allocation pointer to the runtime system,
                                     and we do so by writing it to the vproc. *)
-                            val loc = { vproc = lookupMV(env, MV_Vproc),
+                            val loc = { vproc = lookupMV(env, MV.MV_Vproc),
                                         off   = Spec.ABI.allocPtr }
-                            val alloc = lookupMV(env, MV_Alloc)
+                            val alloc = lookupMV(env, MV.MV_Alloc)
                             
-                            val _ = LPU.saveAllocPtr b loc alloc
+                            val _ = Util.saveAllocPtr b loc alloc
                             
                             val llCall = doCall()
                             
-                            val newAlloc = LPU.restoreAllocPtr b loc
+                            val newAlloc = Util.restoreAllocPtr b loc
                         in
-                            (llCall, updateMV(env, MV_Alloc, newAlloc))
+                            (llCall, updateMV(env, MV.MV_Alloc, newAlloc))
                         end
             
           in
@@ -1612,14 +1481,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
           end
           
       
-      and genHostVProc(env, lhsVar) = insertV(env, lhsVar, lookupMV(env, MV_Vproc))
+      and genHostVProc(env, lhsVar) = insertV(env, lhsVar, lookupMV(env, MV.MV_Vproc))
       
       and genVPLoad(env, (lhsVar, offset, vpVar)) = let
         val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
         val vpLL = lookupV(env, vpVar)
         
         (* now we do the offset & loading sequence *)
-        val addr = LPU.vpOffset b vpLL offset (LT.mkPtr(lhsTy))
+        val addr = Util.vpOffset b vpLL offset (LT.mkPtr(lhsTy))
         val final = mkVolatile Op.Load #[addr] 
       in
         insertV(env, lhsVar, final)
@@ -1631,7 +1500,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val vpLL = lookupV(env, vpVar)    
         
         (* offset and store seq *)
-        val addr = LPU.vpOffset b vpLL offset (LT.mkPtr(argTy))
+        val addr = Util.vpOffset b vpLL offset (LT.mkPtr(argTy))
         val _ = mkVolatile Op.Store #[addr, argLL] (* no resulting instr after store *)
       in
         env
@@ -1641,7 +1510,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
         val vpLL = lookupV(env, vpVar)
       in
-        insertV(env, lhsVar, LPU.vpOffset b vpLL offset lhsTy)
+        insertV(env, lhsVar, Util.vpOffset b vpLL offset lhsTy)
       end
 
     in
@@ -1672,12 +1541,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
   and assignToSlots (mvTys, cc) = let
   
-        val pairedMvTys = ListPair.zipEq(L.tabulate(numMachineVals, fn i => i), mvTys)
+        val pairedMvTys = ListPair.zipEq(L.tabulate(MV.numMachineVals, fn i => i), mvTys)
         
         (* reg vars and the real types *)
         val mvRegs = L.map (fn (i, ty) => let
-                val (SOME mv) = IdxMachineVal i
-                val (_, name, realTy) = machineInfo mv
+                val (SOME mv) = MV.IdxMachineVal i
+                val (_, name, realTy) = MV.machineInfo mv
             in
                 (i, LV.new(name, ty), realTy)
             end) pairedMvTys
@@ -1751,7 +1620,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val llName = LV.toString(lookupL(initEnv, lab))
     val decl = [comment, "define ", linkage, ccStr,
                 "void ", llName, "(", (stringify  allAssign), ") ",
-                stdAttrs(MantiFun), " {\n"]
+                Util.stdAttrs(Util.MantiFun), " {\n"]
                 
                 (* FIXME put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
     
@@ -1846,7 +1715,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     (* external C function. note that var has type CFG.label *)
     fun toLLVMDecl (CF.CFun { var, attrs, ... }) = let
         val asLLV = LV.convertLabel var
-        val llvmAttrs = S.concat(mapSep(attrOfC, [stdAttrs(ExternCFun)], " ", attrs))
+        val llvmAttrs = S.concat(Util.mapSep(attrOfC, [Util.stdAttrs(Util.ExternCFun)], " ", attrs))
       in
         ( (LT.declOf (LV.typeOf asLLV) "" (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
          var,
@@ -1918,7 +1787,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val externDecls = S.concat (List.map (fn (s, _, _) => s) convertedExterns)
     
     (* now we add the magic llvm runtime stuff that are not actually part of the CFG module. *)
-    val runtimeDecls = magicDecls LR.runtime (stdAttrs ExternCFun)
+    val runtimeDecls = magicDecls LR.runtime (Util.stdAttrs Util.ExternCFun)
     
                                                     
     val intrinsicDecls = magicDecls LR.intrinsics ""
@@ -2016,9 +1885,6 @@ in
     pr (magicDecls (LLVMStatepoint.exportDecls ()) "") ;
 
     pr "\n\n\n\n; ---------------- end of LLVM generation ---------------------- \n\n\n\n" ;
-    (if DEBUGGING then
-        PrintCFG.output {counts=true, types=PrintCFG.Full, preds=false} (TextIO.stdErr, module)
-    else ()) ;
     ()
   )
 
