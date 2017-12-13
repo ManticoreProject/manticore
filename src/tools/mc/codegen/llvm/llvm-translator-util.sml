@@ -27,8 +27,55 @@ local
     structure CT = CFGTy
     structure CTU = CFGTyUtil
     structure CF = CFunctions
+    structure MV = LLVMMachineVal
 
 in
+
+    (***** translation environment utilities *****)
+    datatype gamma = ENV of {
+      labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
+      blks : LB.t LV.Map.map,     (* LLVMVars -> basic blocks *)
+      vars : LB.instr CV.Map.map,     (* CFG Vars -> LLVM Instructions *)
+      mvs : LB.instr vector          (* current LLVM Instructions representing machine vals *)
+    }
+    
+    val emptyEnv = ENV {labs=CL.Map.empty, blks=LV.Map.empty, vars=CV.Map.empty, mvs=(#[])}
+    
+    fun lookupV (ENV{vars,...}, v) = 
+      (case CV.Map.find(vars, v)
+        of SOME lv => lv
+         | NONE => raise Fail ("lookupV -- unknown CFG Var: " ^ CV.toString v)
+      (* esac *))
+
+    fun lookupL (ENV{labs,...}, l) = 
+      (case CL.Map.find(labs, l)
+        of SOME ll => ll
+         | NONE => raise Fail ("lookupL -- unknown CFG Label: " ^ CL.toString l)
+      (* esac *))
+      
+    fun lookupMV (ENV{mvs,...}, kind) = Vector.sub(mvs, MV.machineValIdx kind)
+    
+    fun lookupBB (ENV{blks,...}, llv) =
+      (case LV.Map.find(blks, llv)
+        of SOME bb => bb
+         | NONE => raise Fail ("lookupBB -- unknown LLVM Basic Block: " ^ LV.toString llv)
+      (* esac *))
+
+    fun insertV (ENV{vars, blks, labs, mvs}, v, lv) = 
+          ENV{vars=(CV.Map.insert(vars, v, lv)), blks=blks, labs=labs, mvs=mvs}
+
+    fun insertL (ENV{vars, blks, labs, mvs}, l, ll) = 
+          ENV{vars=vars, blks=blks, labs=(CL.Map.insert(labs, l, ll)), mvs=mvs}
+          
+    fun insertBB (ENV{vars, blks, labs, mvs}, llv, bb) = 
+          ENV{vars=vars, blks=(LV.Map.insert(blks, llv, bb)), labs=labs, mvs=mvs}
+          
+    fun updateMV(ENV{vars, blks, labs, mvs}, kind, lv) =
+          ENV{vars=vars, labs=labs, blks=blks,
+              mvs= Vector.update(mvs, MV.machineValIdx kind, lv)}
+    
+    (***** end of translation environment utilities *****)
+
 
     fun mapSep(f, init, sep, lst) = List.foldr 
                         (fn (x, nil) => f(x) :: nil 

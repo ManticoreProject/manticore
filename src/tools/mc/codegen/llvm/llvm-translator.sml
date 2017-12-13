@@ -42,58 +42,7 @@ functor LLVMTranslator (structure Spec : TARGET_SPEC) : sig
   structure CU = CondUtil
   structure MV = LLVMMachineVal
   
-  
-  
   val i2s = Int.toString
-  
-  (***** translation environment utilities *****)
-  datatype gamma = ENV of {
-    labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
-    blks : LB.t LV.Map.map,     (* LLVMVars -> basic blocks *)
-    vars : LB.instr CV.Map.map,     (* CFG Vars -> LLVM Instructions *)
-    mvs : LB.instr vector          (* current LLVM Instructions representing machine vals *)
-  }
-  
-  val emptyEnv = ENV {labs=CL.Map.empty, blks=LV.Map.empty, vars=CV.Map.empty, mvs=(#[])}
-  
-  fun lookupV (ENV{vars,...}, v) = 
-    (case CV.Map.find(vars, v)
-      of SOME lv => lv
-       | NONE => raise Fail ("lookupV -- unknown CFG Var: " ^ CV.toString v)
-    (* esac *))
-
-  fun lookupL (ENV{labs,...}, l) = 
-    (case CL.Map.find(labs, l)
-      of SOME ll => ll
-       | NONE => raise Fail ("lookupL -- unknown CFG Label: " ^ CL.toString l)
-    (* esac *))
-    
-  fun lookupMV (ENV{mvs,...}, kind) = Vector.sub(mvs, MV.machineValIdx kind)
-  
-  fun lookupBB (ENV{blks,...}, llv) =
-    (case LV.Map.find(blks, llv)
-      of SOME bb => bb
-       | NONE => raise Fail ("lookupBB -- unknown LLVM Basic Block: " ^ LV.toString llv)
-    (* esac *))
-
-  fun insertV (ENV{vars, blks, labs, mvs}, v, lv) = 
-        ENV{vars=(CV.Map.insert(vars, v, lv)), blks=blks, labs=labs, mvs=mvs}
-
-  fun insertL (ENV{vars, blks, labs, mvs}, l, ll) = 
-        ENV{vars=vars, blks=blks, labs=(CL.Map.insert(labs, l, ll)), mvs=mvs}
-        
-  fun insertBB (ENV{vars, blks, labs, mvs}, llv, bb) = 
-        ENV{vars=vars, blks=(LV.Map.insert(blks, llv, bb)), labs=labs, mvs=mvs}
-        
-  fun updateMV(ENV{vars, blks, labs, mvs}, kind, lv) =
-        ENV{vars=vars, labs=labs, blks=blks,
-            mvs= Vector.update(mvs, MV.machineValIdx kind, lv)}
-  
-  (***** end of translation environment utilities *****)
-  
-  
-  
-  
 
 fun output (outS, module as C.MODULE { name = module_name,
                                        externs = module_externs,
@@ -116,14 +65,14 @@ fun output (outS, module as C.MODULE { name = module_name,
           cfgArgs : C.var list, 
           mvs : LV.var list }
 
-  fun mkBasicBlocks (initEnv : gamma, start : C.block, body : C.block list, llvmCC) : string list = let
+  fun mkBasicBlocks (initEnv : Util.gamma, start : C.block, body : C.block list, llvmCC) : string list = let
     (* no branches should be expected to target the start block, 
       because they should be calls (the start block has the type of the function
     and for all intents and purposes it represents the function) *)
 
       fun convertLabs (C.BLK{lab,...}) = (lab, LV.convertLabel lab)
 
-      val initialEnv = L.foldr (fn ((old, new), acc) => insertL(acc, old, new))
+      val initialEnv = L.foldr (fn ((old, new), acc) => Util.insertL(acc, old, new))
                   initEnv 
                   (L.map convertLabs body)
 
@@ -137,17 +86,17 @@ fun output (outS, module as C.MODULE { name = module_name,
           
           val (newMVs as (_, mvVars)) = MV.freshMVs()
           
-          val env = L.foldr (fn ((old, new), acc) => insertV(acc, old, LB.fromV new))
+          val env = L.foldr (fn ((old, new), acc) => Util.insertV(acc, old, LB.fromV new))
                       initialEnv
                       (ListPair.zip(args, llArgs))
             
           
           
-          val env = L.foldr (fn ((mvKind, mvVar), acc) => updateMV(acc, mvKind, LB.fromV mvVar)) 
+          val env = L.foldr (fn ((mvKind, mvVar), acc) => Util.updateMV(acc, mvKind, LB.fromV mvVar)) 
                     env
                     (ListPair.zip newMVs)
           
-          val b = LB.new (lookupL(env, lab), mvVars @ llArgs)
+          val b = LB.new (Util.lookupL(env, lab), mvVars @ llArgs)
         in
           (b, env, fn (b, env) => fillBlock b (env, body, exit)) 
         end
@@ -166,7 +115,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                         val argPair = (LB.fromV llReg, realTy)
                         val newVar = LB.cast blk (Op.simpleCast castPair) argPair
                     in
-                        insertV(acc, cfgVar, newVar) (*  *)
+                        Util.insertV(acc, cfgVar, newVar) (*  *)
                     end
                     
                 fun addCastsMV ((i, llReg, realTy), acc) = let
@@ -175,7 +124,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                        val newVar = LB.cast blk (Op.equivCast castPair) argPair
                        val SOME mv = MV.IdxMachineVal i
                    in
-                       updateMV(acc, mv, newVar)
+                       Util.updateMV(acc, mv, newVar)
                    end
                  
                  
@@ -197,7 +146,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                 (* add the args to the env. 
                    machine vals are already in the env with the correct types. *)
                 val env = L.foldl
-                            (fn ((cfgV, llvmV), acc) => insertV(acc, cfgV, LB.fromV llvmV))
+                            (fn ((cfgV, llvmV), acc) => Util.insertV(acc, cfgV, LB.fromV llvmV))
                             initialEnv
                             (ListPair.zipEq(cfgArgs, llArgs))
             in
@@ -217,8 +166,8 @@ fun output (outS, module as C.MODULE { name = module_name,
             
      (* update all of the block environments with the new map 
         NOTE we wipe out the old blks map because it should be empty before this point anyways. *)
-     val allBlocks = L.map (fn (b, ENV{vars, blks, labs, mvs}, f) => 
-                                (b, ENV{vars=vars, blks=bbMap, labs=labs, mvs=mvs}, f)) allBlocks
+     val allBlocks = L.map (fn (b, Util.ENV{vars, blks, labs, mvs}, f) => 
+                                (b, Util.ENV{vars=vars, blks=bbMap, labs=labs, mvs=mvs}, f)) allBlocks
     
     (* results in a list of thunks that will cap off the blocks, and those thunks return a 
        list of blocks that is the result of generating this block. Heap allocations in 
@@ -309,7 +258,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         (* end case *))
   end
 
-  and fillBlock (b : LB.t) (initialEnv : gamma, body : C.exp list, exit : C.transfer) : (unit -> LB.bb list) = let
+  and fillBlock (b : LB.t) (initialEnv : Util.gamma, body : C.exp list, exit : C.transfer) : (unit -> LB.bb list) = let
     
     (* a jump list is a (label * var list) which indicates
        where a jump comes from, and the names of the vars from that BB.
@@ -410,7 +359,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
               val limitPtrAddr = Util.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
               val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
               
-              (* val allocPtr = lookupMV(env, MV.MV_Alloc) *)
+              (* val allocPtr = Util.lookupMV(env, MV.MV_Alloc) *)
               val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
               
               val diff = mk Op.Sub #[limitPtrVal, allocPtrVal]
@@ -422,15 +371,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         fun dsHeapCheckHelper env szb (nogc as (_, lives)) = let
             
             (* this enoughSpaceCond is for the initial heap check. *)
-            val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV.MV_Vproc)) (lookupMV(env, MV.MV_Alloc)) szb)
+            val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (Util.lookupMV(env, MV.MV_Vproc)) (Util.lookupMV(env, MV.MV_Alloc)) szb)
             
             val (nogcTarg, nogcArgs) = markPred env nogc
-            val nogcBB = lookupBB(env, nogcTarg)
+            val nogcBB = Util.lookupBB(env, nogcTarg)
             
             (* now we create a new block to do GC *)
             val bbLab = LV.new("doGC", LT.labelTy)
             val gcLoopBB = LB.copy' bbLab nogcBB
-            val env = insertBB(env, bbLab, gcLoopBB)
+            val env = Util.insertBB(env, bbLab, gcLoopBB)
             (* NOTE if the szb is a non-constant integer value,
                it is fine that we don't add it as a parameter
                to the gcLoopBB even though we'll reference it after 
@@ -444,7 +393,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             val params = L.map LB.fromV (LB.paramsOf gcLoopBB)
             val nonMVParams = L.drop(params, MV.numMachineVals)    (* mvs are always prepended *)
             val env = ListPair.foldlEq
-                        (fn (live, param, acc) => insertV(acc, live, param))
+                        (fn (live, param, acc) => Util.insertV(acc, live, param))
                         env
                         (lives, nonMVParams)
             
@@ -453,7 +402,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             
             (*** setup the call to the RTS ***)
             val cfgGCPtrs = L.filter (Util.isHeapPointer o CV.typeOf) lives
-            val gcPtrs = L.map (fn v => lookupV(env, v)) cfgGCPtrs
+            val gcPtrs = L.map (fn v => Util.lookupV(env, v)) cfgGCPtrs
             
             (* do the call *)
             val (func, SOME conv) = LR.dsInvokeGC
@@ -469,7 +418,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 val idx = LB.intC(LT.i32, IntInf.fromInt(MV.machineValIdx mv))
                 val valu = LB.extractV gcLoopBB (ret, #[idx])
             in
-                updateMV(acc, mv, valu)
+                Util.updateMV(acc, mv, valu)
             end
             
             (* retrieve new mvs *)
@@ -477,19 +426,19 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             
             (* get relocated gcPtrs *)
             val env = ListPair.foldlEq
-                        (fn (gcPtr, relo, acc) => insertV(acc, gcPtr, relo))
+                        (fn (gcPtr, relo, acc) => Util.insertV(acc, gcPtr, relo))
                         env
                         (cfgGCPtrs, relos)
             
             (* test for GC again *)
             val retNotEnoughSpaceCond = expectFalse gcLoopBB (notEnoughSpace 
                         gcLoopBB 
-                        (lookupMV(env, MV.MV_Vproc)) 
-                        (lookupMV(env, MV.MV_Alloc)) 
+                        (Util.lookupMV(env, MV.MV_Vproc)) 
+                        (Util.lookupMV(env, MV.MV_Alloc)) 
                         szb)
             
-            val mvs = L.map (fn mv => lookupMV(env, mv)) MV.mvCC
-            val args = L.map (fn v => lookupV(env, v)) lives
+            val mvs = L.map (fn mv => Util.lookupMV(env, mv)) MV.mvCC
+            val args = L.map (fn v => Util.lookupV(env, v)) lives
             val allArgs = mvs @ args
             
             (* establish outgoing edges from gcLoopBB *)
@@ -605,7 +554,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                
               
                
-             and prepCvt env live = L.map (fn x => lookupV(env, x)) live
+             and prepCvt env live = L.map (fn x => Util.lookupV(env, x)) live
         
              and prepGCHelper env tag ((targ, live)) = let
                  (* NOTE basically, we just save roots to the heap to create a spill frame.
@@ -623,10 +572,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                  val cast = LB.cast myBB
                  val mk = LB.mk myBB AS.empty
                  
-                 val vprocPtr = lookupMV(env, MV.MV_Vproc)
+                 val vprocPtr = Util.lookupMV(env, MV.MV_Vproc)
                                              
                  val {newAllocPtr=allocPtr, tupleAddr=framePtr} = 
-                     Util.doAlloc myBB (lookupMV(env, MV.MV_Alloc)) live tag
+                     Util.doAlloc myBB (Util.lookupMV(env, MV.MV_Alloc)) live tag
                  
 
                  val outgoingLive = [framePtr, allocPtr, vprocPtr]
@@ -702,10 +651,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              end
                           
              (* this enoughSpaceCond is for the initial heap check. *)
-             val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV.MV_Vproc)) (lookupMV(env, MV.MV_Alloc)) szb)
+             val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (Util.lookupMV(env, MV.MV_Vproc)) (Util.lookupMV(env, MV.MV_Alloc)) szb)
              
              val (nogcTarg, _) = markPred env nogc
-             val nogcBB = lookupBB(env, nogcTarg)
+             val nogcBB = Util.lookupBB(env, nogcTarg)
              
              val constBytesNeeded = (case szb of SN_Var _ => false | _ => true)
              
@@ -768,7 +717,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         and markPred env jmp = markPredFrom b env (getCC env jmp)
             
         and markPredFrom b env (llLab, allArgs) = let
-                val llBB = lookupBB(env, llLab)
+                val llBB = Util.lookupBB(env, llLab)
                 val bbParams = LB.paramsOf llBB
                 
                 val from = LB.labelOf b
@@ -782,10 +731,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
            block is the current basic block, and does not add an incoming edge. 
            this just looks stuff up and puts the args together with the machine values. *)
         and getCC env (to, args) = let
-                val llLab = lookupL(env, to)
+                val llLab = Util.lookupL(env, to)
         
-                val llArgs = L.map (fn a => lookupV(env, a)) args
-                val mvArgs = L.map (fn mv => lookupMV(env, mv)) MV.mvCC
+                val llArgs = L.map (fn a => Util.lookupV(env, a)) args
+                val mvArgs = L.map (fn mv => Util.lookupMV(env, mv)) MV.mvCC
                 val allArgs = mvArgs @ llArgs
                 
             in
@@ -819,9 +768,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 
                 val mvs = ListPair.zipEq(
                             L.tabulate(MV.numMachineVals, fn i => i), 
-                            L.map (fn mv => lookupMV(env, mv)) MV.mvCC)
+                            L.map (fn mv => Util.lookupMV(env, mv)) MV.mvCC)
                             
-                val cc = L.map (fn (i, cv) => (i, lookupV(env, cv))) cc
+                val cc = L.map (fn (i, cv) => (i, Util.lookupV(env, cv))) cc
                 
                 val allRegs = mvs @ cc
                 val slotNums = L.tabulate(V.length LT.jwaCC, fn i => i)
@@ -850,7 +799,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                       | Used (var, t) => cast (Op.safeCast (LB.toTy var, t)) (var, t)
                     ) allAssign
                 
-                val llFun = lookupV(env, func)
+                val llFun = Util.lookupV(env, func)
             in
                 (llFun, allCvtdArgs)
             end
@@ -888,13 +837,13 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                                 predecessor but different values. *)
                                           
                                           (* almost do what markPredFrom does, just a bit diff *)
-                                          val realSuccB = lookupBB(env, falseLab)
+                                          val realSuccB = Util.lookupBB(env, falseLab)
                                           val dummyB = LB.copy realSuccB
                                           val dummyLab = LB.labelOf dummyB
                                           val dummyParams = LB.paramsOf dummyB
                                           
                                           (* no real need to update the env *)
-                                          (*val env = insertBB(env, dummyLab, dummyB)*)
+                                          (*val env = Util.insertBB(env, dummyLab, dummyB)*)
                                           
                                           val dummyArgs = matchCC(falseArgs, dummyParams)
                                           
@@ -922,7 +871,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     val (trueTarg, _) = markPred env trueJ
                     val (falseTarg, _) = markPred env falseJ*)
                     
-                    val llArgs = L.map (fn x => lookupV(env, x)) (CU.varsOf cond)
+                    val llArgs = L.map (fn x => Util.lookupV(env, x)) (CU.varsOf cond)
                     val cvtr = OU.fromCond b cond
                     
                     (* the i1 result of evaluating the condition *)
@@ -970,7 +919,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     
                     val llArms = L.map xlateArm arms
                     val (llDefault, _) = markPred env default
-                    val llCond = lookupV(env, cond)
+                    val llCond = Util.lookupV(env, cond)
                     
                in
                     (fn () => [LB.switch b llCond (llDefault, llArms)])
@@ -996,7 +945,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     else heapCheckHelper) env (SN_Const szb) nogc
 
                | (C.HeapCheckN {hck = C.HCK_Local, nogc, n, szb}) => let
-                    val n = lookupV(env, n)
+                    val n = Util.lookupV(env, n)
                     
                     (* see genAllocNCheck in alloc64-fn.sml. Kavon doesn't know why we add 4. *)
                     val nZxt = cast Op.ZExt (n, LT.i64)
@@ -1018,8 +967,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                | C.Return {args=vars,...} => let
                     val (mvAssign, varAssign) = determineRet vars
                     
-                    val vars = L.map (fn (i, v) => (i, lookupV(env, v))) varAssign
-                    val mvs = L.map (fn (i, mv) => (i, lookupMV(env, mv))) mvAssign
+                    val vars = L.map (fn (i, v) => (i, Util.lookupV(env, v))) varAssign
+                    val mvs = L.map (fn (i, mv) => (i, Util.lookupMV(env, mv))) mvAssign
                     val retVals = mvs @ vars
                     
                     fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
@@ -1084,7 +1033,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                         ) 
                                         liveAfter
                                         
-                            val lives_llvm = L.map (fn v => lookupV(env, v)) lives
+                            val lives_llvm = L.map (fn v => Util.lookupV(env, v)) lives
                             
                             val {ret, relos} = LLVMStatepoint.call { 
                                                   blk = b,
@@ -1112,20 +1061,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             (* update the machine vals in the env *)
                             val newMVs = L.map (extractElm ret MV.machineValTy) mvAssign
                             val env = ListPair.foldlEq
-                                        (fn ((_,mv), valu, acc) => updateMV(acc, mv, valu))
+                                        (fn ((_,mv), valu, acc) => Util.updateMV(acc, mv, valu))
                                         env
                                         (mvAssign, newMVs)
                             
                             (* bind the lhs values *)
                             val rhs = L.map (extractElm ret (LT.typeOf o CV.typeOf)) lhsAssign
                             val env = ListPair.foldlEq
-                                        (fn ((_,lhs), rhs, acc) => insertV(acc, lhs, rhs))
+                                        (fn ((_,lhs), rhs, acc) => Util.insertV(acc, lhs, rhs))
                                         env
                                         (lhsAssign, rhs)
                             
                             (* update the env with the relocated values *)
                             val env = ListPair.foldlEq
-                                        (fn (live, relo, acc) => insertV(acc, live, relo))
+                                        (fn (live, relo, acc) => Util.insertV(acc, live, relo))
                                         env
                                         (lives, relos)
                                         
@@ -1196,7 +1145,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
          for debugging, but for now we'll just update env mappings.
        *)
            L.foldr
-           (fn ((lhs, rhs), acc) => insertV(acc, lhs, lookupV(acc, rhs)))
+           (fn ((lhs, rhs), acc) => Util.insertV(acc, lhs, Util.lookupV(acc, rhs)))
            env
            (ListPair.zipEq (lefts, rights))
     
@@ -1208,7 +1157,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              
              (* this isn't implemented in old backend either *)
              | Literal.Bool b => raise Fail "unexpected Literal.Bool" 
-                  (* insertV(env, lhsVar, LB.fromC(LB.intC(LT.boolTy, if b then 1 else 0))) *)
+                  (* Util.insertV(env, lhsVar, LB.fromC(LB.intC(LT.boolTy, if b then 1 else 0))) *)
                   
              | Literal.Float f =>
                   LB.fromC(LB.floatC(LT.typeOf ty, f))
@@ -1253,31 +1202,31 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             val constTy = LB.toTy constInstr
             val boundConst = LB.cast b Op.BitCast (constInstr, constTy)
       in
-            insertV(env, lhsVar, boundConst)
+            Util.insertV(env, lhsVar, boundConst)
       end
         
         
       and genCast(env, (lhsVar, cfgTy, oldVar)) = let
-        val llv = lookupV(env, oldVar)
+        val llv = Util.lookupV(env, oldVar)
         val targetTy = LT.typeOf cfgTy
         
         val castPair = (LB.toTy llv, targetTy)
         val argPair = (llv, targetTy)
         val newLLVar = LB.cast b (Op.autoCast castPair) argPair
       in
-        insertV(env, lhsVar, newLLVar)
+        Util.insertV(env, lhsVar, newLLVar)
       end
       
       and genLabel(env, (lhsVar, rhsLabel)) = let
-        val llv = lookupL(env, rhsLabel)
+        val llv = Util.lookupL(env, rhsLabel)
       in
-        insertV(env, lhsVar, LB.fromV(llv))
+        Util.insertV(env, lhsVar, LB.fromV(llv))
       end
       
       
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let
-        val llv = lookupV(env, rhsVar)
+        val llv = Util.lookupV(env, rhsVar)
         val addr = (case Util.calcAddr b i llv
                     of SOME addr => addr
                      | NONE => ( debug ("SELECT " ^ Int.toString i) rhsVar llv ; raise Fail "unrecoverable error")
@@ -1303,13 +1252,13 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             end  
             
         in
-            insertV(env, lhsVar, loadedVal)
+            Util.insertV(env, lhsVar, loadedVal)
         end
 
       
       and genUpdate(env, (i, ptr, var)) = let      
-        val llVal = lookupV(env, var)
-        val llPtr = lookupV(env, ptr)
+        val llVal = Util.lookupV(env, var)
+        val llPtr = Util.lookupV(env, ptr)
         val SOME addr = Util.calcAddr b i llPtr
         
         (* we need to cast the pointer to the correct type before the store *)
@@ -1329,10 +1278,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       end
       
       and genAddrOf(env, (lhsVar, i, var)) = let
-        val llv = lookupV(env, var)
+        val llv = Util.lookupV(env, var)
       in
         (case Util.calcAddr b i llv
-            of SOME newLLVar => insertV(env, lhsVar, newLLVar)
+            of SOME newLLVar => Util.insertV(env, lhsVar, newLLVar)
              | NONE => ( debug ("AddrOf " ^ Int.toString i) var llv ; raise Fail "unrecoverable error" )
         (* esac *))
       end
@@ -1345,21 +1294,21 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
           
       
       and genAlloc(env, (lhsVar, ty, vars)) = let
-        val llVars = L.map (fn x => lookupV(env, x)) vars
+        val llVars = L.map (fn x => Util.lookupV(env, x)) vars
         
         val _ = if L.length llVars = 0 then raise Fail "empty alloc!" else ()
         
         val headerTag = Util.headerTag (L.map CV.typeOf vars)
         val {newAllocPtr, tupleAddr=allocatedTuple} = 
-            Util.doAlloc b (lookupMV(env, MV.MV_Alloc)) llVars headerTag
+            Util.doAlloc b (Util.lookupMV(env, MV.MV_Alloc)) llVars headerTag
         
         val lhsTy = LT.typeOf ty
         val maybeCasted = if LT.same(lhsTy, LB.toTy allocatedTuple) then allocatedTuple
                           else (* there was an implicit cast involving the any ty upon binding *)
                             cast Op.BitCast (allocatedTuple, lhsTy)
         
-        val env = insertV(env, lhsVar, maybeCasted)
-        val env = updateMV(env, MV.MV_Alloc, newAllocPtr)
+        val env = Util.insertV(env, lhsVar, maybeCasted)
+        val env = Util.updateMV(env, MV.MV_Alloc, newAllocPtr)
       in
         env
       end
@@ -1373,7 +1322,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val llFunc = LB.fromV promLab
         val paramTys = (LT.argsOf o LT.deref o LB.toTy) llFunc
         
-        val args = [lookupMV(env, MV.MV_Vproc), lookupV(env, var)]
+        val args = [Util.lookupMV(env, MV.MV_Vproc), Util.lookupV(env, var)]
         
         val llArgs = L.map (fn (ll, realTy) => let
                             val llty = LB.toTy ll
@@ -1384,16 +1333,16 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
 
         (* we must save and restore the allocation pointer using the vproc
            before & after the call to promote just like a c call that allocates. *)
-        val loc = { vproc = lookupMV(env, MV.MV_Vproc),
+        val loc = { vproc = Util.lookupMV(env, MV.MV_Vproc),
                     off   = Spec.ABI.allocPtr }
-        val alloc = lookupMV(env, MV.MV_Alloc)
+        val alloc = Util.lookupMV(env, MV.MV_Alloc)
         
         val _ = Util.saveAllocPtr b loc alloc
         
         (* do call *)
         val SOME llCall = LB.call b (llFunc, V.fromList llArgs)
             
-        val env = updateMV(env, MV.MV_Alloc, Util.restoreAllocPtr b loc)
+        val env = Util.updateMV(env, MV.MV_Alloc, Util.restoreAllocPtr b loc)
         
         
         (* cast result back *)
@@ -1401,12 +1350,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val llRes = cast (Op.equivCast (LB.toTy llCall, lhsTy)) (llCall, lhsTy)
         
         in
-            insertV(env, lhsVar, llRes)
+            Util.insertV(env, lhsVar, llRes)
         end
         
       
       and genPrim0(env, prim) = let
-        val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
+        val llArgs = L.map (fn x => Util.lookupV(env, x)) (PU.varsOf prim)
         val cvtr = OU.fromPrim b prim
       in
         (* lhs for Prim0 so dont update the env. NOTE we're assuming
@@ -1415,30 +1364,30 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       end
       
       and genPrim(env, (lhsVar, prim)) = let
-        val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
+        val llArgs = L.map (fn x => Util.lookupV(env, x)) (PU.varsOf prim)
         val cvtr = OU.fromPrim b prim
         val (result, env) = (cvtr llArgs, env) 
                             handle OU.ParrayPrim f => let
                                 val arg = { resTy = (LT.typeOf o CV.typeOf) lhsVar,
-                                            vproc = lookupMV(env, MV.MV_Vproc),
-                                            alloc = lookupMV(env, MV.MV_Alloc),
+                                            vproc = Util.lookupMV(env, MV.MV_Vproc),
+                                            alloc = Util.lookupMV(env, MV.MV_Alloc),
                                             allocOffset = Spec.ABI.allocPtr }
                                 val { result, alloc } = f arg
                             in
-                                (result, updateMV(env, MV.MV_Alloc, alloc))
+                                (result, Util.updateMV(env, MV.MV_Alloc, alloc))
                             end
       in
-        insertV(env, lhsVar, result)
+        Util.insertV(env, lhsVar, result)
       end
          
       
       (* A standard C call that returns. *)
       and genCCall(env, (results, func, args)) = let
-            val llFunc = lookupV(env, func)            
+            val llFunc = Util.lookupV(env, func)            
             val argTys = (LT.argsOf o LT.deref o LB.toTy) llFunc
             
             val llArgs = L.map (fn (a, realTy) => let
-                                val ll = lookupV(env, a)
+                                val ll = Util.lookupV(env, a)
                                 val llty = LB.toTy ll
                             in
                                 cast (Op.equivCast (llty, realTy)) (ll, realTy)
@@ -1454,9 +1403,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             val (llCall, env) = if not allocates then (doCall(), env)
                    else let (* we need to pass the allocation pointer to the runtime system,
                                     and we do so by writing it to the vproc. *)
-                            val loc = { vproc = lookupMV(env, MV.MV_Vproc),
+                            val loc = { vproc = Util.lookupMV(env, MV.MV_Vproc),
                                         off   = Spec.ABI.allocPtr }
-                            val alloc = lookupMV(env, MV.MV_Alloc)
+                            val alloc = Util.lookupMV(env, MV.MV_Alloc)
                             
                             val _ = Util.saveAllocPtr b loc alloc
                             
@@ -1464,7 +1413,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             
                             val newAlloc = Util.restoreAllocPtr b loc
                         in
-                            (llCall, updateMV(env, MV.MV_Alloc, newAlloc))
+                            (llCall, Util.updateMV(env, MV.MV_Alloc, newAlloc))
                         end
             
           in
@@ -1474,30 +1423,30 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                         val lhsTy = (LT.typeOf o CV.typeOf) res
                         val llRes = cast (Op.equivCast (LB.toTy llRes, lhsTy)) (llRes, lhsTy)
                     in
-                        insertV(env, res, llRes)
+                        Util.insertV(env, res, llRes)
                     end
                | _ => raise Fail "dont know how to handle this"
             (* esac *))
           end
           
       
-      and genHostVProc(env, lhsVar) = insertV(env, lhsVar, lookupMV(env, MV.MV_Vproc))
+      and genHostVProc(env, lhsVar) = Util.insertV(env, lhsVar, Util.lookupMV(env, MV.MV_Vproc))
       
       and genVPLoad(env, (lhsVar, offset, vpVar)) = let
         val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
-        val vpLL = lookupV(env, vpVar)
+        val vpLL = Util.lookupV(env, vpVar)
         
         (* now we do the offset & loading sequence *)
         val addr = Util.vpOffset b vpLL offset (LT.mkPtr(lhsTy))
         val final = mkVolatile Op.Load #[addr] 
       in
-        insertV(env, lhsVar, final)
+        Util.insertV(env, lhsVar, final)
       end
       
       and genVPStore(env, (offset, vpVar, arg)) = let
-        val argLL = lookupV(env, arg)
+        val argLL = Util.lookupV(env, arg)
         val argTy = LB.toTy argLL
-        val vpLL = lookupV(env, vpVar)    
+        val vpLL = Util.lookupV(env, vpVar)    
         
         (* offset and store seq *)
         val addr = Util.vpOffset b vpLL offset (LT.mkPtr(argTy))
@@ -1508,9 +1457,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       and genVPAddr(env, (lhsVar, offset, vpVar)) = let
         val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
-        val vpLL = lookupV(env, vpVar)
+        val vpLL = Util.lookupV(env, vpVar)
       in
-        insertV(env, lhsVar, Util.vpOffset b vpLL offset lhsTy)
+        Util.insertV(env, lhsVar, Util.vpOffset b vpLL offset lhsTy)
       end
 
     in
@@ -1602,7 +1551,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     | mkDecl (NotUsed ty) = LT.nameOf ty
   
   and mkCPSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
-              initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
+              initEnv as Util.ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
     val (startConv, allAssign, mvs) = assignToSlots(determineCC(entry, cfgArgs))
     
@@ -1617,7 +1566,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     (* string building code *)
     val linkage = linkageOf lab
     val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " " (* Only available in Kavon's modified version of LLVM. *)
-    val llName = LV.toString(lookupL(initEnv, lab))
+    val llName = LV.toString(Util.lookupL(initEnv, lab))
     val decl = [comment, "define ", linkage, ccStr,
                 "void ", llName, "(", (stringify  allAssign), ") ",
                 Util.stdAttrs(Util.MantiFun), " {\n"]
@@ -1627,7 +1576,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     (* now we setup the environment, we need to make fresh vars for the reg types,
        and map the original parameters to the reg types when we call mk bbelow *)
     
-    val body = mkBasicBlocks (ENV{labs=inherited_labs,
+    val body = mkBasicBlocks (Util.ENV{labs=inherited_labs,
                                   vars=inherited_vars,
                                   blks=inherited_blks,
                                   mvs=mvs},
@@ -1641,7 +1590,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   
   and mkDSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
                 ret,
-              initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
+              initEnv as Util.ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
     val (startConv, allAssign, mvs) = assignToSlots(determineCC(entry, cfgArgs))
     
@@ -1666,7 +1615,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     (* string building code *)
     val linkage = linkageOf lab
     val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " "  (* TODO it's likely that we need a direct-style Manticore CC in LLVM *)
-    val llName = LV.toString(lookupL(initEnv, lab))
+    val llName = LV.toString(Util.lookupL(initEnv, lab))
     val decl = ["define ", linkage, ccStr,
                 retTyStr, " ", llName, "(", (stringify allAssign), ") ",
                 attrs, " ", stackKind, " gc \"statepoint-example\" {\n"]
@@ -1676,7 +1625,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     (* now we setup the environment, we need to make fresh vars for the reg types,
        and map the original parameters to the reg types when we call mk bbelow *)
     
-    val body = mkBasicBlocks (ENV{labs=inherited_labs,
+    val body = mkBasicBlocks (Util.ENV{labs=inherited_labs,
                                   vars=inherited_vars,
                                   blks=inherited_blks,
                                   mvs=mvs},
@@ -1824,18 +1773,18 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   (* manticore functions *)
   val initEnv = L.foldl 
     (fn (C.FUNC { lab, ...}, acc) =>
-        insertL(acc, lab, LV.convertLabel lab)) emptyEnv module_code
+        Util.insertL(acc, lab, LV.convertLabel lab)) Util.emptyEnv module_code
         
   (* C external functions *)
   val initEnv = L.foldl 
     (fn ((_, old, new), acc) =>
-        insertL(acc, old, new)) initEnv convertedExterns
+        Util.insertL(acc, old, new)) initEnv convertedExterns
 
 
   (* we need the name of the main function in the module in order to generate an alias
      for it called maintEntry so the C runtime knows what the main fn is. *)
   val (C.FUNC { lab = mainLab, ...})::_ = module_code
-  val mainFn = lookupL(initEnv, mainLab)
+  val mainFn = Util.lookupL(initEnv, mainLab)
 
   (* process the whole module, generating a string for each function and populating the type
      and string literal caches *)
