@@ -16,6 +16,7 @@ structure Translate : sig
     structure P = Prim
     structure BExp = S.CoreBOM.Exp
     structure BSExp = S.CoreBOM.SimpleExp
+    structure E = Env
 
   (***** define basic types and values for program translation *****)
 
@@ -91,17 +92,17 @@ structure Translate : sig
 	    (ty, retTy', argTys', attrs')
 	  end
 
-    fun transCoreBOMTyc (env) (coreBomTyc: S.CoreBOM.TyCon.t): BOMTy.tyc = let
-	  val (mlTyc, condefs) = lookupMLTyc (env, coreBomTyc)
-	  val bomTyc = lookupTyc(env, mlTyc)
+    fun transCoreBOMTyc env (coreBomTyc: S.CoreBOM.TyCon.t): BOMTy.tyc = let
+	  val (mlTyc, condefs) = E.lookupMLTyc (env, coreBomTyc)
+	  val bomTyc = E.lookupTyc(env, mlTyc)
 	  in
 	    bomTyc
 	  end
 
-    fun transCoreBOMTy env coreBomTy: (env * BOMTy.t) = let
+    fun transCoreBOMTy env coreBomTy: (E.env * BOMTy.t) = let
       (*val _ = print ("transCoreBOMTy " ^ Layout.toString (S.CoreBOM.BOMType.layout coreBomTy) ^ "\n")*)
       fun transCoreBOMTy' ty = #2 (transCoreBOMTy env ty)
-      fun transCoreBOMField env field = 
+      fun transCoreBOMField env field =
         (S.CoreBOM.Field.getMutable field,
         transCoreBOMTy' (S.CoreBOM.Field.getType field))
       val bomTy =
@@ -119,7 +120,7 @@ structure Translate : sig
              List.map transCoreBOMTy' cont,
              List.map transCoreBOMTy' rng)
            | S.CoreBOM.BOMType.BigNum => raise Fail "TODO(wings): BOMTy.T_Bignum"
-           | S.CoreBOM.BOMType.Exn => exnTy(env)
+           | S.CoreBOM.BOMType.Exn => E.exnTy env
            | S.CoreBOM.BOMType.Any => BOMTy.T_Any
            | S.CoreBOM.BOMType.VProc => BOMTy.vprocTy
            | S.CoreBOM.BOMType.Array t => BOMTy.arrayTy (transCoreBOMTy' t)
@@ -151,10 +152,10 @@ structure Translate : sig
       end
 
     fun newVarBOMVal (env, bomVal) = let
-      val (env', ty) = transCoreBOMTy env (S.CoreBOM.Val.typeOf bomVal)
-      in
-        newVarBOMValWithTy (env', bomVal, ty)
-      end
+	  val (env', ty) = transCoreBOMTy env (S.CoreBOM.Val.typeOf bomVal)
+	  in
+	    E.newVarBOMValWithTy (env', bomVal, ty)
+	  end
 
     fun newVarBOMVals (e, bomVals) = foldl
       (fn (bomVal, (vars, env)) => let
@@ -187,9 +188,9 @@ structure Translate : sig
              val (env, argTys) = List.foldl convertTy (env, []) argVals
              val (paramVars, env) = newVarBOMVals (env, argVals)
              val contTy = BOMTy.T_Cont (argTys)
-             val (contVar, env) = newVarBOMValWithTy (env, contVal, contTy)
+             val (contVar, env) = E.newVarBOMValWithTy (env, contVal, contTy)
              val lambda = BOM.mkLambda {f=contVar, params=paramVars,
-               exh=[handlerOf env], body=transBOMExp (body, env)}
+               exh=[E.handlerOf env], body=transBOMExp (body, env)}
              in
                BOM.mkCont (lambda, transBOMExp (e', env))
              end
@@ -209,19 +210,19 @@ structure Translate : sig
              end)
          | BExp.Typecase (typaram, tycaserules) => BOM.mkTypecase (raise Fail "TODO(wings): bomexp.typecase")
          | BExp.Apply (func, conts, args) => let
-             val Var func = lookupBOMVal (env, func)
+             val E.Var func = E.lookupBOMVal (env, func)
              in transBOMSimpleExps (conts, env, fn conts_vars =>
                  transBOMSimpleExps (args, env, fn args_vars =>
                      BOM.mkApply (func, conts_vars, args_vars)))
              end
          | BExp.Throw (exncon, ses) => let
-           val Var exncon = (print "lookup exncon\n"; lookupBOMVal (env, exncon))
+           val E.Var exncon = (print "lookup exncon\n"; E.lookupBOMVal (env, exncon))
            fun k args = BOM.mkThrow (exncon, args)
            in
              transBOMSimpleExps(ses, env, k)
            end
          | BExp.Return ses =>
-           transBOMSimpleExps (ses, env, BOM.mkRet)
+             transBOMSimpleExps (ses, env, BOM.mkRet)
       end
 
     and transBOMRhs (rhs, env): BOM.exp = case rhs
@@ -427,94 +428,90 @@ structure Translate : sig
       end
 
     and transBOMCond (cond, env, k: BOM.cond -> BOM.exp): BOM.exp = let
-      fun extractSExps cond = case cond
-        of Prim.isBoxed (s1) => [s1]
-         | Prim.isUnboxed (s1) => [s1]
-         | Prim.I32isSet (s1) => [s1]
-         | Prim.I32TAS (s1) => [s1]
-
-         | Prim.Equal (s1, s2) => [s1, s2]
-         | Prim.NotEqual (s1, s2) => [s1, s2]
-         | Prim.EnumEq (s1, s2) => [s1, s2]
-         | Prim.EnumNEq (s1, s2) => [s1, s2]
-         | Prim.I32Eq (s1, s2) => [s1, s2]
-         | Prim.I32NEq (s1, s2) => [s1, s2]
-         | Prim.I32Lt (s1, s2) => [s1, s2]
-         | Prim.I32Lte (s1, s2) => [s1, s2]
-         | Prim.I32Gt (s1, s2) => [s1, s2]
-         | Prim.I32Gte (s1, s2) => [s1, s2]
-         | Prim.U32Lt (s1, s2) => [s1, s2]
-         | Prim.I64Eq (s1, s2) => [s1, s2]
-         | Prim.I64NEq (s1, s2) => [s1, s2]
-         | Prim.I64Lt (s1, s2) => [s1, s2]
-         | Prim.I64Lte (s1, s2) => [s1, s2]
-         | Prim.I64Gt (s1, s2) => [s1, s2]
-         | Prim.I64Gte (s1, s2) => [s1, s2]
-         | Prim.U64Lt (s1, s2) => [s1, s2]
-         | Prim.F32Eq (s1, s2) => [s1, s2]
-         | Prim.F32NEq (s1, s2) => [s1, s2]
-         | Prim.F32Lt (s1, s2) => [s1, s2]
-         | Prim.F32Lte (s1, s2) => [s1, s2]
-         | Prim.F32Gt (s1, s2) => [s1, s2]
-         | Prim.F32Gte (s1, s2) => [s1, s2]
-         | Prim.F64Eq (s1, s2) => [s1, s2]
-         | Prim.F64NEq (s1, s2) => [s1, s2]
-         | Prim.F64Lt (s1, s2) => [s1, s2]
-         | Prim.F64Lte (s1, s2) => [s1, s2]
-         | Prim.F64Gt (s1, s2) => [s1, s2]
-         | Prim.F64Gte (s1, s2) => [s1, s2]
-         | Prim.AdrEq (s1, s2) => [s1, s2]
-         | Prim.AdrNEq (s1, s2) => [s1, s2]
-
-         | Prim.BCAS (s1, s2, s3) => [s1, s2, s3]
-
-       fun applyVars cond vars = case (cond, vars)
-         of (Prim.isBoxed _, [s1]) => Prim.isBoxed (s1)
-          | (Prim.isUnboxed _, [s1]) => Prim.isUnboxed (s1)
-          | (Prim.I32isSet _, [s1]) => Prim.I32isSet (s1)
-          | (Prim.I32TAS _, [s1]) => Prim.I32TAS (s1)
-
-          | (Prim.Equal _, [s1, s2]) => Prim.Equal (s1, s2)
-          | (Prim.NotEqual _, [s1, s2]) => Prim.NotEqual (s1, s2)
-          | (Prim.EnumEq _, [s1, s2]) => Prim.EnumEq (s1, s2)
-          | (Prim.EnumNEq _, [s1, s2]) => Prim.EnumNEq (s1, s2)
-          | (Prim.I32Eq _, [s1, s2]) => Prim.I32Eq (s1, s2)
-          | (Prim.I32NEq _, [s1, s2]) => Prim.I32NEq (s1, s2)
-          | (Prim.I32Lt _, [s1, s2]) => Prim.I32Lt (s1, s2)
-          | (Prim.I32Lte _, [s1, s2]) => Prim.I32Lte (s1, s2)
-          | (Prim.I32Gt _, [s1, s2]) => Prim.I32Gt (s1, s2)
-          | (Prim.I32Gte _, [s1, s2]) => Prim.I32Gte (s1, s2)
-          | (Prim.U32Lt _, [s1, s2]) => Prim.U32Lt (s1, s2)
-          | (Prim.I64Eq _, [s1, s2]) => Prim.I64Eq (s1, s2)
-          | (Prim.I64NEq _, [s1, s2]) => Prim.I64NEq (s1, s2)
-          | (Prim.I64Lt _, [s1, s2]) => Prim.I64Lt (s1, s2)
-          | (Prim.I64Lte _, [s1, s2]) => Prim.I64Lte (s1, s2)
-          | (Prim.I64Gt _, [s1, s2]) => Prim.I64Gt (s1, s2)
-          | (Prim.I64Gte _, [s1, s2]) => Prim.I64Gte (s1, s2)
-          | (Prim.U64Lt _, [s1, s2]) => Prim.U64Lt (s1, s2)
-          | (Prim.F32Eq _, [s1, s2]) => Prim.F32Eq (s1, s2)
-          | (Prim.F32NEq _, [s1, s2]) => Prim.F32NEq (s1, s2)
-          | (Prim.F32Lt _, [s1, s2]) => Prim.F32Lt (s1, s2)
-          | (Prim.F32Lte _, [s1, s2]) => Prim.F32Lte (s1, s2)
-          | (Prim.F32Gt _, [s1, s2]) => Prim.F32Gt (s1, s2)
-          | (Prim.F32Gte _, [s1, s2]) => Prim.F32Gte (s1, s2)
-          | (Prim.F64Eq _, [s1, s2]) => Prim.F64Eq (s1, s2)
-          | (Prim.F64NEq _, [s1, s2]) => Prim.F64NEq (s1, s2)
-          | (Prim.F64Lt _, [s1, s2]) => Prim.F64Lt (s1, s2)
-          | (Prim.F64Lte _, [s1, s2]) => Prim.F64Lte (s1, s2)
-          | (Prim.F64Gt _, [s1, s2]) => Prim.F64Gt (s1, s2)
-          | (Prim.F64Gte _, [s1, s2]) => Prim.F64Gte (s1, s2)
-          | (Prim.AdrEq _, [s1, s2]) => Prim.AdrEq (s1, s2)
-          | (Prim.AdrNEq _, [s1, s2]) => Prim.AdrNEq (s1, s2)
-
-          | (Prim.BCAS _, [s1, s2, s3]) => Prim.BCAS (s1, s2, s3)
-          | (_, _) => raise Fail "internal error: cond applied to wrong number of arguments"
-
-        val ses = extractSExps cond
-        val cond = transBOMSimpleExps (ses, env, fn vars => k (applyVars cond vars))
-      in
-        cond
-      end
+	  fun extractSExps cond = (case cond
+		 of Prim.isBoxed (s1) => [s1]
+		  | Prim.isUnboxed (s1) => [s1]
+		  | Prim.I32isSet (s1) => [s1]
+		  | Prim.I32TAS (s1) => [s1]
+		  | Prim.Equal (s1, s2) => [s1, s2]
+		  | Prim.NotEqual (s1, s2) => [s1, s2]
+		  | Prim.EnumEq (s1, s2) => [s1, s2]
+		  | Prim.EnumNEq (s1, s2) => [s1, s2]
+		  | Prim.I32Eq (s1, s2) => [s1, s2]
+		  | Prim.I32NEq (s1, s2) => [s1, s2]
+		  | Prim.I32Lt (s1, s2) => [s1, s2]
+		  | Prim.I32Lte (s1, s2) => [s1, s2]
+		  | Prim.I32Gt (s1, s2) => [s1, s2]
+		  | Prim.I32Gte (s1, s2) => [s1, s2]
+		  | Prim.U32Lt (s1, s2) => [s1, s2]
+		  | Prim.I64Eq (s1, s2) => [s1, s2]
+		  | Prim.I64NEq (s1, s2) => [s1, s2]
+		  | Prim.I64Lt (s1, s2) => [s1, s2]
+		  | Prim.I64Lte (s1, s2) => [s1, s2]
+		  | Prim.I64Gt (s1, s2) => [s1, s2]
+		  | Prim.I64Gte (s1, s2) => [s1, s2]
+		  | Prim.U64Lt (s1, s2) => [s1, s2]
+		  | Prim.F32Eq (s1, s2) => [s1, s2]
+		  | Prim.F32NEq (s1, s2) => [s1, s2]
+		  | Prim.F32Lt (s1, s2) => [s1, s2]
+		  | Prim.F32Lte (s1, s2) => [s1, s2]
+		  | Prim.F32Gt (s1, s2) => [s1, s2]
+		  | Prim.F32Gte (s1, s2) => [s1, s2]
+		  | Prim.F64Eq (s1, s2) => [s1, s2]
+		  | Prim.F64NEq (s1, s2) => [s1, s2]
+		  | Prim.F64Lt (s1, s2) => [s1, s2]
+		  | Prim.F64Lte (s1, s2) => [s1, s2]
+		  | Prim.F64Gt (s1, s2) => [s1, s2]
+		  | Prim.F64Gte (s1, s2) => [s1, s2]
+		  | Prim.AdrEq (s1, s2) => [s1, s2]
+		  | Prim.AdrNEq (s1, s2) => [s1, s2]
+		  | Prim.BCAS (s1, s2, s3) => [s1, s2, s3]
+		(* end case *))
+	   fun applyVars cond vars = (case (cond, vars)
+		 of (Prim.isBoxed _, [s1]) => Prim.isBoxed (s1)
+		  | (Prim.isUnboxed _, [s1]) => Prim.isUnboxed (s1)
+		  | (Prim.I32isSet _, [s1]) => Prim.I32isSet (s1)
+		  | (Prim.I32TAS _, [s1]) => Prim.I32TAS (s1)
+		  | (Prim.Equal _, [s1, s2]) => Prim.Equal (s1, s2)
+		  | (Prim.NotEqual _, [s1, s2]) => Prim.NotEqual (s1, s2)
+		  | (Prim.EnumEq _, [s1, s2]) => Prim.EnumEq (s1, s2)
+		  | (Prim.EnumNEq _, [s1, s2]) => Prim.EnumNEq (s1, s2)
+		  | (Prim.I32Eq _, [s1, s2]) => Prim.I32Eq (s1, s2)
+		  | (Prim.I32NEq _, [s1, s2]) => Prim.I32NEq (s1, s2)
+		  | (Prim.I32Lt _, [s1, s2]) => Prim.I32Lt (s1, s2)
+		  | (Prim.I32Lte _, [s1, s2]) => Prim.I32Lte (s1, s2)
+		  | (Prim.I32Gt _, [s1, s2]) => Prim.I32Gt (s1, s2)
+		  | (Prim.I32Gte _, [s1, s2]) => Prim.I32Gte (s1, s2)
+		  | (Prim.U32Lt _, [s1, s2]) => Prim.U32Lt (s1, s2)
+		  | (Prim.I64Eq _, [s1, s2]) => Prim.I64Eq (s1, s2)
+		  | (Prim.I64NEq _, [s1, s2]) => Prim.I64NEq (s1, s2)
+		  | (Prim.I64Lt _, [s1, s2]) => Prim.I64Lt (s1, s2)
+		  | (Prim.I64Lte _, [s1, s2]) => Prim.I64Lte (s1, s2)
+		  | (Prim.I64Gt _, [s1, s2]) => Prim.I64Gt (s1, s2)
+		  | (Prim.I64Gte _, [s1, s2]) => Prim.I64Gte (s1, s2)
+		  | (Prim.U64Lt _, [s1, s2]) => Prim.U64Lt (s1, s2)
+		  | (Prim.F32Eq _, [s1, s2]) => Prim.F32Eq (s1, s2)
+		  | (Prim.F32NEq _, [s1, s2]) => Prim.F32NEq (s1, s2)
+		  | (Prim.F32Lt _, [s1, s2]) => Prim.F32Lt (s1, s2)
+		  | (Prim.F32Lte _, [s1, s2]) => Prim.F32Lte (s1, s2)
+		  | (Prim.F32Gt _, [s1, s2]) => Prim.F32Gt (s1, s2)
+		  | (Prim.F32Gte _, [s1, s2]) => Prim.F32Gte (s1, s2)
+		  | (Prim.F64Eq _, [s1, s2]) => Prim.F64Eq (s1, s2)
+		  | (Prim.F64NEq _, [s1, s2]) => Prim.F64NEq (s1, s2)
+		  | (Prim.F64Lt _, [s1, s2]) => Prim.F64Lt (s1, s2)
+		  | (Prim.F64Lte _, [s1, s2]) => Prim.F64Lte (s1, s2)
+		  | (Prim.F64Gt _, [s1, s2]) => Prim.F64Gt (s1, s2)
+		  | (Prim.F64Gte _, [s1, s2]) => Prim.F64Gte (s1, s2)
+		  | (Prim.AdrEq _, [s1, s2]) => Prim.AdrEq (s1, s2)
+		  | (Prim.AdrNEq _, [s1, s2]) => Prim.AdrNEq (s1, s2)
+		  | (Prim.BCAS _, [s1, s2, s3]) => Prim.BCAS (s1, s2, s3)
+		  | (_, _) => raise Fail "internal error: cond applied to wrong number of arguments"
+		(* end case *))
+	    val ses = extractSExps cond
+	    val cond = transBOMSimpleExps (ses, env, fn vars => k (applyVars cond vars))
+	    in
+	      cond
+	    end
 
     (* TODO(wings): factor out varAccum argument *)
     (* TODO(wings): does env need to be threaded through here? *)
@@ -576,10 +573,11 @@ structure Translate : sig
                  transBOMSimpleExp (se', env, k')
                end
            | BSExp.AllocId (bomVal, ses') => let
-               val dcon = case lookupBOMVal (env, bomVal)
-                   of Lambda x => raise Fail "lambda found in dcon context"
-                    | Var v => raise Fail "variable found in dcon context"
-                    | DCon con => con
+               val dcon = (case E.lookupBOMVal (env, bomVal)
+		      of E.Lambda x => raise Fail "lambda found in dcon context"
+		       | E.Var v => raise Fail "variable found in dcon context"
+		       | E.DCon con => con
+		    (* end case *))
                val (newVar, env) = newVarBOMVal (env, bomVal)
                val k' = fn vars_args =>
                  BOM.mkStmt ([newVar], BOM.E_DCon (dcon, vars_args), k [newVar])
@@ -634,18 +632,18 @@ structure Translate : sig
                  BOM.mkStmt (newVar, BOM.E_Const const, k newVar)
                end
            | BSExp.Val bomVal => let
-               val _ = print "s.exp.val bomval\n"
-               in
-                 case lookupBOMVal (env, bomVal)
-                   of Lambda x => raise Fail "lambda"
-                    | Var v => k [v]
+		val _ = print "s.exp.val bomval\n"
+		in
+                  case E.lookupBOMVal (env, bomVal)
+                   of E.Lambda x => raise Fail "lambda"
+                    | E.Var v => k [v]
                     (* TODO(wings): for non-nullary dcons, emit an FB here *)
-                    | DCon con => let
+                    | E.DCon con => let
                         val newVar = [BV.new ("dcon", ty)]
                         in
                           BOM.mkStmt (newVar, BOM.E_DCon(con, []), k newVar)
                         end
-               end
+                end
      end
 
     and transBOMFuns (fundefs, env) = let
@@ -661,7 +659,7 @@ structure Translate : sig
         val (env, contTys) = List.foldl convertTy (env, []) contVals
         val retTys = List.map (fn ty => #2 ((transCoreBOMTy env) ty)) retTys
         val funcTy = BOMTy.T_Fun (domTys, contTys, retTys)
-        val (var', env) = newVarBOMValWithTy (env, func, funcTy)
+        val (var', env) = E.newVarBOMValWithTy (env, func, funcTy)
         in
           (env, (fundef, var')::fns)
         end) (env, []) fundefs
@@ -694,7 +692,7 @@ structure Translate : sig
           case rule
             of S.CoreBOM.CaseRule.LongRule (conVal, argVals, e) => let
                  val (argVars, env) = newVarBOMVals (env, argVals)
-                 val DCon con = lookupBOMVal (env, conVal)
+                 val E.DCon con = E.lookupBOMVal (env, conVal)
                  in
                    (BOM.P_DCon(con, argVars), transBOMExp(e, env))::rest
                  end
@@ -733,7 +731,7 @@ structure Translate : sig
                         then let (* function type *)
                             val [domTy, rngTy] = args'
                             in
-                              BOMTy.T_Fun([domTy], [exhTy (env)], [rngTy])
+                              BOMTy.T_Fun([domTy], [E.exhTy env], [rngTy])
                             end
                         else if S.Tycon.equals(tyc, S.Tycon.array)
                           then BOMTy.arrayTy (singleArg ())
@@ -742,7 +740,7 @@ structure Translate : sig
                         else if S.Tycon.equals(tyc, S.Tycon.cpointer)
                           then BOMTy.addrTy (singleArg ())
                         else if S.Tycon.equals(tyc, S.Tycon.exn)
-                          then (noArgs (); exnTy (env))
+                          then (noArgs (); E.exnTy env)
                         else if S.Tycon.equals(tyc, S.Tycon.intInf)
                           then (noArgs (); raise Fail "TODO(wings): BOMTy.T_Bignum")
                         else if S.Tycon.equals(tyc, S.Tycon.list)
@@ -779,16 +777,17 @@ structure Translate : sig
                             else if S.Tycon.equals(tyc, uintTyc S.WordSize.word16) then BOMTy.T_Raw RawTypes.UInt16
                             else if S.Tycon.equals(tyc, uintTyc S.WordSize.word32) then BOMTy.T_Raw RawTypes.UInt32
                             else if S.Tycon.equals(tyc, uintTyc S.WordSize.word64) then BOMTy.T_Raw RawTypes.UInt64
-                            else (print ("looking up tyc " ^ S.Tycon.toString tyc ^ "\n"); BOMTy.T_Con(lookupTyc(env, tyc), args'))
+                            else (print ("looking up tyc " ^ S.Tycon.toString tyc ^ "\n"); BOMTy.T_Con(E.lookupTyc(env, tyc), args'))
                           end
                     in
-                      (writeTy (env', ty, ty'), ty')
+                      (E.bindTy (env', ty, ty'), ty')
                     end
               (* end case *))
-          in (case peekTy (env, ty)
-                 of SOME ty' => (env, ty')
-                  | NONE => tr (env, S.Type.dest ty)
-              (* end case *))
+          in
+	    case E.peekTy (env, ty)
+	     of SOME ty' => (env, ty')
+	      | NONE => tr (env, S.Type.dest ty)
+	    (* end case *)
           end
 
      (*XXX(wings): should we set kind? one of:
@@ -803,16 +802,16 @@ structure Translate : sig
     fun newVar (env, x, ty) = let
       val (env', ty') = transTy (env, ty)
       val x' = BV.new (S.Var.toString x ^ ".", ty')
-      val env' = writeVar (env, x, x') (* construct explicit map from x to x' so x can be used to look up x' and x' can be used to look up the type *)
+      val env' = E.bindVar (env, x, x') (* construct explicit map from x to x' so x can be used to look up x' and x' can be used to look up the type *)
       in
-        (x', writeVarTy (env', x', ty'))
+        (x', E.bindVarTy (env', x', ty'))
       end
 
     fun transSExp (e, env) : BOM.exp = let
           val {decs, result} = S.Exp.dest e
           fun transDecs (env, decs, result as S.VarExp.T{targs, var}) =
              (case decs of
-                [] => (*lookupBind(env,*) BOM.mkRet [lookupVar(env, var)] (*)*)
+                [] => (*lookupBind(env,*) BOM.mkRet [E.lookupVar(env, var)] (*)*)
                 | d::rest => transDec (env, d, fn (env) => ((*print "k called\n";*) transDecs(env, rest, result)))
              (* end case *))
           in
@@ -821,7 +820,7 @@ structure Translate : sig
 
     (* translate a declaration and use a modified environment to call the
     continuation k *)
-    and transDec (env, d, k : env -> BOM.exp) = (case d
+    and transDec (env, d, k : E.env -> BOM.exp) = (case d
            of S.Dec.Exception{arg, con} => raise Fail "Exception declaration found in SXML"
             | S.Dec.Fun{decs, ...} => let
                 (*val _ = print "transDec Fun\n"*)
@@ -845,9 +844,9 @@ structure Translate : sig
                 fun addDef ((bomTyc, S.PrimConDef.T(con, maybeArgMLTy, mlTy, bomVal)), env) = let
                   val _ = print ("\taddDef looking up " ^ S.Con.toString con ^ " in " ^ BOMTyc.nameOf bomTyc ^ "\n")
                   (* fails if unable to find dcon *)
-                  val dcon = lookupDCon(env, con)
+                  val dcon = E.lookupDCon(env, con)
                   in
-                    writeBOMVal (env, bomVal, DCon dcon)
+                    E.bindBOMVal (env, bomVal, E.DCon dcon)
                   end
                 fun addDefs (env, bomTyc, mlcondefs) = let
                   in
@@ -859,13 +858,13 @@ structure Translate : sig
                 created early during AST processing which can be used for this,
                 and imports carry along the pairing of ML datatype and BOM type.
                 *)
-                val (env, k) = Vector.foldl (fn (bomdec, (env, k: env -> BOM.exp)) => (case bomdec
+                val (env, k) = Vector.foldl (fn (bomdec, (env, k: E.env -> BOM.exp)) => (case bomdec
                    of S.CoreBOM.Definition.Datatype dtdefs => (List.foldl (fn ((coreBomTyc, (mlTyc, mlcondefs)), env) => let
                          val _ = print ("datatype adding bom/" ^ Layout.toString (S.CoreBOM.TyCon.layout coreBomTyc) ^ " = ml/" ^ S.Tycon.toString mlTyc ^ "\n")
                          (* add tycon to env *)
-                         val env = writeMLTyc (env, coreBomTyc, (mlTyc, mlcondefs))
+                         val env = E.bindMLTyc (env, coreBomTyc, (mlTyc, mlcondefs))
                          (* lookup bom tyc created in transDatatypes *)
-                         val bomTyc = lookupTyc(env, mlTyc)
+                         val bomTyc = E.lookupTyc(env, mlTyc)
                          (* add dcons to BOMVal env *)
                          val env = addDefs (env, bomTyc, mlcondefs)
                          in
@@ -882,16 +881,20 @@ structure Translate : sig
                        val (cfun, env') = transCFun (S.CoreBOM.CProto.T (cfun, attrs), env)
                        (* references to cfuns elsewhere in the program are via BOMVal,
                        so put a mapping from it to the cfun's var into the env *)
-                       val env' = writeBOMVal (env', bomVal, Var (CFunctions.varOf cfun))
+                       val env' = E.bindBOMVal (env', bomVal, E.Var(CFunctions.varOf cfun))
                        in
                          progExterns := cfun :: !progExterns; (env', k)
                      end
                     | S.CoreBOM.Definition.Import (coreBomTyc, (mlTyc, mlcondefs)) => let
-                       val _ = print ("import adding bom/" ^ Layout.toString (S.CoreBOM.TyCon.layout coreBomTyc) ^ " = ml/" ^ S.Tycon.toString mlTyc ^ "\n")
+                       val _ = print (concat [
+			      "import adding bom/",
+			      Layout.toString (S.CoreBOM.TyCon.layout coreBomTyc),
+			      " = ml/", S.Tycon.toString mlTyc, "\n"
+			    ])
                        (* add tycon to env *)
-                       val env = writeMLTyc (env, coreBomTyc, (mlTyc, mlcondefs))
+                       val env = E.bindMLTyc (env, coreBomTyc, (mlTyc, mlcondefs))
                        (* lookup bom tyc created in transDatatypes *)
-                       val bomTyc = lookupTyc(env, mlTyc)
+                       val bomTyc = E.lookupTyc(env, mlTyc)
                        (* add dcons to BOMVal env *)
                        val env = addDefs (env, bomTyc, mlcondefs)
                        in
@@ -900,7 +903,7 @@ structure Translate : sig
                     | S.CoreBOM.Definition.ImportExn (_, mlcondefs) => let
                        val _ = print ("import adding exn\n")
                        (* lookup bom tyc created in transDatatypes *)
-                       val bomTyc = exnTyc(env)
+                       val bomTyc = E.exnTyc env
                        (* add dcons to BOMVal env *)
                        val env = addDefs (env, bomTyc, mlcondefs)
                        in
@@ -915,16 +918,15 @@ structure Translate : sig
 
     (* translate a C function, put it in the global list of externs, return it and
     a modified environment in which it's bound *)
-    and transCFun (S.CoreBOM.CProto.T (cfun as S.CoreBOM.CFunction.T {convention, kind, target, prototype, ...}, attrs), env) = let
+    and transCFun (S.CoreBOM.CProto.T(cfun as S.CoreBOM.CFunction.T {convention, kind, target, prototype, ...}, attrs), env) = let
           val name = (case target
              of S.CoreBOM.CFunction.Target.Direct name => name
               | S.CoreBOM.CFunction.Target.Indirect => raise Fail "indirect function encountered"
             (* end case *))
-
           (* build the appropriate BOM type and make a variable with it to place in the env *)
           val (ty, retTy', argTys', attrs') = transCFunTy env (S.CoreBOM.CProto.T(cfun, attrs))
           val var = BV.new ("extern " ^ name, ty)
-          val env' = writeVarTy (env, var, ty) (* construct explicit map from x to x' so x can be used to look up x' and x' can be used to look up the type *)
+          val env' = E.bindVarTy (env, var, ty) (* construct explicit map from x to x' so x can be used to look up x' and x' can be used to look up the type *)
           val cfun = BOM.mkCFun { var = var, name = name, retTy = retTy',
                                   argTys = argTys', varArg = false, attrs = attrs' }
           in
@@ -934,7 +936,7 @@ structure Translate : sig
     and transLambda env (f, lambda) = let
           val {arg, argType, body, ...} = S.Lambda.dest lambda
           val (param, env) = newVar(env, arg, argType)
-          val (exh, env) = newHandler env
+          val (exh, env) = E.newHandler env
           in
             BOM.mkLambda{f = f, params = [param], exh = [exh], body = transSExp(body, env)}
           end
@@ -957,11 +959,11 @@ structure Translate : sig
         end
 
     (* XXX(wings): do targs need to be handled? *)
-    and transDCon (env, con, targs): BOMDataCon.t = lookupDCon(env, con)
+    and transDCon (env, con, targs): BOMDataCon.t = E.lookupDCon(env, con)
 
   (* translate a PrimExp.t term.  These occur as the rhs of the a MonoVal
   binding; the translated lhs variable is passed as an argument. *)
-    and transPrimExp (env, lhs, sxmlty, e, k : env -> BOM.exp) : BOM.exp = let
+    and transPrimExp (env, lhs, sxmlty, e, k : E.env -> BOM.exp) : BOM.exp = let
           fun mkLet e' = BOM.mkLet([lhs], e', k env)
           fun mkStmt rhs = BOM.mkStmt([lhs], rhs, k env)
           val (env, _) = transTy(env, sxmlty)
@@ -971,7 +973,7 @@ structure Translate : sig
                   val func' = transVarExp(env, func)
                   val arg' = transVarExp(env, arg)
                   in
-                    mkLet(BOM.mkApply(func', [arg'], [handlerOf env]))
+                    mkLet(BOM.mkApply(func', [arg'], [E.handlerOf env]))
                   end
               | S.PrimExp.Case{test, cases, default} => let
                   val test' = transVarExp(env, test)
@@ -987,7 +989,7 @@ structure Translate : sig
                                   val dcon=transDCon (env, con, targs)
                                   val vars=(case arg
                                     of NONE => []
-                                     | SOME (var, sxmlty) => [lookupVar(env, var)] (* XXX(wings): unpack tuple into multiple vars? *)
+                                     | SOME (var, sxmlty) => [E.lookupVar(env, var)] (* XXX(wings): unpack tuple into multiple vars? *)
                                    (* end case *))
                                 in
                                   (* P_DCon of data_con * var list *)
@@ -1021,7 +1023,7 @@ structure Translate : sig
                   end
               | S.PrimExp.Handle{try, catch=(x, ty), handler} => let
                   val (x', handlerEnv) = newVar(env, x, ty)
-                  val (exh, tryEnv) = newHandler env
+                  val (exh, tryEnv) = E.newHandler env
                   in
                     (* TODO(wings): verify that this has the right semantics? *)
                     mkLet(BOM.mkCont(
@@ -1065,7 +1067,7 @@ structure Translate : sig
               | S.PrimExp.Profile info => k env (* ignore for now *)
                 (* QUESTION: what does the "extend" flag mean? *)
               | S.PrimExp.Raise{exn, ...} =>
-                  BOM.mkThrow (handlerOf env, [transVarExp(env, exn)])
+                  BOM.mkThrow (E.handlerOf env, [transVarExp(env, exn)])
               | S.PrimExp.Select{offset, tuple} =>
                   mkStmt(BOM.E_Select(offset, transVarExp(env, tuple)))
               | S.PrimExp.Tuple args =>
@@ -1073,14 +1075,15 @@ structure Translate : sig
                     BV.typeOf lhs,  (* type *)
                     V.foldr (fn (x, xs) => transVarExp(env, x)::xs) [] args))
               | S.PrimExp.Var x => mkLet(BOM.mkRet[transVarExp(env, x)])
-              | S.PrimExp.BOMVal bomVal => case lookupBOMVal(env, bomVal)
-                   of DCon con => mkStmt(BOM.E_DCon(con, []))
-                    | Var v => mkLet(BOM.mkRet[v])
-                    | Lambda lam => raise Fail "S.PrimExpo.BOMVal lambda"
+              | S.PrimExp.BOMVal bomVal => (case E.lookupBOMVal(env, bomVal)
+                   of E.DCon con => mkStmt(BOM.E_DCon(con, []))
+                    | E.Var v => mkLet(BOM.mkRet[v])
+                    | E.Lambda lam => raise Fail "S.PrimExpo.BOMVal lambda"
+		  (* end case *))
             (* end case *)
           end
 
-    and transVarExp (env, S.VarExp.T{var, ...}) = lookupVar(env, var)
+    and transVarExp (env, S.VarExp.T{var, ...}) = E.lookupVar(env, var)
 
 (*
 Datatype.t = {cons: {arg: Type.t option,
@@ -1095,8 +1098,8 @@ Datatype.t = {cons: {arg: Type.t option,
         val (dts_datatycs, env) = V.foldl (fn(dt as {cons, tycon, tyvars}, (dts_datatycs, env)) => let
             val () = print ("transDatatypes decl " ^ S.Tycon.toString tycon ^ " '" ^ Int.toString (V.length tyvars) ^ "\n")
             val dataTyc = BOMTyc.new(S.Tycon.toString tycon, V.length tyvars)
-            val env = writeTyc(env, tycon, dataTyc)
-            val _ = printTycs env
+            val env = E.bindTyc(env, tycon, dataTyc)
+            val _ = E.printTycs env
             in
                 ((dt, dataTyc)::dts_datatycs, env)
             end
@@ -1106,7 +1109,7 @@ Datatype.t = {cons: {arg: Type.t option,
         val env = List.foldl (fn(({cons, tycon, tyvars}, dataTyc), env) => let
             val () = print ("transDatatypes defn " ^ S.Tycon.toString tycon ^ " '" ^ Int.toString (V.length tyvars) ^ "\n")
             (* TODO(wings): convert tyvars *)
-            val env = writeTyDest(env, S.Type.Con(tycon, V.fromList []), BOMTy.T_Con(dataTyc, [](*tyvars'*)))
+            val env = E.bindTyDest(env, S.Type.Con(tycon, V.fromList []), BOMTy.T_Con(dataTyc, [](*tyvars'*)))
             (* translate dcons for this datatype *)
             val env = V.foldl (fn({con: S.Con.t, arg: S.Type.t option}, env) => let
                val () = print ("transDatatypes dcon " ^ S.Tycon.toString tycon ^ "." ^ S.Con.toString con ^ "\n")
@@ -1121,7 +1124,7 @@ Datatype.t = {cons: {arg: Type.t option,
                    | NONE => BOMDataCon.new dataTyc (S.Con.toString con, [(* no arguments *)])
                    (*end case*))
                in
-                 writeDCon(env, con, bomDCon)
+                 E.bindDCon(env, con, bomDCon)
                end) env cons
             in
                 env
@@ -1141,10 +1144,10 @@ Datatype.t = {cons: {arg: Type.t option,
           val exnTy0 = BOMTy.T_Con (exnTyc0, [])
           (* the type of the top-level exception handler *)
           val exhTy0 = BOMTy.T_Cont [exnTy0]
-          val env = newEnv (BV.new("_exh", exhTy0))
+          val env = E.newEnv (BV.new("_exh", exhTy0))
           (* initially translate all the datatypes listed by MLton *)
-          val env as E{tycMap=tycMap, ...} = transDatatypes (datatypes, env)
-          val dataTycs = TycMap.listItems tycMap
+          val env = transDatatypes (datatypes, env)
+          val dataTycs = E.listTycs env
           (* extract the exception type constructor, of which there's hopefully exactly one *)
           val body = transSExp (body, env)
           (* val argTy = BOMTy.T_Raw RawTypes.Int32 *)
@@ -1155,7 +1158,13 @@ Datatype.t = {cons: {arg: Type.t option,
                   exh = [(* exh *)],
                   body = body
                 }
-          val program = BOM.PROGRAM{exnTyc = exnTyc (env), dataTycs = dataTycs, hlops = [(* TODO(wings): hlops *)], externs = !progExterns, body = mainFun}
+          val program = BOM.PROGRAM{
+		  exnTyc = E.exnTyc env,
+		  dataTycs = dataTycs,
+		  hlops = [(* TODO(wings): hlops *)],
+		  externs = !progExterns,
+		  body = mainFun
+		}
           in(* raise Fail "hi";*)
             PrintBOM.print (program); program (*raise Fail "done"*)
           end

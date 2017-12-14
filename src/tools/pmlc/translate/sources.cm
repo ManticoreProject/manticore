@@ -12,7 +12,7 @@ structure Translate
 is
 
 $/basis.cm
-(* $/smlnj-lib.cm *)
+(*$/smlnj-lib.cm*)
 
 ../bom/sources.cm
 ../common/sources.cm
