@@ -110,3 +110,4 @@ is
   llvm/llvm-strings.sml
   llvm/llvm-statepoint.sml
   llvm/llvm-machineval.sml
+  llvm/llvm-call.sml

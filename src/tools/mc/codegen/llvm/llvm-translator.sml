@@ -41,6 +41,7 @@ functor LLVMTranslator (structure Spec : TARGET_SPEC) : sig
   structure PU = PrimUtil
   structure CU = CondUtil
   structure MV = LLVMMachineVal
+  structure LC = LLVMCall
   
   val i2s = Int.toString
 
@@ -84,7 +85,13 @@ fun output (outS, module as C.MODULE { name = module_name,
           (* we need to add implicit values from CFG to the "branching convention" of all other
           blocks (start block is already taken care of with the JWA CC) *)
           
-          val (newMVs as (_, mvVars)) = MV.freshMVs()
+            fun freshMVs () = let
+                val fresh = (fn x => LLVMVar.new(MV.machineValStr x, MV.machineValTy x))
+            in
+                (MV.mvCC, List.map fresh MV.mvCC)
+            end
+          
+          val (newMVs as (_, mvVars)) = freshMVs()
           
           val env = L.foldr (fn ((old, new), acc) => Util.insertV(acc, old, LB.fromV new))
                       initialEnv
@@ -188,75 +195,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         stringyBlocks
     end
       
-(* determines calling conventions. we keep it all localized here
-   so we don't mess it up *)
-and determineCC (* returns a ListPair of slots and CFG vars assigned to those slots,
-                   and the list of types for machine vals. the indices are defined by 
-                   the machine val's index function *)
-    (conv : CFG.convention, args : C.var list) : (LT.ty list * (int * C.var) list) = let
-        
-        (*val _ = if L.length args <= 0 then raise Fail "no arg?" else ()*)
-        
-        val pad = CV.new("regPadding", CT.T_Any)
-        
-        val getTy = LT.toRegType o LT.typeOf o C.Var.typeOf
-        
-        (* dummy machine val padding *)
-        val genericPadding = LT.toRegType LT.allocPtrTy
-        
-        (* this is padding at the front of the convention, where we always put the machine values. *)
-        val machineValPadding =
-            List.tabulate(MV.numMachineVals, fn _ => genericPadding)
-        
-        fun withPadding convVars = 
-            machineValPadding 
-            @ (List.map getTy convVars)
-        
-        fun determineIndices convVars = 
-            L.drop((LT.allocateToRegs o withPadding) convVars, MV.numMachineVals)
-    in
-        (case conv
-            of C.StdFunc { clos, ret, exh } => let
-                val convVars = [clos, ret, exh] @ args
-                in
-                    (machineValPadding, ListPair.zipEq(determineIndices convVars, convVars))
-                end
-                
-                
-                (* TODO make this body a func so that we don't have a ... pattern for the record for saftey. *)
-            | (C.StdCont { clos } | C.KnownFunc { clos } | C.KnownDirectFunc {clos, ...}) => let
-                (* NOTE direct-style uses the KnownDirectFunc conv for cont throws, and
-                   those throws come into this func as StdCont, so you should keep those cases matched up. *)
-            
-            (* NOTE there is no exn handler or retk, so we need to add artifical padding
-               in order to shift the args into the right registers according to LLVM *)
-                val actualConvVars = clos :: args
-                
-                val paddedConv = clos :: [pad, pad] @ args
-                
-                (* now that everything's been assigned to slots, drop the two generic paddings in
-                   we added between the first clos and the args. *)
-                val (closI :: _ :: _ :: restI) = determineIndices paddedConv
-                val actualIndices = closI :: restI
-                
-                in
-                    (machineValPadding, ListPair.zipEq(actualIndices, actualConvVars))
-                end
-                
-            | C.StdDirectFunc {clos, exh, ret=notAVar} => let
-                
-                val actualConvVars = clos :: exh :: args
-                
-                (* NOTE there's no retk, so we place a pad there instead as above. *)
-                val paddedConv = clos :: pad :: exh :: args
-                val (closI :: _ :: rest) = determineIndices paddedConv
-                val actualIndices = closI :: rest
-            in
-                (machineValPadding, ListPair.zipEq(actualIndices, actualConvVars))
-            end
-            
-        (* end case *))
-  end
+
 
   and fillBlock (b : LB.t) (initialEnv : Util.gamma, body : C.exp list, exit : C.transfer) : (unit -> LB.bb list) = let
     
@@ -743,7 +682,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             
         (* determines the return convention for direct-style. returns slot assignments for
            both machine values that need to be returned, and the CFG vars *)
-        and determineRet (rets : CV.var list) : ( ((int * MV.machineVal) list) * ((int * CV.var) list) ) = let
+        and determineRet (rets : CV.var list) : ( ((int * MV.machineVal) list) * ((int * CV.var) list) ) = 
+            raise Fail "todo: determineRet"
+        (*
+        let
              (* we "reserve" the clos, retk, and exh registers with padding *)
              val dummyTy = LT.toRegType LT.uniformTy
              val dummyPad = [dummyTy, dummyTy, dummyTy]
@@ -762,50 +704,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              
         in
              (mvAssign, retAssign)
-        end
+        end *)
             
-        and setupCall (func, (_, cc : (int * C.var) list)) = let
-                
-                val mvs = ListPair.zipEq(
-                            L.tabulate(MV.numMachineVals, fn i => i), 
-                            L.map (fn mv => Util.lookupMV(env, mv)) MV.mvCC)
-                            
-                val cc = L.map (fn (i, cv) => (i, Util.lookupV(env, cv))) cc
-                
-                val allRegs = mvs @ cc
-                val slotNums = L.tabulate(V.length LT.jwaCC, fn i => i)
-                
-                (* mostly copied from elsewhere in here :shrug: *)
-                datatype slotTy
-                   = Used of (LB.instr * LT.ty)
-                   | NotUsed of LT.ty
-                     
-                (* NOTE the regs must be ordered by slot num *)
-                fun assign(nil, nil, res) = L.rev res 
-                  | assign(slot::rest, nil, res) = assign(rest, nil, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
-                  | assign(slot::rest, (regs as (r::rs)), res) = let
-                    val (idx, var) = r
-                    val slotTy = V.sub(LT.jwaCC, slot)
-                    in
-                    if idx = slot 
-                        then assign(rest, rs, (Used (var, slotTy))::res)
-                        else assign(rest, regs, (NotUsed slotTy)::res)
-                    end
-                
-                val allAssign = assign(slotNums, allRegs, nil)
-                
-                val allCvtdArgs = L.map 
-                    (fn NotUsed t => LB.fromC(LB.undef t)
-                      | Used (var, t) => cast (Op.safeCast (LB.toTy var, t)) (var, t)
-                    ) allAssign
-                
-                val llFun = Util.lookupV(env, func)
-            in
-                (llFun, allCvtdArgs)
-            end
-            
-        and mantiFnCall x = let
-                val (llFun, allCvtdArgs) = setupCall x
+        and mantiFnCall (func, conv) = let
+                val llFun = Util.lookupV (env, func)
+                val allCvtdArgs = LC.setupCallArgs (b, env, conv)
                 val conv = (AS.singleton A.Tail, LB.jwaCC)
             in
                 case (LB.callAs' b conv (llFun, V.fromList allCvtdArgs))
@@ -928,13 +831,21 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                (* all types are CFG vars *)
                | C.StdApply {f, clos, args, ret, exh} 
                     => mantiFnCall(f, 
-                         determineCC(C.StdFunc{clos=clos, ret=ret, exh=exh}, args))
+                         LC.determineCC({
+                             conv = C.StdFunc{clos=clos, ret=ret, exh=exh},
+                             args = args}))
                     
                | C.StdThrow {k, clos, args}
-                    => mantiFnCall(k, determineCC(C.StdCont{clos=clos}, args))
+                    => mantiFnCall(k, 
+                        LC.determineCC({
+                            conv = C.StdCont{clos=clos},
+                            args = args}))
                         
                | C.Apply {f, clos, args}
-                    => mantiFnCall(f, determineCC(C.KnownFunc{clos=clos}, args))
+                    => mantiFnCall(f, 
+                        LC.determineCC({
+                            conv = C.KnownFunc{clos=clos},
+                            args = args}))
                
                | (C.HeapCheck {hck = C.HCK_Global, ...} | C.HeapCheckN {hck = C.HCK_Global, ...})
                     => raise Fail "global heap checks not implemented in MLRISC backend either."
@@ -1003,7 +914,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 *)
                | C.Call {f, clos, args, next} => let
                     val cc = (case CV.typeOf f
-                                of CT.T_KnownDirFunc{ret,...} => (C.KnownDirectFunc{clos=clos, ret=ret}, args)
+                                of CT.T_KnownDirFunc{ret,...} => {conv = C.KnownDirectFunc{clos=clos, ret=ret}, args=args}
                                  | CT.T_StdDirFun{ret,...} => let
                                     (* probably should have made the exh the first arg -shrug- *)
                                     val stor = ref NONE
@@ -1014,11 +925,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                     val args = getExh args
                                     val SOME exh = !stor
                                  in
-                                    (C.StdDirectFunc{clos=clos, exh = exh, ret = ret}, args)
+                                    {conv = C.StdDirectFunc{clos=clos, exh = exh, ret = ret}, args=args}
                                  end    
                                 (* esac *))
                     
-                    val (f, allArgs) = setupCall(f, determineCC cc)
+                    val f = Util.lookupV (env, f)
+                    val allArgs = LC.setupCallArgs (b, env, LC.determineCC cc)
                     
                     fun nonTail (lhs, jmp as (_, liveAfter)) = let
                             (* we need to remove:
@@ -1553,7 +1465,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   and mkCPSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
               initEnv as Util.ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
-    val (startConv, allAssign, mvs) = assignToSlots(determineCC(entry, cfgArgs))
+    val (startConv, allAssign, mvs) = raise Fail "fix me" (* assignToSlots(LC.determineCC(entry, cfgArgs)) *)
     
     fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     
@@ -1592,7 +1504,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 ret,
               initEnv as Util.ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
-    val (startConv, allAssign, mvs) = assignToSlots(determineCC(entry, cfgArgs))
+    val (startConv, allAssign, mvs) = raise Fail "fix me" (* assignToSlots(LC.determineCC(entry, cfgArgs)) *)
     
     fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     

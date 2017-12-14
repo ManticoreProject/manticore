@@ -14,8 +14,8 @@ structure LLVMMachineVal = struct
     | MV_Vproc
     
   fun machineInfo mv = (case mv
-    of MV_Alloc => (0, "allocPtr", LLVMType.allocPtrTy)
-     | MV_Vproc => (1, "vprocPtr", LLVMType.vprocTy)
+    of MV_Alloc => (0, "allocPtr", LLVMTy.allocPtrTy)
+     | MV_Vproc => (1, "vprocPtr", LLVMTy.vprocTy)
     (* end case *))
     
   fun machineValIdx mv = #1(machineInfo mv)
@@ -30,12 +30,6 @@ structure LLVMMachineVal = struct
       
   val mvCC = [ MV_Alloc, MV_Vproc ] (* parameters added to all basic blocks 
                                        dont change order *)
-    
-  fun freshMVs () = let
-        val fresh = (fn x => LLVMVar.new(machineValStr x, machineValTy x))
-    in
-        (mvCC, List.map fresh mvCC)
-    end
   
   val numMachineVals = 2
   

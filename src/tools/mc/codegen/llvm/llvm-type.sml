@@ -31,13 +31,6 @@ structure LLVMType : sig
      *)
     val declOf : ty -> string -> string -> string
 
-    (* takes a list of "register types" and produces
-       a list of indices for these types to assign them according
-       to the JWA calling convention in LLVM. the only types
-       allowed are those kinds output by toRegType, and
-       the indices correspond to the types in jwaCC *)
-    val allocateToRegs : ty list -> int list
-
     (* convert an LLVM type to its standard type that fits within a register.
        this is used in the process of generating a call using the standard
        calling convention, thus it is only implemented for types that can be
@@ -55,16 +48,7 @@ structure LLVMType : sig
        in a general way (we could always hardcode our Manticore assumptions,
        but we don't even need that right now) *)
     val widthOf : ty -> int
-
-    (* get the "Jump With Arguments" calling convention types.
-       this is just a list of the types all functions should use
-       in order to use the JWA calling convention with proper tail
-       call support. jwaCC returns a list of types such that only types
-       returned by toRegType are contained in it and nothing else,
-       and it always returns the same list. *)
-    val jwaCC : ty vector
-
-
+    
     (*
       get the name of an LLVM type
     *)
@@ -134,7 +118,6 @@ structure LLVMType : sig
     val voidStar : ty
     val gcHeaderTy : ty
     val tokenTy : ty
-    val stdRetTy : ty       (* for direct-style returns *)
     
     (* common integer types *)
     val i64 : ty
@@ -183,6 +166,7 @@ structure LLVMType : sig
   structure CF = CFunctions
   structure V = Vector
   structure L = List
+  structure MV = LLVMMachineVal
 
   structure HC = HashCons
   structure HCM = HashConsMap
@@ -192,51 +176,10 @@ structure LLVMType : sig
   type ty = Ty.t
   type ty_node = Ty.t_node
   type count = Ty.count
-
-  local
-    (* ctors for ty *)
-    fun eq query = (case query
-      of (Ty.T_Void, Ty.T_Void) => true
-       | (Ty.T_Label, Ty.T_Label) => true
-       | (Ty.T_Token, Ty.T_Token) => true
-       | (Ty.T_Func xs, Ty.T_Func ys) => ListPair.allEq HC.same (xs, ys)
-       | (Ty.T_VFunc xs, Ty.T_VFunc ys) => ListPair.allEq HC.same (xs, ys)
-       | (Ty.T_Int x, Ty.T_Int y) => HC.same(x, y)
-       | (Ty.T_Float, Ty.T_Float) => true
-       | (Ty.T_Double, Ty.T_Double) => true
-       | (Ty.T_Ptr (xspace, x), Ty.T_Ptr (yspace, y)) => HC.same(xspace, yspace) andalso HC.same(x, y)
-       | (Ty.T_Vector (xcount, x), Ty.T_Vector (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
-       | (Ty.T_Array (xcount, x), Ty.T_Array (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
-       | (Ty.T_Struct xs, Ty.T_Struct ys) => ListPair.allEq HC.same (xs, ys)
-       | (Ty.T_UStruct xs, Ty.T_UStruct ys) => ListPair.allEq HC.same (xs, ys)
-       | _ => false
-      (* esac *))
-    
-    val tbl = HC.new {eq = eq}
-
-  in
-    (* should be prime numbers.
-       I skip 2 because I think the hash function uses it to combine these? *)
-    val voidTy = HC.cons0 tbl (0w3, Ty.T_Void)
-    val labelTy = HC.cons0 tbl (0w7, Ty.T_Label)
-    val mkFunc = HC.consList tbl (0w11, Ty.T_Func)
-    val mkInt = HC.cons1 tbl (0w13, Ty.T_Int)
-    val floatTy = HC.cons0 tbl (0w17, Ty.T_Float)
-    val doubleTy = HC.cons0 tbl (0w19, Ty.T_Double)
-    fun mkPtr ty = (HC.cons2 tbl (0w23, Ty.T_Ptr)) (HCInt.mk 0, ty)
-    fun mkGCPtr ty = (HC.cons2 tbl (0w23, Ty.T_Ptr)) (HCInt.mk 1, ty)
-    val mkVector = HC.cons2 tbl (0w29, Ty.T_Vector)
-    val mkArray = HC.cons2 tbl (0w31, Ty.T_Array)
-    val mkStruct = HC.consList tbl (0w37, Ty.T_Struct)
-    val mkUStruct = HC.consList tbl (0w43, Ty.T_UStruct)
-    val mkVFunc = HC.consList tbl (0w47, Ty.T_VFunc)
-    val tokenTy = HC.cons0 tbl (0w53, Ty.T_Token)
-    
-    (* more primes  59     61     67     71 *)
-
-    val cnt = HCInt.mk
-    val tnc = HC.node
-  end
+  
+  (* NOTE a refactoring occured to break cyclic dependencies, but I didn't replace
+     everything in the codebase, instead I just bring them back into here *)
+  open LLVMTy
   
   
 
@@ -372,83 +315,16 @@ structure LLVMType : sig
        (* esac *))
        
     and fullNameOf x = mkString fullNameOf x
-       
-       
-    val uniformTy = mkPtr(mkInt(cnt 64)) 
-        (* the "any" type. we want an i64* instead of an i8 because SELECT(2, any) will
-           generate a GEP, and we want it to calculate offsets of 8 bytes at a time. *)
-           
-    val allocPtrTy = mkPtr(uniformTy)
-    val vprocTy = mkPtr(uniformTy)
-    val boolTy = mkInt(cnt 1)
-    val i64 = mkInt(cnt 64)
-    val i32 = mkInt(cnt 32)
-    val i16 = mkInt(cnt 16)
-    val i8  = mkInt(cnt 8)
-    val i1  = mkInt(cnt 1)
-    val enumTy = i64
-    val gcHeaderTy = i64
-    val voidStar = mkPtr(i8)
-    val dequeTy = mkPtr(i64)
-       
-       
-    local
-     (* FIXME for now, we assume that there are no vector types, and
-     labels already can't be passed as an arg anyways *)
-     val gprTy = mkInt(cnt 64)
-     val f32Ty = floatTy
-     val f64Ty = doubleTy
 
-     (* [x, y) kinda gross but whatever.
-        NOTE that GPRS _must_ start at 0, and be allocated in order,
-        because in llvm-printer, the machine indices for the vector
-       also starts at 0 and we just reuse that numbering.  *)
-     val gprRange = (0, 14)
-     val f32Range = (14, 22)
-     val f64Range = (22, 30)
-    in
-     fun toRegType t = (case HC.node t
-       of Ty.T_Ptr _ => gprTy
-        | Ty.T_Int _ => gprTy
-        | Ty.T_Float => f32Ty
-        | Ty.T_Double => f64Ty
+    fun toRegType t = (case HC.node t
+        of Ty.T_Ptr _ => i64
+        | Ty.T_Int _ => i64
+        | Ty.T_Float => floatTy
+        | Ty.T_Double => doubleTy
         | _ => raise Fail ("Type \n"
                  ^ (nameOf t)
                  ^ "\n does not fit in a machine register, or is not allowed in the calling convention!")
-       (* esac *))
-
-       (* RAX, RBX, RCX, RDX, RSI, RDI, R8, R9, R10, R11, R12, R13, R14, R15
-          XMM0 - XMM15 for floats, whether 32 or 64 bit *)
-      val jwaCC =
-        Vector.tabulate(#2(f64Range), fn x =>
-             if x < #2(gprRange) then gprTy
-             else if x < #2(f32Range) then f32Ty
-             else f64Ty)
-
-     fun allocateToRegs ts = let
-     (* might be better to use a vector instead of 3 integers for code cleanliness *)
-         fun alloc (nil, is, _, _, _) = List.rev is
-           | alloc (t::ts, is, gpr, f32, f64) =
-             if (gpr < #2(gprRange)
-                 andalso f32 < #2(f32Range)
-                 andalso f64 < #2(f64Range))
-             then (case HC.node t (* NOTE: assuming Int x where x <= 64 *)
-                   of Ty.T_Int _ => alloc(ts, gpr::is, gpr+1, f32, f64)
-                    | Ty.T_Float   => alloc(ts, f32::is, gpr, f32+1, f64)
-                    | Ty.T_Double  => alloc(ts, f64::is, gpr, f32, f64+1)
-                    | _ => raise Fail "bad register type"
-                   (* esac *))
-             else raise Fail "allocateToRegs: overflow of JWA calling convention detected!"
-     in
-         alloc(ts, [], #1(gprRange), #1(f32Range), #1(f64Range))
-     end
-     
-     val stdRetTy = mkUStruct(Vector.toList jwaCC)
-       
-       
-       
-       
-    
+        (* esac *))
 
     fun typeDecl () = let
       fun assignToString (name, def) = name ^ " = type " ^ def ^ "\n"
@@ -457,8 +333,6 @@ structure LLVMType : sig
     in
       S.concat (List.map assignToString decls)
     end
-
-  end
 
   
   fun typeOf (cty : CT.ty) : ty = (case cty
@@ -498,11 +372,11 @@ structure LLVMType : sig
             mkPtr(funCtor([typeOfC retTy] @ (List.map typeOfC argTys)))
         end
       
-      | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
+      | CT.T_StdFun _ => mkPtr(mkFunc( voidTy :: getArgsFor cty ))
       | CT.T_StdCont _ => (* we use T_StdCont in both direct and CPS *)
             if Controls.get BasicControl.direct
-            then  mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
-            else  mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
+            then  mkPtr(mkFunc( dsReturnConv cty :: getArgsFor cty ))
+            else  mkPtr(mkFunc( voidTy :: getArgsFor cty ))
       | CT.T_KnownFunc _ => (* KnownFuncs may still appear when in direct-style,
                                but only when applying an exception handler
                                in tail position.
@@ -512,18 +386,32 @@ structure LLVMType : sig
                                but i'm not concerned with exceptions right now.
                             *)
             if Controls.get BasicControl.direct
-            then  mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
-            else  mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
+            then  mkPtr(mkFunc( dsReturnConv cty :: getArgsFor cty ))
+            else  mkPtr(mkFunc( voidTy :: getArgsFor cty ))
       | CT.T_KnownDirFunc _ => 
-            mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
+            mkPtr(mkFunc( dsReturnConv cty :: getArgsFor cty ))
                             
       | CT.T_StdDirFun _ => 
-            mkPtr(mkFunc( dsReturnConv cty :: typesInConv cty ))
+            mkPtr(mkFunc( dsReturnConv cty :: getArgsFor cty ))
 
     (* end case *))
     
     (* the return convention/type used by the given convention. *)
-    and dsReturnConv cty = mkUStruct(typesInConv(cty))
+    and dsReturnConv cty = mkUStruct(getRetsFor(cty))
+    
+    and getArgsFor t = let 
+            val padTy = i64
+            val getTy = toRegType o typeOf
+            val mvTys = L.map MV.machineValTy MV.mvCC
+        in
+            (case t
+             of CT.T_StdFun {clos, args, ret, exh} => 
+                     mvTys @ L.map getTy ([clos, ret, exh] @ args)
+              | _ => raise Fail "handle the other cases"
+             (* end case *))
+        end 
+        
+    and getRetsFor t = raise Fail "handle the ret tys (only exist for DS function types)"
 
     and typeOfC (ct : CF.c_type) : ty = (case ct
           of CF.PointerTy => voidStar  (* LLVM's void* *)
@@ -564,21 +452,6 @@ structure LLVMType : sig
          | _ => raise Fail "not a function type"
         (* esac *))
     end
-    
-    
-    
-
-    (* everybody has same types according to LLVM *)
-    and typesInConv (cty : CT.ty) : ty list = (case cty
-        of (CT.T_StdFun _ 
-            | CT.T_StdCont _ 
-            | CT.T_KnownFunc _
-            | CT.T_StdDirFun _
-            | CT.T_KnownDirFunc _ ) =>
-                List.tabulate(Vector.length jwaCC, 
-                    fn i => Vector.sub(jwaCC, i))
-         | _ => raise Fail ("only functions/continuations have calling convention types")
-        (* esac *))
 
   val same = HC.same
   val node = HC.node
