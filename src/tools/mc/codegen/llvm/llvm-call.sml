@@ -87,7 +87,8 @@ end = struct
                     mvs @ [Actual clos, pad, Actual exh] @ (L.map Actual args)
                 )
         (* end case *))
-        
+      
+    (* NOTE this needs to match up with LLVMType.getRetsFor *)  
     and determineRet args = withRegTys (mvs @ [pad, pad, pad] @ (L.map Actual args))
     
     and withRegTys cs = L.map withRegTy cs

@@ -397,7 +397,7 @@ structure LLVMType : sig
     (* end case *))
     
     (* the return convention/type used by the given convention. *)
-    and dsReturnConv cty = mkUStruct(getRetsFor(cty))
+    and dsReturnConv cty = mkUStruct(getRetsFor cty)
     
     (* NOTE this needs to match up with LLVMCall.determineCC *)
     and getArgsFor t = let 
@@ -422,7 +422,22 @@ structure LLVMType : sig
              (* end case *))
         end 
         
-    and getRetsFor t = raise Fail "handle the ret tys (only exist for DS function types)"
+    (* NOTE this needs to match up with LLVMCall.determineRet *)
+    and getRetsFor t = let
+        val padTy = i64
+        val getTy = toRegType o typeOf
+        val mvTys = L.map MV.machineValTy MV.mvCC
+        fun withPadding args =
+            mvTys @ [padTy, padTy, padTy] @ L.map getTy args
+    in
+        (case t 
+           of (CT.T_StdDirFun {ret,...} | CT.T_KnownDirFunc {ret,...}) =>
+                withPadding ret
+            | (CT.T_StdCont _) => raise Fail "need a return type for stdcont in DS."
+            | (CT.T_KnownFunc _) => raise Fail "need a return type for non-ds known func in DS."
+            | _ => raise Fail "error: impossible type when using direct-style!"
+            (* esac *))
+    end
 
     and typeOfC (ct : CF.c_type) : ty = (case ct
           of CF.PointerTy => voidStar  (* LLVM's void* *)
