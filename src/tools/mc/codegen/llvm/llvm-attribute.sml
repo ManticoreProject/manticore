@@ -52,8 +52,21 @@ structure LLVMAttribute = struct
      | AllowRecip   => "arcp"
      | FastMath     => "fast"
      | SeqCst       => "seq_cst"
-     | Tail         => "musttail"
+     | Tail         => "tail"
     (* esac *))
+    
+    (* NOTE:
+        Our workarounds for using musttail no longer work, as we have found an
+        issue with passing the Nth float or double value in the same register,
+        as we cannot pass undef for, say, the float arg as it will become allocated
+        and then the double following it will not end up in the register.
+        
+        The final solution to issues with musttail will involve fixing the overly
+        conservative restrictions about caller/callee types that are being employed
+        by LLVM's code generator. I will have to fix it myself and send it upstream
+        hopefully soon.
+            ~kavon (12/14/2017)
+     *)
 
   fun id (x : t) : int = (case x
     (* We fold all alignments into one element. If the alignment's value

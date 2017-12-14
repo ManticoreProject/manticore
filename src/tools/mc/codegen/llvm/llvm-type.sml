@@ -399,6 +399,7 @@ structure LLVMType : sig
     (* the return convention/type used by the given convention. *)
     and dsReturnConv cty = mkUStruct(getRetsFor(cty))
     
+    (* NOTE this needs to match up with LLVMCall.determineCC *)
     and getArgsFor t = let 
             val padTy = i64
             val getTy = toRegType o typeOf
@@ -406,8 +407,18 @@ structure LLVMType : sig
         in
             (case t
              of CT.T_StdFun {clos, args, ret, exh} => 
-                     mvTys @ L.map getTy ([clos, ret, exh] @ args)
-              | _ => raise Fail "handle the other cases"
+                    mvTys @ L.map getTy ([clos, ret, exh] @ args)
+                     
+              | CT.T_StdDirFun {clos, args, exh,...} =>
+                    mvTys @ [getTy clos, padTy, getTy exh] @ (L.map getTy args)
+                     
+              | (  CT.T_StdCont {clos, args} 
+                 | CT.T_KnownFunc {clos, args} 
+                 | CT.T_KnownDirFunc {clos, args,...}
+                ) =>
+                    mvTys @ [getTy clos, padTy, padTy] @ (L.map getTy args)
+                
+              | _ => raise Fail "error: not a function or continuation type!"
              (* end case *))
         end 
         

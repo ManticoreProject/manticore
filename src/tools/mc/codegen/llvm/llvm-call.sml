@@ -69,7 +69,7 @@ end = struct
     val getRegTy = LT.toRegType o getTy
         
         
-    
+    (* NOTE this needs to match up with LLVMType.getArgsFor *)
     fun determineCC {conv, args} = (case conv
             of C.StdFunc { clos, ret, exh } => withRegTys (
                     mvs @ L.map Actual ([clos, ret, exh] @ args)
