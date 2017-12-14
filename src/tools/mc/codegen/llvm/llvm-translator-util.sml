@@ -31,6 +31,11 @@ local
 
 in
 
+    datatype paramKind
+     = Used of { cfgParam : CV.var, llvmParam : LV.var, realTy : LT.ty }
+     | Machine of MV.machineVal * LV.var
+     | NotUsed of LT.ty
+
     (***** translation environment utilities *****)
     datatype gamma = ENV of {
       labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
@@ -39,7 +44,13 @@ in
       mvs : LB.instr vector          (* current LLVM Instructions representing machine vals *)
     }
     
-    val emptyEnv = ENV {labs=CL.Map.empty, blks=LV.Map.empty, vars=CV.Map.empty, mvs=(#[])}
+    val emptyEnv = ENV {labs=CL.Map.empty, blks=LV.Map.empty, vars=CV.Map.empty, 
+                        mvs=(
+                            Vector.fromList (
+                                L.map (fn mv => LB.fromC (LB.undef (MV.machineValTy mv))) MV.mvCC
+                                )
+                            )}
+                            
     
     fun lookupV (ENV{vars,...}, v) = 
       (case CV.Map.find(vars, v)

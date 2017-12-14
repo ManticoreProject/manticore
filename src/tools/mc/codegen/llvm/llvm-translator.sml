@@ -108,54 +108,10 @@ fun output (outS, module as C.MODULE { name = module_name,
           (b, env, fn (b, env) => fillBlock b (env, body, exit)) 
         end
 
-      fun mkStartBlock (C.BLK{body, exit, ...}, Padded (cc, ccRegs, mvRegs)) = let
-              (* start needs to be treated specially because its inputs
-                 are the parameters to the function that need a special calling convention, and
-                 we need to add bitcasts of the parameters instead of phi nodes for  *)
-                 
-                 val inputs = L.map (fn (_, var, _) => var) (mvRegs @ ccRegs)
-                 
-                 val blk = LB.new(LV.new("entry", LT.labelTy), inputs)
-                 
-                 fun addBitcastCC (((_, cfgVar), (_, llReg, realTy)), acc) = let
-                        val castPair = (LV.typeOf llReg, realTy)
-                        val argPair = (LB.fromV llReg, realTy)
-                        val newVar = LB.cast blk (Op.simpleCast castPair) argPair
-                    in
-                        Util.insertV(acc, cfgVar, newVar) (*  *)
-                    end
-                    
-                fun addCastsMV ((i, llReg, realTy), acc) = let
-                       val castPair = (LV.typeOf llReg, realTy)
-                       val argPair = (LB.fromV llReg, realTy)
-                       val newVar = LB.cast blk (Op.equivCast castPair) argPair
-                       val SOME mv = MV.IdxMachineVal i
-                   in
-                       Util.updateMV(acc, mv, newVar)
-                   end
-                 
-                 
-                 val env = L.foldl 
-                    addBitcastCC
-                    initialEnv
-                    (ListPair.zipEq(cc, ccRegs))
-                    
-                val env = L.foldl addCastsMV env mvRegs
-              
-            in
-                (blk, env, fn (blk, env) => fillBlock blk (env, body, exit))
-                (* fillBlock blk (env, body, exit) *)
-            end
-            
-        | mkStartBlock (C.BLK{body, exit, ...}, Regular{llArgs, cfgArgs, mvs}) = let
-                val blk = LB.new(LV.new("entry", LT.labelTy), mvs @ llArgs)
-                
-                (* add the args to the env. 
-                   machine vals are already in the env with the correct types. *)
-                val env = L.foldl
-                            (fn ((cfgV, llvmV), acc) => Util.insertV(acc, cfgV, LB.fromV llvmV))
-                            initialEnv
-                            (ListPair.zipEq(cfgArgs, llArgs))
+      fun mkStartBlock (C.BLK{body, exit, ...}, llvmCC) = let
+                val blk = LB.new(LV.new("entry", LT.labelTy), LC.getVars llvmCC)
+
+                val env = LC.setupEntryEnv (blk, initialEnv, llvmCC)
             in
                 (blk, env, fn (blk, env) => fillBlock blk (env, body, exit))
             end
@@ -1385,11 +1341,6 @@ fun output (outS, module as C.MODULE { name = module_name,
   (* end of Basic Blocks *)
 
 (****** Functions ******)
-    (* NOTE: this probably should be moved into a new module or something *)
-    
-    datatype slotTy
-     = Used of LV.var
-     | NotUsed of LT.ty
     
   fun mkFunc (func as C.FUNC{entry,...}, initEnv) = (case entry
       of C.KnownDirectFunc {ret,...} => mkDSFunc(func, ret, initEnv)
@@ -1400,72 +1351,15 @@ fun output (outS, module as C.MODULE { name = module_name,
        | C.KnownFunc _ => mkCPSFunc(func, initEnv)
       (* end case *))
       
-  and assignToSlots (mvTys, cc) = let
+  and mkDecl (Util.Used {llvmParam,...}) = mkDecl' llvmParam
+    | mkDecl (Util.Machine (_, llv))     = mkDecl' llv
+    | mkDecl (Util.NotUsed ty) = LT.nameOf ty
   
-        val pairedMvTys = ListPair.zipEq(L.tabulate(MV.numMachineVals, fn i => i), mvTys)
-        
-        (* reg vars and the real types *)
-        val mvRegs = L.map (fn (i, ty) => let
-                val (SOME mv) = MV.IdxMachineVal i
-                val (_, name, realTy) = MV.machineInfo mv
-            in
-                (i, LV.new(name, ty), realTy)
-            end) pairedMvTys
-            
-        val ccRegs = L.map (fn (i, cvar) => let
-                val name = CV.nameOf cvar
-                val realTy = (LT.typeOf o CV.typeOf) cvar
-                val ty = LT.toRegType realTy
-            in
-                (i, LV.new(name, ty), realTy)
-            end) cc
-            
-            (* NEXT now we assign mvRegs :: ccRegs to the jwaCC slots,
-               filling in junk slots with "unused" LV's.
-               then we pass these two lists to mkBasicBlocks so that 
-               a block of bitcasts is produced in the header to fixup 
-               the environment. *)
-         
-            (* NOTE the regs must be ordered by slot num *)
-            fun assign(nil, nil, res) = L.rev res 
-              | assign(slot::rest, nil, res) = assign(rest, nil, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
-              | assign(slot::rest, (regs as ((r as (idx, var, _))::rs)), res) =
-                if idx = slot 
-                    then assign(rest, rs, (Used var)::res)
-                    else assign(rest, regs, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
-                    
-                    
-            val slotNums = L.tabulate(V.length LT.jwaCC, fn i => i)
-            
-            val allRegs = mvRegs @ ccRegs
-            
-            val _ = if (L.length allRegs) > (L.length slotNums)
-                    then print ("(llvm-backend) warning: number of live vars across a function call\n"
-                                ^ "exceeds the number of registers in jwaCC, thus some values may\n"
-                                ^ "be passed via the stack!") else ()
-                                
-                                (* NOTE this warning is mostly of concern for loops, as
-                                   each iteration will cause a register spill/reload.
-                                   If a GC triggers, we'll also have to load these values
-                                   from the stack just to move them to the heap, and back again
-                                   upon resuming.
-                                *)
-            
-            val allAssign = assign(slotNums, allRegs, nil)  
-            
-            val mvs = V.fromList(L.map (fn (_, var, _) => LB.fromV var) mvRegs)
-        
-      in
-        (Padded (cc, ccRegs, mvRegs), allAssign, mvs)
-      end
-      
-  and mkDecl (Used var) = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
-    | mkDecl (NotUsed ty) = LT.nameOf ty
+  and mkDecl' var = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
   
-  and mkCPSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
-              initEnv as Util.ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
+  and mkCPSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, initEnv) : string = let
     
-    val (startConv, allAssign, mvs) = raise Fail "fix me" (* assignToSlots(LC.determineCC(entry, cfgArgs)) *)
+    val startConv = LC.getParamKinds (LC.determineCC {conv=entry, args=cfgArgs})
     
     fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     
@@ -1480,19 +1374,12 @@ fun output (outS, module as C.MODULE { name = module_name,
     val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " " (* Only available in Kavon's modified version of LLVM. *)
     val llName = LV.toString(Util.lookupL(initEnv, lab))
     val decl = [comment, "define ", linkage, ccStr,
-                "void ", llName, "(", (stringify  allAssign), ") ",
+                "void ", llName, "(", (stringify  startConv), ") ",
                 Util.stdAttrs(Util.MantiFun), " {\n"]
                 
-                (* FIXME put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
+                (* NOTE put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
     
-    (* now we setup the environment, we need to make fresh vars for the reg types,
-       and map the original parameters to the reg types when we call mk bbelow *)
-    
-    val body = mkBasicBlocks (Util.ENV{labs=inherited_labs,
-                                  vars=inherited_vars,
-                                  blks=inherited_blks,
-                                  mvs=mvs},
-                                start, body, startConv)  
+    val body = mkBasicBlocks (initEnv, start, body, startConv)  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
@@ -1500,11 +1387,9 @@ fun output (outS, module as C.MODULE { name = module_name,
   end
   
   
-  and mkDSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, 
-                ret,
-              initEnv as Util.ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
+  and mkDSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, ret, initEnv) : string = let
     
-    val (startConv, allAssign, mvs) = raise Fail "fix me" (* assignToSlots(LC.determineCC(entry, cfgArgs)) *)
+    val startConv = LC.getParamKinds (LC.determineCC {conv=entry, args=cfgArgs})
     
     fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     
@@ -1529,7 +1414,7 @@ fun output (outS, module as C.MODULE { name = module_name,
     val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " "  (* TODO it's likely that we need a direct-style Manticore CC in LLVM *)
     val llName = LV.toString(Util.lookupL(initEnv, lab))
     val decl = ["define ", linkage, ccStr,
-                retTyStr, " ", llName, "(", (stringify allAssign), ") ",
+                retTyStr, " ", llName, "(", (stringify startConv), ") ",
                 attrs, " ", stackKind, " gc \"statepoint-example\" {\n"]
                 
                 (* FIXME put a noalias on the allocation pointer and see if it improves LLVM's codegen *)
@@ -1537,11 +1422,7 @@ fun output (outS, module as C.MODULE { name = module_name,
     (* now we setup the environment, we need to make fresh vars for the reg types,
        and map the original parameters to the reg types when we call mk bbelow *)
     
-    val body = mkBasicBlocks (Util.ENV{labs=inherited_labs,
-                                  vars=inherited_vars,
-                                  blks=inherited_blks,
-                                  mvs=mvs},
-                                start, body, startConv)  
+    val body = mkBasicBlocks (initEnv, start, body, startConv)  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in

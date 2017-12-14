@@ -20,8 +20,14 @@ structure LLVMCall : sig
        convention. Casts are added as needed. *)
     val setupCallArgs : (LLVMBuilder.t * LLVMTranslatorUtil.gamma * convention) -> LLVMBuilder.instr list
     
-    val setupEntryBlock : (LLVMBuilder.t * LLVMTranslatorUtil.gamma * convention)
+    val getParamKinds : convention -> LLVMTranslatorUtil.paramKind list
+    
+    val setupEntryEnv : (LLVMBuilder.t * LLVMTranslatorUtil.gamma * LLVMTranslatorUtil.paramKind list)
                             -> LLVMTranslatorUtil.gamma
+
+    (* turns any filler/fake parameters into new vars, and returns the 
+       existing var otherwise *)
+    val getVars : LLVMTranslatorUtil.paramKind list -> LLVMVar.var list
 
 end = struct
     
@@ -48,7 +54,8 @@ end = struct
     val mvs : CV.var conv list = L.map Machine MV.mvCC
     
     (* utils *)
-    val getTy = LT.toRegType o LT.typeOf o CV.typeOf
+    val getTy = LT.typeOf o CV.typeOf
+    val getRegTy = LT.toRegType o getTy
         
         
     
@@ -71,9 +78,25 @@ end = struct
         (* end case *))
     
     and withTys cs = L.map withTy cs
-    and withTy (Actual cv)  = Actual (getTy cv, cv)
+    and withTy (Actual cv)  = Actual (getRegTy cv, cv)
       | withTy (Machine mv) = Machine mv
       | withTy (Filler f)   = Filler f
+      
+      
+    and getParamKinds cs = L.map getParamKind cs
+    and getParamKind (Actual (regTy, cv)) = let
+            val llv = LV.new(CV.nameOf cv, regTy)
+            val actualTy = getTy cv
+        in
+            Util.Used {cfgParam = cv,
+                       llvmParam = llv,
+                       realTy = actualTy}
+        end
+        
+      | getParamKind (Machine mv) =
+            Util.Machine (mv, LV.new(MV.machineValStr mv, MV.machineValTy mv))
+            
+      | getParamKind (Filler ty) = Util.NotUsed ty
       
       
     fun setupCallArgs (b, env, conv) = let
@@ -90,6 +113,28 @@ end = struct
         L.map convert conv
     end
     
-    fun setupEntryBlock _ = raise Fail "todo"
+    fun setupEntryEnv (b, env, startConv) = let
+        
+        fun insert (p, env) = (case p
+            of Util.NotUsed _ => env
+             | Util.Machine (mv, llv) => Util.updateMV(env, mv, LB.fromV llv)
+             | Util.Used {cfgParam, llvmParam, realTy} => let
+                    val castPair = (LV.typeOf llvmParam, realTy)
+                    val argPair = (LB.fromV llvmParam, realTy)
+                    val newVar = LB.cast b (Op.simpleCast castPair) argPair
+                 in
+                    Util.insertV(env, cfgParam, newVar)
+                 end
+            (* esac *))
+    in
+        L.foldl insert env startConv
+    end
+    
+    fun getVars ps = L.map getVar ps
+    and getVar (Util.NotUsed ty) = LV.new("pad", ty)
+      | getVar (Util.Machine (_, lv)) = lv
+      | getVar (Util.Used {llvmParam,...}) = llvmParam
+    
+    
     
 end (* LLVMCall *)
