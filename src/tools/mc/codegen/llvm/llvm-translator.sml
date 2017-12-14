@@ -860,35 +860,9 @@ fun output (outS, module as C.MODULE { name = module_name,
                                                   args = allArgs,
                                                   lives = lives_llvm
                                                 }
-                                                
-                            (* grab the return values *)
-                            fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
                             
-                            val (mvAssign, lhsAssign) = determineRet lhs
-                            
-                            fun extractElm ret tyOf (i, var) = let
-                                val extr = LB.extractV b (ret, #[toC i])
-                                val extrTy = LB.toTy extr
-                                val lhsTy = tyOf var
-                            in
-                                if LT.same(lhsTy, extrTy)
-                                then extr
-                                else LB.cast b (Op.simpleCast(extrTy, lhsTy)) (extr, lhsTy)
-                            end
-                            
-                            (* update the machine vals in the env *)
-                            val newMVs = L.map (extractElm ret MV.machineValTy) mvAssign
-                            val env = ListPair.foldlEq
-                                        (fn ((_,mv), valu, acc) => Util.updateMV(acc, mv, valu))
-                                        env
-                                        (mvAssign, newMVs)
-                            
-                            (* bind the lhs values *)
-                            val rhs = L.map (extractElm ret (LT.typeOf o CV.typeOf)) lhsAssign
-                            val env = ListPair.foldlEq
-                                        (fn ((_,lhs), rhs, acc) => Util.insertV(acc, lhs, rhs))
-                                        env
-                                        (lhsAssign, rhs)
+                            val retConv = LC.determineRet lhs
+                            val env = LC.setupRetCont (b, env, retConv) ret
                             
                             (* update the env with the relocated values *)
                             val env = ListPair.foldlEq

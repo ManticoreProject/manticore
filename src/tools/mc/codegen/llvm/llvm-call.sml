@@ -23,6 +23,8 @@ structure LLVMCall : sig
     
     val setupRetVal : setupInput -> LLVMBuilder.instr
     
+    val setupRetCont : setupInput -> LLVMBuilder.instr -> LLVMTranslatorUtil.gamma
+    
     (* given a convention, environment, and current status of the LLVM block,
        returns the _full_ list of values to be passed to a function with a matching
        convention. Casts are added as needed. *)
@@ -148,9 +150,7 @@ end = struct
     
     fun setupRetVal (b, env, retConv) = let
     
-        val retTy = LT.mkUStruct (projRegTys retConv)
-        
-        fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
+        val retTy = getRetTy retConv
         
         fun insertElms (Filler _, (i, strct)) = (i+1, strct)
           
@@ -177,6 +177,67 @@ end = struct
     in
         finalStruct
     end
+    
+    
+    and setupRetCont (b, env, retConv) ret = let
+        
+        val mvTyOf = MV.machineValTy
+        
+        fun extractElms (Filler _, (i, env)) = (i+1, env)
+          | extractElms (Machine mv, (i, env)) =
+                (i+1, Util.updateMV(env, mv, emitExtract (i, MV.machineValTy mv)))
+                
+          | extractElms (Actual (_, cv), (i, env)) =
+                (i+1, Util.insertV(env, cv, emitExtract (i, getTy cv)))
+        
+        and emitExtract (i, lhsTy) = let
+            val extr = LB.extractV b (ret, #[toC i])
+            val extrTy = LB.toTy extr
+        in
+            if LT.same(lhsTy, extrTy)
+            then extr
+            else LB.cast b (Op.simpleCast(extrTy, lhsTy)) (extr, lhsTy)
+        end
+        
+        val (_, finalEnv) = L.foldl extractElms (0, env) retConv
+    in
+        finalEnv
+    end
+    
+    and toC i = LB.intC(LT.i32, IntInf.fromInt i)
+    and getRetTy retConv = LT.mkUStruct (projRegTys retConv)
+    
+    
+    (*
+    (* grab the return values *)
+    fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
+    
+    val (mvAssign, lhsAssign) = determineRet lhs
+    
+    fun extractElm ret tyOf (i, var) = let
+        val extr = LB.extractV b (ret, #[toC i])
+        val extrTy = LB.toTy extr
+        val lhsTy = tyOf var
+    in
+        if LT.same(lhsTy, extrTy)
+        then extr
+        else LB.cast b (Op.simpleCast(extrTy, lhsTy)) (extr, lhsTy)
+    end
+    
+    (* update the machine vals in the env *)
+    val newMVs = L.map (extractElm ret MV.machineValTy) mvAssign
+    val env = ListPair.foldlEq
+                (fn ((_,mv), valu, acc) => Util.updateMV(acc, mv, valu))
+                env
+                (mvAssign, newMVs)
+    
+    (* bind the lhs values *)
+    val rhs = L.map (extractElm ret (LT.typeOf o CV.typeOf)) lhsAssign
+    val env = ListPair.foldlEq
+                (fn ((_,lhs), rhs, acc) => Util.insertV(acc, lhs, rhs))
+                env
+                (lhsAssign, rhs)
+    *)
     
     
     fun forceVars ps = L.map forceVar ps
