@@ -9,16 +9,24 @@
 structure LLVMCall : sig
 
     type convention
+    
+    type setupInput = (LLVMBuilder.t * LLVMTranslatorUtil.gamma * convention)
 
     (* given the convention and CFG args, returns an abstract "convention" *)
     val determineCC : { conv : CFG.convention,
                         args : CFG.Var.var list
                       } -> convention
+                      
+    val determineRet : CFG.Var.var list -> convention
+    
+    
+    
+    val setupRetVal : setupInput -> LLVMBuilder.instr
     
     (* given a convention, environment, and current status of the LLVM block,
        returns the _full_ list of values to be passed to a function with a matching
        convention. Casts are added as needed. *)
-    val setupCallArgs : (LLVMBuilder.t * LLVMTranslatorUtil.gamma * convention) -> LLVMBuilder.instr list
+    val setupCallArgs : setupInput -> LLVMBuilder.instr list
     
     val getParamKinds : convention -> LLVMTranslatorUtil.paramKind list
     
@@ -27,7 +35,7 @@ structure LLVMCall : sig
 
     (* turns any filler/fake parameters into new vars, and returns the 
        existing var otherwise *)
-    val getVars : LLVMTranslatorUtil.paramKind list -> LLVMVar.var list
+    val forceVars : LLVMTranslatorUtil.paramKind list -> LLVMVar.var list
 
 end = struct
     
@@ -48,6 +56,7 @@ end = struct
         | Actual of 'a
         
     type convention = (LT.ty * CFG.Var.var) conv list
+    type setupInput = (LLVMBuilder.t * LLVMTranslatorUtil.gamma * convention)
         
     (* fixed padding *)
     val pad : CV.var conv = Filler LT.i64
@@ -60,7 +69,7 @@ end = struct
         
     
     fun determineCC {conv, args} = (case conv
-            of C.StdFunc { clos, ret, exh } => withTys (
+            of C.StdFunc { clos, ret, exh } => withRegTys (
                     mvs @ L.map Actual ([clos, ret, exh] @ args)
                 )
 
@@ -68,20 +77,26 @@ end = struct
                 (* NOTE direct-style uses the KnownDirectFunc conv for cont throws, and
                    those throws come into this func as StdCont, so you should keep those 
                    cases matched up. *)
-                => withTys (
+                => withRegTys (
                         mvs @ [Actual clos, pad, pad] @ (L.map Actual args)
                     )
                 
-            | C.StdDirectFunc {clos, exh, ret=notAVar} => withTys (
+            | C.StdDirectFunc {clos, exh, ret=notAVar} => withRegTys (
                     mvs @ [Actual clos, pad, Actual exh] @ (L.map Actual args)
                 )
         (* end case *))
+        
+    and determineRet args = withRegTys (mvs @ [pad, pad, pad] @ (L.map Actual args))
     
-    and withTys cs = L.map withTy cs
-    and withTy (Actual cv)  = Actual (getRegTy cv, cv)
-      | withTy (Machine mv) = Machine mv
-      | withTy (Filler f)   = Filler f
+    and withRegTys cs = L.map withRegTy cs
+    and withRegTy (Actual cv)  = Actual (getRegTy cv, cv)
+      | withRegTy (Machine mv) = Machine mv
+      | withRegTy (Filler f)   = Filler f
       
+    and projRegTys cs = L.map projRegTy cs
+    and projRegTy (Actual (rty, _)) = rty
+      | projRegTy (Machine mv) = MV.machineValTy mv
+      | projRegTy (Filler rty) = rty
       
     and getParamKinds cs = L.map getParamKind cs
     and getParamKind (Actual (regTy, cv)) = let
@@ -130,11 +145,44 @@ end = struct
         L.foldl insert env startConv
     end
     
-    fun getVars ps = L.map getVar ps
-    and getVar (Util.NotUsed ty) = LV.new("pad", ty)
-      | getVar (Util.Machine (_, lv)) = lv
-      | getVar (Util.Used {llvmParam,...}) = llvmParam
     
+    fun setupRetVal (b, env, retConv) = let
+    
+        val retTy = LT.mkUStruct (projRegTys retConv)
+        
+        fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
+        
+        fun insertElms (Filler _, (i, strct)) = (i+1, strct)
+          
+          | insertElms (Machine mv, acc) = 
+                emitInsert(acc, Util.lookupMV(env, mv))
+          
+          | insertElms (Actual (_, cv), acc) =
+                emitInsert(acc, Util.lookupV(env, cv))
+          
+        and emitInsert ((i, strct), v) = let 
+            val varTy = LB.toTy v
+            val slotTy = LT.gevType (retTy, #[i])
+            val casted = if LT.same (varTy, slotTy)
+                         then v
+                         else LB.cast b (Op.safeCast(varTy, slotTy)) (v, slotTy)
+        in
+            (i+1, LB.insertV b (strct, casted, #[toC i]))
+        end
+        
+        val startStruct = LB.fromC(LB.undef retTy)
+        
+        val (_, finalStruct) = L.foldl insertElms (0, startStruct) retConv
+        
+    in
+        finalStruct
+    end
+    
+    
+    fun forceVars ps = L.map forceVar ps
+    and forceVar (Util.NotUsed ty) = LV.new("pad", ty)
+      | forceVar (Util.Machine (_, lv)) = lv
+      | forceVar (Util.Used {llvmParam,...}) = llvmParam
     
     
 end (* LLVMCall *)

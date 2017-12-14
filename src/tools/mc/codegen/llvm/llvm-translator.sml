@@ -109,7 +109,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         end
 
       fun mkStartBlock (C.BLK{body, exit, ...}, llvmCC) = let
-                val blk = LB.new(LV.new("entry", LT.labelTy), LC.getVars llvmCC)
+                val blk = LB.new(LV.new("entry", LT.labelTy), LC.forceVars llvmCC)
 
                 val env = LC.setupEntryEnv (blk, initialEnv, llvmCC)
             in
@@ -636,32 +636,6 @@ fun output (outS, module as C.MODULE { name = module_name,
                 (llLab, allArgs)
             end
             
-        (* determines the return convention for direct-style. returns slot assignments for
-           both machine values that need to be returned, and the CFG vars *)
-        and determineRet (rets : CV.var list) : ( ((int * MV.machineVal) list) * ((int * CV.var) list) ) = 
-            raise Fail "todo: determineRet"
-        (*
-        let
-             (* we "reserve" the clos, retk, and exh registers with padding *)
-             val dummyTy = LT.toRegType LT.uniformTy
-             val dummyPad = [dummyTy, dummyTy, dummyTy]
-             
-             val mvTys = L.map (fn mv => LT.toRegType(MV.machineValTy mv)) MV.mvCC
-             val retTys = L.map (fn v => LT.toRegType(LT.typeOf(CV.typeOf v))) rets
-             
-             (* first slots are assigned to machine vals, and are i64s *)
-             val idxs = LT.allocateToRegs (mvTys @ dummyPad @ retTys)
-             
-             val mvSlots = L.take(idxs, MV.numMachineVals)
-             val retSlots = L.drop(idxs, MV.numMachineVals + L.length dummyPad)
-             
-             val mvAssign = ListPair.zipEq (mvSlots, MV.mvCC)
-             val retAssign = ListPair.zipEq (retSlots, rets)
-             
-        in
-             (mvAssign, retAssign)
-        end *)
-            
         and mantiFnCall (func, conv) = let
                 val llFun = Util.lookupV (env, func)
                 val allCvtdArgs = LC.setupCallArgs (b, env, conv)
@@ -826,33 +800,9 @@ fun output (outS, module as C.MODULE { name = module_name,
                 
                | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
                
-               (* NOTE: Return vars => 
-                    1. retVals = MV.mvCC @ vars
-                    2. initialize a struct S that is "in register" with the retVals
-                    3. return S
-               *)
+               
                | C.Return {args=vars,...} => let
-                    val (mvAssign, varAssign) = determineRet vars
-                    
-                    val vars = L.map (fn (i, v) => (i, Util.lookupV(env, v))) varAssign
-                    val mvs = L.map (fn (i, mv) => (i, Util.lookupMV(env, mv))) mvAssign
-                    val retVals = mvs @ vars
-                    
-                    fun toC i = LB.intC(LT.i32, IntInf.fromInt i)
-                    
-                    fun insertElms ((i, v), strct) = let
-                        val varTy = LB.toTy v
-                        val slotTy = LT.gevType (LT.stdRetTy, #[i])
-                        val casted = if LT.same (varTy, slotTy)
-                                     then v
-                                     else LB.cast b (Op.safeCast(varTy, slotTy)) (v, slotTy)
-                    in
-                        LB.insertV b (strct, casted, #[toC i])
-                    end
-                    
-                    val startStruct = LB.fromC(LB.undef LT.stdRetTy)
-                    
-                    val retStruct = L.foldl insertElms startStruct retVals
+                    val retStruct = LC.setupRetVal (b, env, LC.determineRet vars)
                in
                     (fn () => [LB.ret b retStruct])
                end
@@ -1398,9 +1348,10 @@ fun output (outS, module as C.MODULE { name = module_name,
     (*val comment = S.concat ["; CFG type: ", CTU.toString cfgTy, "\n",
                             "; LLVM type: ", (stringify  llParamTys), "\n",
                             "; LLVM arity = ", i2s(List.length llParamTys), "\n" ]*)
+                            
+    val llLab = Util.lookupL(initEnv, lab)
    
-    (* the return convention/type used by DS funs *)
-    val retTyStr = LT.nameOf(LT.mkUStruct (Vector.toList LT.jwaCC))
+    val retTyStr = (LT.nameOf o valOf o LT.returnTy o LV.typeOf) llLab
     
     val attrs = ""
     
@@ -1412,7 +1363,7 @@ fun output (outS, module as C.MODULE { name = module_name,
     (* string building code *)
     val linkage = linkageOf lab
     val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " "  (* TODO it's likely that we need a direct-style Manticore CC in LLVM *)
-    val llName = LV.toString(Util.lookupL(initEnv, lab))
+    val llName = LV.toString llLab
     val decl = ["define ", linkage, ccStr,
                 retTyStr, " ", llName, "(", (stringify startConv), ") ",
                 attrs, " ", stackKind, " gc \"statepoint-example\" {\n"]
