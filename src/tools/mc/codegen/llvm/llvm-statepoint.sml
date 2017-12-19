@@ -44,7 +44,7 @@ end = struct
             val asAtom = Atom.atom name
         in
             (case find asAtom
-              of SOME lv => lv
+              of SOME (lv,_) => lv
                | NONE => let
                     val ty = LT.mkPtr(LT.mkVFunc [
                         LT.tokenTy,
@@ -56,7 +56,7 @@ end = struct
                     ])
                     val lv = LV.newWithKind(name, LV.VK_Global true, ty)
                in
-                    insert (asAtom, lv);
+                    insert (asAtom, (lv, SOME LB.jwaCC));
                     lv
                end
             (* esac *))
@@ -67,7 +67,7 @@ end = struct
             val asAtom = Atom.atom name
         in
             (case find asAtom
-              of SOME lv => lv
+              of SOME (lv,_) => lv
                | NONE => let
                     val ty = LT.mkPtr(LT.mkFunc [
                         retTy,
@@ -75,7 +75,7 @@ end = struct
                     ])
                     val lv = LV.newWithKind(name, LV.VK_Global true, ty)
                in
-                    insert (asAtom, lv);
+                    insert (asAtom, (lv, NONE));
                     lv
                end
             (* esac *))
@@ -86,7 +86,7 @@ end = struct
             val asAtom = Atom.atom name
         in
             (case find asAtom
-              of SOME lv => lv
+              of SOME (lv,_) => lv
                | NONE => let
                     val ty = LT.mkPtr(LT.mkFunc [
                         varTy,
@@ -96,13 +96,13 @@ end = struct
                     ])
                     val lv = LV.newWithKind(name, LV.VK_Global true, ty)
                in
-                    insert (asAtom, lv);
+                    insert (asAtom, (lv, NONE));
                     lv
                end
             (* esac *))
         end (* end getRelocateVar *)
         
-        fun exportDecls () = L.map (fn v => (v, NONE)) (AtomTable.listItems intrinsicTbl)
+        fun exportDecls () = AtomTable.listItems intrinsicTbl
         
     end (* end local *)
 

@@ -433,8 +433,8 @@ structure LLVMType : sig
         (case t 
            of (CT.T_StdDirFun {ret,...} | CT.T_KnownDirFunc {ret,...}) =>
                 withPadding ret
-            | (CT.T_StdCont _) => raise Fail "need a return type for stdcont in DS."
-            | (CT.T_KnownFunc _) => raise Fail "need a return type for non-ds known func in DS."
+            | (CT.T_StdCont _) => withPadding [CFGTy.T_Any]  (* NB: doesn't actually return *)
+            | (CT.T_KnownFunc _) => withPadding [CFGTy.T_Any] (* NB: doesn't actually return *)
             | _ => raise Fail "error: impossible type when using direct-style!"
             (* esac *))
     end
