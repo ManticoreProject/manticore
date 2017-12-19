@@ -317,6 +317,8 @@ structure WrapCaptures : sig
                     val _ = if L.length params > 1 then
                                 raise Fail ("escape cont " ^ (CV.toString f) ^ " takes more than 1 parameter!")
                             else ST.tick cntExpand
+                            
+                    (* val _ = print ("Wrapping cont " ^ (CV.toString f) ^ "\n") *)
                     
                     val retk = getRet env
                     val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
