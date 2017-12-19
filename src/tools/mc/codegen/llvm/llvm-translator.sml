@@ -649,10 +649,16 @@ fun output (outS, module as C.MODULE { name = module_name,
         (* the bool indicates whether it is a direct-style throw *)
         and mantiThrow (false, func, conv) = mantiFnCall(func, conv)
           | mantiThrow (true, func, conv) = let
+            (* call the function, which should never return *)
             val llFun = Util.lookupV (env, func)
             val allCvtdArgs = LC.setupCallArgs (b, env, conv)
             val conv = (AS.singleton A.Tail, LB.jwaCC)
             val _ = LB.callAs' b conv (llFun, V.fromList allCvtdArgs)
+            
+            (* we don't know what type of junk value to return, so instead
+               we will trap if the call ever returns. *)
+            val (trapLab, NONE) = LR.trap
+            val NONE = LB.call b (LB.fromV trapLab, #[])
           in
             (fn () => [LB.unreachable b])
           end

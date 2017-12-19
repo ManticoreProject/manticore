@@ -90,6 +90,8 @@ structure LLVMRuntime =
        args are (i1 <val>, i1 <expected_val>) *)
     val expect_i1 : LV.var * (LB.convention option) = (mkLabel "llvm.expect.i1" (LT.i1 :: [ LT.i1, LT.i1 ]), NONE)
     
+    val trap : LV.var * (LB.convention option) = (mkLabel "llvm.trap" (LT.voidTy :: []), NONE)
+    
     
     (* list of everything in this module for building the declarations. the LLVM printer
        will automatically output anything in these lists for you. *)
@@ -117,7 +119,8 @@ structure LLVMRuntime =
                         abs_f32,
                         abs_f64,
                         readtsc,
-                        expect_i1 ]
+                        expect_i1,
+                        trap ]
     
   end
   
