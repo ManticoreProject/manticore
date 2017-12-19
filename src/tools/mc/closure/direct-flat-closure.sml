@@ -152,7 +152,7 @@ structure DirectFlatClosureWithCFA : sig
     and cvtStdContTyAuxKwn (CPSTy.T_Cont(argTys), args) = let
           fun cvtTy' (ty, x) = cvtTy (ty, CFA.valueOf x)
           in
-            CFGTyUtil.kwnContTy(CFGTy.T_Any, ListPair.mapEq cvtTy' (argTys, args))
+            CFGTyUtil.stdContTy(CFGTy.T_Any, ListPair.mapEq cvtTy' (argTys, args))
           end
       | cvtStdContTyAuxKwn (ty, _) = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty])
@@ -1184,7 +1184,7 @@ structure DirectFlatClosureWithCFA : sig
             			in
             			  if CFA.isEscaping g
             			    then cvtStdThrow (env, k, kTgt, args)
-            			    else cvtKnownThrow (env, k, kTgt, args)
+            			    else cvtStdThrow (env, k, kTgt, args)
             			end
             		  (* end case *))
                       and cvtStdThrow (env, k, kTgt, args) = let

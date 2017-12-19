@@ -372,22 +372,16 @@ structure LLVMType : sig
             mkPtr(funCtor([typeOfC retTy] @ (List.map typeOfC argTys)))
         end
       
-      | CT.T_StdFun _ => mkPtr(mkFunc( voidTy :: getArgsFor cty ))
-      | CT.T_StdCont _ => (* we use T_StdCont in both direct and CPS *)
+      | CT.T_StdFun _ => 
             if Controls.get BasicControl.direct
-            then  mkPtr(mkFunc( dsReturnConv cty :: getArgsFor cty ))
-            else  mkPtr(mkFunc( voidTy :: getArgsFor cty ))
-      | CT.T_KnownFunc _ => (* KnownFuncs may still appear when in direct-style,
-                               but only when applying an exception handler
-                               in tail position.
-                               
-                               FIXME TODO ideally we'd translate all exception capture/throws
-                               as callec's as well, so this wouldn't happen at all, 
-                               but i'm not concerned with exceptions right now.
-                            *)
+            then raise Fail "did not expect any CPS StdFuns"
+            else mkPtr(mkFunc( voidTy :: getArgsFor cty ))
+      | CT.T_StdCont _ => (* we use T_StdCont in both direct and CPS, and they have the same type *)
+            mkPtr(mkFunc( voidTy :: getArgsFor cty ))
+      | CT.T_KnownFunc _ =>
             if Controls.get BasicControl.direct
-            then  mkPtr(mkFunc( dsReturnConv cty :: getArgsFor cty ))
-            else  mkPtr(mkFunc( voidTy :: getArgsFor cty ))
+            then raise Fail "did not expect any CPS KnownFuncs"
+            else mkPtr(mkFunc( voidTy :: getArgsFor cty ))
       | CT.T_KnownDirFunc _ => 
             mkPtr(mkFunc( dsReturnConv cty :: getArgsFor cty ))
                             

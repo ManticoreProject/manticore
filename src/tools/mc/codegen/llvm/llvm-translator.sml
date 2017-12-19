@@ -646,6 +646,17 @@ fun output (outS, module as C.MODULE { name = module_name,
                  | NONE => (fn () => [LB.retVoid b])
             end
             
+        (* the bool indicates whether it is a direct-style throw *)
+        and mantiThrow (false, func, conv) = mantiFnCall(func, conv)
+          | mantiThrow (true, func, conv) = let
+            val llFun = Util.lookupV (env, func)
+            val allCvtdArgs = LC.setupCallArgs (b, env, conv)
+            val conv = (AS.singleton A.Tail, LB.jwaCC)
+            val _ = LB.callAs' b conv (llFun, V.fromList allCvtdArgs)
+          in
+            (fn () => [LB.unreachable b])
+          end
+            
       in
           (case exit
               of C.Goto jmp => let
@@ -766,7 +777,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                              args = args}))
                     
                | C.StdThrow {k, clos, args}
-                    => mantiFnCall(k, 
+                    => mantiThrow(Controls.get BasicControl.direct, k, 
                         LC.determineCC({
                             conv = C.StdCont{clos=clos},
                             args = args}))
