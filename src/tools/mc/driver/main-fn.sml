@@ -270,6 +270,7 @@ functor MainFn (
       \    -lazyunderflow   segstack -- do not free on underflow\n\
       \    -nocopyoverflow  segstack -- do not copy on overflow\n\
       \    -noparray        disable parray basis inclusion\n\
+      \    -keepTemps       keep temporary files generated during compilation\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
 
@@ -374,6 +375,7 @@ functor MainFn (
 		| "-debug" => set BasicControl.debug
 		| "-perf" => set BasicControl.perf
 		| "-noparray" => set BasicControl.noparray
+		| "-keepTemps" => set BasicControl.keepTemps
 		| _ => badopt ()
 	      (* end case *))
 	  end

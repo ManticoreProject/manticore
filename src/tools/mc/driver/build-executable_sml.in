@@ -68,32 +68,37 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
     end
 
     fun cmd asmFile = let
-	  val gcStats = Controls.get BasicControl.gcStats
-	  val logging = Controls.get BasicControl.logging
-	  val debug = Controls.get BasicControl.debug
-	  val perf = Controls.get BasicControl.perf
-      val direct = Controls.get BasicControl.direct
-      val segstack = Controls.get BasicControl.segstack
-      val lazyunderflow = Controls.get BasicControl.lazyunderflow
-      val nocopyoverflow = Controls.get BasicControl.nocopyoverflow
-	  
-	  val filename = OS.FileSys.tmpName()
-          val filenamec = concat[filename,".c"]
-          val filenameo = concat[filename,".o"]  
-	  val gccfilename = cat [ccCmd,cFlags,"-O2 @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o",filenameo,"-std=c99 -c",filenamec]
-	  val _ = PrintTbl.print filenamec
-	  val _ = systemWithTiming (gccfilename, false)
-	  
-	  fun tableFiles () =
+        val gcStats = Controls.get BasicControl.gcStats
+        val logging = Controls.get BasicControl.logging
+        val debug = Controls.get BasicControl.debug
+        val perf = Controls.get BasicControl.perf
+        val direct = Controls.get BasicControl.direct
+        val segstack = Controls.get BasicControl.segstack
+        val lazyunderflow = Controls.get BasicControl.lazyunderflow
+        val nocopyoverflow = Controls.get BasicControl.nocopyoverflow
+        
+        (* remove the .s *)
+        val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 2))
+  
+        (* compile the non-debug GC header table *)
+        val filename = asmPrefix ^ "_hdr"
+        val filenamec = concat[filename,".c"]
+        val filenameo = concat[filename,".o"]  
+        val gccfilename = cat [ccCmd,cFlags,"-O2 @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o",filenameo,"-std=c99 -c",filenamec]
+        val _ = PrintTbl.print filenamec
+        val _ = systemWithTiming (gccfilename, false)
+  
+    (* collect all nessecary compiled GC header tables *)
+    fun tableFiles () =
               if (debug) 
               then let
-		      val filenamedebug = OS.FileSys.tmpName()
-		      val filenamedebugc = concat[filenamedebug,".c"]
-		      val filenamedebugo = concat[filenamedebug,".o"]  
-		      val gccfilenamedebug = cat [ccCmd,cFlags,"-O0 @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o",filenamedebugo,"-std=c99 -c",filenamedebugc]
-		      val _ = PrintTblDbg.print filenamedebugc
-		      val _ = systemWithTiming (gccfilenamedebug, false)
-	          in
+                val filenamedebug = filename ^ "_debug"
+                val filenamedebugc = concat[filenamedebug,".c"]
+                val filenamedebugo = concat[filenamedebug,".o"]
+                val gccfilenamedebug = cat [ccCmd,cFlags,"-O0 @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o",filenamedebugo,"-std=c99 -c",filenamedebugc]
+                val _ = PrintTblDbg.print filenamedebugc
+                val _ = systemWithTiming (gccfilenamedebug, false)
+              in
                       (concat[filenameo," ",filenamedebugo],
                        [filenamec, filenameo, filenamedebugc, filenamedebugo])
                   end
@@ -130,12 +135,13 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
 	    TextIO.output(TextIO.stdErr, "cross compiler cannot produce executables\n");
 	    OS.Process.failure)
 	  else let
-                  val (cmdline, temps) = cmd asmFile
-	          val cmd' = cat[cmdline, " -o ", outFile]
-                  val result = systemWithTiming (cmd', verbose);
-	          val debug = Controls.get BasicControl.debug
+                val (cmdline, temps) = cmd asmFile
+                val cmd' = cat[cmdline, " -o ", outFile]
+                val result = systemWithTiming (cmd', verbose);
+                val keepTemps = Controls.get BasicControl.debug 
+                                orelse Controls.get BasicControl.keepTemps
 	      in
-                  if not debug
+                  if not keepTemps
                   then (List.app OS.FileSys.remove temps)
                   else ();
                   result

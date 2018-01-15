@@ -46,6 +46,9 @@ structure BasicControl :  sig
     
   (* disable parray basis *)
     val noparray : bool Controls.control
+    
+  (* keep GC header table, etc. *)
+    val keepTemps : bool Controls.control
 
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control
@@ -246,6 +249,15 @@ structure BasicControl :  sig
 	    help = "disable parray basis inclusion",
 	    default = false
 	  }
+      
+(* keep header table, etc. *)
+  val keepTemps : bool Controls.control = Controls.genControl {
+      name = "keepTemps",
+      pri = [0, 1, 1],
+      obscurity = 0,
+      help = "keep temporary files generated during compilation",
+      default = false
+    }
 
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control = Controls.genControl {
