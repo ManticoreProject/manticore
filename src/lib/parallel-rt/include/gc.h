@@ -17,6 +17,8 @@ extern void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top);
 extern void StartGlobalGC (VProc_t *vp, Value_t **roots);
 extern Value_t PromoteObj (VProc_t *vp, Value_t root);
 extern Value_t NewStack (VProc_t *vp, Value_t funClos);
+extern void InvalidReturnAddr();
+extern void EndOfStack();
 extern StackInfo_t* NewMainStack (VProc_t *vp, void** initialSP);
 extern void* GetStkLimit (StackInfo_t* info);
 extern void WarmUpFreeList(VProc_t* vp, uint64_t numBytes);

@@ -337,7 +337,7 @@ asm_get_service:
 
       /* save Manticore state */
     movq    ALLOC_PTR_REG, ALLOC_PTR(VPROC_PTR_REG)
-    movq    STD_EXH_REG, STD_EXH(VPROC_PTR_REG)
+    movq    STD_EXH_REG, STD_EXH(VPROC_PTR_REG)   // NOTE I don't think we need to save this reg.
     movq    STD_ARG_REG, STD_ARG(VPROC_PTR_REG)
     movq    %rsp, STD_EP(VPROC_PTR_REG)
     /* in essence, the environment (with all roots)

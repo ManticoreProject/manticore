@@ -151,7 +151,7 @@ void ScanStackGlobal (
         for (uint16_t i = 0; i < frame->numSlots; i++) {
             pointer_slot_t slotInfo = frame->slots[i];
             if (slotInfo.kind >= 0) {
-                assert(false && "unexpected derived pointer\n");
+                Die("unexpected derived pointer\n");
             }
             
             Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
@@ -503,7 +503,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     
 #ifdef DIRECT_STYLE
     /* scan the current stack. */
-    StackInfo_t* stkInfo = vp->stdCont;
+    StackInfo_t* stkInfo = (StackInfo_t*)(vp->stdCont);
     void* stkPtr = vp->stdEnvPtr;
     ScanStackGlobal(stkPtr, stkInfo, vp);
 #endif
@@ -567,8 +567,8 @@ static void ScanVProcHeap (VProc_t *vp)
             const int expectedLen = 3;
             assert(len == expectedLen && "ASM code doesn't match GC assumptions");
             
-            void* stkPtr = scanPtr[1];
-            StackInfo_t* stkInfo = scanPtr[2];
+            void* stkPtr = (void*)(scanPtr[1]);
+            StackInfo_t* stkInfo = (StackInfo_t*)(scanPtr[2]);
             
             ScanStackGlobal(stkPtr, stkInfo, vp);
             
@@ -694,8 +694,8 @@ static void ScanGlobalToSpace (VProc_t *vp)
                     const int expectedLen = 3;
                     assert(len == expectedLen && "ASM code doesn't match GC assumptions");
                     
-                    void* stkPtr = scanPtr[1];
-                    StackInfo_t* stkInfo = scanPtr[2];
+                    void* stkPtr = (void*)(scanPtr[1]);
+                    StackInfo_t* stkInfo = (StackInfo_t*)(scanPtr[2]);
                     
                     ScanStackGlobal(stkPtr, stkInfo, vp);
                     

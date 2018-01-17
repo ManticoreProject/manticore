@@ -23,6 +23,8 @@
 
 extern Addr_t   MajorGCThreshold;   /* when the size of the nursery goes below */
                     /* this limit it is time to do a GC. */
+                    
+extern int ASM_DS_Return;
 
 //ForwardObject of MinorGC
 /* Copy an object to the old region */
@@ -95,7 +97,7 @@ void ScanStackMinor (
 
 #ifdef DEBUG_STACK_SCAN_MINOR
         framesSeen++;
-        print_frame(stderr, frame);    
+        print_frame(stderr, frame);
 #endif
         
         // step into frame
@@ -120,7 +122,7 @@ void ScanStackMinor (
         for (uint16_t i = 0; i < frame->numSlots; i++) {
             pointer_slot_t slotInfo = frame->slots[i];
             if (slotInfo.kind >= 0) {
-                assert(false && "unexpected derived pointer\n");
+                Die("unexpected derived pointer\n");
             }
             
             Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
@@ -142,7 +144,16 @@ void ScanStackMinor (
         stackPtr += frame->frameSize;
         
     } // end while
-    
+ 
+#ifdef DEBUG_STACK_SCAN_MINOR   
+    // debug code
+    uint64_t lastRetAddr = *(uint64_t*)(stackPtr);
+    if (lookup_return_address(SPTbl, lastRetAddr) == 0 
+            && lastRetAddr != (uint64_t)&EndOfStack
+            && lastRetAddr != (uint64_t)&ASM_DS_Return)
+        Die("Encountered an unexpected return address on the stack: %p\n", (void*)lastRetAddr);
+#endif
+
     // the roots have been forwarded out of the nursery.
     // we are careful to make sure the age doesn't go down.
     if(stkInfo->age < promoteGen) {
@@ -279,10 +290,9 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->landingPad);
 
 #ifndef DIRECT_STYLE
-    /* with the DS runtime, the env ptr holds the current stack pointer,
-       and this root is handled seperately. */
+    /* only in the CPS-style RTS is the stdEnvPtr a root. */
     *rp++ = &(vp->stdEnvPtr);
-#endif // DIRECT_STYLE
+#endif // not DIRECT_STYLE
     
     rp = M_AddDequeEltsToLocalRoots(vp, rp);
     *rp++ = 0;
@@ -305,7 +315,7 @@ void MinorGC (VProc_t *vp)
     
 #ifdef DIRECT_STYLE
     /* scan the current stack. */
-    StackInfo_t* stkInfo = vp->stdCont;
+    StackInfo_t* stkInfo = (StackInfo_t*)(vp->stdCont);
     void* stkPtr = vp->stdEnvPtr;
     ScanStackMinor(stkPtr, stkInfo, nurseryBase, allocSzB, &nextW);
 #endif
@@ -344,8 +354,8 @@ void MinorGC (VProc_t *vp)
             const int expectedLen = 3;
             assert(len == expectedLen && "ASM code doesn't match GC assumptions");
             
-            void* stkPtr = nextScan[1];
-            StackInfo_t* stkInfo = nextScan[2];
+            void* stkPtr = (void*)(nextScan[1]);
+            StackInfo_t* stkInfo = (StackInfo_t*)(nextScan[2]);
             
             ScanStackMinor(stkPtr, stkInfo, nurseryBase, allocSzB, &nextW);
             

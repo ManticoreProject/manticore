@@ -180,7 +180,7 @@ void ScanStackMajor (
         for (uint16_t i = 0; i < frame->numSlots; i++) {
             pointer_slot_t slotInfo = frame->slots[i];
             if (slotInfo.kind >= 0) {
-                assert(false && "unexpected derived pointer\n");
+                Die("unexpected derived pointer\n");
             }
             
             Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
@@ -295,7 +295,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     UnmarkStacks(vp);
     
     /* scan the current stack. */
-    StackInfo_t* stkInfo = vp->stdCont;
+    StackInfo_t* stkInfo = (StackInfo_t*)(vp->stdCont);
     void* stkPtr = vp->stdEnvPtr;
     ScanStackMajor(stkPtr, stkInfo, heapBase, oldSzB, vp, false);
 #endif
@@ -352,8 +352,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
             const int expectedLen = 3;
             assert(len == expectedLen && "ASM code doesn't match GC assumptions");
             
-            void* stkPtr = nextScan[1];
-            StackInfo_t* stkInfo = nextScan[2];
+            void* stkPtr = (void*)(nextScan[1]);
+            StackInfo_t* stkInfo = (StackInfo_t*)(nextScan[2]);
             
             ScanStackMajor(stkPtr, stkInfo, heapBase, oldSzB, vp, false);
             
@@ -544,8 +544,8 @@ static void ScanGlobalToSpace (
                     const int expectedLen = 3;
                     assert(len == expectedLen && "ASM code doesn't match GC assumptions");
                     
-                    void* stkPtr = scanPtr[1];
-                    StackInfo_t* stkInfo = scanPtr[2];
+                    void* stkPtr = (void*)(scanPtr[1]);
+                    StackInfo_t* stkInfo = (StackInfo_t*)(scanPtr[2]);
                     
                     ScanStackMajor(stkPtr, stkInfo, heapBase, 0, vp, true);
                     

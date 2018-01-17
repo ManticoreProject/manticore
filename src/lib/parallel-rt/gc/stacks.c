@@ -23,9 +23,15 @@ extern int ASM_DS_ApplyClos;
 extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_SegUnderflow;
 
-uint64_t invalidRetAddr = 0xDEADACE;
-
 size_t dfltStackSz;
+
+void InvalidReturnAddr() {
+    Die("an unexpected return has occurred!");
+}
+
+void EndOfStack() {
+    Die("stack underflow has occurred!");
+}
 
 // Retrieves an unused stack for the given vproc.
 StackInfo_t* GetStack(VProc_t *vp) {
@@ -72,9 +78,9 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
   returned stkPtr            initial sp             
                                                                  
     */
-    sp[0] = invalidRetAddr; // funClos should not try to return!
-    sp[-1] = funClos;
-    sp[-2] = &ASM_DS_ApplyClos;
+    sp[0] = (uint64_t)&EndOfStack; // funClos should not try to return!
+    sp[-1] = (uint64_t)funClos;
+    sp[-2] = (uint64_t)&ASM_DS_ApplyClos;
     sp = sp - 2;
     
     // now we need to allocate the stack cont object

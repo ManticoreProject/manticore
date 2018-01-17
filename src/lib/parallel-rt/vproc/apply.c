@@ -234,10 +234,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
     
 } /* end RunManticore */
 
-void InvalidReturnAddr() {
-    Die("an unexpected return has occurred");
-}
-
 /* 
  * This function doesn't return normally. 
  *
