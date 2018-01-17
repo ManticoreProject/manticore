@@ -139,12 +139,16 @@ void ScanStackMajor (
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
     
-    uint64_t deepest = (uint64_t)stkInfo->deepestScan;
-    if(deepest <= (uint64_t)origStkPtr) {
-        goto nextIter; // this part of the stack has already been scanned.
+    // only during a GC cycle is it valid to do this test, because
+    // otherwise during a PromoteObj, we never end up clearing this,
+    // and will not scan the stack.
+    if (!scanningGlobalToSpace) {
+        uint64_t deepest = (uint64_t)stkInfo->deepestScan;
+        if(deepest <= (uint64_t)origStkPtr) {
+            goto nextIter; // this part of the stack has already been scanned.
+        }
+        stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
     }
-    
-    stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
     
     while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
            && state != LS_Stop) {
