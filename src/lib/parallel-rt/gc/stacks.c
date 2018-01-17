@@ -19,7 +19,7 @@
 #include <stdio.h>
 
 extern int ASM_DS_Return;
-extern int ASM_DS_ApplyClos;
+extern int ASM_DS_StartStack;
 extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_SegUnderflow;
 
@@ -80,7 +80,7 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
     */
     sp[0] = (uint64_t)&EndOfStack; // funClos should not try to return!
     sp[-1] = (uint64_t)funClos;
-    sp[-2] = (uint64_t)&ASM_DS_ApplyClos;
+    sp[-2] = (uint64_t)&ASM_DS_StartStack;
     sp = sp - 2;
     
     // now we need to allocate the stack cont object

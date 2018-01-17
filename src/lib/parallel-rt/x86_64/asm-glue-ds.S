@@ -30,8 +30,8 @@
     .text  
     
 .p2align 3
-.globl	_GSYM(ASM_DS_ApplyClos)
-_GSYM(ASM_DS_ApplyClos):
+.globl	_GSYM(ASM_DS_StartStack)
+_GSYM(ASM_DS_StartStack):
     // this is a special manticore routine used to start a NewStack.
     popq    TMP_REG1                // retrieve the closure from our stack frame
                                     // and adjust SP so it points to an invalid ret addr.
@@ -43,8 +43,8 @@ _GSYM(ASM_DS_ApplyClos):
 // used by RequestService to call a function on the given stack,
 // and additionally pop any data RequestService placed on the stack.
     .p2align 3
-    .globl	_GSYM(ASM_Apply_StdDS_WithStk)
-_GSYM(ASM_Apply_StdDS_WithStk):
+    .globl	_GSYM(ASM_DS_Apply)
+_GSYM(ASM_DS_Apply):
     // setup standard convention registers
     movq    %r9, %rsp
     movq    %rdi, VPROC_PTR_REG
@@ -67,7 +67,7 @@ _GSYM(ASM_Resume_Stack):
     movq    %rdx, STD_EP_REG
     movq    %rcx, STD_EXH_REG
     movq    %r8, STD_ARG_REG
-    movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
+    movq    ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
     ret
     
 .p2align 3

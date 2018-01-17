@@ -182,7 +182,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
 #else /* DIRECT_STYLE */
 
-extern void ASM_Apply_StdDS_WithStk (
+extern void ASM_DS_Apply (
     VProc_t *vp,
     Addr_t cp, 
     Value_t ep,
@@ -192,14 +192,13 @@ extern void ASM_Apply_StdDS_WithStk (
     
 extern void ASM_Resume_Stack (
     VProc_t *vp,
-    Addr_t stk, 
+    Value_t stk, 
     Value_t ep,
     Value_t exh,
     Value_t arg);
     
 extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_UncaughtExn;
-// extern int ASM_Resume;
 
 /* \brief Run Manticore code. Assumption is that this function is called
  *         only when bootstrapping the vproc with the initial function.
@@ -228,7 +227,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   
   /* apply the given function  */
   LogRunThread(vp, 0);
-  ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
+  ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
   
   Die("unexpected return to RunManticore");
     
@@ -282,7 +281,7 @@ doShutdown:
         #endif
         
         LogRunThread(vp, 0);
-        ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
+        ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
     }
     
     switch (req) {
@@ -335,12 +334,12 @@ doShutdown:
             #endif
             
             LogRunThread(vp, 0);
-            ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
+            ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
             
     	    }
     	    else {
     	     /* setup the return from GC */
-                codeP = vp->stdEnvPtr; // actually the stack pointer
+                stkPtr = vp->stdEnvPtr; // actually the stack pointer
                 envP = M_UNIT;		
                 exnCont = M_UNIT;
                 arg = M_UNIT;
@@ -351,7 +350,7 @@ doShutdown:
                 #endif
                 
                 LogRunThread(vp, 0);
-                ASM_Resume_Stack (vp, codeP, envP, exnCont, arg);
+                ASM_Resume_Stack (vp, stkPtr, envP, exnCont, arg);
     	    }
     	    
             Die("unreachable in REQ_GC");
@@ -399,7 +398,7 @@ doShutdown:
              #endif
              
              LogRunThread(vp, 0);
-             ASM_Apply_StdDS_WithStk(vp, codeP, envP, exnCont, arg, stkPtr);
+             ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
              
              Die("unreachable in REQ_Sleep");
           }
