@@ -18,12 +18,6 @@
 #define TMP_REG3            %r15
 #define TMP_REG4            %r12
 
-// 0xDEADBED == 233495533
-#define INVALID_RET_ADDR1 233495533
-
-// 0xCAFEBED == 212855789
-#define INVALID_RET_ADDR2 212855789
-
 // stack descriptor offsets
 #define CUR_SP      0
 #define PREV_SEG    8
@@ -296,7 +290,8 @@ _GSYM(ASM_DS_Return):
     // the stack is 16-byte aligned, and we
     // push a dummy return address before jumping
     // to RequestService to preserve ABI requirements.
-    pushq   $INVALID_RET_ADDR2
+    leaq    _GSYM(InvalidReturnAddr)(%rip), TMP_REG1
+    pushq   TMP_REG1
     movq    $REQ_Return, TMP_REG1
     jmp     asm_get_service
     
