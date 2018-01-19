@@ -61,7 +61,7 @@ void ScanStackMinor (
     Addr_t allocSzB,
     Word_t **nextW) {
 
-// #define DEBUG_STACK_SCAN_MINOR
+#define DEBUG_STACK_SCAN_MINOR
 
     uint64_t framesSeen = 0;
     
@@ -85,24 +85,28 @@ void ScanStackMinor (
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
     
+    /* FIXME
     uint64_t deepest = (uint64_t)stkInfo->deepestScan;
     if(deepest <= (uint64_t)origStkPtr) {
         goto nextIter; // this part of the stack has already been scanned.
     }
     
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
+    */
     
     while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
            && state != LS_Stop) {
 
 #ifdef DEBUG_STACK_SCAN_MINOR
         framesSeen++;
+        fprintf(stderr, "sp = %p\n", (uint64_t*)stackPtr);
         print_frame(stderr, frame);
 #endif
         
         // step into frame
         stackPtr += sizeof(uint64_t);
         
+        /* FIXME
         // handle watermark
         uint64_t* watermark = (uint64_t*)stackPtr;
         
@@ -117,6 +121,7 @@ void ScanStackMinor (
             assert(*watermark == 0 && "should only overwrite zero watermarks!");
             *watermark = promoteGen;
         }
+        */
         
         // process pointers
         for (uint16_t i = 0; i < frame->numSlots; i++) {
@@ -154,11 +159,13 @@ void ScanStackMinor (
         Die("Encountered an unexpected return address on the stack: %p\n", (void*)lastRetAddr);
 #endif
 
+/* FIXME
     // the roots have been forwarded out of the nursery.
     // we are careful to make sure the age doesn't go down.
     if(stkInfo->age < promoteGen) {
         stkInfo->age = promoteGen;
     }
+*/
 
 nextIter:
 #ifdef SEGSTACK
@@ -191,6 +198,8 @@ nextIter:
  * This function is also used by later GCs.
  */
 size_t FreeStacks(VProc_t *vp, Age_t epoch) {
+    return 0;
+    /* FIXME
     StackInfo_t* allocd = vp->allocdStacks;
     size_t freedBytes = 0;
     
@@ -232,16 +241,19 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
         allocd = nextIter;
     }
     return freedBytes;
+    */
 }
 
 /* unmarks all stacks in the alloc'd list (for the ones who survived). */
 void UnmarkStacks(VProc_t *vp) {
+    /* FIXME
     StackInfo_t* cur = vp->allocdStacks;
     while (cur != NULL) {
         cur->deepestScan = cur;
         cur = cur->next;
     }
     return;
+    */
 }
 
 /* MinorGC:

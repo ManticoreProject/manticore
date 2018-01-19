@@ -115,7 +115,7 @@ void ScanStackMajor (
     VProc_t *vp,
     bool scanningGlobalToSpace) {
 
-// #define DEBUG_STACK_SCAN_MAJOR
+#define DEBUG_STACK_SCAN_MAJOR
 
     uint64_t framesSeen = 0;
     
@@ -139,6 +139,7 @@ void ScanStackMajor (
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
     
+    /* FIXME
     // only during a GC cycle is it valid to do this test, because
     // otherwise during a PromoteObj, we never end up clearing this,
     // and will not scan the stack.
@@ -149,11 +150,13 @@ void ScanStackMajor (
         }
         stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
     }
+    */
     
     while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
            && state != LS_Stop) {
 
 #ifdef DEBUG_STACK_SCAN_MAJOR
+        fprintf(stderr, "sp = %p\n", (uint64_t*)stackPtr);
         framesSeen++;
         print_frame(stderr, frame);    
 #endif
@@ -161,6 +164,7 @@ void ScanStackMajor (
         // step into frame
         stackPtr += sizeof(uint64_t);
         
+        /* FIXME
         // handle watermark
         uint64_t* watermark = (uint64_t*)stackPtr;
         
@@ -175,6 +179,7 @@ void ScanStackMajor (
             assert(*watermark == 0 && "should only overwrite zero watermarks!");
             *watermark = promoteGen;
         }
+        */
         
         // process pointers
         for (uint16_t i = 0; i < frame->numSlots; i++) {
@@ -229,8 +234,10 @@ void ScanStackMajor (
         
     } // end while
     
+    /* FIXME
     // the roots have been forwarded to the global heap
     stkInfo->age = promoteGen;
+    */
     
 nextIter:
 #ifdef SEGSTACK
