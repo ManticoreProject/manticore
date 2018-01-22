@@ -33,6 +33,21 @@ void EndOfStack() {
     Die("stack underflow has occurred!");
 }
 
+void print_stack_info(StackInfo_t* info) {
+    fprintf(stderr, "---- Stack Info for %llx ----\n", (uint64_t)info);
+    fprintf(stderr, "currentSP = %llx\n", (uint64_t)info->currentSP);
+    fprintf(stderr, "prevSegment = %llx\n", (uint64_t)info->prevSegment);
+    
+    fprintf(stderr, "next = %llx\n", (uint64_t)info->next);
+    fprintf(stderr, "initialSP = %llx\n", (uint64_t)info->initialSP);
+    fprintf(stderr, "stkLimit = %llx\n", (uint64_t)info->stkLimit);
+    fprintf(stderr, "prev = %llx\n", (uint64_t)info->prev);
+    fprintf(stderr, "deepestScan = %llx\n", (uint64_t)info->deepestScan);
+    fprintf(stderr, "age = %llx\n", (uint64_t)info->age);
+    fprintf(stderr, "mmapBase = %llx\n", (uint64_t)info->mmapBase);
+    fprintf(stderr, "mmapSize = %llx\n", (uint64_t)info->mmapSize);
+}
+
 // Retrieves an unused stack for the given vproc.
 StackInfo_t* GetStack(VProc_t *vp) {
     StackInfo_t* info;
@@ -60,6 +75,8 @@ StackInfo_t* GetStack(VProc_t *vp) {
     info->prev = NULL;
     
     vp->allocdStacks = info;
+    
+    print_stack_info(info);
     
     return info;
 }

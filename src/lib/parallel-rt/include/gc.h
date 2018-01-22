@@ -19,6 +19,7 @@ extern Value_t PromoteObj (VProc_t *vp, Value_t root);
 extern Value_t NewStack (VProc_t *vp, Value_t funClos);
 extern void InvalidReturnAddr();
 extern void EndOfStack();
+extern void print_stack_info(StackInfo_t* info);
 extern StackInfo_t* NewMainStack (VProc_t *vp, void** initialSP);
 extern void* GetStkLimit (StackInfo_t* info);
 extern void WarmUpFreeList(VProc_t* vp, uint64_t numBytes);
