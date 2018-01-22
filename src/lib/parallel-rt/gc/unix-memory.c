@@ -134,31 +134,37 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
     // NOTE automatic resizing using MAP_GROWSDOWN has
 	// been deprecated: https://lwn.net/Articles/294001/
     
-	size_t guardSz = GUARD_PAGE_BYTES;
+    if (GUARD_PAGE_BYTES == 0)
+        Die("invalid guard page size!");
+    
+	size_t guardSz = GUARD_PAGE_BYTES * 16; // TODO maybe just 2 pages.
     size_t stackLen = numBytes + guardSz;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
-    
-    totalSz = ROUNDUP(totalSz, guardSz);
-    
+
     void* mem;
-    if (top == 0 || ((*top) + totalSz) >= lim) {
+    // if (top == 0 || ((*top) + totalSz) >= lim) {
         mem = MapMemory(0, totalSz);
         
         if(mem == MAP_FAILED) {
-            return 1;
+            Die("mmap call to allocate stack space has failed.");
         }
-    } else {
-        mem = *top;
-        *top = (*top) + totalSz;
-    }
+    // } else {
+        // FIXME ensure top is page-aligned
+        // uint64_t x = (uint64_t)*top;
+        // ROUNDDOWN(x, GUARD_PAGE_BYTES);
+        // *top = (uint64_t*)x;
+        
+        // mem = *top;
+        // *top = (*top) + totalSz;
+    // }
     
     // we protect the low end of the block to
     // detect stack overflow. this is done manually
     // because mmap on OS X seems to only place a protected
     // page after the buffer, not before it.
     if(mprotect(mem, guardSz, PROT_NONE)) {
-        // failed to initialize guard area.
-        return 2;
+        perror("perror: ");
+        Die("failed to protect the guard page(s)");
     }
     
     uint64_t val = (uint64_t) mem;
