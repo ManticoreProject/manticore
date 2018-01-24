@@ -76,7 +76,7 @@ StackInfo_t* GetStack(VProc_t *vp) {
     
     vp->allocdStacks = info;
     
-    print_stack_info(info);
+    // print_stack_info(info);
     
     return info;
 }

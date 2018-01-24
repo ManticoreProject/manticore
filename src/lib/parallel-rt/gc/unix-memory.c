@@ -188,6 +188,7 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
 	void* sp = (void*)val;
     
     info->initialSP = sp;
+    info->stkLimit = (void*)(((uint64_t)sp) - numBytes);
     
     return info;
 }
