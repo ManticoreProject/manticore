@@ -710,6 +710,8 @@ structure LLVMBuilder : sig
                                 instead of the empty string. *)
                         "call void asm sideeffect \"pause\", \"\"()"
                         
+                  | Op.Trap => "call void @llvm.trap()"
+                        
                   | Op.Fence => let
                     val ordering = atomicOrdering(atr, SOME A.SeqCst)
                   in

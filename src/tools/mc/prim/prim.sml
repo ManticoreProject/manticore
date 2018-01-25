@@ -116,6 +116,7 @@ structure Prim =
       | FenceRead			(* memory fence for reads *)
       | FenceWrite			(* memory fence for writes *)
       | FenceRW				(* memory fence for both reads and writes *)
+      | Trap				(* crash the program at this point (e.g., execute an illegal instruction) *)
     (* allocation primitives *)
       | AllocPolyVec of 'var * 'var     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
 					 * v of length n s.t. v[i] := l[i] for 0 <= i < n *)

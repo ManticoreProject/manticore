@@ -223,6 +223,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("FenceRead",	mk0 (P.FenceRead,					uTy)),
 		("FenceWrite",	mk0 (P.FenceWrite,					uTy)),
 		("FenceRW",	mk0 (P.FenceRW,						uTy)),
+		("Trap",	mk0 (P.Trap,						uTy)),
 		("AllocPolyVec", mk Prim2 (P.AllocPolyVec,      (i32, aTy),             aTy)),
 		("AllocIntArray", mk Prim1 (P.AllocIntArray,        i32,                aTy)),
 		("AllocLongArray", mk Prim1 (P.AllocLongArray,      i32,                aTy)),
