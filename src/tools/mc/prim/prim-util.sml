@@ -116,6 +116,7 @@ structure PrimUtil : sig
       | nameOf P.FenceRead = "FenceRead"
       | nameOf P.FenceWrite = "FenceWrite"
       | nameOf P.FenceRW = "FenceRW"
+      | nameOf P.Trap = "Trap"
       | nameOf (P.AllocPolyVec _) = "AllocPolyVec"
       | nameOf (P.AllocIntArray _) = "AllocIntArray"
       | nameOf (P.AllocLongArray _) = "AllocLongArray"
@@ -219,6 +220,7 @@ structure PrimUtil : sig
       | varsOf P.FenceRead = []
       | varsOf P.FenceWrite = []
       | varsOf P.FenceRW = []
+      | varsOf P.Trap = []
       | varsOf (P.AllocPolyVec (a, b)) = [a, b]
       | varsOf (P.AllocIntArray a) = [a]
       | varsOf (P.AllocLongArray a) = [a]
@@ -338,6 +340,7 @@ structure PrimUtil : sig
       | explode P.FenceRead = (p0 P.FenceRead, [])
       | explode P.FenceWrite = (p0 P.FenceWrite, [])
       | explode P.FenceRW = (p0 P.FenceRW, [])
+      | explode P.Trap = (p0 P.Trap, [])
       | explode (P.AllocPolyVec (a, b)) = (p2 P.AllocPolyVec, [a, b])
       | explode (P.AllocIntArray a) = (p1 P.AllocIntArray, [a])
       | explode (P.AllocLongArray a) = (p1 P.AllocLongArray, [a])
@@ -370,6 +373,7 @@ structure PrimUtil : sig
       | isPure P.FenceRead = false
       | isPure P.FenceWrite = false
       | isPure P.FenceRW = false
+      | isPure P.Trap = false
       | isPure P.TimeStampCounter = false
       | isPure _ = true
 

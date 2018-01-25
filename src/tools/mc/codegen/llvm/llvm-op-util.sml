@@ -416,6 +416,8 @@ in (case p
     
     | P.Pause => (fn _ => f e Op.Pause #[])
     
+    | P.Trap => (fn _ => f e Op.Trap #[])
+    
     | (P.FenceRead | P.FenceWrite | P.FenceRW ) =>
         (fn _ => f e Op.Fence #[])
     

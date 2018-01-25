@@ -146,6 +146,7 @@ functor PrimTyFn (Ty : sig
 	    | P.FenceRead => Ty.noTy
 	    | P.FenceWrite => Ty.noTy
 	    | P.FenceRW => Ty.noTy
+	    | P.Trap => Ty.noTy
 	    | P.AllocPolyVec _ => Ty.anyTy
 	    | P.AllocIntArray _ => Ty.anyTy
 	    | P.AllocLongArray _ => Ty.anyTy
@@ -257,6 +258,7 @@ functor PrimTyFn (Ty : sig
 	    | P.FenceRead => ([], Ty.noTy)
 	    | P.FenceWrite => ([], Ty.noTy)
 	    | P.FenceRW => ([], Ty.noTy)
+	    | P.Trap => ([], Ty.noTy)
 	    | P.AllocPolyVec _ => ([i32Ty, anyTy], Ty.anyTy)
 	    | P.AllocIntArray _ => ([i32Ty], Ty.anyTy)
 	    | P.AllocLongArray _ => ([i32Ty], Ty.anyTy)

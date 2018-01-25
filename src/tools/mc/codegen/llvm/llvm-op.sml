@@ -74,7 +74,8 @@ structure LLVMOp = struct
     
     (* NOTE 'pause' is not a real primop in LLVM, so we have to implement it with
        inline assembly, and the llvm-builder's toString as of 5/4/16 assumes x86 *)
-    | Pause  
+    | Pause
+    | Trap   (* also not a real primop, it's an intrinsic *)
     
     and phi
     = P_Add
@@ -148,7 +149,7 @@ structure LLVMOp = struct
       | Load )   => 1
       
     | CmpXchg => 3
-    | (Pause | Fence) => 0
+    | (Pause | Fence | Trap) => 0
     (* end arity *))
 
   structure Ty = LLVMTy
@@ -248,7 +249,7 @@ structure LLVMOp = struct
          | FDiv
          | FRem ) => SOME(sameKinds realOrVecOfReal inputs)
          
-      | (Fence | Pause) => NONE
+      | (Fence | Pause | Trap) => NONE
       
       | Store => let 
         (* store has no result but we check the types *)
@@ -582,6 +583,7 @@ structure LLVMOp = struct
       | Icmp _ => "icmp"
       | Fcmp _ => "fcmp"
       | Pause => "pause"
+      | Trap => "trap"
     (* esac *))
 
 
