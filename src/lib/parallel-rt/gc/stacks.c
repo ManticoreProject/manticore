@@ -64,6 +64,7 @@ StackInfo_t* GetStack(VProc_t *vp) {
     return info;
 }
 
+// NOTE: exposed to BOM code.
 Value_t NewStack (VProc_t *vp, Value_t funClos) {
     StackInfo_t* info = GetStack(vp);
     
