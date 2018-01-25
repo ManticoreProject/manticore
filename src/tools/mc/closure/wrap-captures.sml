@@ -318,7 +318,31 @@ structure WrapCaptures : sig
                                 raise Fail ("escape cont " ^ (CV.toString f) ^ " takes more than 1 parameter!")
                             else ST.tick cntExpand
                             
-                    (* val _ = print ("Wrapping cont " ^ (CV.toString f) ^ "\n") *)
+                    val _ = print ("Wrapping cont " ^ (CV.toString f) ^ "\n")
+                    
+                    fun checkE () = let
+                            
+                            fun badCont v = if not (CV.same(v, f))
+                                then (case CV.kindOf v
+                                        of C.VK_Cont _ => true
+                                         | _ => false
+                                        (* end case *))
+                                else false
+                                
+                            fun notify bad = print
+                              ("=> bad cont " ^ (CV.toString bad) 
+                                ^  " seen in exp following " ^ (CV.toString f) ^ "\n")
+                                
+                            val fvs = FreeVars.freeVarsOfExp e
+                            val baddies = CV.Set.filter badCont fvs
+                            
+                        in
+                            CV.Set.app notify baddies
+                        end
+                    
+                    val _ = checkE()
+                    
+                    
                     
                     val retk = getRet env
                     val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
@@ -461,8 +485,13 @@ structure WrapCaptures : sig
         if not(Controls.get BasicControl.direct)
         then m
         else let
+            val _ = FreeVars.clear m
+            val _ = FreeVars.analyze m
+            
             val m = C.MODULE{name=name,externs=externs,body = start body }
+            
             val _ = CPSCensus.census m
+            val _ = FreeVars.clear m
         in
             m
         end

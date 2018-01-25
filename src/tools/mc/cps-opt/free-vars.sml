@@ -101,9 +101,12 @@ structure FreeVars : sig
 		val fbEnv = analFB fb
 	      (* remove the continuation's name from the set *)
 		val fbEnv = remove(fbEnv, funVar fb)
+        fun eEnv () = if !checkDS
+                        then analExpAndRecord e  (* used in wrap-captures *)
+                        else analExp e
 		in
 		  setFV (funVar fb, fbEnv);
-		  remove (VSet.union (fbEnv, analExp e), funVar fb)
+		  remove (VSet.union (fbEnv, eEnv()), funVar fb)
 		end
 	    | CPS.If(cond, e1, e2) => let
 		val fv1 = analExpAndRecord e1
