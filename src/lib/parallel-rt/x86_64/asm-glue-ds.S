@@ -77,7 +77,37 @@ _GSYM(ASM_LongJmp):
     movq    STD_ARG_REG, %rdx       // shift the arg to the 2nd arg reg
     movq    $0, STD_ARG_REG         // set 1st arg reg to 0 indicating an escape throw
     // **** fall-through to EscapeThrow ****
+
+
+.p2align 3
+.globl	_GSYM(ASM_DS_EscapeThrow)
+_GSYM(ASM_DS_EscapeThrow):
+
+    // set stack descriptor
+    movq    16(STD_EP_REG), %rbp
+    movq    %rbp, STD_CONT(VPROC_PTR_REG)
     
+    // grab stack limit
+    movq    STK_LIM(%rbp), %rbp
+
+    /////// start overwriting non-used part of stack.
+    movq    8(STD_EP_REG), TMP_REG1
+    addq    $512, %rbp    // for saftey
+erase:
+    subq    $4, TMP_REG1
+    movl    $3405707998, (TMP_REG1)   // CAFEFADE
+    cmpq    %rbp, TMP_REG1   // TMP - LIM
+    jg      erase
+    
+    // set stack ptr
+    movq    8(STD_EP_REG), %rsp
+
+    // do a pop;jmp to resume the stack
+    ret
+
+
+
+    /* FIXME TODO restore this version
 .p2align 3
 .globl	_GSYM(ASM_DS_EscapeThrow)
 _GSYM(ASM_DS_EscapeThrow):
@@ -93,7 +123,7 @@ _GSYM(ASM_DS_EscapeThrow):
 #endif
     // do a pop;jmp to resume the stack
     ret
-    
+    */
     
     
 /*

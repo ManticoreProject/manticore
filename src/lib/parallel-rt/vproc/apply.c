@@ -336,6 +336,8 @@ doShutdown:
             LogRunThread(vp, 0);
             ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
             
+            Die("mistakenly returned from preemption");
+            
     	    }
     	    else {
     	     /* setup the return from GC */
