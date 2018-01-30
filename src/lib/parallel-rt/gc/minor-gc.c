@@ -24,6 +24,10 @@
 extern Addr_t   MajorGCThreshold;   /* when the size of the nursery goes below */
                     /* this limit it is time to do a GC. */
 
+#ifdef DIRECT_STYLE
+  extern int ASM_DS_Return;
+#endif
+
 //ForwardObject of MinorGC
 /* Copy an object to the old region */
 Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
@@ -59,7 +63,7 @@ void ScanStackMinor (
     Addr_t allocSzB,
     Word_t **nextW) {
 
-#define DEBUG_STACK_SCAN_MINOR
+// #define DEBUG_STACK_SCAN_MINOR
 
     uint64_t framesSeen = 0;
     
@@ -149,7 +153,7 @@ void ScanStackMinor (
     } // end while
  
 #ifdef DEBUG_STACK_SCAN_MINOR   
-  #ifdef DIRECT
+  #ifdef DIRECT_STYLE
     // debug code
     uint64_t lastRetAddr = *(uint64_t*)(stackPtr);
     if (lookup_return_address(SPTbl, lastRetAddr) == 0 
