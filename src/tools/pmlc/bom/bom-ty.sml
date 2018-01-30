@@ -192,9 +192,9 @@ structure BOMTy : sig
       | ctypeToBOM (CFunctions.VoidTy) = []
 
   (* some standard type constructors/types *)
-    fun arrayTy ty = T_Con(BOMTyc.arrayTyc, [])
-    fun vectorTy ty = T_Con(BOMTyc.vectorTyc, [])
-    fun addrTy ty = T_Con(BOMTyc.addrTyc, [])
+    fun arrayTy ty = T_Con(BOMTyc.arrayTyc, [ty])
+    fun vectorTy ty = T_Con(BOMTyc.vectorTyc, [ty])
+    fun addrTy ty = T_Con(BOMTyc.addrTyc, [ty])
     val vprocTy = T_Con(BOMTyc.vprocTyc, [])
     val unitTy = T_Record[]
     val charVecTy = vectorTy(T_Raw UInt8)
