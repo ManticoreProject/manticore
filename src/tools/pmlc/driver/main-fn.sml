@@ -38,53 +38,53 @@ functor MainFn (
     val exeFile = ref "a.out"
 
     fun frontEnd srcFile = (case OS.Path.ext srcFile
-	   of SOME "mlb" => PMLFrontEnd.compileMLB {input = srcFile}
-	    | SOME "pml" => PMLFrontEnd.compilePML {input = [srcFile]}
-	    | SOME "sml" => PMLFrontEnd.compilePML {input = [srcFile]}
-	    | SOME "sig" => PMLFrontEnd.compilePML {input = [srcFile]}
-	    | SOME "fun" => PMLFrontEnd.compilePML {input = [srcFile]}
-	    | _ => raise Fail "unknown file type"
-	  (* end case *))
+           of SOME "mlb" => PMLFrontEnd.compileMLB {input = srcFile}
+            | SOME "pml" => PMLFrontEnd.compilePML {input = [srcFile]}
+            | SOME "sml" => PMLFrontEnd.compilePML {input = [srcFile]}
+            | SOME "sig" => PMLFrontEnd.compilePML {input = [srcFile]}
+            | SOME "fun" => PMLFrontEnd.compilePML {input = [srcFile]}
+            | _ => raise Fail "unknown file type"
+          (* end case *))
 
   (* compile an MLB or PML file *)
     fun mlbC (verbose, srcFile, asmFile) = let
-	  val _ = if verbose then print "initializing environment\n" else ()
-	  val _ = PMLFrontEnd.init ()
+          val _ = if verbose then print "initializing environment\n" else ()
+          val _ = PMLFrontEnd.init ()
           val _ = if verbose then print(concat["mlton parsing \"", srcFile, "\"\n"]) else ()
           val sxml = frontEnd srcFile
           val bom = Translate.translate sxml
 (* NEW-BOM *
           val cfg = bomToCFG bom
 *)
-	  in
+          in
 (* NEW-BOM *
-	    codegen (verbose, asmFile, cfg);
+            codegen (verbose, asmFile, cfg);
 *)
-	    Stats.report ()
-	  end
+            Stats.report ()
+          end
 
     fun doFile file = BackTrace.monitor (fn () => let
-	  val verbose = (Controls.get BasicControl.verbose > 0)
-	  val {base, ext} = OS.Path.splitBaseExt file
-	  in
+          val verbose = (Controls.get BasicControl.verbose > 0)
+          val {base, ext} = OS.Path.splitBaseExt file
+          in
             case Controls.get BasicControl.keepPassBaseName
-	     of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
-	      | SOME _ => ()
-	    (* end case *);
-	    mlbC (verbose, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
-	  end)
+             of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
+              | SOME _ => ()
+            (* end case *);
+            mlbC (verbose, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
+          end)
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)
 
     fun bad s = (
-	  err s; 
+          err s;
           err "!* try `-h' or `-h<level>' for help\n";
           quit false)
 
     fun version () = (errnl Version.banner; quit true)
 
     val usageMsg = "\
-	  \usage: pmlc [options] file\n\
+          \usage: pmlc [options] file\n\
           \\n\
           \  file:\n\
           \    <file>.pml\n\
@@ -92,31 +92,31 @@ functor MainFn (
           \\n\
           \  options:\n\
           \    -C<control>=<v>  set named control\n\
-	  \    -o <file>        specify executable-file name\n\
+          \    -o <file>        specify executable-file name\n\
           \    -H               produce complete help listing\n\
           \    -h               produce minimal help listing\n\
           \    -h<level>        help listing with obscurity limit\n\
           \    -version         show version\n\
-	  \    -log             build an executable with logging enabled\n\
-	  \    -gcstats         build an executable with GC statistics enabled\n\
-	  \    -debug           build an executable with debugging enabled\n\
-	  \    -perf            build an executable with hw perf counters enabled\n\
-	  \    -sequential      compile a sequential-mode program\n\
-	  \    -verbose         compile in verbose mode\n\
-	  \"
+          \    -log             build an executable with logging enabled\n\
+          \    -gcstats         build an executable with GC statistics enabled\n\
+          \    -debug           build an executable with debugging enabled\n\
+          \    -perf            build an executable with hw perf counters enabled\n\
+          \    -sequential      compile a sequential-mode program\n\
+          \    -verbose         compile in verbose mode\n\
+          \"
 
     fun message (level, b) = (
-	  err usageMsg;
-	  if level = NONE
+          err usageMsg;
+          if level = NONE
              then  ()
              else (
-		err "\n";
+                err "\n";
                 BasicControl.showAll err
                   (Controls.name o #ctl,
                     fn ci => concat [
-			"(", #help (Controls.info (#ctl ci)), 
+                        "(", #help (Controls.info (#ctl ci)),
                         "; ", Controls.get (#ctl ci), ")"
-		      ])
+                      ])
                   (valOf level));
           quit b)
 
@@ -132,68 +132,68 @@ functor MainFn (
           val names = String.fields (fn c => c = #".") name
           val value = if Substring.size value > 0
                 then Substring.string (Substring.slice (value, 1, NONE))
-        	else ""
-	  in
+                else ""
+          in
             if name = "" orelse value = ""
               then bad (concat ["!* ill-formed -C option: `", arg, "'\n"])
               else (case ControlRegistry.control BasicControl.topRegistry names
-		 of NONE => bad (concat ["!* unknown control: ",name,"\n"])
+                 of NONE => bad (concat ["!* unknown control: ",name,"\n"])
                   | SOME sctl => (
-		      Controls.set (sctl, value)
-                	handle Controls.ValueSyntax vse =>
+                      Controls.set (sctl, value)
+                        handle Controls.ValueSyntax vse =>
                           bad (concat ["!* unable to parse value `",
                               value, "' for ", name, " : ", #tyName vse, "\n"
-			    ]))
-		(* end case *))
-	   end
+                            ]))
+                (* end case *))
+           end
 
     fun processArgs args = (case args
            of arg :: args =>
-		if String.isPrefix "-" arg
-		  then processOption (arg, args)
-		  else processFile (arg, args)
+                if String.isPrefix "-" arg
+                  then processOption (arg, args)
+                  else processFile (arg, args)
             | _ => usage ()
-	  (* end case *))
+          (* end case *))
 
     and processFile (arg, args) = (case (arg, args)
-	   of (file, []) => (doFile file; quit true)
+           of (file, []) => (doFile file; quit true)
             | _ => usage ()
-	  (* end case *))
+          (* end case *))
 
     and processOption (arg, args) = let
-	  fun badopt () = bad (concat ["!* ill-formed option: `", arg, "'\n"])
-	  fun set ctl = (Controls.set(ctl, true); processArgs args)
-	  in
+          fun badopt () = bad (concat ["!* ill-formed option: `", arg, "'\n"])
+          fun set ctl = (Controls.set(ctl, true); processArgs args)
+          in
             if String.isPrefix "-C" arg
-	      then (processControl arg; processArgs args)
+              then (processControl arg; processArgs args)
             else if String.isPrefix "-h" arg
-	      then let
-		val level = String.extract (arg, 2, NONE)
-		in
-		  if level = "" 
-		    then help NONE
-		  else if CharVector.all Char.isDigit level
-		    then help (SOME (Int.fromString level))
-		    else badopt ()
-		end
+              then let
+                val level = String.extract (arg, 2, NONE)
+                in
+                  if level = ""
+                    then help NONE
+                  else if CharVector.all Char.isDigit level
+                    then help (SOME (Int.fromString level))
+                    else badopt ()
+                end
             else (case arg
-	       of "-o" => (case args
-		     of exe::r => (exeFile := exe; processArgs r)
-		      | _ => badopt()
-		    (* end case *))
-		| "-H" => help (SOME NONE)
-		| "-version" => version ()
-		| "-sequential" => set BasicControl.sequential
-		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
-		| "-log" => set BasicControl.logging
-		| "-gcstats" => set BasicControl.gcStats
-		| "-debug" => set BasicControl.debug
-		| "-perf" => set BasicControl.perf
-		| _ => badopt ()
-	      (* end case *))
-	  end
+               of "-o" => (case args
+                     of exe::r => (exeFile := exe; processArgs r)
+                      | _ => badopt()
+                    (* end case *))
+                | "-H" => help (SOME NONE)
+                | "-version" => version ()
+                | "-sequential" => set BasicControl.sequential
+                | "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
+                | "-log" => set BasicControl.logging
+                | "-gcstats" => set BasicControl.gcStats
+                | "-debug" => set BasicControl.debug
+                | "-perf" => set BasicControl.perf
+                | _ => badopt ()
+              (* end case *))
+          end
 
     fun main (_, args) = processArgs args
- 
+
   end
 
