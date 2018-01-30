@@ -1410,7 +1410,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         val asLLV = LV.convertLabel lab
         val llvmAttrs = "" (* maybe some are needed? *)
     in
-        ( (LT.declOf (LV.typeOf asLLV) "" (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
+        ( (LT.declOf (LV.typeOf asLLV) LB.jwaCC (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
          lab,
          asLLV)
     end
