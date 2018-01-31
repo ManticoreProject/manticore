@@ -13,7 +13,8 @@
 
 /* regs rarely used by manticore (11th-13th args)
    and unused by C call-convention. */
-#define TMP_REG1            %r13    
+#define TMP_REG0            %rbp
+#define TMP_REG1            %r13
 #define TMP_REG2            %r14
 #define TMP_REG3            %r15
 #define TMP_REG4            %r12
@@ -36,8 +37,8 @@ _GSYM(ASM_DS_StartStack):
     popq    TMP_REG1                // retrieve the closure from our stack frame
                                     // and adjust SP so it points to an invalid ret addr.
     movq    (TMP_REG1), STD_EP_REG  // set EP
-    movq    8(TMP_REG1), TMP_REG2   // grab the CP
-    jmp     *TMP_REG2
+    movq    8(TMP_REG1), TMP_REG1   // grab the CP
+    jmp     *TMP_REG1
     
 
 // used by RequestService to call a function on the given stack,
@@ -73,7 +74,7 @@ _GSYM(ASM_Resume_Stack):
     .p2align 3
     .globl	_GSYM(ASM_ThrownTwice)
 _GSYM(ASM_ThrownTwice):
-    ud2
+    ud2              // undefined instruction
     
 .p2align 3
 .globl	_GSYM(ASM_LongJmp)
@@ -89,20 +90,20 @@ _GSYM(ASM_LongJmp):
 _GSYM(ASM_DS_EscapeThrow):
 
     // set stack descriptor
-    movq    16(STD_EP_REG), %rbp
-    movq    %rbp, STD_CONT(VPROC_PTR_REG)
+    movq    16(STD_EP_REG), TMP_REG0
+    movq    TMP_REG0, STD_CONT(VPROC_PTR_REG)
     
     // grab stack limit
-    movq    STK_LIM(%rbp), %rbp
+    movq    STK_LIM(TMP_REG0), TMP_REG0
 
 /* FIXME TODO remove this debug loop */
     /////// start overwriting non-used part of stack.
     movq    8(STD_EP_REG), TMP_REG1
-    addq    $512, %rbp    // for saftey
+    addq    $512, TMP_REG0    // for saftey
 erase:
     subq    $4, TMP_REG1
     movl    $3405707998, (TMP_REG1)   // CAFEFADE
-    cmpq    %rbp, TMP_REG1   // TMP - LIM
+    cmpq    TMP_REG0, TMP_REG1   // TMP - LIM
     jg      erase
     
     // set stack ptr
@@ -126,12 +127,12 @@ _GSYM(ASM_DS_EscapeThrow):
     // set the stack ptr.
     movq    8(STD_EP_REG), %rsp
     // set stack descriptor
-    movq    16(STD_EP_REG), %rbp
-    movq    %rbp, STD_CONT(VPROC_PTR_REG)
+    movq    16(STD_EP_REG), TMP_REG0
+    movq    TMP_REG0, STD_CONT(VPROC_PTR_REG)
 #ifdef SEGSTACK
     // set the stack limit
-    movq    STK_LIM(%rbp), %rbp
-    movq    %rbp, STD_EP(VPROC_PTR_REG)
+    movq    STK_LIM(TMP_REG0), TMP_REG0
+    movq    TMP_REG0, STD_EP(VPROC_PTR_REG)
 #endif
     // do a pop;jmp to resume the stack
     ret
@@ -165,7 +166,7 @@ _GSYM(__manti_growstack):
     
 _GSYM(__manti_growstack_noimplicitcopy):
     
-    leaq    8(%rsp), %rbp   // save the current top of segment
+    leaq    8(%rsp), TMP_REG0   // save the current top of segment
     // save manticore registers
     // NOTE: we are omitting xmm registers here!
     pushq   ALLOC_PTR_REG
@@ -180,11 +181,11 @@ _GSYM(__manti_growstack_noimplicitcopy):
     // saved by the C callee
     // setup args
     movq    VPROC_PTR_REG, %rdi     // vproc is arg 1
-    movq    %rbp, %rsi              // current top is arg 2
+    movq    TMP_REG0, %rsi              // current top is arg 2
     movq    TMP_REG3, %rdx              // whether to copy is arg 3
     callq   _GSYM(StkSegmentOverflow)
     
-    movq    %rax, %rbp  // move new SP out of the way
+    movq    %rax, TMP_REG0  // move new SP out of the way
     
     // restore manticore registers
     popq    %r10
@@ -197,9 +198,9 @@ _GSYM(__manti_growstack_noimplicitcopy):
     popq   ALLOC_PTR_REG
     
     // swap out the stack pointer
-    xchgq   %rsp, %rbp
-    movq    (%rbp), %rbp // load return addr
-    jmpq    *%rbp        // resume
+    xchgq   %rsp, TMP_REG0
+    movq    (TMP_REG0), TMP_REG0 // load return addr
+    jmpq    *TMP_REG0        // resume
 
 
 // This version is for segmented stacks a la Bruggeman et al.
@@ -313,13 +314,13 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
     // ** done with initialization **
     
     // update pointers
-    movq    ALLOC_PTR_REG, TMP_REG3             // save ptr to the cont object
+    movq    ALLOC_PTR_REG, TMP_REG2             // save ptr to the cont object
     addq    $32, ALLOC_PTR_REG                  // bump alloc ptr, (numItems * 8) + 8
     
     /***** invoke the function we were given *****/
     movq    (STD_ARG_REG), STD_EP_REG       // load environment pointer
     movq    8(STD_ARG_REG), TMP_REG1        // load code pointer
-    movq    TMP_REG3, STD_ARG_REG           // pass the cont object
+    movq    TMP_REG2, STD_ARG_REG           // pass the cont object
     jmp     *TMP_REG1                       // do the call, leaving stack pointer as-is
     
     
