@@ -152,8 +152,8 @@
 <INITIAL,BOM>"#"		=> (T.HASH);
 <INITIAL,BOM>"->"		=> (T.ARROW);
 <INITIAL,BOM>"=>"		=> (T.DARROW);
-<INITIAL,BOM>">"		=> (T.GT);
-<INITIAL,BOM>"<"		=> (T.LT);
+<BOM>">"			=> (T.GT);
+<BOM>"<"			=> (T.LT);
 <INITIAL,BOM>"*"		=> (T.ASTERISK);
 <INITIAL,BOM>"/"		=> (T.SLASH);
 (* FIXME: will this break a SYMID? *)
@@ -268,12 +268,9 @@
 <BOM>":="			=> (T.ASSIGN);
 <BOM>"#"			=> (T.HASH);
 
-(* identifiers and qualified identifiers.  We distinguish between symbolic and non-symbolic
- * IDs, since the definition states that structure IDs (and presumably signature IDs) must
- * be alphanumeric.  Qualified IDs in BOM code have a single level of qualification, since
- * BOM modules do not nest.
+(* identifiers and qualified identifiers.  Qualified IDs in BOM code have a
+ * single level of qualification, since BOM modules do not nest.
  *)
-<INITIAL>{symid}		=> (T.SYMID yytext);
 (* ml.grm relies on this behavior (unfortunately) *)
 <INITIAL>({alphanumid}\.)*{id}	=> (T.LONGID yytext);
 (* <INITIAL>{id}		=> (T.LONGID yytext); *)

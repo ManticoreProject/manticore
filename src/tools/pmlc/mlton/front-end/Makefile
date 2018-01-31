@@ -51,7 +51,7 @@ endif
 endif
 
 .PHONY: all
-all: ml.lex.sml ml.grm.sml mlb.lex.sml mlb.grm.sig mlb.grm.sml
+all: pml.lex.sml pml.grm.sml mlb.lex.sml mlb.grm.sig mlb.grm.sml
 
 .PHONY: clean
 clean:
@@ -73,12 +73,12 @@ mlb.grm.sig mlb.grm.sml: mlb.grm
 	$(MLYACC) $<
 	chmod -w $<.*
 
-ml.lex.sml: ml.lex
+pml.lex.sml: pml.lex
 	rm -f $@
 	$(MLULEX) --strict-sml $<
 	chmod -w $@
 
-ml.grm.sml: ml.grm
+pml.grm.sml: pml.grm ml.grm bom.grm
 	rm -f $<.*
 	$(MLANTLR) $<
 	chmod -w $<.*

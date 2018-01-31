@@ -81,7 +81,6 @@
 	  radix: StringCvt.radix
 	}
     | ID of string
-    | SYMID of string
     | LONGID of string
     | REAL of string
     | STRING of IntInf.int vector
@@ -170,8 +169,9 @@ structure Pat =
 
       fun makeAs (p1: t, p2: t): node =
          let
+            val patStr = Layout.toString o Pat.layout
             fun err () =
-               error (Pat.region p1, "must have variable to left in as pattern")
+               error (Pat.region p1, "must have variable to left in 'as' pattern in \"" ^ patStr p1 ^  " as " ^ patStr p2 ^ "\"")
             fun fixopVar (p : t) =
                case node p of
                   FlatApp ps =>

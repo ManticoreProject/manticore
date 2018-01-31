@@ -86,8 +86,7 @@ PrimConDef
         ;
 
 MLValueId
-        : SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))
-        | vid
+        : vid
         (* | "*" => (Vid.fromSymbol (Symbol.fromString "*", posToReg FULL_SPAN)) *)
         ;
 
