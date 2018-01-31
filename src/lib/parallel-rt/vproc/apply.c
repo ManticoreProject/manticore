@@ -14,6 +14,8 @@
 #include "event-log.h"
 #include "os-memory.h"
 
+#include "stdio.h"
+
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
 extern int ASM_UncaughtExn;
@@ -305,6 +307,10 @@ doShutdown:
     	      /* an asynchronous signal has arrived */
     	        vp->sigPending = M_TRUE;
     	    }
+            
+            // DEBUG
+            if (vp->atomic != M_TRUE && vp->atomic != M_FALSE)
+                Die("Somebody overwrote Atomic field with a bad value");
 
     	  /* is there a pending signal that we can deliver? */
     	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
@@ -313,6 +319,9 @@ doShutdown:
                                                     vp->stdCont); // stack info
                 
     	      /* pass the signal to scheduling code in the BOM runtime */
+
+            // DEBUG
+            fprintf(stderr, "Preempted at: %p\n", vp->atomic, M_FALSE, *(uint64_t**)(vp->stdEnvPtr) );
             
             closObj = ValueToClosure(vp->schedCont);
             // yes, the two lines below look fishy.
