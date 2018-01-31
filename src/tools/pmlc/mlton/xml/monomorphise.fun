@@ -478,7 +478,7 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
                              * we know there is only one Overflow excon.
                              *)
                             con
-                      else Con.new con
+                      else con (* [PML] avoid renaming any exceptions since BOM may import them *)
                    val _ = setCon (con, fn _ => con')
                 in
                    fn () => 
