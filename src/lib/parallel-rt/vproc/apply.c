@@ -321,7 +321,7 @@ doShutdown:
     	      /* pass the signal to scheduling code in the BOM runtime */
 
             // DEBUG
-            fprintf(stderr, "Preempted at: %p\n", vp->atomic, M_FALSE, *(uint64_t**)(vp->stdEnvPtr) );
+            fprintf(stderr, "Preempted at: %p\n", *(uint64_t**)(vp->stdEnvPtr) );
             
             closObj = ValueToClosure(vp->schedCont);
             // yes, the two lines below look fishy.
