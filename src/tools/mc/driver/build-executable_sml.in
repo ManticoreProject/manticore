@@ -290,12 +290,15 @@ Pass Arguments:  -domtree
         
         *)
      val llcLevels = [
-         (0, ["-O3"])
+         (0, ["-O1"])  (* DEBUG: was O3 *)
      ]
     
     (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
-        val firstPasses = if isDirect() then [] else ["-stack-alignment=16"]
+        val firstPasses = if isDirect() then [
+            (* DEBUG: was empty: *)
+            "-disable-machine-cse", "-disable-machine-licm", "-enable-shrink-wrap=false", "-min-jump-table-entries=1000"
+        ] else ["-stack-alignment=16"]
         val statsPasses = ["-time-passes"] (* NOTE llc supports "-stats" but in Release mode it throws an error *)
         
         val passes = (case passes 
