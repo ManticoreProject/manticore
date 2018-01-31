@@ -472,10 +472,10 @@ structure Elaborate =
                        default = false, expert = true}, ac)
          val (allowOverload, ac) =
             makeBool ({name = "allowOverload", 
-                       default = false, expert = true}, ac)
+                       default = true(* [PML] *), expert = true}, ac)
          val (allowRebindEquals, ac) =
             makeBool ({name = "allowRebindEquals", 
-                       default = false, expert = true}, ac)
+                       default = true(* [PML] *), expert = true}, ac)
          val (deadCode, ac) =
             makeBool ({name = "deadCode", 
                        default = false, expert = true}, ac)
