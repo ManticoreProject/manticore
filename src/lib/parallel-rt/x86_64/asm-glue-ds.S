@@ -70,6 +70,11 @@ _GSYM(ASM_Resume_Stack):
     movq    ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
     ret
     
+    .p2align 3
+    .globl	_GSYM(ASM_ThrownTwice)
+_GSYM(ASM_ThrownTwice):
+    ud2
+    
 .p2align 3
 .globl	_GSYM(ASM_LongJmp)
 _GSYM(ASM_LongJmp):
@@ -90,6 +95,7 @@ _GSYM(ASM_DS_EscapeThrow):
     // grab stack limit
     movq    STK_LIM(%rbp), %rbp
 
+/* FIXME TODO remove this debug loop */
     /////// start overwriting non-used part of stack.
     movq    8(STD_EP_REG), TMP_REG1
     addq    $512, %rbp    // for saftey
@@ -101,6 +107,12 @@ erase:
     
     // set stack ptr
     movq    8(STD_EP_REG), %rsp
+    
+    /* FIXME debug: overwrite stack object */
+    leaq    _GSYM(ASM_ThrownTwice)(%rip), TMP_REG1
+    movq    TMP_REG1, (STD_EP_REG)
+    movq    $43690, 8(STD_EP_REG)    // AAAA
+    movq    $48059, 16(STD_EP_REG)   // BBBB
 
     // do a pop;jmp to resume the stack
     ret
