@@ -208,7 +208,7 @@ structure LLVMBuilder : sig
 
 
   val noCC  = ""
-  val jwaCC  = "cc93"
+  val jwaCC  = "cc97"
   val stdCC  = "ccc"
   val fastCC  = "fastcc"
   fun cctoStr x = x
