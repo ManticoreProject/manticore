@@ -73,7 +73,12 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
     
     
     (* we take the min because right now I don't
-       count parameter types based on their eventual register assignment. *)
+       count parameter types based on their eventual register assignment.
+       
+       NOTE: we shouldn't need to limit the maxParams, as cfg-opt/implement-calls-fn.sml
+       will take care of the "too many args" issue by dumping the excess into a single-level
+       tuple. -kavon 2/2/18
+        *)
     val maxParams = Int.min(Spec.maxFPRArgs, Spec.maxGPRArgs)
     
     (* utility functions *)  
