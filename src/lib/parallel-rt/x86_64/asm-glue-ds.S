@@ -13,7 +13,8 @@
 
 /* regs rarely used by manticore (11th-13th args)
    and unused by C call-convention. */
-#define TMP_REG1            %r13    
+#define TMP_REG0            %rbp
+#define TMP_REG1            %r13
 #define TMP_REG2            %r14
 #define TMP_REG3            %r15
 #define TMP_REG4            %r12
@@ -84,12 +85,12 @@ _GSYM(ASM_DS_EscapeThrow):
     // set the stack ptr.
     movq    8(STD_EP_REG), %rsp
     // set stack descriptor
-    movq    16(STD_EP_REG), %rbp
-    movq    %rbp, STD_CONT(VPROC_PTR_REG)
+    movq    16(STD_EP_REG), TMP_REG0
+    movq    TMP_REG0, STD_CONT(VPROC_PTR_REG)
 #ifdef SEGSTACK
     // set the stack limit
-    movq    STK_LIM(%rbp), %rbp
-    movq    %rbp, STD_EP(VPROC_PTR_REG)
+    movq    STK_LIM(TMP_REG0), TMP_REG0
+    movq    TMP_REG0, STD_EP(VPROC_PTR_REG)
 #endif
     // do a pop;jmp to resume the stack
     ret
@@ -123,7 +124,7 @@ _GSYM(__manti_growstack):
     
 _GSYM(__manti_growstack_noimplicitcopy):
     
-    leaq    8(%rsp), %rbp   // save the current top of segment
+    leaq    8(%rsp), TMP_REG0   // save the current top of segment
     // save manticore registers
     // NOTE: we are omitting xmm registers here!
     pushq   ALLOC_PTR_REG
@@ -138,11 +139,11 @@ _GSYM(__manti_growstack_noimplicitcopy):
     // saved by the C callee
     // setup args
     movq    VPROC_PTR_REG, %rdi     // vproc is arg 1
-    movq    %rbp, %rsi              // current top is arg 2
+    movq    TMP_REG0, %rsi              // current top is arg 2
     movq    TMP_REG3, %rdx              // whether to copy is arg 3
     callq   _GSYM(StkSegmentOverflow)
     
-    movq    %rax, %rbp  // move new SP out of the way
+    movq    %rax, TMP_REG0  // move new SP out of the way
     
     // restore manticore registers
     popq    %r10
@@ -155,9 +156,9 @@ _GSYM(__manti_growstack_noimplicitcopy):
     popq   ALLOC_PTR_REG
     
     // swap out the stack pointer
-    xchgq   %rsp, %rbp
-    movq    (%rbp), %rbp // load return addr
-    jmpq    *%rbp        // resume
+    xchgq   %rsp, TMP_REG0
+    movq    (TMP_REG0), TMP_REG0 // load return addr
+    jmpq    *TMP_REG0        // resume
 
 
 // This version is for segmented stacks a la Bruggeman et al.
