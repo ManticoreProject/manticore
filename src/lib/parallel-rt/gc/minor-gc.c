@@ -24,7 +24,9 @@
 extern Addr_t   MajorGCThreshold;   /* when the size of the nursery goes below */
                     /* this limit it is time to do a GC. */
                     
-extern int ASM_DS_Return;
+#ifdef DIRECT_STYLE
+  extern int ASM_DS_Return;
+#endif
 
 //ForwardObject of MinorGC
 /* Copy an object to the old region */
@@ -146,12 +148,13 @@ void ScanStackMinor (
     } // end while
  
 #ifdef DEBUG_STACK_SCAN_MINOR   
-    // debug code
+ #ifdef DIRECT_STYLE
     uint64_t lastRetAddr = *(uint64_t*)(stackPtr);
     if (lookup_return_address(SPTbl, lastRetAddr) == 0 
             && lastRetAddr != (uint64_t)&EndOfStack
             && lastRetAddr != (uint64_t)&ASM_DS_Return)
         Die("Encountered an unexpected return address on the stack: %p\n", (void*)lastRetAddr);
+ #endif
 #endif
 
     // the roots have been forwarded out of the nursery.
