@@ -11,13 +11,14 @@
 #include "asm-offsets.h"
 #include "registers.h"
 
-/* regs rarely used by manticore (11th-13th args)
-   and unused by C call-convention. */
-#define TMP_REG0            %rbp
-#define TMP_REG1            %r13
-#define TMP_REG2            %r14
+/* registers that are unused in manticore's calling convention. */
+#define TMP_REG0            %rbx     // NOTE: callee-saved in C-convention
+#define TMP_REG1            %rcx
+#define TMP_REG2            %rdx
+
+// FIXME: get rid of these. these are argument registers!
 #define TMP_REG3            %r15
-#define TMP_REG4            %r12
+#define TMP_REG4            %r14
 
 // stack descriptor offsets
 #define CUR_SP      0
@@ -75,7 +76,7 @@ _GSYM(ASM_Resume_Stack):
 .globl	_GSYM(ASM_LongJmp)
 _GSYM(ASM_LongJmp):
     // setup args
-    movq    STD_ARG_REG, %rdx       // shift the arg to the 2nd arg reg
+    movq    STD_ARG_REG, %r10       // shift the arg to the 2nd arg reg
     movq    $0, STD_ARG_REG         // set 1st arg reg to 0 indicating an escape throw
     // **** fall-through to EscapeThrow ****
     
@@ -116,46 +117,42 @@ _GSYM(ASM_DS_EscapeThrow):
 _GSYM(__manti_growstack):
     // NOTE we actually start off with RSP 16-byte aligned!
 #ifdef NOCOPY_OVERFLOW
-    movq    $0, TMP_REG3
+    movq    $0, TMP_REG1
 #else
-    movq    $1, TMP_REG3      // 0 indicates no copying. NOTE the clobber!
+    movq    $1, TMP_REG1      // 0 indicates no copying.
 #endif
-    
+////// FALL THROUGH //////
     
 _GSYM(__manti_growstack_noimplicitcopy):
     
     leaq    8(%rsp), TMP_REG0   // save the current top of segment
     // save manticore registers
-    // NOTE: we are omitting xmm registers here!
+    // NOTE: FIXME we are omitting xmm registers here! FIXME
     pushq   ALLOC_PTR_REG
     pushq   VPROC_PTR_REG
     pushq   STD_EP_REG
     pushq   STD_EXH_REG
     pushq   STD_ARG_REG
-    pushq   %rdx            // arg 2
-    pushq   %rcx            // arg 3
-    pushq   %r10            // arg 4
+    pushq   %r10            // arg 2
     // the rest of the manticore registers are 
     // saved by the C callee
     // setup args
     movq    VPROC_PTR_REG, %rdi     // vproc is arg 1
     movq    TMP_REG0, %rsi              // current top is arg 2
-    movq    TMP_REG3, %rdx              // whether to copy is arg 3
+    movq    TMP_REG1, %rdx              // whether to copy is arg 3
     callq   _GSYM(StkSegmentOverflow)
     
     movq    %rax, TMP_REG0  // move new SP out of the way
     
     // restore manticore registers
     popq    %r10
-    popq    %rcx
-    popq    %rdx
     popq   STD_ARG_REG
     popq   STD_EXH_REG
     popq   STD_EP_REG
     popq   VPROC_PTR_REG
     popq   ALLOC_PTR_REG
     
-    // swap out the stack pointer
+    // swap out the stack pointer FIXME make this cheaper. xchg is not so cheap.
     xchgq   %rsp, TMP_REG0
     movq    (TMP_REG0), TMP_REG0 // load return addr
     jmpq    *TMP_REG0        // resume
