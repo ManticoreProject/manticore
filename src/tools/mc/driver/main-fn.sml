@@ -261,16 +261,17 @@ functor MainFn (
 	  \    -gcstats         build an executable with GC statistics enabled\n\
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -perf            build an executable with hw perf counters enabled\n\
-	  \    -llvm            use LLVM backend with its default optimizations\n\
-      \    -llopt<level>    use LLVM backend and set its optimization level (0 to 3)\n\
+	  \    -mlrisc          use the MLRISC backend instead of LLVM\n\
+	  \    -O<level>        set optimization level when using LLVM (0 to 5)\n\
 	  \    -sequential      compile a sequential-mode program\n\
-      \    -direct          use direct-style code generation (contiguous stacks)\n\
-      \    -segstack        use segmented stacks (implies direct-style codegen)\n\
-      \    -noras           emit pop/push jmp instead of call/ret for stacks\n\
-      \    -lazyunderflow   segstack -- do not free on underflow\n\
-      \    -nocopyoverflow  segstack -- do not copy on overflow\n\
-      \    -noparray        disable parray basis inclusion\n\
-      \    -keepTemps       keep temporary files generated during compilation\n\
+	  \    -contigstack     use contiguous stacks\n\
+	  \    -linkstack       use mutable, linked-frame stacks\n\
+	  \    -segstack        use segmented stacks\n\
+	  \    -lazyunderflow   segstack -- do not free on underflow\n\
+	  \    -nocopyoverflow  segstack -- do not copy on overflow\n\
+	  \    -noras           emit pop/push jmp instead of call/ret for stacks\n\
+	  \    -noparray        disable parray basis inclusion\n\
+	  \    -keepTemps       keep temporary files generated during compilation\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
 
@@ -332,6 +333,7 @@ functor MainFn (
     and processOption (arg, args) = let
 	  fun badopt () = bad (concat ["!* ill-formed option: `", arg, "'\n"])
 	  fun set ctl = (Controls.set(ctl, true); processArgs args)
+	  fun unset ctl = (Controls.set(ctl, false); processArgs args)
 	  in
             if String.isPrefix "-C" arg
                 then (processControl arg; processArgs args)
@@ -346,8 +348,8 @@ functor MainFn (
                         else badopt ()
                     end
                     
-            else if String.isPrefix "-llopt" arg
-                then (case (Int.fromString o String.extract) (arg, 6, NONE)
+            else if String.isPrefix "-O" arg
+                then (case (Int.fromString o String.extract) (arg, 2, NONE)
                         of NONE => badopt ()
                          | SOME level => 
                             ( Controls.set(BasicControl.llvm, true) ;
@@ -363,12 +365,13 @@ functor MainFn (
 		| "-H" => help (SOME NONE)
 		| "-version" => version ()
 		| "-sequential" => set BasicControl.sequential
-		| "-llvm" => set BasicControl.llvm
-        | "-direct" => set BasicControl.direct
-        | "-segstack" => (Controls.set(BasicControl.direct, true) ; set BasicControl.segstack)
-        | "-noras" => set BasicControl.noras
-        | "-lazyunderflow" => set BasicControl.lazyunderflow
-        | "-nocopyoverflow" => set BasicControl.nocopyoverflow
+		| "-mlrisc" => unset BasicControl.llvm
+		| "-contigstack" => set BasicControl.direct
+		| "-segstack" => ( Controls.set(BasicControl.direct, true) ; set BasicControl.segstack )
+		| "-linkstack" => ( Controls.set(BasicControl.direct, true) ; set BasicControl.linkstack )
+		| "-noras" => set BasicControl.noras
+		| "-lazyunderflow" => set BasicControl.lazyunderflow
+		| "-nocopyoverflow" => set BasicControl.nocopyoverflow
 		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
 		| "-log" => set BasicControl.logging
 		| "-gcstats" => set BasicControl.gcStats

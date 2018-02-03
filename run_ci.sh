@@ -29,22 +29,22 @@ make local-install
 failed=0
 
 llvmOptions=(
-  "-llopt0"
-  "-llopt1"
-  "-llopt2"
-  "-llopt3"
-  "-llopt4"
-  "-llopt5"
+  "-O0"
+  "-O1"
+  "-O2"
+  "-O3"
+  "-O4"
+  "-O5"
 )
 
 stacks=(
   ""
-  "-direct"
+  "-contigstack"
   "-segstack"
 )
 
 echo -e "\n\n\t----- testing with MLRISC -----\n\n"
-./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
+BACKEND="-mlrisc" ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
 # ./src/regression-tests/bash-scripts/run-par.bsh || failed=1
 echo -e "\n\n\t----- done -----\n\n"
 

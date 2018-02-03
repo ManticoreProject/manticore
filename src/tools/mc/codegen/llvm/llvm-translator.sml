@@ -1348,7 +1348,9 @@ fun output (outS, module as C.MODULE { name = module_name,
     
     val stackKind = if Controls.get BasicControl.segstack
                     (* we have re-purposed the stdEnvPtr field to hold the stack limit *)
-                    then "\"manti-segstack\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""
+                        then "\"manti-segstack\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""
+                    else if Controls.get BasicControl.linkstack
+                        then "\"manti-linkstack\""
                     else "\"manti-contig\""
     
     (* string building code *)

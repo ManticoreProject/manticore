@@ -26,11 +26,14 @@ structure BasicControl :  sig
   (* use the LLVM backend *)
     val llvm : bool Controls.control
     
-  (* use the direct-style codegen *)
+  (* use the direct-style codegen with contiguous stacks *)
     val direct : bool Controls.control
     
-  (* use segmented stack codegen *)
+  (* same as "direct", but use segmented stacks instead *)
     val segstack : bool Controls.control
+    
+  (* same as "direct", but use a linked-frame stack instead *)
+    val linkstack : bool Controls.control
     
   (* no return-address stack; emit pop/push jmps instead *)
     val noras : bool Controls.control
@@ -198,6 +201,15 @@ structure BasicControl :  sig
         default = false
       }
       
+  (* mutable, linked-frame stack *)
+    val linkstack : bool Controls.control = Controls.genControl {
+        name = "linkstack",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "use mutable, linked-frame stacks (uses direct-style conversion)",
+        default = false
+      }
+      
   (* no return-address stack *)
     val noras : bool Controls.control = Controls.genControl {
         name = "noras",
@@ -229,15 +241,15 @@ structure BasicControl :  sig
         name = "llvm",
         pri = [0, 1, 1], (* TODO: What do these values mean? *)
         obscurity = 0,
-        help = "use the (experimental) LLVM backend for code generation",
-        default = false
+        help = "use the LLVM backend for code generation",
+        default = true
       }
       
     val llopt : int Controls.control = Controls.genControl {
             name = "llopt",
             pri = [0, 1, 1], (* TODO: What do these values mean? *)
             obscurity = 0,
-            help = "choose optimization level (0 to 3) used by LLVM backend",
+            help = "choose optimization level (0 to 5) used by LLVM backend",
             default = 0
           }
           
