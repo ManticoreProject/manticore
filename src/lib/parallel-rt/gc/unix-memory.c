@@ -135,21 +135,25 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
 	// been deprecated: https://lwn.net/Articles/294001/
     
 	size_t guardSz = GUARD_PAGE_BYTES;
-    size_t stackLen = numBytes + guardSz;
+    size_t bonusSz = 8 * sizeof(uint64_t); // extra space for realigning, etc.
+    size_t stackLen = numBytes + guardSz + bonusSz;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
     
     totalSz = ROUNDUP(totalSz, guardSz);
     
-    void* mem;
+    uint8_t* mem;
     if (top == 0 || ((*top) + totalSz) >= lim) {
         mem = MapMemory(0, totalSz);
         
         if(mem == MAP_FAILED) {
+            Die("AllocStack: failed to mmap more memory");
             return 1;
         }
     } else {
         mem = *top;
-        *top = (*top) + totalSz;
+        uint64_t asI = (uint64_t)mem;
+        mem = (uint8_t*) (ROUNDUP(asI, guardSz));
+        *top = mem + totalSz;
     }
     
     // we protect the low end of the block to
@@ -157,7 +161,7 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
     // because mmap on OS X seems to only place a protected
     // page after the buffer, not before it.
     if(mprotect(mem, guardSz, PROT_NONE)) {
-        // failed to initialize guard area.
+        Die("AllocStack: failed to initialize guard area");
         return 2;
     }
     
@@ -179,9 +183,11 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
     val = ROUNDDOWN(val, 16ULL);	// realign downwards.
     val = val - 8;					// make space for return addr.
     
-	void* sp = (void*)val;
+    void* sp = (void*)val;
+    void* spLim = (void*)(val - numBytes);
     
     info->initialSP = sp;
+    info->stkLimit  = spLim;
     
     return info;
 }
@@ -224,17 +230,18 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     
     totalSz = ROUNDUP(totalSz, guardSz);
     
-    void* mem;
+    uint8_t* mem;
     if (top == 0 || ((*top) + totalSz) >= lim) {
         mem = MapMemory(0, totalSz);
         
         if(mem == MAP_FAILED) {
+            Die("AllocStackSegment: failed to mmap more memory");
             return 1;
         }
     } else {
         mem = *top;
         uint64_t asI = (uint64_t)mem;
-        mem = (void*) (ROUNDUP(asI, guardSz));
+        mem = (uint8_t*) (ROUNDUP(asI, guardSz));
         *top = mem + totalSz;
     }
     
@@ -244,6 +251,7 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     // page after the buffer, not before it.
     if(mprotect(mem, guardSz, PROT_NONE)) {
         // failed to initialize guard area.
+        Die("AllocStackSegment: failed to initialize guard area");
         return 2;
     }
     
@@ -277,8 +285,8 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     // leave space for a return addr
     valP -= sizeof(uint64_t);
     
-	void* sp = (void*)valP;
-    void* spLim = (void*)(valP - numBytes);
+	uint8_t* sp = (uint8_t*)valP;
+    uint8_t* spLim = (uint8_t*)(valP - numBytes);
     
     info->initialSP = sp;
     info->stkLimit = spLim;
