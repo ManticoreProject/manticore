@@ -51,3 +51,4 @@
     VP_OFFSET(vp, NODE_ID, nodeID, true);
     VP_OFFSET(vp, ALLOCD_STKS, allocdStacks, true);
     VP_OFFSET(vp, FREE_STKS, freeStacks, true);
+    VP_OFFSET(vp, FFI_STK, ffiStack, true);

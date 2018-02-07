@@ -48,6 +48,8 @@ extern StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim);
 // Returns 0 if failed.
 extern StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim);
 
+extern uint8_t* AllocFFIStack(size_t numBytes);
+
 // frees a stack allocated by AllocStack.
 // extern void FreeStack(StackInfo_t* info);
 

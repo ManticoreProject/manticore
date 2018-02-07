@@ -158,6 +158,7 @@ structure LLVMBuilder : sig
 
     (* calling convention goodies *)
     val jwaCC : convention  (* the Manticore calling convention *)
+    val cshimCC : convention  (* the "cshim" calling convention *)
     val stdCC : convention  (* standard C calling convention *)
     val fastCC : convention  (* "fast" C calling convention *)
     
@@ -209,6 +210,7 @@ structure LLVMBuilder : sig
 
   val noCC  = ""
   val jwaCC  = "cc97"
+  val cshimCC  = "cc98"
   val stdCC  = "ccc"
   val fastCC  = "fastcc"
   fun cctoStr x = x

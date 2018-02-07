@@ -301,6 +301,7 @@ void *NewVProc (void *arg)
     vproc->freeStacks = NULL;
     vproc->stackArea_top = NULL;
     vproc->stackArea_lim = NULL;
+    vproc->ffiStack = AllocFFIStack(ONE_MEG);
 
     MutexInit (&(vproc->lock));
     CondInit (&(vproc->wait));

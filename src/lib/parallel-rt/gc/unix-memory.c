@@ -53,6 +53,7 @@ void* SimpleAlloc(size_t szb) {
     void* mem = MapMemory(0, szb);
     
     if(mem == MAP_FAILED) {
+        Die("SimpleAlloc failed to allocate memory!");
         return 0;
     }
     
@@ -292,6 +293,12 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     info->stkLimit = spLim;
     
     return info;
+}
+
+// returns a stack pointer SP such that SP+8 is 16-byte aligned.
+uint8_t* AllocFFIStack(size_t numBytes) {
+    StackInfo_t* ffiInfo = AllocStack(numBytes, NULL, NULL);
+    return ffiInfo->initialSP;
 }
 
 // void FreeStack(StackInfo_t* info) {

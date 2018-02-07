@@ -1192,8 +1192,9 @@ fun output (outS, module as C.MODULE { name = module_name,
       
       (* A standard C call that returns. *)
       and genCCall(env, (results, func, args)) = let
-            val llFunc = Util.lookupV(env, func)            
-            val argTys = (LT.argsOf o LT.deref o LB.toTy) llFunc
+            val llFunc = Util.lookupV(env, func)
+            val llFuncTy = (LT.deref o LB.toTy) llFunc
+            val argTys = LT.argsOf llFuncTy
             
             val llArgs = L.map (fn (a, realTy) => let
                                 val ll = Util.lookupV(env, a)
@@ -1202,9 +1203,30 @@ fun output (outS, module as C.MODULE { name = module_name,
                                 cast (Op.equivCast (llty, realTy)) (ll, realTy)
                             end)
                                 (ListPair.zipEq(args, argTys))
-                                
+            
             (* thunk the call for a hot minute *)
-            val doCall = (fn () => LB.call b (llFunc, V.fromList llArgs))
+            val doCall = 
+                if not (Controls.get BasicControl.cshim)
+                    then (fn () => LB.call b (llFunc, V.fromList llArgs))
+                    else let
+                        val (shim, SOME cc) = LR.doCCall
+                        (* cast shim to the right type *)
+                        val ty = LT.mkPtr(LT.mkFunc(
+                            LT.retOf llFuncTy 
+                            :: [LT.vprocTy, LB.toTy llFunc]
+                            @ argTys
+                            ))
+                        val shim = cast Op.BitCast (LB.fromV shim, ty)
+                        
+                        (* setup the arguments *)
+                        val vp = Util.lookupMV(env, MV.MV_Vproc)
+                        val allArgs = [ vp, llFunc ] @ llArgs
+                    in
+                        (fn () => LB.callAs b cc (shim, V.fromList allArgs))
+                    end
+                                
+            
+            
             
             (* check if the C function might allocate before performing the call *)
             val allocates = Util.cfunDoesAlloc func

@@ -368,7 +368,9 @@ functor MainFn (
 		| "-mlrisc" => unset BasicControl.llvm
 		| "-contigstack" => set BasicControl.direct
 		| "-segstack" => ( Controls.set(BasicControl.direct, true) ; set BasicControl.segstack )
-		| "-linkstack" => ( Controls.set(BasicControl.direct, true) ; set BasicControl.linkstack )
+		| "-linkstack" => ( Controls.set(BasicControl.direct, true) ;
+                            Controls.set(BasicControl.cshim, true) ;
+                            set BasicControl.linkstack )
 		| "-noras" => set BasicControl.noras
 		| "-lazyunderflow" => set BasicControl.lazyunderflow
 		| "-nocopyoverflow" => set BasicControl.nocopyoverflow

@@ -35,6 +35,9 @@ structure BasicControl :  sig
   (* same as "direct", but use a linked-frame stack instead *)
     val linkstack : bool Controls.control
     
+  (* switch to a seperate stack for all C calls. *)
+    val cshim : bool Controls.control
+    
   (* no return-address stack; emit pop/push jmps instead *)
     val noras : bool Controls.control
     
@@ -207,6 +210,15 @@ structure BasicControl :  sig
         pri = [0, 1, 1], (* TODO: What do these values mean? *)
         obscurity = 0,
         help = "use mutable, linked-frame stacks (uses direct-style conversion)",
+        default = false
+      }
+      
+  (* use seperate stack for C calls *)
+    val cshim : bool Controls.control = Controls.genControl {
+        name = "cshim",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "use a seperate stack for C calls.",
         default = false
       }
       

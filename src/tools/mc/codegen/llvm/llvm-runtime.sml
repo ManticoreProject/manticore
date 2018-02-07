@@ -60,6 +60,12 @@ structure LLVMRuntime =
     (* we need a special InvokeGC for LLVM *)
     val invokeGC : LV.var * (LB.convention option) = (mkLabel "ASM_InvokeGC_LLVM" (retStructTy :: stdRegSet), SOME LB.jwaCC)
     val dsInvokeGC : LV.var * (LB.convention option) = (mkLabel "ASM_InvokeGC_DS_LLVM" (retStructTyDS :: stdRegSetDS), SOME LB.jwaCC)
+    
+    (* This function actually has a type that's not representable in LLVM (it is in essence, polymorphic).
+       so we assign it an arbitrary type, and expect users to always cast it to a function pointer of the
+       type that they desire.
+     *)
+    val doCCall : LV.var * (LB.convention option) = (mkLabel "ASM_doCCall" (LT.voidTy :: []), SOME LB.cshimCC)
         end
         
     
@@ -98,6 +104,7 @@ structure LLVMRuntime =
     val runtime = [ promote,
                     invokeGC,
                     dsInvokeGC,
+                    doCCall,
                     
                     (* Some of the below array/vector allocation externs are commented
                        out because they're already included in the BOM module, and this
