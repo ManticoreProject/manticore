@@ -350,6 +350,14 @@ structure BasicControl :  sig
           envName = NONE
         };
       ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool linkstack,
+          envName = NONE
+        };
+      ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool cshim,
+          envName = NONE
+        };
+      ControlRegistry.register topRegistry {
           ctl = Controls.stringControl ControlUtil.Cvt.bool noras,
           envName = NONE
         };
