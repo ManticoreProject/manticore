@@ -41,6 +41,10 @@ stacks=(
   ""
   "-contigstack"
   "-segstack"
+  # now we test with the cshim
+  "-Ccshim=true"
+  "-Ccshim=true -contigstack"
+  "-Ccshim=true -segstack"
 )
 
 echo -e "\n\n\t----- testing with MLRISC -----\n\n"
@@ -52,7 +56,7 @@ for stack in "${stacks[@]}"; do
     for llvm in  "${llvmOptions[@]}"; do
         config="$llvm $stack"
         echo -e "\n\n\t----- testing configuration: $config -----\n\n"
-        BACKEND="$config" ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
+        BACKEND="$config" timeout 10m ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
         # BACKEND="$config" ./src/regression-tests/bash-scripts/run-par.bsh || failed=1
         echo -e "\n\n\t----- done -----\n\n"
     done
