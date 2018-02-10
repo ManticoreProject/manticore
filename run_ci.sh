@@ -29,7 +29,7 @@ make local-install
 failed=0
 
 llvmOptions=(
-  "-O0"
+  # "-O0"   FIXME: right now, big-tuples causes LLVM to hang without optimization.
   "-O1"
   "-O2"
   "-O3"
@@ -56,7 +56,7 @@ for stack in "${stacks[@]}"; do
     for llvm in  "${llvmOptions[@]}"; do
         config="$llvm $stack"
         echo -e "\n\n\t----- testing configuration: $config -----\n\n"
-        BACKEND="$config" timeout 10m ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
+        BACKEND="$config" timeout 20m ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
         # BACKEND="$config" ./src/regression-tests/bash-scripts/run-par.bsh || failed=1
         echo -e "\n\n\t----- done -----\n\n"
     done
