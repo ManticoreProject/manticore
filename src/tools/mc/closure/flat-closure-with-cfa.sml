@@ -704,6 +704,35 @@ structure FlatClosureWithCFA : sig
               (* convert an individual function binding; this includes creating its
                * code-pointer/environment-pointer pair and converting the function's body.
                *)
+               
+               (* FIXME(kavon): an improvment to this would be to make a distinction between
+                  the representation of a known vs std function value:
+                    std function: is the standard pair, [ep, cp]
+                    known function: is just the raw ep: ep
+                    
+                    The point is that for non-tail calls, we end up doing needless
+                    allocation. Especially for self-recursive functions. Try out
+                    the basic fib function, we get:
+                    
+                        foo_clos  = alloc(foo_ep, $foo)
+                        frame = alloc($joinK, foo_clos)
+                        apply X(... frame ...)
+                        
+                        joinK(ep, ...) =    
+                          foo_clos = #1(ep)  
+                          foo_ep = #0(foo_clos)
+                          apply $foo (foo_ep, ...)
+                      
+                    Instead, we could drop an allocation and extra load and emit:
+                    
+                        frame = alloc($joinK, foo_ep)
+                        apply X(... frame ...)
+                        
+                        joinK(ep, ...) =    
+                          foo_ep = #1(ep)  
+                          apply $foo (foo_ep, ...)
+                      
+                   *)
                 fun cvtFB (CPS.FB{f, params, rets, body}, (binds, env)) = let
                       val (fbEnv, params, conv, convTy) = 
                             if CFA.isEscaping f
