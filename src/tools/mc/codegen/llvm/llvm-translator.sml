@@ -1425,7 +1425,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         val asLLV = LV.convertLabel var
         val llvmAttrs = S.concat(Util.mapSep(attrOfC, [Util.stdAttrs(Util.ExternCFun)], " ", attrs))
       in
-        ( (LT.declOf (LV.typeOf asLLV) "" (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
+        ( (LT.declOf (LV.typeOf asLLV) LB.stdCC (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
          var,
          asLLV)
       end
