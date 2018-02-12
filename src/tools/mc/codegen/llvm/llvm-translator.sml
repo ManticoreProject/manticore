@@ -1207,7 +1207,7 @@ fun output (outS, module as C.MODULE { name = module_name,
             (* thunk the call for a hot minute *)
             val doCall = 
                 if not (Controls.get BasicControl.cshim)
-                    then (fn () => LB.call b (llFunc, V.fromList llArgs))
+                    then (fn () => LB.callAs b LB.stdCC (llFunc, V.fromList llArgs))
                     else let
                         val (shim, SOME cc) = LR.doCCall
                         (* cast shim to the right type *)
