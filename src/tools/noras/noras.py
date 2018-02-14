@@ -10,7 +10,7 @@ RET_INSTR = "\tretq\n"
 # CALL_PATTERN = re.compile("^\tcallq\t(.+)$")
 # LABEL_PATTERN = re.compile("^([a-zA-Z0-9_]+):$")
 
-RET_REPLACEMENT = "\tpopq\t%rbp\n\tjmpq\t*%rbp\n"
+RET_REPLACEMENT = "\tpopq\t%rbx\n\tjmpq\t*%rbx\n"
 
 # MANTICORE_FUN_PAT = re.compile(".+_[ABCDEF0-9]{4}$")
 
