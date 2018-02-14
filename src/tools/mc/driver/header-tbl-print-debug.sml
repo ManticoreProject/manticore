@@ -10,7 +10,7 @@ structure PrintTableDebug =
 struct
 
      (* number of predefined table entries, important for the table length!! *)
-    val predefined = 3
+    val predefined = 4
     
     (* Headerfiles *)
     fun header (MyoutStrm) = (  

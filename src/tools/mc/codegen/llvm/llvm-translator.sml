@@ -1372,12 +1372,20 @@ fun output (outS, module as C.MODULE { name = module_name,
                     (* we have re-purposed the stdEnvPtr field to hold the stack limit *)
                         then "\"manti-segstack\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""
                     else if Controls.get BasicControl.linkstack
-                        then "\"manti-linkstack\""
+                        then let
+                            val hpLimOffset = IntegerLit.toString Spec.ABI.limitPtr
+                        in
+                            "\"manti-linkstack\" = \"" 
+                                ^ hpLimOffset ^ ","
+                                ^ "0"  (* FIXME: this needs to be the header tag for the roots at entry. *)
+                                ^ "\""
+                        end
+                        
                     else "\"manti-contig\""
     
     (* string building code *)
     val linkage = linkageOf lab
-    val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " "  (* TODO it's likely that we need a direct-style Manticore CC in LLVM *)
+    val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " "
     val llName = LV.toString llLab
     val decl = ["define ", linkage, ccStr,
                 retTyStr, " ", llName, "(", (stringify startConv), ") ",

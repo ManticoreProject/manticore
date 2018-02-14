@@ -68,7 +68,7 @@ STATIC_INLINE bool isLimitPtr (Value_t v, MemChunk_t *cp)
 STATIC_INLINE bool isMixedHdr (Word_t hdr)
 {
   /* NOTE: this code relies on the fact that the tag is one bit == 1 */
-    return ((getID(hdr) > STACK_TAG_BITS)  && (isNoPtr(hdr)));
+    return ((getID(hdr) > LINKFRAME_TAG_BITS)  && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isVectorHdr (Word_t hdr)
@@ -84,6 +84,11 @@ STATIC_INLINE bool isRawHdr (Word_t hdr)
 STATIC_INLINE bool isStackHdr (Word_t hdr)
 {
     return ((getID(hdr) == STACK_TAG_BITS)  && (isNoPtr(hdr)));
+}
+
+STATIC_INLINE bool isLinkedFrameHdr (Word_t hdr)
+{
+    return ((getID(hdr) == LINKFRAME_TAG_BITS)  && (isNoPtr(hdr)));
 }
 
 /* Return the length field of a header */

@@ -33,6 +33,13 @@
  *  | -- 48 bits -- | -- 15 bits -- | -- 1 bit -- |
  *  |	  length    |       2       |      1      |
  *  ---------------------------------------------- 
+ *
+ *  Heap-allocated, mutable linked-frame object.
+ *
+ *  ---------------------------------------------- 
+ *  | -- 48 bits -- | -- 15 bits -- | -- 1 bit -- |
+ *  |	  length    |       3       |      1      |
+ *  ---------------------------------------------- 
  * 
  * We also have a header format for forwarding pointers.
  *
@@ -70,6 +77,7 @@
 #define TABLE_TAG	1
 #define TABLE_LEN_ID	15
 
+#define LINKFRAME_TAG_BITS 3
 #define STACK_TAG_BITS 2
 #define VEC_TAG_BITS 1
 #define RAW_TAG_BITS 0
@@ -86,6 +94,7 @@
 //Stack continuation object
 #define STACK_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((STACK_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
-
+//Linked-frame object
+#define LINKFRAME_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((LINKFRAME_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
 #endif /* !_HEADER_BITS_H_ */
