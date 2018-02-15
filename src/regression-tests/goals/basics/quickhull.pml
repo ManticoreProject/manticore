@@ -70,4 +70,4 @@ fun quickhull(a,b,S) =
 	      x @ [c] @ y
 	  end));
 
-val _ = quickhull((0.0,0.0),(1.0,1.0),nil) @ quickhull((0.0,0.0),(1.0,1.0),nil)
+val _ = (quickhull((0.0,0.0),(1.0,1.0),nil) @ quickhull((0.0,0.0),(1.0,1.0),nil); Print.print "done\n")

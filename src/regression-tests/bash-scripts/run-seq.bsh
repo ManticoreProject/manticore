@@ -23,8 +23,8 @@ ulimit -c unlimited
 
 rm -rf $LOG
 
-echo "pmlc is $PMLC"
-echo "backend option is $BACKEND (empty means compiler default)"
+echo "pmlc is $PMLC" | tee -a $REPORT_FILE
+echo "compilation flags: $PMLCFLAGS" | tee -a $REPORT_FILE
 
 for g in basics seq-* 
 do
@@ -55,7 +55,8 @@ do
 	 echo "fail" >> $LOG
 	 echo "fail"
        fi
-       rm -f a.out $fname.s $fname.test
+       rm -f a.out $fname.s $fname.test $fname.ll ${fname}_opt.bc
+       rm -rf a.out.dSYM
      fi
    done
 )
