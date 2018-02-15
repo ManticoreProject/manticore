@@ -97,7 +97,7 @@ struct
                 TextIO.output (MyoutStrm, concat["Word_t * minorGCscan",Int.toString b,"pointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Value_t *scanP = (Value_t *)ptr;\n");
-                TextIO.output (MyoutStrm, "  Value_t v = *scanP;\n");
+                TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
                 lp(size,a,0);
@@ -201,7 +201,7 @@ struct
                 TextIO.output (MyoutStrm, concat["Word_t * majorGCscan",Int.toString b,"pointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-                TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
+                TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
                 lp(size,a,0);
@@ -297,7 +297,7 @@ struct
                 TextIO.output (MyoutStrm, concat["Word_t * ScanGlobalToSpace",Int.toString b,"function (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-                TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
+                TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
                 lp(size,a,0);
@@ -396,7 +396,7 @@ struct
                 TextIO.output (MyoutStrm, concat["Word_t * globalGCscan",Int.toString b,"pointer (Word_t* ptr, VProc_t *vp) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-                TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
+                TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
                 lp(size,a,0);
