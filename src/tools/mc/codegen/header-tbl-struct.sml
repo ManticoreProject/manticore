@@ -10,7 +10,23 @@
     
 structure HeaderTableStruct =
 struct
-    structure HeaderTable = HeaderTblFn(HeaderHash)
+
+    (* number of predefined table entries. 
+       by pre-defined, we mean "non-mixed header entries". 
+       
+       This is a very important value, as it shifts the starting point of
+       header IDs corresponding to mixed type tuples.
+    *)
+    val predefined = 4
+
+    structure HeaderConfig = struct
+        type hdr = HeaderHash.hdr
+        val hash = HeaderHash.hash
+        val same = HeaderHash.same
+        val startID = predefined
+    end
+
+    structure HeaderTable = HeaderTblFn(HeaderConfig)
  
     val header = HeaderTable.new ()
     

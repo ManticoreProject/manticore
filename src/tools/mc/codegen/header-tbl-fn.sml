@@ -32,6 +32,7 @@ functor HeaderTblFn (
 	    type hdr
 	    val hash : hdr -> word
 	    val same : (hdr * hdr) -> bool
+	    val startID : int
 	end
 ) : HEADER_TABLE = struct
 
@@ -43,7 +44,7 @@ functor HeaderTblFn (
   type hdr = A.hdr
   type hdr_tbl = int Tbl.hash_table
   
-  val counter = ref 3
+  val counter = ref A.startID
   
   (* counter for the ids *)
   fun newid () = let 

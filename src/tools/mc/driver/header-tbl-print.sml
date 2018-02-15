@@ -11,9 +11,10 @@
 structure PrintTable = 
 struct
     
-    (* number of predefined table entries, important for the table length!!
-      by pre-defined, we mean "non-mixed header entries". *)
-    val predefined = 3
+    (* NOTE: very important for table length!! This number
+       represents the number of non-mixed header kinds that we have
+       manually predefined below. *)
+    val predefined = HeaderTableStruct.predefined
     
     (* Headerfiles *)
     fun header (MyoutStrm) = (  
@@ -69,6 +70,10 @@ struct
         TextIO.output (MyoutStrm, "nextScan += expectedLen;\n");
         TextIO.output (MyoutStrm, "return nextScan;\n");
         TextIO.output (MyoutStrm, "  }\n");
+        
+        TextIO.output (MyoutStrm, "Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
+        TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
+        TextIO.output (MyoutStrm, "}\n");
 		()
         )
 
@@ -169,6 +174,10 @@ struct
         TextIO.output (MyoutStrm, "nextScan += expectedLen; \n");
 		TextIO.output (MyoutStrm, "return nextScan;\n");
         TextIO.output (MyoutStrm, "}\n");
+        
+        TextIO.output (MyoutStrm, "Word_t * majorGCscanLINKFRAMEpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
+        TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
+        TextIO.output (MyoutStrm, "}\n");
         ()
         )
 
@@ -267,6 +276,11 @@ struct
         TextIO.output (MyoutStrm, "scanPtr += expectedLen; \n");
         
         TextIO.output (MyoutStrm, "return scanPtr;\n");
+        TextIO.output (MyoutStrm, "}\n");
+        
+        
+        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceLINKFRAMEfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
+        TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
         ()
         )
@@ -368,6 +382,10 @@ struct
         
         TextIO.output (MyoutStrm, "return scanPtr;\n");
         TextIO.output (MyoutStrm, "}\n");
+        
+        TextIO.output (MyoutStrm, "Word_t * globalGCscanLINKFRAMEpointer (Word_t* ptr, VProc_t *vp) {\n");
+        TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
+        TextIO.output (MyoutStrm, "}\n");
         ()
         )
 
@@ -433,7 +451,8 @@ struct
         TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+predefined),"] = {\n"]); 
         TextIO.output (MyoutStrm, "{minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n");
         TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction},\n");
-		TextIO.output (MyoutStrm, "{minorGCscanSTKCONTpointer,majorGCscanSTKCONTpointer,globalGCscanSTKCONTpointer,ScanGlobalToSpaceSTKCONTfunction}\n");
+		TextIO.output (MyoutStrm, "{minorGCscanSTKCONTpointer,majorGCscanSTKCONTpointer,globalGCscanSTKCONTpointer,ScanGlobalToSpaceSTKCONTfunction},\n");
+        TextIO.output (MyoutStrm, "{minorGCscanLINKFRAMEpointer,majorGCscanLINKFRAMEpointer,globalGCscanLINKFRAMEpointer,ScanGlobalToSpaceLINKFRAMEfunction}\n");
         
         printtable (length+predefined,predefined);
         
