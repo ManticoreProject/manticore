@@ -123,6 +123,28 @@ extern MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool i
 extern size_t FreeStacks(VProc_t *vp, Age_t epoch);
 extern void UnmarkStacks(VProc_t *vp);
 
+extern void ScanStackMinor (
+    void* origStkPtr,
+    StackInfo_t* stkInfo,
+    Addr_t nurseryBase,  
+    Addr_t allocSzB,
+    Word_t **nextW);
+    
+extern void ScanStackMajor (
+    void* origStkPtr,
+    StackInfo_t* stkInfo,
+    Addr_t heapBase,  
+    Addr_t oldSzB,
+    VProc_t *vp,
+    bool scanningGlobalToSpace);
+    
+extern void ScanStackGlobal (
+    void* origStkPtr,
+    StackInfo_t* stkInfo,
+    VProc_t* vp);
+    
+
+
 /* GC debugging support */
 #ifndef NDEBUG
 typedef enum {
