@@ -262,11 +262,8 @@ VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
 doShutdown:
     if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
         closObj = ValueToClosure(vp->shutdownCont);
-        // yes, the two lines below look fishy.
-        // FunClosure_t uses {cp, ep}, but
-        // the codegen uses {ep, cp}
-        envP = closObj->cp;
-        codeP = ValueToAddr(closObj->ep);
+        envP = closObj->ep;
+        codeP = ValueToAddr(closObj->cp);
         arg = M_UNIT;
         exnCont = M_UNIT;
         vp->atomic = M_TRUE;

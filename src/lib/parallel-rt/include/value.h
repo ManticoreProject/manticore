@@ -17,8 +17,8 @@
 
 /* function closures are represented by code-pointer/env-pointer pairs */
 typedef struct {
-    Value_t	cp;
     Value_t	ep;
+    Value_t	cp;
 } FunClosure_t;
 
 /* continuation closures are represented by a code pointer followed by their environment */
