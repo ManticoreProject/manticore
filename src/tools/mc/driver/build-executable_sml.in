@@ -76,6 +76,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
         val segstack = Controls.get BasicControl.segstack
         val lazyunderflow = Controls.get BasicControl.lazyunderflow
         val nocopyoverflow = Controls.get BasicControl.nocopyoverflow
+        val linkstack = Controls.get BasicControl.linkstack
         
         (* remove the .s *)
         val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 2))
@@ -107,24 +108,32 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
                   
         val (files, temps) = tableFiles ()
 
-        val (cFlags, libName) = (case (gcStats, logging, debug, perf, direct, segstack)
-         of (true, false, false, false, false, false) => (cFlags, "mcrt-stats")
-          | (_, false, false, false, false, false) => (cFlags, "mcrt")
-          | (false, false, false, false, true, false) => (cFlags, "mcrt-direct")
-          | (true, false, false, false, true, false) => (cFlags, "mcrt-direct-stats")
-          | (false, false, false, false, true, true) => 
-                (case (lazyunderflow, nocopyoverflow)
-                  of (false, false) => (cFlags, "mcrt-segstack")
-                   | (true, false) => (cFlags, "mcrt-segstack-lazyunderflow")
-                   | (false, true) => (cFlags, "mcrt-segstack-nocopyoverflow")
-                   | (true, true) => (cFlags, "mcrt-segstack-lazyunderflow-nocopyoverflow")
-                   (* end case *))
-                
-          | (true, false, false, false, true, true) => (cFlags, "mcrt-segstack-stats")
-          | (_, true, false, false, false, false) => (cFlags, "mcrt-log")
-          | (_, false, true, false, false, false) => ("-g "^cFlags^" -O0", "mcrt-debug")
-          | (_, true, true, false, false, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
-          | (_, _, _, true, false, false) => (cFlags, "mcrt-perf")
+        val (cFlags, libName) = (case (gcStats, logging, debug, perf, direct)
+         of (true, false, false, false, false) => (cFlags, "mcrt-stats")
+          | (_, false, false, false, false) => (cFlags, "mcrt")
+          | (_, true, false, false, false) => (cFlags, "mcrt-log")
+          | (_, false, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-debug")
+          | (_, true, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
+          | (_, _, _, true, false) => (cFlags, "mcrt-perf")
+          
+          | (gcStats, _, _, _, true) => let (* handle various kinds of stacks *)
+                val name = 
+                    (case (segstack, linkstack)
+                        of (false, false) => "mcrt-direct"
+                         | (false, true) => "mcrt-linkstack"
+                         | (true, false) =>
+                            (case (lazyunderflow, nocopyoverflow)
+                              of (false, false) => "mcrt-segstack"
+                               | (true, false) => "mcrt-segstack-lazyunderflow"
+                               | (false, true) => "mcrt-segstack-nocopyoverflow"
+                               | (true, true) => "mcrt-segstack-lazyunderflow-nocopyoverflow"
+                               (* end case *))
+                          (* end case *))
+              in
+                if gcStats
+                    then (cFlags, name ^ "-stats")
+                    else (cFlags, name)
+              end
         (* end case *))
     in
 	(cat [ccCmd, cFlags, asmFile,files, ldFlags libName], temps)

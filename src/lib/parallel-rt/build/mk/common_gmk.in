@@ -43,6 +43,11 @@ ifeq (,$(findstring segstack,$(BUILD_OPTIONS)))
 else
   ENABLE_SEGSTACK=true
 endif
+ifeq (,$(findstring linkstack,$(BUILD_OPTIONS)))
+  ENABLE_LINKSTACK=false
+else
+  ENABLE_LINKSTACK=true
+endif
 ifeq (,$(findstring lazyunderflow,$(BUILD_OPTIONS)))
   ENABLE_LAZY_UNDERFLOW=false
 else
@@ -126,6 +131,10 @@ endif
 
 ifeq ($(ENABLE_SEGSTACK),true)
   CPPFLAGS += -DSEGSTACK
+endif
+
+ifeq ($(ENABLE_LINKSTACK),true)
+  CPPFLAGS += -DLINKSTACK
 endif
 
 ifeq ($(ENABLE_LAZY_UNDERFLOW),true)
