@@ -101,7 +101,6 @@ _GSYM(ASM_Apply):
 	.p2align 3
 	.globl	_GSYM(ASM_UncaughtExn)
 _GSYM(ASM_UncaughtExn):
-/* TODO for direct-style, we need to be able to switch to the ASM_Apply frame (or abort some other way). */
 	movq	$REQ_UncaughtExn, TMP_REG1
 	jmp	switch_to_c
 
