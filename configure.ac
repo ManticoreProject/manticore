@@ -569,8 +569,10 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-segstack-nocopyoverflow-stats, [stats direct segstack nocopyoverflow])
     MK_BUILD_DIR(mcrt-segstack-lazyunderflow-nocopyoverflow-stats, [stats direct segstack lazyunderflow nocopyoverflow])
     
-    MK_BUILD_DIR(mcrt-linkstack, [direct linkstack])
-    MK_BUILD_DIR(mcrt-linkstack-stats, [stats direct linkstack])
+    dnl NOTE that linkstack does not compile RTS with DIRECT_STYLE enabled!
+    dnl this is due to the heavy similarity between it and CPS-style codegen.
+    MK_BUILD_DIR(mcrt-linkstack, [linkstack])
+    MK_BUILD_DIR(mcrt-linkstack-stats, [stats linkstack])
     
 if test $OS != darwin; then
     MK_BUILD_DIR(mcrt-perf, [perf])
