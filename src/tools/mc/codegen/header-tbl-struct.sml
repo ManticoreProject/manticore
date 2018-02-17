@@ -11,11 +11,14 @@
 structure HeaderTableStruct =
 struct
 
-    (* number of predefined table entries. 
+    (* NOTE number of predefined table entries.
        by pre-defined, we mean "non-mixed header entries". 
        
        This is a very important value, as it shifts the starting point of
        header IDs corresponding to mixed type tuples.
+       
+       If you change this value, you must also update the integer literal
+       called "predefined" in the C runtime system, in alloc.c
     *)
     val predefined = 4
 
@@ -30,6 +33,9 @@ struct
  
     val header = HeaderTable.new ()
     
+    (* NOTE: these constant bit-tags are here so that the C runtime system
+       can allocate certian mixed-header tuples. See AllocNonUniform in alloc.c
+       for the correspondence.  *)
     val _ = HeaderTable.addHdr (header, "0")
     val _ = HeaderTable.addHdr (header, "01")
 	val _ = HeaderTable.addHdr (header, "1")

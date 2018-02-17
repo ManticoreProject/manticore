@@ -18,8 +18,10 @@
 
 #include <stdio.h>
 
-//predefined table entries, important for AllocUniform and GlobalAllocUniform
-const int predefined = 3;
+// predefined table entries, important for AllocUniform and GlobalAllocUniform
+// NOTE this value must match up with the predefined literal in the SML 
+// structure HeaderTableStruct
+const int predefined = 4;
 
 /**
  * Checks if there is enough global heap space in the current chunk,
@@ -111,6 +113,8 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     } else if (nElems == 3 && bits == 0x4) {
         obj[-1] = MIXED_HDR(predefined+4, nElems);
     } else {
+        // NOTE if you need to allocate some other mixed header, consult 
+        // the SML structure HeaderTableStruct
         fprintf(stderr, "Error AllocNonUniform. Len: %d, Bits: %x\n", nElems, bits);
         exit(5);
     }
