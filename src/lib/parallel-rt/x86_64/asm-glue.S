@@ -178,6 +178,7 @@ spin:
 // in this register.
 .p2align 3
 .globl	_GSYM(ASM_InvokeGC)
+.globl	_GSYM(ASM_LinkedStack_InvokeGC)
 _GSYM(ASM_InvokeGC):
 _GSYM(ASM_LinkedStack_InvokeGC): // linkstack also uses this version!
 /* this version is for MLRISC backend */

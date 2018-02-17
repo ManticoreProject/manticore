@@ -300,7 +300,10 @@ fun output (outS, module as C.MODULE { name = module_name,
             val gcPtrs = L.map (fn v => Util.lookupV(env, v)) cfgGCPtrs
             
             (* do the call *)
-            val (func, SOME conv) = LR.dsInvokeGC
+            val (func, SOME conv) = if Controls.get BasicControl.linkstack
+                                    then LR.linkedInvokeGC
+                                    else LR.dsInvokeGC
+            
             val {ret, relos} = LLVMStatepoint.call { 
                                   blk = gcLoopBB,
                                   conv = conv,
