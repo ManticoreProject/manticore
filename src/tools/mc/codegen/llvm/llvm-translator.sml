@@ -1152,7 +1152,9 @@ fun output (outS, module as C.MODULE { name = module_name,
         val _ = Util.saveAllocPtr b loc alloc
         
         (* do call *)
-        val SOME llCall = LB.call b (llFunc, V.fromList llArgs)
+        val SOME llCall = if not (Controls.get BasicControl.cshim)
+                          then LB.call b (llFunc, V.fromList llArgs)
+                          else Util.callWithCShim b (env, llFunc, llArgs)
             
         val env = Util.updateMV(env, MV.MV_Alloc, Util.restoreAllocPtr b loc)
         
@@ -1211,25 +1213,7 @@ fun output (outS, module as C.MODULE { name = module_name,
             val doCall = 
                 if not (Controls.get BasicControl.cshim)
                     then (fn () => LB.callAs b LB.stdCC (llFunc, V.fromList llArgs))
-                    else let
-                        val (shim, SOME cc) = LR.doCCall
-                        (* cast shim to the right type *)
-                        val ty = LT.mkPtr(LT.mkFunc(
-                            LT.retOf llFuncTy 
-                            :: [LT.vprocTy, LB.toTy llFunc]
-                            @ argTys
-                            ))
-                        val shim = cast Op.BitCast (LB.fromV shim, ty)
-                        
-                        (* setup the arguments *)
-                        val vp = Util.lookupMV(env, MV.MV_Vproc)
-                        val allArgs = [ vp, llFunc ] @ llArgs
-                    in
-                        (fn () => LB.callAs b cc (shim, V.fromList allArgs))
-                    end
-                                
-            
-            
+                    else (fn () => Util.callWithCShim b (env, llFunc, llArgs))
             
             (* check if the C function might allocate before performing the call *)
             val allocates = Util.cfunDoesAlloc func

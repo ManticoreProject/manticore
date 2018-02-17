@@ -61,8 +61,14 @@ local
                 val _ = Util.saveAllocPtr bb loc alloc
 
                 (* call C routine to do the allocation, with bitcasts as needed *)
-                val res = asTy bb resTy (valOf(LB.call bb 
-                    (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ])))
+                val args = [LB.cast bb Op.BitCast (vproc, LT.voidStar), n]
+                val func = LB.fromV label
+                
+                val res = if not (Controls.get BasicControl.cshim)
+                          then LB.callAs bb LB.stdCC (func, V.fromList args)
+                          else Util.callWithCShim' bb (vproc, func, args)
+                
+                val res = asTy bb resTy (valOf res)
                     
                 (* retrieve the modified allocation pointer *)
                 val newAlloc = Util.restoreAllocPtr bb loc
@@ -392,10 +398,16 @@ in (case p
                     
                     val _ = Util.saveAllocPtr bb loc alloc
                     
+                    val func = fv label
+                    val args = [c Op.BitCast (vproc, LT.voidStar),
+                                c (Op.equivCast(LB.toTy xs, LT.voidStar)) (xs, LT.voidStar)]
+
                     (* call C routine to do the allocation, with bitcasts as needed *)
-                    val res = asTy bb resTy (
-                        valOf(LB.call bb (fv label, #[c Op.BitCast (vproc, LT.voidStar),
-                                             c (Op.equivCast(LB.toTy xs, LT.voidStar)) (xs, LT.voidStar)])))
+                    val res = if not (Controls.get BasicControl.cshim)
+                              then LB.call bb (func, V.fromList args)
+                              else Util.callWithCShim' bb (vproc, func, args)
+                    
+                    val res = asTy bb resTy (valOf res)
                         
                     (* retrieve the modified allocation pointer *)
                     val newAlloc = Util.restoreAllocPtr bb loc

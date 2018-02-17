@@ -28,6 +28,7 @@ local
     structure CTU = CFGTyUtil
     structure CF = CFunctions
     structure MV = LLVMMachineVal
+    structure LR = LLVMRuntime
 
 in
 
@@ -345,6 +346,30 @@ in
         allocates
     end
 end      
+
+
+fun callWithCShim bb (env, llFunc, llArgs) =
+    callWithCShim' bb (lookupMV(env, MV.MV_Vproc), llFunc, llArgs)
+
+and callWithCShim' bb (vp, llFunc, llArgs) = let
+    val llFuncTy = LB.toTy llFunc
+    val retTy = (LT.retOf o LT.deref) llFuncTy
+    val argTys = (LT.argsOf o LT.deref) llFuncTy
+    
+    val (shim, SOME cc) = LR.doCCall
+    (* cast shim to the right type *)
+    val ty = LT.mkPtr(LT.mkFunc(
+         retTy
+        :: [LT.vprocTy, llFuncTy]
+        @ argTys
+        ))
+    val shim = LB.cast bb Op.BitCast (LB.fromV shim, ty)
+    
+    (* setup the arguments *)
+    val allArgs = [ vp, llFunc ] @ llArgs
+in
+    LB.callAs bb cc (shim, V.fromList allArgs)
+end
       
 end (* end local scope *)
 end (* end LLVMTranslatorUtil *)
