@@ -93,6 +93,10 @@ _GSYM(ASM_Apply):
 	movq	%r8,STD_CONT_REG	/* return continuation */	
 #else
 	// r8 is a pointer to a linked-frame stack, so we setup rsp and rbp correctly.
+	
+	// the RTS stack at this point is 16-byte aligned, but our C shim expects rsp+8
+	// to have such an alignment.
+	pushq	%rax
 	movq	%rsp, FFI_STK(VPROC_PTR_REG)	// save RTS stack
 	// this is just like the epilog, minus the return,
 	// since we're calling a function right now instead.
@@ -213,6 +217,7 @@ continue_to_c:
 	pushq	%rbp					// finish the frame
 	movq	%rsp, STD_CONT_REG		// setup the return cont
 	movq	FFI_STK(VPROC_PTR_REG), %rsp		// switch to the RTS stack
+	popq	%rax			// undo alignment adjustment
 #endif
 
       /* save Manticore state */
