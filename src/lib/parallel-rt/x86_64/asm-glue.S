@@ -195,7 +195,7 @@ _GSYM(ASM_InvokeGC_LLVM):
     popq    STD_CONT_REG
 // ------- FALL-THROUGH ----------
 switch_to_c:
-#if defined(NDEBUG) && !defined(LINKSTACK)
+#if !defined(NDEBUG) && !defined(LINKSTACK)
 // FIXME: disable this check once we've fixed the issues with missing roots
 // consistency check for the garbage collector: overwrite all the entries in the spill area,
 // all none of these entries should be live at this point.
