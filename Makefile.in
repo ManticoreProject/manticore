@@ -51,7 +51,7 @@ help:
 	@echo "                   files as the distribution."
 	@echo "The following additional targets are primarily for developers:"
 	@echo "  doc           -- regenerate documentation from sources"
-	@echo "  devclean      -- remove everything that is not part of the CVS"
+	@echo "  devclean      -- remove everything that is not part of the GIT"
 	@echo "                   repository."
 
 build:
@@ -78,8 +78,14 @@ DISTCLEAN_FILES =	Makefile \
 			$(LIBDIR) \
 			config.log config.cache config.status \
 			autom4te*.cache \
+			src/include/log-events.h src/lib/parallel-rt/include/event-log.h \
+			src/lib/parallel-rt/misc/event-log.c src/tools/event-parser/GHC/RTS/EventLogFormat.h \
+			src/tools/event-parser/GHC/RTS/EventTypes.hs src/tools/event-parser/GHC/RTS/Events.hs \
+			src/tools/log-dump/Makefile src/tools/log-view/build/Makefile \
+			src/tools/log-work-stealing/Makefile \
+			src/lib/parallel-rt/build/config/gen-basis-offsets.dSYM \
+			src/lib/parallel-rt/build/config/gen-runtime-constants.dSYM \
 			CONFIGURATION
 DEVCLEAN_FILES =	configure config/config_h.in
 
 include @MANTICORE_MKDIR@/clean-rules.gmk
-

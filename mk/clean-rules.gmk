@@ -18,7 +18,9 @@
 CLEAN_FILES +=		$(wildcard *.o) \
 			$(wildcard *.so) \
 			$(wildcard *.a) \
-			$(wildcard *.mbi) \
+			$(wildcard *.ll) \
+			$(wildcard *.bc) \
+			$(wildcard *.dSYM) \
 			$(TARGET)
 DISTCLEAN_FILES +=	Makefile
 
@@ -64,4 +66,3 @@ local-devclean:	local-distclean
 	-rm -rf $(DEVCLEAN_FILES)
 
 devclean:		sub-devclean local-devclean
-
