@@ -70,91 +70,91 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
     while (1) {
 #ifndef NDEBUG
-	if (DebugFlg)
-	    SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
+        if (DebugFlg)
+            SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
                  vp->id, (void*)vp, (void*)codeP, (void*)arg, (void*)envP, (void*)retCont, (void*)exnCont);
 #endif
-	if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
-	  /* schedule a continuation that will cleanly shut down the runtime */
-	    envP = vp->shutdownCont;
-	    codeP = ValueToAddr(ValueToCont(envP)->cp);
-	    arg = M_UNIT;
-	    retCont = M_UNIT;
-	    exnCont = M_UNIT;
-	    vp->atomic = M_TRUE;
-	    vp->sigPending = M_FALSE;
-	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
-	}
+        if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
+          /* schedule a continuation that will cleanly shut down the runtime */
+            envP = vp->shutdownCont;
+            codeP = ValueToAddr(ValueToCont(envP)->cp);
+            arg = M_UNIT;
+            retCont = M_UNIT;
+            exnCont = M_UNIT;
+            vp->atomic = M_TRUE;
+            vp->sigPending = M_FALSE;
+            vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
+        }
 
-	LogRunThread(vp, 0);
-	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
-	LogStopThread(vp, 0, req); //thread id and stop status, TODO: thread id is not currently used
+        LogRunThread(vp, 0);
+        RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
+        LogStopThread(vp, 0, req); //thread id and stop status, TODO: thread id is not currently used
 
-	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
+        Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
 
-	switch (req) {
-	  case REQ_GC:
-	  /* check to see if we actually need to do a GC, since this request
-	   * might be from a pending signal.
-	   */
-	    if ((LimitPtr(vp) <= vp->allocPtr) || vp->globalGCPending) {
-	      /* request a minor GC */
-		MinorGC (vp);
-	    }
-	  /* check for asynchronous signals */
-	    if (oldLimitPtr == 0) {
+        switch (req) {
+          case REQ_GC:
+          /* check to see if we actually need to do a GC, since this request
+           * might be from a pending signal.
+           */
+            if ((LimitPtr(vp) <= vp->allocPtr) || vp->globalGCPending) {
+              /* request a minor GC */
+                MinorGC (vp);
+            }
+          /* check for asynchronous signals */
+            if (oldLimitPtr == 0) {
 #ifndef NDEBUG
-	      if (DebugFlg)
-		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
+              if (DebugFlg)
+                SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
 #endif
-	      /* an asynchronous signal has arrived */
-	        vp->sigPending = M_TRUE;
-	    }
+              /* an asynchronous signal has arrived */
+                vp->sigPending = M_TRUE;
+            }
 
-	  /* is there a pending signal that we can deliver? */
-	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
+          /* is there a pending signal that we can deliver? */
+            if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
             // TODO(kavon): replace this alloc with a specialized version for this retk.
-		Value_t resumeK = AllocNonUniform (vp, 3,
+                Value_t resumeK = AllocNonUniform (vp, 3,
                                            INT(PtrToValue(&ASM_Resume)),
                                            INT(PtrToValue(vp->stdCont)),
                                            PTR(vp->stdEnvPtr));
-	      /* pass the signal to scheduling code in the BOM runtime */
-		envP = vp->schedCont;
-		codeP = ValueToAddr(ValueToCont(envP)->cp);
-		arg = resumeK;
-		retCont = M_UNIT;
-		exnCont = M_UNIT;
-		vp->atomic = M_TRUE;
-		vp->sigPending = M_FALSE;
-		LogPreemptSignal(vp);
-	    }
-	    else {
-	      /* setup the return from GC */
-	      /* we need to invoke the stdCont to resume after GC */
-		codeP = ValueToAddr (vp->stdCont);
-		envP = vp->stdEnvPtr;
-	      /* clear the dead registers */
-		arg = M_UNIT;
-		retCont = M_UNIT;
-		exnCont = M_UNIT;
-	    }
-	    break;
-	  case REQ_Return:	/* returning from a function call */
-	  /* shutdown the runtime
-	   * in the future we should create a new request code to handle shutdown.
-	   */
-	    ShutdownFlg = true;
-	    for (int i = 0; i < NumVProcs; i++) {
-	      /* force each vproc to check for shutdown */
-		VProc_t *wvp = VProcs[i];
-		VProcSendSignal(vp, wvp, wvp->currentFLS, wvp->dummyK);
-		VProcPreempt (vp, wvp);
-	    }
-	    break;
-	  case REQ_UncaughtExn:	/* raising an exception */
-	    Die ("uncaught exception\n");
-	  case REQ_Sleep:	/* make the VProc idle */
-	    {
+              /* pass the signal to scheduling code in the BOM runtime */
+                envP = vp->schedCont;
+                codeP = ValueToAddr(ValueToCont(envP)->cp);
+                arg = resumeK;
+                retCont = M_UNIT;
+                exnCont = M_UNIT;
+                vp->atomic = M_TRUE;
+                vp->sigPending = M_FALSE;
+                LogPreemptSignal(vp);
+            }
+            else {
+              /* setup the return from GC */
+              /* we need to invoke the stdCont to resume after GC */
+                codeP = ValueToAddr (vp->stdCont);
+                envP = vp->stdEnvPtr;
+              /* clear the dead registers */
+                arg = M_UNIT;
+                retCont = M_UNIT;
+                exnCont = M_UNIT;
+            }
+            break;
+          case REQ_Return:        /* returning from a function call */
+          /* shutdown the runtime
+           * in the future we should create a new request code to handle shutdown.
+           */
+            ShutdownFlg = true;
+            for (int i = 0; i < NumVProcs; i++) {
+              /* force each vproc to check for shutdown */
+                VProc_t *wvp = VProcs[i];
+                VProcSendSignal(vp, wvp, wvp->currentFLS, wvp->dummyK);
+                VProcPreempt (vp, wvp);
+            }
+            break;
+          case REQ_UncaughtExn:        /* raising an exception */
+            Die ("uncaught exception\n");
+          case REQ_Sleep:        /* make the VProc idle */
+            {
              Value_t status = M_TRUE;
              Time_t timeToSleep = *((Time_t*)(vp->stdArg));
              if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */
@@ -169,11 +169,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
              retCont = M_UNIT;
              exnCont = M_UNIT;
              vp->wakeupCont = M_NIL;
-	    }
-	    break;
-	  default:
-	    Die("unknown signal %d\n", req);
-	}
+            }
+            break;
+          default:
+            Die("unknown signal %d\n", req);
+        }
     }
 
 } /* end of RunManticore */
@@ -308,23 +308,23 @@ doShutdown:
           }
           
           /* check for asynchronous signals */
-    	    if (oldLimitPtr == 0) {
+                if (oldLimitPtr == 0) {
     #ifndef NDEBUG
-    	      if (DebugFlg)
-    		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
+                  if (DebugFlg)
+                    SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
     #endif
     
-    	      /* an asynchronous signal has arrived */
-    	        vp->sigPending = M_TRUE;
-    	    }
+                  /* an asynchronous signal has arrived */
+                    vp->sigPending = M_TRUE;
+                }
 
-    	  /* is there a pending signal that we can deliver? */
-    	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
+              /* is there a pending signal that we can deliver? */
+                if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
                 Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
                                                     vp->stdEnvPtr, // stack ptr
                                                     vp->stdCont); // stack info
                 
-    	      /* pass the signal to scheduling code in the BOM runtime */
+                  /* pass the signal to scheduling code in the BOM runtime */
             
             closObj = ValueToClosure(vp->schedCont);
             // yes, the two lines below look fishy.
@@ -348,11 +348,11 @@ doShutdown:
             LogRunThread(vp, 0);
             ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
             
-    	    }
-    	    else {
-    	     /* setup the return from GC */
+                }
+                else {
+                 /* setup the return from GC */
                 stkPtr = vp->stdEnvPtr; // actually the stack pointer
-                envP = M_UNIT;		
+                envP = M_UNIT;                
                 exnCont = M_UNIT;
                 arg = M_UNIT;
                 
@@ -363,8 +363,8 @@ doShutdown:
                 
                 LogRunThread(vp, 0);
                 ASM_Resume_Stack (vp, stkPtr, envP, exnCont, arg);
-    	    }
-    	    
+                }
+                
             Die("unreachable in REQ_GC");
             break;  
         /********************/
