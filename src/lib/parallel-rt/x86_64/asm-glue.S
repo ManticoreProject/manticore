@@ -89,7 +89,7 @@ _GSYM(ASM_Apply):
 	movq	%rdx,STD_ARG_REG	/* standard argument */
 	movq	%rcx,STD_EP_REG		/* environment pointer */
 	movq	%r9,STD_EXH_REG		/* exception continuation */
-#ifndef LINKSTACK
+#if !defined(LINKSTACK)
 	movq	%r8,STD_CONT_REG	/* return continuation */	
 #else
 	// r8 is a pointer to a linked-frame stack, so we setup rsp and rbp correctly.
