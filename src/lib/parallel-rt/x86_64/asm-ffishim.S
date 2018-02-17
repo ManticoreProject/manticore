@@ -42,13 +42,13 @@
 	.globl	_GSYM(ASM_doCCall)
 _GSYM(ASM_doCCall):
 // vproc = r11, fun = r10.
-	movq	FFI_STK(%r11), %rax
-	movq	%rsp, FFI_STK(%r11)
+	movq	FFI_STK(VPROC_PTR_REG), %rax
+	movq	%rsp, FFI_STK(VPROC_PTR_REG)
 	movq	%rax, %rsp
-	pushq	%r11       # save the vproc on the c-stack
+	pushq	VPROC_PTR_REG       # save the vproc on the c-stack
 	callq	*%r10
-	popq	%r11
-	movq	FFI_STK(%r11), %r10
-	movq	%rsp, FFI_STK(%r11)
+	popq	VPROC_PTR_REG
+	movq	FFI_STK(VPROC_PTR_REG), %r10
+	movq	%rsp, FFI_STK(VPROC_PTR_REG)
 	movq	%r10, %rsp
 	retq

@@ -40,8 +40,8 @@ Value_t ApplyFun (VProc_t *vp, Value_t f, Value_t arg)
 volatile uint64_t numGCs = 0;
 
 
-#ifndef DIRECT_STYLE
-/* CPS version, which is basically a trampoline */
+#if !defined(DIRECT_STYLE) || defined(LINKSTACK)
+/* CPS and LINKSTACK version, which is basically a trampoline */
 
 /* \brief Run Manticore code.
  * \param vp the host vproc
@@ -51,11 +51,22 @@ volatile uint64_t numGCs = 0;
  */
 void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 {
-  /* allocate the return and exception continuation objects
-   * in the VProc's heap.
-   */
+    /* TODO:
+        - we need some sort of "unit" continuation, that is not heap allocated.
+        - some of the code after ASM_Apply returns needs to be updated.
+    */
+    
+    /* allocate the return and exception continuation objects
+     * in the VProc's heap.
+     */
+#ifdef LINKSTACK
+    // TODO: 
+    Value_t retCont = CreateBaseFrame(vp, (Word_t)&ASM_Return);
+    Value_t exnCont = CreateBaseFrame(vp, (Word_t)&ASM_UncaughtExn);
+#else
     Value_t retCont = WrapWord(vp, (Word_t)&ASM_Return);
     Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
+#endif
 
     while (1) {
 #ifndef NDEBUG
@@ -180,7 +191,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-#else /* DIRECT_STYLE */
+#else /* DIRECT_STYLE && !(LINKSTACK) */
+
+// This version is for contiguous and segmented stacks, since
+// both of these are designed to run RTS services, FFI calls, and 
+// manticore code on the same stack.
 
 extern void ASM_DS_Apply (
     VProc_t *vp,

@@ -9,8 +9,6 @@
 #include "asm-offsets.h"
 #include "registers.h"
 
-#ifndef DIRECT_STYLE
-
 /* register(s) that are unused in manticore's calling convention. */
 #define TMP_REG1            %rcx     // specifically must *not* be a callee-saved register.
 
@@ -82,7 +80,7 @@ _GSYM(ASM_Apply):
 	movq	%r15, -R15_OFF(%rsp)
 
 	/* setup frame for spills */
-	leaq    -CALLEE_END(%rsp), %rbp
+	leaq    -CALLEE_END(%rsp), %rbp		// this is setup in case we're using MLRISC
 	subq    $FRAME_SZB, %rsp
 	
 	/* setup standard arguments to the Manticore function */
@@ -90,8 +88,18 @@ _GSYM(ASM_Apply):
 	movq	%rsi,%r12		/* save code pointer in %r12 */
 	movq	%rdx,STD_ARG_REG	/* standard argument */
 	movq	%rcx,STD_EP_REG		/* environment pointer */
-	movq	%r8,STD_CONT_REG	/* return continuation */	
 	movq	%r9,STD_EXH_REG		/* exception continuation */
+#ifndef LINKSTACK
+	movq	%r8,STD_CONT_REG	/* return continuation */	
+#else
+	// r8 is a pointer to a linked-frame stack, so we setup rsp and rbp correctly.
+	movq	%rsp, FFI_STK(VPROC_PTR_REG)	// save RTS stack
+	// this is just like the epilog, minus the return,
+	// since we're calling a function right now instead.
+	// that function will return to whatever address RSP is pointing to.
+	movq	%r8, %rsp
+	popq	%rbp
+#endif
 	/* load Manticore state */
 	movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG	/* load allocation pointer */
 	jmp	*%r12
@@ -133,11 +141,45 @@ invalidate_spill_area:
 	jmp	invalidate_spill_area
 #endif
 	
+
+// This is the PROLOGUE's Linked GC "invoke", where the root set was
+// saved in a tuple allocated on the heap.
+//     r11 - vproc 
+//     rsi - alloc pointer
+//     rbp - call-site's link pointer, a complete continuation.
+//     rbx - the root set pointer
+//     rsp - pointer to the code address we must return to (it was pushed by call).
+.p2align 3
+.globl	_GSYM(ASM_LinkedStack_PrologueGC)
+_GSYM(ASM_LinkedStack_PrologueGC):
+// TODO: i think the easiest way to handle this is to
+// allocate a tiny frame here, for two reasons:
+// 1. we'll then have only 1 way we return to the RTS in both GC cases.
+// 2. we would use a return address that is handwritten ASM
+// that passes the tuple back in rbx. using an established
+// manticore register to pass/return it makes things annoying.
+spin:
+	pause
+	jmp spin
     
-    
+
+// Information for: ASM_LinkedStack_InvokeGC
+//
+// This is a STANDARD Linked GC "invoke", where the root set was
+// saved in the stack frame. Thus, the only live registers at entry are:
+//     r11 - vproc 
+//     rsi - alloc pointer
+//     rsp - current, unfinished frame
+//     rbp - call-site's link pointer
+//
+// Here, we set the STD_CONT_REG so it contains the final stack pointer,
+// aka the actual return continuation, of the call to this label.
+// This differs from the CPS-style version, which just places the code pointer
+// in this register.
 .p2align 3
 .globl	_GSYM(ASM_InvokeGC)
 _GSYM(ASM_InvokeGC):
+_GSYM(ASM_LinkedStack_InvokeGC): // linkstack also uses this version!
 /* this version is for MLRISC backend */
     movq	$REQ_GC, TMP_REG1
     jmp     switch_to_c
@@ -147,13 +189,13 @@ _GSYM(ASM_InvokeGC):
 .p2align 3
 .globl	_GSYM(ASM_InvokeGC_LLVM)
 _GSYM(ASM_InvokeGC_LLVM):
-// this version is for LLVM. we need to save the
+// this version is for CPS-style LLVM. we need to save the
 // ret addr and pop the frame when we invoke GC
 	movq	$REQ_GC, TMP_REG1
     popq    STD_CONT_REG
-
+// ------- FALL-THROUGH ----------
 switch_to_c:
-#ifndef NDEBUG
+#if defined(NDEBUG) && !defined(LINKSTACK)
 // FIXME: disable this check once we've fixed the issues with missing roots
 // consistency check for the garbage collector: overwrite all the entries in the spill area,
 // all none of these entries should be live at this point.
@@ -165,6 +207,13 @@ switch_to_c:
 	jmp 	invalidate_spill_area
 continue_to_c:		
 #endif
+
+#ifdef LINKSTACK
+	pushq	%rbp					// finish the frame
+	movq	%rsp, STD_CONT_REG		// setup the return cont
+	movq	FFI_STK(VPROC_PTR_REG), %rsp		// switch to the RTS stack
+#endif
+
       /* save Manticore state */
 	movq	STD_ARG_REG,STD_ARG(VPROC_PTR_REG)
 	movq	STD_EP_REG,STD_EP(VPROC_PTR_REG)
@@ -247,5 +296,3 @@ _GSYM(ASM_GetTimeStamp):
 	ret
 
 #endif /* ENABLE_LOGGING */
-
-#endif /* not DIRECT_STYLE */

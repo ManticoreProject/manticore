@@ -275,6 +275,24 @@ Value_t WrapWord (VProc_t *vp, Word_t i)
     return PtrToValue(obj);
 }
 
+/*! \brief allocate a frame representing the base of
+ * a mutable, linked-frame stack. Returning
+ * to this frame will cause control to jump to
+ * the address i.
+ */
+Value_t CreateBaseFrame (VProc_t *vp, Word_t i) {
+    uint64_t sz = 2;
+    EnsureNurserySpace(vp, sz+1);
+
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
+    obj[-1] = RAW_HDR(sz);
+    obj[0] = 0;     // there is no previous frame
+    obj[1] = i;     // code address
+
+    vp->allocPtr += WORD_SZB * (sz+1);
+    return PtrToValue(obj);
+}
+
 /*! \brief allocate an ML string from a C string in the nursery.
  */
 Value_t AllocString (VProc_t *vp, const char *s)
