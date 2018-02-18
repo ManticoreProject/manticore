@@ -200,7 +200,20 @@ _GSYM(ASM_LinkedStack_PrologueGC):
 .p2align 3
 .globl	_GSYM(ASM_LinkedStack_PrologueGC_Ret)
 _GSYM(ASM_LinkedStack_PrologueGC_Ret):
-	ud2
+// INPUT:
+// r11 - vproc
+// rsi - alloc ptr
+// rsp - pointing to root ptr slot in the frame we allocated above.
+// rbp - the link pointer (_A_) from the frame we allocated above.
+//
+// OUTPUT:
+// r11 - vproc
+// rsi - alloc ptr
+// rbx - root pointer
+// rbp - link pointer
+	popq	%rbx
+	retq
+
 
 // Information for: ASM_LinkedStack_InvokeGC
 //
