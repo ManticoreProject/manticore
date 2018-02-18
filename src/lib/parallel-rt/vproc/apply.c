@@ -18,6 +18,8 @@ extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep,
 extern int ASM_Return;
 extern int ASM_UncaughtExn;
 extern int ASM_Resume;
+extern int ASM_Error;       // for linked-frames.
+extern int ASM_ExecuteStack; // for linked-frames.
 
 /* \brief run a Manticore function f applied to arg.
  * \param vp the host vproc
@@ -63,6 +65,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
     // TODO: 
     Value_t retCont = CreateBaseFrame(vp, (Word_t)&ASM_Return);
     Value_t exnCont = CreateBaseFrame(vp, (Word_t)&ASM_UncaughtExn);
+    FunClosure_t* closObj;
 #else
     Value_t retCont = WrapWord(vp, (Word_t)&ASM_Return);
     Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
@@ -76,10 +79,20 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 #endif
         if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
           /* schedule a continuation that will cleanly shut down the runtime */
+                  
+#ifdef LINKSTACK
+            vp->stdCont = M_UNIT;  // for safety, kill the old stack.
+            closObj = ValueToClosure(vp->shutdownCont);
+            
+            envP = closObj->ep;
+            codeP = ValueToAddr(closObj->cp);
+            retCont = CreateBaseFrame(vp, (Word_t)&ASM_Error);
+#else
             envP = vp->shutdownCont;
             codeP = ValueToAddr(ValueToCont(envP)->cp);
-            arg = M_UNIT;
             retCont = M_UNIT;
+#endif
+            arg = M_UNIT;
             exnCont = M_UNIT;
             vp->atomic = M_TRUE;
             vp->sigPending = M_FALSE;
@@ -99,6 +112,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
            */
             if ((LimitPtr(vp) <= vp->allocPtr) || vp->globalGCPending) {
               /* request a minor GC */
+#ifdef LINKSTACK
+              Die("needed a gc");
+#endif
                 MinorGC (vp);
             }
           /* check for asynchronous signals */
@@ -113,6 +129,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
           /* is there a pending signal that we can deliver? */
             if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
+#ifdef LINKSTACK
+                Die("signal recieved, need to execute the scheduler.");
+#endif
             // TODO(kavon): replace this alloc with a specialized version for this retk.
                 Value_t resumeK = AllocNonUniform (vp, 3,
                                            INT(PtrToValue(&ASM_Resume)),
@@ -130,12 +149,19 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
             }
             else {
               /* setup the return from GC */
+#ifdef LINKSTACK
+                // Die("setup the return from GC");
+                codeP = (Addr_t)&ASM_ExecuteStack;
+                envP = M_UNIT;
+                retCont = vp->stdCont;
+#else
               /* we need to invoke the stdCont to resume after GC */
                 codeP = ValueToAddr (vp->stdCont);
                 envP = vp->stdEnvPtr;
+                retCont = M_UNIT;
+#endif
               /* clear the dead registers */
                 arg = M_UNIT;
-                retCont = M_UNIT;
                 exnCont = M_UNIT;
             }
             break;
@@ -155,6 +181,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
             Die ("uncaught exception\n");
           case REQ_Sleep:        /* make the VProc idle */
             {
+#ifdef LINKSTACK
+                Die("vproc requested sleep.");
+#endif
              Value_t status = M_TRUE;
              Time_t timeToSleep = *((Time_t*)(vp->stdArg));
              if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */

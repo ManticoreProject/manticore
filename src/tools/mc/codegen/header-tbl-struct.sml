@@ -18,7 +18,12 @@ struct
        header IDs corresponding to mixed type tuples.
        
        If you change this value, you must also update the integer literal
-       called "predefined" in the C runtime system, in alloc.c
+       called "predefined" in the following places:
+       
+       1. the C runtime system, in alloc.c
+       2. In the assembly code, asm-glue.S
+       
+       
     *)
     val predefined = 4
 
@@ -35,12 +40,13 @@ struct
     
     (* NOTE: these constant bit-tags are here so that the C runtime system
        can allocate certian mixed-header tuples. See AllocNonUniform in alloc.c
-       for the correspondence.  *)
+       for the correspondence. Do not change the order of these calls!  *)
     val _ = HeaderTable.addHdr (header, "0")
     val _ = HeaderTable.addHdr (header, "01")
 	val _ = HeaderTable.addHdr (header, "1")
     val _ = HeaderTable.addHdr (header, "11010")
     val _ = HeaderTable.addHdr (header, "100")
+    val _ = HeaderTable.addHdr (header, "0101") (* used in ASM_LinkedStack_PrologueGC *)
     
     (* new Header Table END *)
 end
