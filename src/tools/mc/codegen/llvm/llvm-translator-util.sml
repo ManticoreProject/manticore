@@ -142,12 +142,12 @@ in
   (* Given a list of CFG tys, returns a header tag corresponding to an allocation
      of corresponding values in the heap. The order must match the layout in the actual heap,
      from decreasing to increasing. Here's the picture just before an allocation is going to
-     occur, where the alloc pointer is currently pointing at first free word in the heap.
+     occur, where the alloc pointer is pointing at the second free word in the heap.
      
          [ HEADER ][ cfgVar1, cfgVar2, ...., cfgVarN ]
-             ^
-             |
-         alloc ptr
+                   ^
+                   |
+               alloc ptr
     
      <- Low address                                High address ->
      
@@ -159,7 +159,7 @@ in
      
       *)
       
-  (* TODO I wonder why CFG.T_Addr is not considered a heap pointer in the old backend?
+  (* Why CFG.T_Addr is not considered a heap pointer in the old backend?
      my guess is that Addrs are for pointers derived from pointer arithmetic. *)
      
   fun isHeapPointer CFG.T_Any = true
