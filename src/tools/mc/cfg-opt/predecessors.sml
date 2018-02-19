@@ -38,7 +38,7 @@ structure Predecessors : sig
     and chk (source : C.label, xfer : C.transfer) = let
 
       fun examineJump (destLab : C.label) : unit = (
-          print (S.concat["saw edge: ", L.toString destLab, " <- ", L.toString source, "\n"]) ;
+          (* print (S.concat["saw edge: ", L.toString destLab, " <- ", L.toString source, "\n"]) ; *)
         if haveVisited destLab
         then addPred (destLab, source)
         else (setPreds(destLab, [source]) ; chk (destLab, getExitOf destLab)))
