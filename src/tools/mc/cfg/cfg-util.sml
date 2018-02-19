@@ -24,6 +24,9 @@ structure CFGUtil : sig
 
    (* project the lhs variables of a control transfer *)
     val lhsOfXfer : CFG.transfer -> CFG.var list
+    
+    (* map a function over all local successors of the transfer. *)
+    val mapSuccOfXfer : (CFG.jump -> CFG.jump) -> CFG.transfer -> CFG.transfer
 
   (* project the list of destination labels in a control transfer; note that this function
    * only looks at jumps.  A control-flow analysis may give better information.
@@ -46,6 +49,7 @@ structure CFGUtil : sig
 
   end = struct
     structure M = CFG
+    structure L = List
 
     datatype func = datatype CFG.func
     datatype exp = datatype CFG.exp
@@ -194,5 +198,30 @@ structure CFGUtil : sig
 		  AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
 	     (* end case *)
 	  end
+      
+    fun mapSuccOfXfer f xfer = (case xfer
+        of Goto j => Goto (f j)
+         | If (c, j1, j2) => If (c, f j1, f j2)
+         | Switch (x, cases, dflt) => let
+                fun chg (t, jmp) = (t, f jmp)
+             in
+                Switch(x, L.map chg cases, Option.map f dflt)
+             end
+         
+         | HeapCheck {hck, szb, nogc} => HeapCheck {hck=hck, szb=szb, nogc= f nogc}
+         | HeapCheckN {hck, n, szb, nogc} => HeapCheckN {hck=hck, n=n, szb=szb, nogc= f nogc}
+         | AllocCCall {lhs, f=tgt, args, ret} =>
+                AllocCCall{lhs=lhs, f=tgt, args=args, ret= f ret}
+         | Call {f=tgt,clos,args,next} => let
+                fun chg (lhs, jmp) = (lhs, f jmp)
+             in
+                Call {f=tgt,clos=clos,args=args, next = Option.map chg next}
+             end
+         
+         (* no explicit local transfers *)
+         | StdApply _ => xfer
+         | StdThrow _ => xfer
+         | Apply _ => xfer
+        (* end case *))
 
   end

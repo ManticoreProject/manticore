@@ -66,7 +66,7 @@ structure SimplifyGraph : sig
     val SOME start' = Tbl.find tbl startL
     val body' = L.mapPartial (Tbl.find tbl) bodyLs
   in
-    C.FUNC{lab=lab, entry=entry, start = start', body = body'}
+    C.mkLocalFunc(lab, entry, start', body')
   end
   
   and simplifyBlock tbl isStart = let
@@ -111,6 +111,8 @@ structure SimplifyGraph : sig
         val (_, deadArgNums) = L.foldl look (0, []) args
         val deadArgNums = L.rev deadArgNums
         
+        (* in the sorted, zero-based index list, drop all CFG vars in ls
+           in those positions, and and adjust their use count. *)
         fun drop idxs ls = let
             fun lp (_, [], xs, remain) = (List.rev remain) @ xs
               | lp (i, d::ds, x::xs, remain) =
@@ -132,15 +134,7 @@ structure SimplifyGraph : sig
                 then (tgt, drop deadArgNums vars)
                 else j
             
-            val exit' = (case exit
-                of C.Goto j => C.Goto (chkJ j)
-                 | C.If (c, j1, j2) => C.If (c, chkJ j1, chkJ j2)
-                 
-                 (* TODO: do the other ones *)
-                 
-                 (* | C.Call {f,clos,args,next} = ... *)
-                 | exit => exit
-                (* end case *))
+            val exit' = CFGUtil.mapSuccOfXfer chkJ exit
         in
             C.mkBlock(lab, args, body, exit')
         end
@@ -168,10 +162,7 @@ structure SimplifyGraph : sig
     val () = Predecessors.analyze m
     val (C.MODULE{name, externs, mantiExterns, code}) = m
     val code' = L.map doFn code
-    val m' = C.MODULE{name=name, 
-                      externs=externs, 
-                      mantiExterns=mantiExterns, 
-                      code = code' }
+    val m' = C.mkModule(name, externs, mantiExterns, code')
   in
     m'
   end
