@@ -96,7 +96,10 @@ structure SimplifyGraph : sig
     (**********************)
         
     (* first peephole optimization: delete dead args in non-start blocks *)
-    and removeDeadParams bl = if isStart then () else let
+    and removeDeadParams bl = 
+        if isStart orelse (CL.useCount bl <> L.length (C.getPreds bl))
+        then () 
+        else let
         val (C.BLK{args, ...}) = lookup bl
         
         fun look (v, (i, ds)) =

@@ -20,6 +20,7 @@ structure Predecessors : sig
 
     structure C = CFG
     structure L = CFG.Label
+    structure S = String
 
     (* keep it consistent *)
     val setPreds = C.setPreds
@@ -36,10 +37,11 @@ structure Predecessors : sig
 
     and chk (source : C.label, xfer : C.transfer) = let
 
-      fun examineJump (destLab : C.label) : unit = 
+      fun examineJump (destLab : C.label) : unit = (
+          print (S.concat["saw edge: ", L.toString destLab, " <- ", L.toString source, "\n"]) ;
         if haveVisited destLab
         then addPred (destLab, source)
-        else (setPreds(destLab, [source]) ; chk (destLab, getExitOf destLab))
+        else (setPreds(destLab, [source]) ; chk (destLab, getExitOf destLab)))
       in
         List.app examineJump (CFGUtil.labelsOfXfer xfer)
     end
