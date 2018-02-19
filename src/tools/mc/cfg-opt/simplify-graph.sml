@@ -79,7 +79,7 @@ structure SimplifyGraph : sig
       
     fun updateBlock f lb = (case find lb
         of SOME blk => insert (lb, f blk)
-         | NONE => ()
+         | NONE => raise Fail ("block does not exist " ^ CL.toString lb)
         (* end case *))
     
     
