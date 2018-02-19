@@ -181,14 +181,16 @@ structure CFG =
     end
 
     local
-        val { getFn : label -> jump list, 
-              setFn : (label * jump list) -> unit,
-              peekFn : label -> jump list option, ... } =
+        val { getFn : label -> label list, 
+              setFn : (label * label list) -> unit,
+              peekFn : label -> label list option,
+              clrFn : label -> unit, ... } =
             Label.newProp (fn l => raise Fail(concat["predecessors of label (", Label.toString l, ") are unknown!"]))
     in
         val setPreds = setFn
         val getPreds = getFn
         val maybeGetPreds = peekFn
+        val clrPreds = clrFn
     end
 
     fun varKindToString VK_None = "None"

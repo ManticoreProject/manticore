@@ -6,11 +6,15 @@
 
 structure Predecessors : sig
 
-    (* For all basic blocks of the module, predecessor information
-       will be filled in. Needed during translation from CFG to SSA
-       when creating phi-nodes, but might be handy for other CFG optimizations. *)
+    (* For all basic blocks of the module, predecessor block information
+       will be filled in. 
+        
+        This info can be accessed via CFG.getPreds, etc.
+    *)
 
     val analyze : CFG.module -> unit
+    
+    val clear : CFG.module -> unit
 
   end = struct
 
@@ -21,26 +25,21 @@ structure Predecessors : sig
     val setPreds = C.setPreds
     val getPreds = C.getPreds
     val maybeGetPreds = C.maybeGetPreds
-    fun addPred (lb : C.label, jmp : C.jump) : unit = setPreds(lb, jmp::getPreds(lb))
+    fun addPred (lb : C.label, tgt : C.label) : unit = setPreds(lb, tgt::(getPreds lb))
 
     (* key assumption: all of the predecessor props have been cleared/not initialized. *)
     fun analyze (C.MODULE{ code, ... }) = List.app doFunc code
 
     and doFunc (C.FUNC{ start=C.BLK{lab, exit, ... }, ... }) = 
       (* start block does not have predecessors *)
-      ( setPreds(lab, []) ; fly(lab, exit) )
+      ( setPreds(lab, []) ; chk (lab, exit) )
 
-    and fly (source : C.label, xfer : C.transfer) = let
+    and chk (source : C.label, xfer : C.transfer) = let
 
-      fun examineJump ((destLab, args) : C.jump) : unit = 
-        (case (maybeBlock destLab, haveVisited destLab)
-          of (SOME _, true) => 
-                (* we've already been to this block, just add src as predecessor *)
-                addPred(destLab, (source, args))
-           | (SOME (C.BLK{ exit, ...}), false) => 
-                (setPreds(destLab, [(source, args)]) ; fly(destLab, exit))
-           | _ => () (* we only fly to blocks within the function *)
-          (* end case *))
+      fun examineJump (destLab : C.label) : unit = 
+        if haveVisited destLab
+        then addPred (destLab, source)
+        else (setPreds(destLab, [source]) ; chk (destLab, getExitOf destLab))
       in
         List.app examineJump (CFGUtil.labelsOfXfer xfer)
     end
@@ -51,10 +50,15 @@ structure Predecessors : sig
          | NONE => false
       (* end case *))
 
-    and maybeBlock destLab = 
+    and getExitOf destLab =
       (case L.kindOf destLab
-        of C.LK_Block blk => SOME blk
-         | _ => NONE
+        of C.LK_Block (C.BLK{ exit, ...}) => exit
+         | _ => raise Fail "not a block"
       (* end case *))
+
+
+      fun clear (C.MODULE{ code, ... }) = List.app clrFunc code
+      and clrFunc (C.FUNC{start, body, ...}) = List.app clrBlk (start::body)
+      and clrBlk (C.BLK{lab, ...}) = C.clrPreds lab
 
   end

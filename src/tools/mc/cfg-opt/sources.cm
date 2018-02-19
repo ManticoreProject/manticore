@@ -38,3 +38,4 @@ is
   unroll-loops.sml
   predecessors.sml
   print-dot.sml
+  simplify-graph.sml

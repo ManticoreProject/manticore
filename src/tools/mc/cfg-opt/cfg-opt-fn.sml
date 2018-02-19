@@ -28,7 +28,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     fun transform {passName, pass} = let
 	  fun output (outf, module) =
 	      (if Controls.get cfgDOT then PrintDOT.output (outf, module) else ();
-	      PrintCFG.output {counts = true, types = PrintCFG.Full, preds = false} (outf, module))
+	      PrintCFG.output {counts = true, types = PrintCFG.Full, preds = true} (outf, module))
 
 	  val xform = BasicControl.mkKeepPassSimple {
 		  output = output,
@@ -69,12 +69,14 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val allocChecks = transform {passName = "alloc-checks", pass = AddAllocChecks.transform}
     val allocCCalls = transform {passName = "alloc-c-calls", pass = AllocCCalls.transform}
     val allocVecChecks = transform {passName = "alloc-vec-checks", pass = AddAllocVecChecks.transform}
+    val simplifyGraph = transform {passName = "simplifygraph", pass = SimplifyGraph.transform}
 
     fun optimize module = let
       val _ = CheckCFG.check ("closure", module)
 	  val _ = census module
 	  val _ = CheckCFG.check ("census", module)
 	  val module = contract module
+      val module = simplifyGraph module
           val _ = cfa module
           val module = unrollLoops module
           val _ = cfaClear module

@@ -84,9 +84,9 @@ structure PrintCFG : sig
 	  	if (#preds flags) 
 	  	then
 	  		let
-	  			fun runIt nil = ()
-	  			  | runIt ((src, _)::nil) = pr (labelBindToString src)
-	  			  | runIt ((src, _)::xs) = (pr (concat [labelBindToString src, ", "]) ; (runIt xs))
+	  			fun runIt [] = ()
+	  			  | runIt (src::nil) = pr (labelBindToString src)
+	  			  | runIt (src::xs) = (pr (concat [labelBindToString src, ", "]) ; (runIt xs))
 	  		in
 	  			pr "\n";
 	  			indent 2;
