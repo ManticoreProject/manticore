@@ -15,13 +15,14 @@ structure SimplifyGraph : sig
   
   structure L = List
   structure C = CFG
+  structure CT = CFGTy
   structure CL = CFG.Label
   structure CV = CFG.Var
   structure Tbl = CFG.Label.Tbl
   structure ST = Stats
   
   (* statistics that control the number of iterations *)
-  val cntUnusedArg		= ST.newCounter "simplifygraph:unused-args"
+  val cntUnusedArg		= ST.newCounter "simplifygraph:unused-args-elim"
   val cntInlinedBlk		= ST.newCounter "simplifygraph:inlined-block"
 (* first and last counters *)
   val firstCounter		= cntUnusedArg
@@ -126,8 +127,8 @@ structure SimplifyGraph : sig
         end
         
         fun changePred (C.BLK{lab, args, body, exit}) = let
-            val _ = print (String.concat 
-                ["changing ", CL.toString lab, " -> ", CL.toString bl, "\n"])
+        (*    val _ = print (String.concat 
+                ["changing ", CL.toString lab, " -> ", CL.toString bl, "\n"]) *)
                 
             fun chkJ (j as (tgt, vars)) = 
                 if CL.same (tgt, bl)
@@ -139,14 +140,20 @@ structure SimplifyGraph : sig
             C.mkBlock(lab, args, body, exit')
         end
         
+        fun changeSelf (C.BLK{lab, args, body, exit}) = let
+            val args' = drop deadArgNums args
+            val (CT.T_Block _) = CL.typeOf lab (* sanity check *)
+            val newTy = CT.T_Block {args = L.map CV.typeOf args'}
+        in
+            ( CL.setType (lab, newTy) ; C.mkBlock(lab, args', body, exit) )
+        end
+        
     in
         if L.null deadArgNums
         then ()
         else ( ST.tick cntUnusedArg 
             ; (* update my own signature *)
-              updateBlock (fn (C.BLK{lab, args, body, exit}) =>
-                              (C.mkBlock(lab, drop deadArgNums args, body, exit)))
-                          bl
+              updateBlock changeSelf bl
             ; (* update my predecessors *)
                L.app (updateBlock changePred) (C.getPreds bl)
             )  
@@ -163,6 +170,7 @@ structure SimplifyGraph : sig
     val (C.MODULE{name, externs, mantiExterns, code}) = m
     val code' = L.map doFn code
     val m' = C.mkModule(name, externs, mantiExterns, code')
+    val () = Predecessors.clear m'
   in
     m'
   end
