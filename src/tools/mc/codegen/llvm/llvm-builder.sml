@@ -79,6 +79,9 @@ structure LLVMBuilder : sig
     
     val toV : instr -> var
     
+    val toIntC : instr -> (ty * IntegerLit.integer) option
+    
+    (* I'd rather call this "tyOf" but refactoring is a pain *)
     val toTy : instr -> ty
 
     val intC : (ty * IntegerLit.integer) -> constant
@@ -911,6 +914,9 @@ structure LLVMBuilder : sig
   fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[], atr = AS.empty }
 
   fun toV (INSTR { result = (R_Var v), ... }) = v
+  
+  fun toIntC (INSTR { result = (R_Const (C_Int c)), ... }) = SOME c
+    | toIntC _ = NONE
 
   (* Terminators *)
 

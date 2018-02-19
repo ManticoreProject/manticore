@@ -32,6 +32,10 @@ structure LLVMCall : sig
     
     val getParamKinds : convention -> LLVMTranslatorUtil.paramKind list
     
+    (* project the real CFG vars out of the convention, in the order they will appear.
+       NOTE: any machine values or fillers are completely skipped over *)
+    val projCFGVars : convention -> CFG.Var.var list
+    
     val setupEntryEnv : (LLVMBuilder.t * LLVMTranslatorUtil.gamma * LLVMTranslatorUtil.paramKind list)
                             -> LLVMTranslatorUtil.gamma
 
@@ -115,6 +119,11 @@ end = struct
             Util.Machine (mv, LV.new(MV.machineValStr mv, MV.machineValTy mv))
             
       | getParamKind (Filler ty) = Util.NotUsed ty
+      
+      
+    fun projCFGVars cs = L.mapPartial projCFGVar cs
+    and projCFGVar (Actual (_, cv)) = SOME cv
+      | projCFGVar _ = NONE
       
       
     fun setupCallArgs (b, env, conv) = let

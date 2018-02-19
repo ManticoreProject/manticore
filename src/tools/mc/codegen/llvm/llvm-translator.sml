@@ -1339,7 +1339,8 @@ fun output (outS, module as C.MODULE { name = module_name,
   
   and mkDSFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, ret, initEnv) : string = let
     
-    val startConv = LC.getParamKinds (LC.determineCC {conv=entry, args=cfgArgs})
+    val conv = LC.determineCC {conv=entry, args=cfgArgs}
+    val startConv = LC.getParamKinds conv
     
     fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     
@@ -1355,6 +1356,16 @@ fun output (outS, module as C.MODULE { name = module_name,
     
     val attrs = ""
     
+    fun getPrologueRootTag cfgArgs = let
+        fun used v = CV.useCount v > 0
+        
+        val liveArgs = L.filter used cfgArgs
+        val liveTys = L.map CV.typeOf liveArgs
+        val SOME (_, i) = LB.toIntC (Util.headerTag liveTys)
+    in
+        IntegerLit.toString i
+    end
+    
     val stackKind = if Controls.get BasicControl.segstack
                     (* we have re-purposed the stdEnvPtr field to hold the stack limit *)
                         then "\"manti-segstack\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""
@@ -1364,7 +1375,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                         in
                             "\"manti-linkstack\" = \"" 
                                 ^ hpLimOffset ^ ","
-                                ^ "0"  (* FIXME: this needs to be the header tag for the roots at entry. *)
+                                ^ getPrologueRootTag (LC.projCFGVars conv)
                                 ^ "\""
                         end
                         
