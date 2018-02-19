@@ -320,7 +320,7 @@ structure Contract : sig
               val start = contractBlock start
               val body = List.mapPartial contractBodyBlock body
 	      in
-		SOME(C.FUNC{lab=lab, entry=entry, start=start, body=body})
+		SOME(C.mkLocalFunc(lab, entry, start, body))
 	      end
     end
 
@@ -339,7 +339,7 @@ structure Contract : sig
 	  val code = loop (code, ticks())
 	  in
 	    ST.tick cntPhases;
-	    C.MODULE{name = name, externs = externs, mantiExterns=mantiExterns, code = code}
+	    C.mkModule(name, externs, mantiExterns, code)
 	  end
 
   end

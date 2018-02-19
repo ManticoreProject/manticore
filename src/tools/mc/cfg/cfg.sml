@@ -249,13 +249,6 @@ structure CFG =
     fun mkVPStore arg = mkExp(E_VPStore arg)
     fun mkVPAddr arg = mkExp(E_VPAddr arg)
 
-    fun mkBlock (l, args, body, exit) = let
-	  val blk = BLK{lab = l, args = args, body = body, exit = exit}
-	  in
-	    List.app (fn x => Var.setKind(x, VK_Param l)) args;
-	    blk
-	  end
-
   (* project out the parameters of a convention *)
     fun paramsOfConv (StdFunc{clos, ret, exh}, params) = clos :: params @ [ret, exh]
       | paramsOfConv (StdCont{clos}, params) = clos::params
@@ -266,6 +259,7 @@ structure CFG =
     fun mkBlock (lab, args, body, exit) = let
         val block = BLK{lab=lab, args=args, body=body, exit=exit}
     in
+        List.app (fn x => Var.setKind(x, VK_Param lab)) args;
         Label.setKind (lab, LK_Block block);
         block
     end
