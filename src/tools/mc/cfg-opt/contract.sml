@@ -304,7 +304,7 @@ structure Contract : sig
         fun contractBlock (block as C.BLK{lab, args, body, exit}) = let
             val (body,exit) = contractExps (VMap.empty, body, exit)
         in
-            C.BLK{lab=lab, args=args, body=body, exit=exit}
+            C.mkBlock(lab, args, body, exit)
         end
         
         (* specific for body block because we want to avoid accidentially deleting

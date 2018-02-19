@@ -142,7 +142,7 @@ structure SimplifyGraph : sig
                  | exit => exit
                 (* end case *))
         in
-            C.BLK{lab=lab, args=args, body=body, exit=exit'}
+            C.mkBlock(lab, args, body, exit')
         end
         
     in
@@ -151,9 +151,7 @@ structure SimplifyGraph : sig
         else ( ST.tick cntUnusedArg 
             ; (* update my own signature *)
               updateBlock (fn (C.BLK{lab, args, body, exit}) =>
-                              (C.BLK{lab=lab, 
-                                     args = (drop deadArgNums args), 
-                                     body=body, exit=exit}))
+                              (C.mkBlock(lab, drop deadArgNums args, body, exit)))
                           bl
             ; (* update my predecessors *)
                L.app (updateBlock changePred) (C.getPreds bl)
