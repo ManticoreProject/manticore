@@ -22,14 +22,14 @@ structure SimplifyGraph : sig
   structure ST = Stats
   
   (* statistics that control the number of iterations *)
-  val cntUnusedArg		= ST.newCounter "simplifygraph:unused-args-elim"
-  val cntInlinedBlk		= ST.newCounter "simplifygraph:inlined-block"
+  val cntUnusedArg		= ST.newCounter "cfg-simplifygraph:args-elim"
+  val cntInlinedBlk		= ST.newCounter "cfg-simplifygraph:blocks-inlined"
 (* first and last counters *)
   val firstCounter		= cntUnusedArg
   val lastCounter		= cntInlinedBlk
   
   (* count iterations too *)
-  val cntIters		= ST.newCounter "simplifygraph:iterations"
+  val cntIters		= ST.newCounter "cfg-simplifygraph:iterations"
   
   fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
   
@@ -148,14 +148,17 @@ structure SimplifyGraph : sig
             ( CL.setType (lab, newTy) ; C.mkBlock(lab, args', body, exit) )
         end
         
+        
+        val numElim = L.length deadArgNums
+        val predecessors = C.getPreds bl
     in
-        if L.null deadArgNums
+        if numElim = 0
         then ()
-        else ( ST.tick cntUnusedArg 
+        else ( ST.bump (cntUnusedArg, numElim * (L.length predecessors))
             ; (* update my own signature *)
               updateBlock changeSelf bl
             ; (* update my predecessors *)
-               L.app (updateBlock changePred) (C.getPreds bl)
+               L.app (updateBlock changePred) predecessors
             )  
     end
   in

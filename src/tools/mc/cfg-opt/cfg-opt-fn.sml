@@ -77,6 +77,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val _ = CheckCFG.check ("census", module)
 	  val module = contract module
       val module = simplifyGraph module
+      val module = contract module
           val _ = cfa module
           val module = unrollLoops module
           val _ = cfaClear module
@@ -90,6 +91,9 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val module = allocChecks module
           val _ = cfaClear module
           val module = allocVecChecks module
+      val module = contract module
+      val module = simplifyGraph module
+      val module = contract module
       val _ = CheckCFG.check ("final", module)
 	  in
 	    module

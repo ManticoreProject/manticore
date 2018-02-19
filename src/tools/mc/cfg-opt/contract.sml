@@ -122,6 +122,8 @@ structure Contract : sig
 		    List.map (fn (tag, jmp) => (tag, contractJump jmp)) cases,
 		    Option.map contractJump dflt)
 	      | C.HeapCheck{hck, szb, nogc} => C.HeapCheck{hck=hck, szb=szb, nogc=contractJump nogc}
+          | C.HeapCheckN{hck, n, szb, nogc} => 
+                    C.HeapCheckN{hck=hck, n = applySubst(env, n), szb=szb, nogc=contractJump nogc}
 	      | C.AllocCCall{lhs, f, args, ret} => 
                    C.AllocCCall{lhs=lhs, f=applySubst(env, f), args=applySubst'(env, args), ret=contractJump ret}
           | C.Return {args, name} => C.Return {args = applySubst'(env, args), name = name}
