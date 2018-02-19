@@ -11,21 +11,8 @@ struct
 
 	structure LLVMBackend = LLVMTranslator (structure Spec = Spec)
 
-	fun doCodeGen {code : CFG.module, dst : TextIO.outstream} = let
-		(* As of 3/30/16, this codegen function assumes that contract has been run on the 
-           CFG representation to ensure that there are no basic blocks without predecessors
-           in the representation. 
-           
-           If such BBs exist, this code generator may output phi instructions with 
-           variables incoming from the predecessor-less block, but that block will not 
-           have defined the variable because it was an argument to to it. *)
-
-        (* a pass that annotated blocks with predecessor info. Decided agianst this route. *)
-		(* val _ = Predecessors.analyze code *)
-
-	in
+	fun doCodeGen {code : CFG.module, dst : TextIO.outstream} = 
 		LLVMBackend.output(dst, code)
-	end
     
     val codeGen : {code: CFG.module, dst: TextIO.outstream} -> unit =
 	  BasicControl.mkTracePassSimple {

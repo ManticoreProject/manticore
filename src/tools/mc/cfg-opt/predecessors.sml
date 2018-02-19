@@ -41,26 +41,8 @@ structure Predecessors : sig
                 (setPreds(destLab, [(source, args)]) ; fly(destLab, exit))
            | _ => () (* we only fly to blocks within the function *)
           (* end case *))
-
       in
-         (case xfer
-          of C.Goto jump => examineJump jump
-           | C.If (_, jumpA, jumpB) => (examineJump jumpA ; examineJump jumpB)
-           | C.Switch (_, branches, maybeJ) => let
-               fun process (_, jump) = examineJump jump
-             in
-
-               (List.app process branches ; 
-                if Option.isSome maybeJ 
-                then examineJump(Option.valOf maybeJ)
-                else () )
-
-             end
-           | C.HeapCheck { nogc, ... } => examineJump nogc 
-           | C.HeapCheckN { nogc, ... } => examineJump nogc  
-           | C.AllocCCall { ret, ... } => examineJump ret           
-           | _ => ()
-        (* end xfer case *))
+        List.app examineJump (CFGUtil.labelsOfXfer xfer)
     end
 
     and haveVisited destLab = 
