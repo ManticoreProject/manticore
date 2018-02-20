@@ -316,6 +316,7 @@ structure LLVMType : sig
        
     and fullNameOf x = mkString fullNameOf x
 
+    (* NB: some code relies on the assumption that for all non-FP vals, i64 is returned. *)
     fun toRegType t = (case HC.node t
         of Ty.T_Ptr _ => i64
         | Ty.T_Int _ => i64

@@ -1357,10 +1357,19 @@ fun output (outS, module as C.MODULE { name = module_name,
     val attrs = ""
     
     fun getPrologueRootTag cfgArgs = let
+        (* requirements:
+           1. we only include live/used arguments in the tuple.
+           2. first two elms, if live: environment pointer, exn handler.
+           3. all arguments passed in FPR registers are at the end of the tuple.
+        *)
         fun used v = CV.useCount v > 0
+        fun needsFPR v = not (LT.same(LT.i64, (LT.toRegType o LT.typeOf o CV.typeOf) v))
         
         val liveArgs = L.filter used cfgArgs
-        val liveTys = L.map CV.typeOf liveArgs
+        
+        val (fpArgs, gprArgs) = L.partition needsFPR liveArgs
+        
+        val liveTys = L.map CV.typeOf (gprArgs @ fpArgs)
         val SOME (_, i) = LB.toIntC (Util.headerTag liveTys)
     in
         IntegerLit.toString i
