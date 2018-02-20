@@ -97,9 +97,15 @@ STATIC_INLINE bool isBitPatHdr (Word_t hdr)
 }
 
 /* Return the length field of a header */
-STATIC_INLINE int GetLength (Word_t hdr)
+STATIC_INLINE uint32_t GetLength (Word_t hdr)
 {
    return (hdr >> (TABLE_LEN_ID+TABLE_TAG_BITS)) & 0xFFFFFFFF;
+}
+
+/* Return the pattern field of a bit-pattern object header */
+STATIC_INLINE uint16_t GetPattern (Word_t hdr)
+{
+   return (hdr >> (TABLE_LEN_LEN+TABLE_LEN_ID+TABLE_TAG_BITS));
 }
 
 /* return true if the given address is within the given address range */

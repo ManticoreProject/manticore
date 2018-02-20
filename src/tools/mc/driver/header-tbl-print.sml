@@ -75,9 +75,25 @@ struct
         TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
         
-        TextIO.output (MyoutStrm, "Word_t * minorGCscanBITPATpointer (Word_t* nextScan, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
-        TextIO.output (MyoutStrm, "Die(\"unable to scan a bit-pattern pointer!\");\n");
-        TextIO.output (MyoutStrm, "}\n");
+        TextIO.output (MyoutStrm, "Word_t * minorGCscanBITPATpointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) { \n");
+        TextIO.output (MyoutStrm, "Word_t *nextScan = ptr; \n");
+        TextIO.output (MyoutStrm, "Word_t hdr = nextScan[-1];   // get object header \n");
+        TextIO.output (MyoutStrm, "assert(isBitPatHdr(hdr)); \n");
+        TextIO.output (MyoutStrm, "uint32_t len = GetLength(hdr); \n");
+        TextIO.output (MyoutStrm, "uint16_t pat = GetPattern(hdr); \n");
+        TextIO.output (MyoutStrm, " \n");
+        TextIO.output (MyoutStrm, "for (; pat > 0; pat >>= 1, nextScan++) { \n");
+        TextIO.output (MyoutStrm, "  if (pat & 1) { \n");
+        TextIO.output (MyoutStrm, "    Value_t *scanP = (Value_t *)nextScan; \n");
+        TextIO.output (MyoutStrm, "    Value_t v = *scanP; \n");
+        TextIO.output (MyoutStrm, "    if (isPtr(v) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) { \n");
+        TextIO.output (MyoutStrm, "        *scanP = ForwardObjMinor(v, nextW); \n");
+        TextIO.output (MyoutStrm, "    } \n");
+        TextIO.output (MyoutStrm, "  } \n");
+        TextIO.output (MyoutStrm, "} \n");
+        TextIO.output (MyoutStrm, " \n");
+        TextIO.output (MyoutStrm, "return (ptr+len); \n");
+        TextIO.output (MyoutStrm, "} \n");
 		()
         )
 
@@ -183,9 +199,31 @@ struct
         TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
         
-        TextIO.output (MyoutStrm, "Word_t * majorGCscanBITPATpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
-        TextIO.output (MyoutStrm, "Die(\"unable to scan a bitpattern pointer!\");\n");
-        TextIO.output (MyoutStrm, "}\n");
+        TextIO.output (MyoutStrm, "Word_t * majorGCscanBITPATpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) { \n");
+        TextIO.output (MyoutStrm, "Word_t *nextScan = ptr;  \n");
+        TextIO.output (MyoutStrm, "Word_t hdr = nextScan[-1];   // get object header  \n");
+        TextIO.output (MyoutStrm, "assert(isBitPatHdr(hdr));  \n");
+        TextIO.output (MyoutStrm, "uint32_t len = GetLength(hdr);  \n");
+        TextIO.output (MyoutStrm, "uint16_t pat = GetPattern(hdr);  \n");
+        TextIO.output (MyoutStrm, " \n");
+        TextIO.output (MyoutStrm, "for (; pat > 0; pat >>= 1, nextScan++) { \n");
+        TextIO.output (MyoutStrm, "  if (pat & 1) { \n");
+        TextIO.output (MyoutStrm, "    Value_t v = *(Value_t *)nextScan;  \n");
+        TextIO.output (MyoutStrm, "    if (isPtr(v)) {  \n");
+        TextIO.output (MyoutStrm, "        if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {  \n");
+        TextIO.output (MyoutStrm, "            *nextScan =(Word_t)ForwardObjMajor(vp, v);  \n");
+        TextIO.output (MyoutStrm, "        }  \n");
+        TextIO.output (MyoutStrm, "        else if (inVPHeap(heapBase, (Addr_t)v)) {  \n");
+        TextIO.output (MyoutStrm, "            // p points to another object in the young region,  \n");
+        TextIO.output (MyoutStrm, "            // so adjust it.  \n");
+        TextIO.output (MyoutStrm, "            *nextScan = (Word_t)((Addr_t)v - oldSzB);  \n");
+        TextIO.output (MyoutStrm, "        }  \n");
+        TextIO.output (MyoutStrm, "    } \n");
+        TextIO.output (MyoutStrm, "  } \n");
+        TextIO.output (MyoutStrm, "} \n");
+        TextIO.output (MyoutStrm, " \n");
+        TextIO.output (MyoutStrm, "return (ptr+len); \n");
+        TextIO.output (MyoutStrm, "} \n");
         ()
         )
 
@@ -291,9 +329,24 @@ struct
         TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
         
-        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceBITPATfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
-        TextIO.output (MyoutStrm, "Die(\"unable to scan a bitpattern pointer!\");\n");
-        TextIO.output (MyoutStrm, "}\n");
+        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceBITPATfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  { \n");
+        TextIO.output (MyoutStrm, "Word_t *scanPtr = ptr;   \n");
+        TextIO.output (MyoutStrm, "Word_t hdr = scanPtr[-1];   // get object header   \n");
+        TextIO.output (MyoutStrm, "assert(isBitPatHdr(hdr));   \n");
+        TextIO.output (MyoutStrm, "uint32_t len = GetLength(hdr);   \n");
+        TextIO.output (MyoutStrm, "uint16_t pat = GetPattern(hdr);   \n");
+        TextIO.output (MyoutStrm, "  \n");
+        TextIO.output (MyoutStrm, "for (; pat > 0; pat >>= 1, scanPtr++) {  \n");
+        TextIO.output (MyoutStrm, "  if (pat & 1) {  \n");
+        TextIO.output (MyoutStrm, "    Value_t *scanP = (Value_t *)scanPtr;  \n");
+        TextIO.output (MyoutStrm, "    Value_t v = *scanP;  \n");
+        TextIO.output (MyoutStrm, "    if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) { \n");
+        TextIO.output (MyoutStrm, "        *scanP = ForwardObjMajor(vp, v);  \n");
+        TextIO.output (MyoutStrm, "    } \n");
+        TextIO.output (MyoutStrm, "  } \n");
+        TextIO.output (MyoutStrm, "} \n");
+        TextIO.output (MyoutStrm, "return (ptr+len); \n");
+        TextIO.output (MyoutStrm, "} \n");
         ()
         )
 
@@ -399,9 +452,24 @@ struct
         TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
         
-        TextIO.output (MyoutStrm, "Word_t * globalGCscanBITPATpointer (Word_t* ptr, VProc_t *vp) {\n");
-        TextIO.output (MyoutStrm, "Die(\"unable to scan a bitpat pointer!\");\n");
-        TextIO.output (MyoutStrm, "}\n");
+        TextIO.output (MyoutStrm, "Word_t * globalGCscanBITPATpointer (Word_t* ptr, VProc_t *vp) { \n");
+        TextIO.output (MyoutStrm, "Word_t *scanPtr = ptr;    \n");
+        TextIO.output (MyoutStrm, "Word_t hdr = scanPtr[-1];   // get object header    \n");
+        TextIO.output (MyoutStrm, "assert(isBitPatHdr(hdr));    \n");
+        TextIO.output (MyoutStrm, "uint32_t len = GetLength(hdr);    \n");
+        TextIO.output (MyoutStrm, "uint16_t pat = GetPattern(hdr);    \n");
+        TextIO.output (MyoutStrm, "   \n");
+        TextIO.output (MyoutStrm, "for (; pat > 0; pat >>= 1, scanPtr++) {   \n");
+        TextIO.output (MyoutStrm, "  if (pat & 1) {   \n");
+        TextIO.output (MyoutStrm, "    Value_t *scanP = (Value_t *)scanPtr;  \n");
+        TextIO.output (MyoutStrm, "    Value_t v = *scanP;  \n");
+        TextIO.output (MyoutStrm, "    if (isFromSpacePtr(v)) {  \n");
+        TextIO.output (MyoutStrm, "        *scanP = ForwardObjGlobal(vp, v);  \n");
+        TextIO.output (MyoutStrm, "    } \n");
+        TextIO.output (MyoutStrm, "  } \n");
+        TextIO.output (MyoutStrm, "} \n");
+        TextIO.output (MyoutStrm, "return (ptr+len); \n");
+        TextIO.output (MyoutStrm, "} \n");
         ()
         )
 
