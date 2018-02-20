@@ -16,17 +16,19 @@ structure SimplifyGraph : sig
   structure L = List
   structure C = CFG
   structure CT = CFGTy
+  structure CTU = CFGTyUtil
   structure CL = CFG.Label
   structure CV = CFG.Var
   structure Tbl = CFG.Label.Tbl
   structure ST = Stats
+  structure S = String
   
   (* statistics that control the number of iterations *)
   val cntUnusedArg		= ST.newCounter "cfg-simplifygraph:args-elim"
-  val cntInlinedBlk		= ST.newCounter "cfg-simplifygraph:blocks-inlined"
+  val cntMergedBlk		= ST.newCounter "cfg-simplifygraph:blocks-merged"
 (* first and last counters *)
   val firstCounter		= cntUnusedArg
-  val lastCounter		= cntInlinedBlk
+  val lastCounter		= cntMergedBlk
   
   (* count iterations too *)
   val cntIters		= ST.newCounter "cfg-simplifygraph:iterations"
@@ -35,6 +37,7 @@ structure SimplifyGraph : sig
   
   fun unused v = (CV.useCount v = 0)
   fun decUse v = CV.addToCount(v, ~1)
+  fun decUseL l = CL.addToCount(l, ~1)
   
   
   fun doFn (f as C.FUNC{lab, entry, start, body}) = let
@@ -76,6 +79,7 @@ structure SimplifyGraph : sig
     val lookup = Tbl.lookup tbl
     val find = Tbl.find tbl
     val insert = Tbl.insert tbl
+    val remove = Tbl.remove tbl
     
       
     fun updateBlock f lb = (case find lb
@@ -89,14 +93,50 @@ structure SimplifyGraph : sig
         if exists bl
         then (
             removeDeadParams bl ;
-            (* TODO try to inline a successor with a single predecessor *)
+            mergeBlocks bl ;
             ()
             )
         else ()
         
     (**********************)
+    
+    (* peephole optimization: inline single-predecessor blocks targeted by a Goto.
+       it is simple in the sense that this is _not_ expansive inlining. *)
+    and mergeBlocks bl = (case lookup bl
+        of C.BLK{exit = C.Goto(tgt, passedVars),...} => (case C.getPreds tgt
+            of [_] => let (* single predecessor, let's merge tgt into bl *)
+                   val _ = print (S.concat["merging ", CL.toString tgt, " into ", CL.toString bl, "\n"])
+                   fun inlineTgt (C.BLK{lab, args, body, exit}) = let
+                        val (C.BLK{lab=tgtLab, args=tgtParams, body=tgtBody, exit=tgtExit,...}) = lookup tgt
+                        
+                        (* because a transfer can include an implicit cast. *)
+                        fun bindWithCasts (lhs, rhs) = let
+                            val lhsTy = CV.typeOf lhs
+                            val rhsTy = CV.typeOf rhs
+                            in
+                                if CTU.equal(rhsTy, lhsTy)
+                                    then C.mkVar([lhs], [rhs])
+                                else if CTU.validCast(rhsTy, lhsTy)
+                                    then C.mkCast(lhs, lhsTy, rhs)
+                                else raise Fail "incompatible types!"
+                            end
+                        
+                        val argBinds = ListPair.mapEq bindWithCasts (tgtParams, passedVars)
+                        
+                   in
+                    ( decUseL tgtLab ; 
+                      remove tgtLab ;
+                      C.mkBlock(lab, args, body @ argBinds @ tgtBody, tgtExit))
+                   end
+                in
+                    (ST.tick cntMergedBlk ; updateBlock inlineTgt bl)
+                end
+             | _ => () (* zero or more than 1 predecessor, skip. *)
+             (* end case *))
+         | _ => ()  (* bl doesn't end in a Goto *)
+        (* end case *))
         
-    (* first peephole optimization: delete dead args in non-start blocks *)
+    (* peephole optimization: delete dead args in non-start blocks *)
     and removeDeadParams bl = 
         if isStart orelse (CL.useCount bl <> L.length (C.getPreds bl))
         then () 

@@ -28,7 +28,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     fun transform {passName, pass} = let
 	  fun output (outf, module) =
 	      (if Controls.get cfgDOT then PrintDOT.output (outf, module) else ();
-	      PrintCFG.output {counts = true, types = PrintCFG.Full, preds = true} (outf, module))
+	      PrintCFG.output {counts = true, types = PrintCFG.Max 120, preds = false} (outf, module))
 
 	  val xform = BasicControl.mkKeepPassSimple {
 		  output = output,
