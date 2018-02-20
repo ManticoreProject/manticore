@@ -68,7 +68,7 @@ STATIC_INLINE bool isLimitPtr (Value_t v, MemChunk_t *cp)
 STATIC_INLINE bool isMixedHdr (Word_t hdr)
 {
   /* NOTE: this code relies on the fact that the tag is one bit == 1 */
-    return ((getID(hdr) > LINKFRAME_TAG_BITS)  && (isNoPtr(hdr)));
+    return ((getID(hdr) > BITPAT_TAG_BITS)  && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isVectorHdr (Word_t hdr)
@@ -91,10 +91,15 @@ STATIC_INLINE bool isLinkedFrameHdr (Word_t hdr)
     return ((getID(hdr) == LINKFRAME_TAG_BITS)  && (isNoPtr(hdr)));
 }
 
+STATIC_INLINE bool isBitPatHdr (Word_t hdr)
+{
+    return ((getID(hdr) == BITPAT_TAG_BITS)  && (isNoPtr(hdr)));
+}
+
 /* Return the length field of a header */
 STATIC_INLINE int GetLength (Word_t hdr)
 {
-   return (hdr >> (TABLE_LEN_ID+TABLE_TAG_BITS));
+   return (hdr >> (TABLE_LEN_ID+TABLE_TAG_BITS)) & 0xFFFFFFFF;
 }
 
 /* return true if the given address is within the given address range */

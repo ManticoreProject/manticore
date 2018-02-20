@@ -21,7 +21,7 @@
 // predefined table entries, important for AllocUniform and GlobalAllocUniform
 // NOTE this value must match up with the predefined literal in the SML 
 // structure HeaderTableStruct
-const int predefined = 4;
+const int predefined = 5;
 
 /**
  * Checks if there is enough global heap space in the current chunk,

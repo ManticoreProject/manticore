@@ -74,6 +74,10 @@ struct
         TextIO.output (MyoutStrm, "Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
         TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
+        
+        TextIO.output (MyoutStrm, "Word_t * minorGCscanBITPATpointer (Word_t* nextScan, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
+        TextIO.output (MyoutStrm, "Die(\"unable to scan a bit-pattern pointer!\");\n");
+        TextIO.output (MyoutStrm, "}\n");
 		()
         )
 
@@ -177,6 +181,10 @@ struct
         
         TextIO.output (MyoutStrm, "Word_t * majorGCscanLINKFRAMEpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
         TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
+        TextIO.output (MyoutStrm, "}\n");
+        
+        TextIO.output (MyoutStrm, "Word_t * majorGCscanBITPATpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
+        TextIO.output (MyoutStrm, "Die(\"unable to scan a bitpattern pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
         ()
         )
@@ -282,6 +290,10 @@ struct
         TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceLINKFRAMEfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
         TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
+        
+        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceBITPATfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
+        TextIO.output (MyoutStrm, "Die(\"unable to scan a bitpattern pointer!\");\n");
+        TextIO.output (MyoutStrm, "}\n");
         ()
         )
 
@@ -386,6 +398,10 @@ struct
         TextIO.output (MyoutStrm, "Word_t * globalGCscanLINKFRAMEpointer (Word_t* ptr, VProc_t *vp) {\n");
         TextIO.output (MyoutStrm, "Die(\"unable to scan a link-frame pointer!\");\n");
         TextIO.output (MyoutStrm, "}\n");
+        
+        TextIO.output (MyoutStrm, "Word_t * globalGCscanBITPATpointer (Word_t* ptr, VProc_t *vp) {\n");
+        TextIO.output (MyoutStrm, "Die(\"unable to scan a bitpat pointer!\");\n");
+        TextIO.output (MyoutStrm, "}\n");
         ()
         )
 
@@ -452,7 +468,8 @@ struct
         TextIO.output (MyoutStrm, "{minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n");
         TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction},\n");
 		TextIO.output (MyoutStrm, "{minorGCscanSTKCONTpointer,majorGCscanSTKCONTpointer,globalGCscanSTKCONTpointer,ScanGlobalToSpaceSTKCONTfunction},\n");
-        TextIO.output (MyoutStrm, "{minorGCscanLINKFRAMEpointer,majorGCscanLINKFRAMEpointer,globalGCscanLINKFRAMEpointer,ScanGlobalToSpaceLINKFRAMEfunction}\n");
+        TextIO.output (MyoutStrm, "{minorGCscanLINKFRAMEpointer,majorGCscanLINKFRAMEpointer,globalGCscanLINKFRAMEpointer,ScanGlobalToSpaceLINKFRAMEfunction},\n");
+        TextIO.output (MyoutStrm, "{minorGCscanBITPATpointer,majorGCscanBITPATpointer,globalGCscanBITPATpointer,ScanGlobalToSpaceBITPATfunction}\n");
         
         printtable (length+predefined,predefined);
         

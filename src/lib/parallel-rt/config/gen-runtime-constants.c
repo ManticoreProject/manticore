@@ -64,7 +64,7 @@ int main ()
     printf ("\n  (* stack size and heap size info *)\n");
     PR_DEFINE(spillAreaSzB, SPILL_SZB);
     PR_DEFINE(spillAreaOffB, SAVE_AREA+PAD_SZB);
-    PR_DEFINE(maxObjectSzB, (unsigned long long)(pow(2,64-TABLE_LEN_ID-TABLE_TAG_BITS)-1)*sizeof(Word_t));
+    PR_DEFINE(maxObjectSzB, (unsigned long long)(pow(2,64-TABLE_LEN_LEN)-1)*sizeof(Word_t));
 
     printf ("\n  (* offsets into the VProc_t structure *)\n");
 #include "vproc-offsets-ins.c"

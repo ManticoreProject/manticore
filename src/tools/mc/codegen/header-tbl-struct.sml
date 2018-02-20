@@ -25,7 +25,7 @@ struct
        
        
     *)
-    val predefined = 4
+    val predefined = 5
 
     structure HeaderConfig = struct
         type hdr = HeaderHash.hdr

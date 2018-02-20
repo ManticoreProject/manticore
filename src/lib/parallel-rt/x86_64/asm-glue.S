@@ -13,7 +13,7 @@
 #define TMP_REG1            %rcx     // specifically must *not* be a callee-saved register.
 
 // See SML structure HeaderTableStruct.
-#define PREDEFINED	4
+#define PREDEFINED	5
 
 //  Here's the layout we need upon entering Manticore functions when using CPS.
 //  Something important here is that the base pointer is _not_ caller

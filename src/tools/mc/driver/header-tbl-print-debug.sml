@@ -9,6 +9,8 @@
 structure PrintTableDebug = 
 struct
 
+    (* NOTE: this code is bit-rotted. May want to fix it based on the non-debug version. *)
+
      (* number of predefined table entries, important for the table length!! *)
     val predefined = 4
     
