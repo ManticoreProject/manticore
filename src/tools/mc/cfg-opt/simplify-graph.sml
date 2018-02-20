@@ -105,7 +105,7 @@ structure SimplifyGraph : sig
     and mergeBlocks bl = (case lookup bl
         of C.BLK{exit = C.Goto(tgt, passedVars),...} => (case C.getPreds tgt
             of [_] => let (* single predecessor, let's merge tgt into bl *)
-                   val _ = print (S.concat["merging ", CL.toString tgt, " into ", CL.toString bl, "\n"])
+                   (* val _ = print (S.concat["merging ", CL.toString tgt, " into ", CL.toString bl, "\n"]) *)
                    fun inlineTgt (C.BLK{lab, args, body, exit}) = let
                         val (C.BLK{lab=tgtLab, args=tgtParams, body=tgtBody, exit=tgtExit,...}) = lookup tgt
                         
