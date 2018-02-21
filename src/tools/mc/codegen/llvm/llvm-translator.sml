@@ -1356,23 +1356,41 @@ fun output (outS, module as C.MODULE { name = module_name,
     
     val attrs = ""
     
-    fun getPrologueRootTag cfgArgs = let
-        (* requirements:
-           1. we only include live/used arguments in the tuple.
-           2. first two elms, if live: environment pointer, exn handler.
-           3. all arguments passed in FPR registers are at the end of the tuple.
+    fun generateGCInfo startConv = let
+        (* we build a custom bit pattern that describes the pointer status of GP
+           registers in the Manticore calling convention. this is NOT the GC header tag
+           for a tuple. LLVM will generate that for us given this information. 
+           
+           The encoding is that the least-significant bit is the first register
+           of this list:
+           
+           env, retk, exnk, arg1, ... argN
+           
+           and the 2nd least-significant bit is the 2nd register, etc. 
+           If the bit is 1, it's a GC pointer, otherwise it is not.
+           
         *)
-        fun used v = CV.useCount v > 0
-        fun needsFPR v = not (LT.same(LT.i64, (LT.toRegType o LT.typeOf o CV.typeOf) v))
         
-        val liveArgs = L.filter used cfgArgs
+        fun couldBePointer (Util.Used {llvmParam,...}) = isGPRTy (LV.typeOf llvmParam)
+          | couldBePointer (Util.Machine _) = false
+          | couldBePointer (Util.NotUsed ty) = isGPRTy ty
+          
+        and isGPRTy ty = LT.same(LT.i64, LT.toRegType ty)
+                                    
+        fun pickBit (v, (i, bits)) = (case v
+            of Util.NotUsed _ => (i+1, bits)
+             | Util.Used {cfgParam,...} => 
+                if Util.isHeapPointer(CV.typeOf cfgParam)
+                    then (i+1, IntInf.orb(bits, IntInf.<<(1, Word.fromInt i)))
+                    else (i+1, bits)
+             | _ => raise Fail "machine vals are unexpected!"
+            )
+            
+        val possibleRegs = L.filter couldBePointer startConv
+        val (_, asInt) = L.foldl pickBit (0, 0) possibleRegs
         
-        val (fpArgs, gprArgs) = L.partition needsFPR liveArgs
-        
-        val liveTys = L.map CV.typeOf (gprArgs @ fpArgs)
-        val SOME (_, i) = LB.toIntC (Util.headerTag liveTys)
     in
-        IntegerLit.toString i
+        "0x" ^ (IntInf.fmt StringCvt.HEX asInt)
     end
     
     val stackKind = if Controls.get BasicControl.segstack
@@ -1384,7 +1402,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                         in
                             "\"manti-linkstack\" = \"" 
                                 ^ hpLimOffset ^ ","
-                                ^ getPrologueRootTag (LC.projCFGVars conv)
+                                ^ generateGCInfo startConv
                                 ^ "\""
                         end
                         
