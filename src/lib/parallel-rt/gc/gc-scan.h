@@ -14,6 +14,34 @@ typedef struct{
 //table array to match the tagbits with the entries
 extern tableentry table[];
 
+// pre-defined table entries
+
+extern Word_t * minorGCscanRAWpointer (Word_t*, Word_t**, Addr_t, Addr_t);
+extern Word_t * minorGCscanVECTORpointer (Word_t*, Word_t**, Addr_t, Addr_t);
+extern Word_t * minorGCscanSTKCONTpointer (Word_t*, Word_t**, Addr_t, Addr_t);
+extern Word_t * minorGCscanBITPATpointer (Word_t*, Word_t**, Addr_t, Addr_t);
+extern Word_t * minorGCscanLINKFRAMEpointer (Word_t*, Word_t**, Addr_t, Addr_t);
+
+extern Word_t * majorGCscanRAWpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
+extern Word_t * majorGCscanVECTORpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
+extern Word_t * majorGCscanSTKCONTpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
+extern Word_t * majorGCscanBITPATpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
+extern Word_t * majorGCscanLINKFRAMEpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
+
+extern Word_t * ScanGlobalToSpaceRAWfunction (Word_t*, VProc_t *, Addr_t);
+extern Word_t * ScanGlobalToSpaceVECTORfunction (Word_t*, VProc_t *, Addr_t);
+extern Word_t * ScanGlobalToSpaceSTKCONTfunction (Word_t*, VProc_t *, Addr_t);
+extern Word_t * ScanGlobalToSpaceBITPATfunction (Word_t*, VProc_t *, Addr_t);
+extern Word_t * ScanGlobalToSpaceLINKFRAMEfunction (Word_t*, VProc_t *, Addr_t);
+
+extern Word_t * globalGCscanRAWpointer (Word_t*, VProc_t *);
+extern Word_t * globalGCscanVECTORpointer (Word_t*, VProc_t *);
+extern Word_t * globalGCscanSTKCONTpointer (Word_t*, VProc_t *);
+extern Word_t * globalGCscanBITPATpointer (Word_t*, VProc_t *);
+extern Word_t * globalGCscanLINKFRAMEpointer (Word_t*, VProc_t *);
+
+
+
 #ifndef NDEBUG
 
 extern void CheckLocalPtrMinor (VProc_t *, void *, const char *);

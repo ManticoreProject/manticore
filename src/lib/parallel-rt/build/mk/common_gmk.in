@@ -78,8 +78,11 @@ RANLIB =	ranlib
 VPATH =		../../include:../../gc:../../vproc:../../misc:../../cpu:../../machine:../../config
 
 GC_SRCS = 	minor-gc.c \
+		minor-gc-scan.c \
 		major-gc.c \
+		major-gc-scan.c \
 		global-gc.c \
+		global-gc-scan.c \
 		heap.c \
 		unix-memory.c \
 		alloc.c \
