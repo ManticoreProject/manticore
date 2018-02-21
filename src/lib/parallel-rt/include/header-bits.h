@@ -5,6 +5,8 @@
  *
  * The following three objects can occur in the Manticore heap. We pair each with
  * a distinct header format.
+ *
+ *  NOTE any changes to the format below may require changes to LLVM as well!
  * 
  *  Mixed-Type Object: pointer and raw values.
  *
