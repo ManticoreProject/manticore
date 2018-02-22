@@ -62,7 +62,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
      * in the VProc's heap.
      */
 #ifdef LINKSTACK
-    // TODO: 
     Value_t retCont = CreateBaseFrame(vp, (Word_t)&ASM_Return);
     Value_t exnCont = CreateBaseFrame(vp, (Word_t)&ASM_UncaughtExn);
     FunClosure_t* closObj;
@@ -112,9 +111,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
            */
             if ((LimitPtr(vp) <= vp->allocPtr) || vp->globalGCPending) {
               /* request a minor GC */
-#ifdef LINKSTACK
-              Die("needed a gc");
-#endif
                 MinorGC (vp);
             }
           /* check for asynchronous signals */
@@ -150,7 +146,6 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
             else {
               /* setup the return from GC */
 #ifdef LINKSTACK
-                // Die("setup the return from GC");
                 codeP = (Addr_t)&ASM_ExecuteStack;
                 envP = M_UNIT;
                 retCont = vp->stdCont;

@@ -228,6 +228,15 @@ _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 // aka the actual return continuation, of the call to this label.
 // This differs from the CPS-style version, which just places the code pointer
 // in this register.
+//
+// final layout of a heap-allocated linked frame is given below
+//
+//  low addrs                                             high addrs
+//
+// [ GC Header | link ptr | RA slot | watermark | .. frame contents .. ]
+//             ^
+//          ptr to frame
+
 .p2align 3
 .globl	_GSYM(ASM_InvokeGC)
 .globl	_GSYM(ASM_LinkedStack_InvokeGC)

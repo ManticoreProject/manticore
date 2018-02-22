@@ -20,7 +20,7 @@
 #include <stdio.h>
 #endif
 
-#ifdef DIRECT_STYLE
+#if defined(DIRECT_STYLE) || defined(LINKSTACK)
 
 // on Linux, there is an extra "_" prepended to global names
 //
@@ -183,14 +183,17 @@ void HeapInit (Options_t *opts)
     
     GUARD_PAGE_BYTES = sysconf(_SC_PAGESIZE);
     
-#ifdef DIRECT_STYLE
+    
+#if defined(DIRECT_STYLE) || defined(LINKSTACK)
     /* initialize the statepoint table */
     SPTbl = generate_table((void*)&STACK_MAPS, 0.7);
+#endif
     
+#ifdef DIRECT_STYLE
     // insert a custom frame for ASM_DS_StartStack (see stacks.c for details)
     // I have written a general version of initialization in case we need more pointers.
     
-    uint64_t retAddr = &ASM_DS_StartStack;
+    uint64_t retAddr = (uint64_t)(&ASM_DS_StartStack);
     uint16_t numPtrs = 1;
     
     frame_info_t* frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
@@ -207,9 +210,10 @@ void HeapInit (Options_t *opts)
     
     insert_key(SPTbl, retAddr, frame);
     
-    // print_table(stderr, SPTbl, true);
-    
 #endif
+
+    // if (SPTbl)
+    //     print_table(stderr, SPTbl, true);
 
 } /* end of HeapInit */
 
