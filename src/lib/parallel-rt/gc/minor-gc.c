@@ -390,9 +390,6 @@ void MinorGC (VProc_t *vp)
 
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
         /* time to do a major collection. */
-#ifdef LINKSTACK
-              Die("needed a Major GC");
-#endif        
         MajorGC (vp, roots, (Addr_t)nextScan);
     } else {
         /* remember information about the final state of the heap */
