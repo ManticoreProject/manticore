@@ -55,9 +55,11 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
         LS_Stop
     };
     
+/////////////////////// phase specific code
     const Age_t promoteGen = AGE_Major;
+///////////////////////
+
     enum LimitState state = LS_NoMark;
-    
     uint64_t* curFrame = (uint64_t*)nextScan;
     
     while (state != LS_Stop) {
@@ -101,9 +103,12 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
             Value_t *root = (Value_t *)(contentsBase + slotInfo.offset);
             Value_t p = *root;
             
+/////////////////////// phase specific code
             if (isPtr(p) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
                 *root = ForwardObjMinor(p, nextW);
             }
+///////////////////////
+            
         } // end for
         
         
@@ -113,13 +118,15 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
             // this was the last frame, which we scanned.
             break;
             
+/////////////////////// phase specific code
         } else if (inAddrRange(nurseryBase, allocSzB, (Addr_t)linkPtr)) {
             // the link to the next frame frame is a nursery pointer, so we simply
             // forward it like a normal pointer and stop here.
             *curFrame = (uint64_t) ForwardObjMinor((Value_t)linkPtr, nextW);
             break;
             
-        } 
+        }
+///////////////////////
 
         // otherwise, the previous frame is not located in the nursery, but
         // we must scan it for pointers _into_ the nursery.
