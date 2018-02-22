@@ -75,6 +75,8 @@ for (; pat > 0; pat >>= 1, nextScan++) {
     } 
   } 
 }
+
+return (ptr+len); 
 }
 
 
