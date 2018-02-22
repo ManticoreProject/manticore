@@ -123,10 +123,10 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
             // the link to the next frame frame is a nursery pointer, so we simply
             // forward it like a normal pointer and stop here.
             *curFrame = (uint64_t) ForwardObjMinor((Value_t)linkPtr, nextW);
-            break;
             
-        }
 ///////////////////////
+            break;
+        }
 
         // otherwise, the previous frame is not located in the nursery, but
         // we must scan it for pointers _into_ the nursery.
