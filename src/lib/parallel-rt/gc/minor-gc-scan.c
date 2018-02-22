@@ -49,13 +49,22 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
     assert(isLinkedFrameHdr(hdr)); 
     int len = GetLength(hdr);
     
+    enum LimitState {
+        LS_NoMark,
+        LS_MarkSeen,
+        LS_Stop
+    };
+    
+    const Age_t promoteGen = AGE_Major;
+    enum LimitState state = LS_NoMark;
+    
     uint64_t* curFrame = (uint64_t*)nextScan;
     
-    while (true) {
-        uint64_t* linkPtr = (uint64_t*) ( curFrame[0] );
+    while (state != LS_Stop) {
+        uint64_t linkPtr = curFrame[0];
         uint64_t retAddr = curFrame[1];
-        // uint64_t watermark = p[2];
-        uint64_t contentsBase = (uint64_t)( curFrame+2 ); // base starts at watermark.
+        uint64_t* watermark = curFrame + 2;
+        uint64_t contentsBase = (uint64_t)( curFrame + 2 ); // base starts at watermark.
         
         // get info
         frame_info_t* frame = lookup_return_address(SPTbl, retAddr);
@@ -66,6 +75,21 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
             assert(linkPtr == 0);
             break;
         }
+        
+        
+        // does this frame need to be scanned?
+        if (state == LS_MarkSeen) {
+            // this is the last frame we'll check.
+            state = LS_Stop;
+        } else if (*watermark >= promoteGen) {
+            // saw the limit in this frame.
+            state = LS_MarkSeen;
+        } else {
+            // overwrite the watermark
+            assert(*watermark == 0 && "should only overwrite zero watermarks!");
+            *watermark = promoteGen;
+        }
+        
             
         // update pointers in curFrame.
         for (uint16_t i = 0; i < frame->numSlots; i++) {
@@ -99,7 +123,7 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
 
         // otherwise, the previous frame is not located in the nursery, but
         // we must scan it for pointers _into_ the nursery.
-        curFrame = linkPtr;
+        curFrame = (uint64_t*)linkPtr;
         
     } // end while
     
