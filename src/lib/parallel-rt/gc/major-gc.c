@@ -321,7 +321,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
                 // we don't forward or move the frame, but instead simply scan it
                 // NOTE: we throw away the return value because we will not scan
                 // the adjacent frame.
-                majorGCscanLINKFRAMEpointer(nextScan, vp, oldSzB, heapBase);
+                majorGCscanLINKFRAMEpointer(ptr, vp, oldSzB, heapBase);
             }
         }
     #endif
