@@ -285,13 +285,14 @@ Value_t WrapWord (VProc_t *vp, Word_t i)
  * the address i.
  */
 Value_t CreateBaseFrame (VProc_t *vp, Word_t i) {
-    uint64_t sz = 2;
+    uint64_t sz = 3;
     EnsureNurserySpace(vp, sz+1);
 
     Word_t  *obj = (Word_t *)(vp->allocPtr);
     obj[-1] = RAW_HDR(sz);
     obj[0] = 0;     // there is no previous frame
     obj[1] = i;     // code address
+    obj[2] = 0;     // watermark
 
     vp->allocPtr += WORD_SZB * (sz+1);
     return PtrToValue(obj);

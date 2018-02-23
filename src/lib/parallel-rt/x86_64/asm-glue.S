@@ -8,12 +8,11 @@
 #include "asm-defs.h"
 #include "asm-offsets.h"
 #include "registers.h"
+#include "header-bits.h"
 
 /* register(s) that are unused in manticore's calling convention. */
 #define TMP_REG1            %rcx     // specifically must *not* be a callee-saved register.
 
-// See SML structure HeaderTableStruct.
-#define PREDEFINED	5
 
 //  Here's the layout we need upon entering Manticore functions when using CPS.
 //  Something important here is that the base pointer is _not_ caller
@@ -167,33 +166,28 @@ invalidate_spill_area:
 .p2align 3
 .globl	_GSYM(ASM_LinkedStack_PrologueGC)
 _GSYM(ASM_LinkedStack_PrologueGC):
-//    We allocate a heap object with the following layout:
-// low                                                     high
-// [GC tag | _A_ | return addr | root ptr | manticore ret addr ]
+//    We allocate a stack frame with the following layout:
+// low                                                                       high
+// [ FRAME TAG | _A_ | return addr | watermark | root ptr | manticore ret addr ]
+//             ^                   ^
+//         frame ptr           contents start
 // 
-// Since we know the layout of this ahead of time, and all pointers in this tuple are
-// pointers to heap objects, we can just provide a mixed-header
-// tag that is computed ahead-of-time.
-//
 // Note that _A_ is not initialized here, but it will contain the call-site's link
 // pointer, which is an ordinary heap object.
 
 	popq	%r13			// pop the manticore return addr, which was pushed on the heap
-	leaq	8(ALLOC_PTR_REG), %rsp
-
-// len is 4, and the 5th mixed ID is a constant bit-pattern in 
-// HeaderTableStruct, which should be 0101
-#define	PROLOG_HDR_VAL  (4 << 16) | ((PREDEFINED+5) << 1) | 1
+	leaq	8(ALLOC_PTR_REG), %rsp  // RSP should be at a position s.t. a call just occurred
 	
-	movq	$(PROLOG_HDR_VAL), -8(ALLOC_PTR_REG)
+	movq	$(LINKFRAME_HDR(5)), -8(ALLOC_PTR_REG)
 	
 	leaq	_GSYM(ASM_LinkedStack_PrologueGC_Ret)(%rip), %r12
 	movq	%r12, 8(ALLOC_PTR_REG)		// frame's return address
+	movq	$0, 16(ALLOC_PTR_REG)		// watermark
+    
+	movq	%rbx, 24(ALLOC_PTR_REG)		// root ptr
+	movq	%r13, 32(ALLOC_PTR_REG)		// write manticore ret addr
 	
-	movq	%rbx, 16(ALLOC_PTR_REG)		// root ptr
-	movq	%r13, 24(ALLOC_PTR_REG)		// write manticore ret addr
-	
-	addq	$40, ALLOC_PTR_REG			// bump alloc ptr
+	addq	$48, ALLOC_PTR_REG			// bump alloc ptr
 	jmp		_GSYM(ASM_LinkedStack_InvokeGC)
 	
 	

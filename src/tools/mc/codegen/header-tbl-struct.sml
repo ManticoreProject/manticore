@@ -21,7 +21,6 @@ struct
        called "predefined" in the following places:
        
        1. the C runtime system, in alloc.c
-       2. In the assembly code, asm-glue.S
        
        
     *)
@@ -46,7 +45,6 @@ struct
 	val _ = HeaderTable.addHdr (header, "1")
     val _ = HeaderTable.addHdr (header, "11010")
     val _ = HeaderTable.addHdr (header, "100")
-    val _ = HeaderTable.addHdr (header, "0101") (* used in ASM_LinkedStack_PrologueGC *)
     
     (* new Header Table END *)
 end

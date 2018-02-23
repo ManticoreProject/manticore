@@ -53,6 +53,7 @@ uint32_t	NumGlobalGCs = 0;
 
 statepoint_table_t* SPTbl = NULL;  // the statepoint table
 extern int ASM_DS_StartStack;
+extern int ASM_LinkedStack_PrologueGC_Ret;
 
 
 /* Heap sizing parameters.  The normal to-space size is computed as
@@ -188,10 +189,34 @@ void HeapInit (Options_t *opts)
     /* initialize the statepoint table */
     SPTbl = generate_table((void*)&STACK_MAPS, 0.7);
 #endif
+
+#ifdef LINKSTACK
+    // for: ASM_LinkedStack_PrologueGC_Ret  (see asm-glue.S:ASM_LinkedStack_PrologueGC)
+    
+    uint64_t retAddr = (uint64_t)(&ASM_LinkedStack_PrologueGC_Ret);
+    uint16_t numPtrs = 1;
+    
+    frame_info_t* frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
+    frame->retAddr = retAddr;
+    frame->frameSize = sizeof(uint64_t) * (numPtrs + 2);
+    frame->numSlots = numPtrs;
+    
+    pointer_slot_t* currentSlot = frame->slots;
+    for(uint16_t i = 1; i < numPtrs; i++) {
+        currentSlot->kind = -1; // base ptr
+        currentSlot->offset = i * sizeof(uint64_t);
+        currentSlot++;
+    }
+    
+    insert_key(SPTbl, retAddr, frame);
+    
+#endif
     
 #ifdef DIRECT_STYLE
     // insert a custom frame for ASM_DS_StartStack (see stacks.c for details)
     // I have written a general version of initialization in case we need more pointers.
+    
+    // FIXME: where is the watermark? for segstacks, where is the size?
     
     uint64_t retAddr = (uint64_t)(&ASM_DS_StartStack);
     uint16_t numPtrs = 1;
@@ -212,8 +237,8 @@ void HeapInit (Options_t *opts)
     
 #endif
 
-    // if (SPTbl)
-    //     print_table(stderr, SPTbl, true);
+    if (SPTbl)
+        print_table(stderr, SPTbl, true);
 
 } /* end of HeapInit */
 
