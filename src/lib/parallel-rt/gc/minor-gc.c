@@ -327,9 +327,9 @@ void MinorGC (VProc_t *vp)
                         // we don't forward or move the frame, but instead simply scan it,
                         // looking for nursery pointers.
                         
-                        Die("MinorGC is unsure how to handle this situation.");
-                        
-                        // nextScan = table[getID(hdr)].minorGCscanfunction(nextScan, &nextW, allocSzB,nurseryBase);
+                        // NOTE that we throw away the returned value because we are
+                        // not scanning the object adjacent to this frame.
+                        minorGCscanLINKFRAMEpointer (ptr, &nextW, allocSzB, nurseryBase);
                     }
                 }
             #endif
