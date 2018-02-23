@@ -41,6 +41,7 @@ stacks=(
   ""
   "-contigstack"
   "-segstack"
+  "-linkstack"
   # now we test with the cshim
   "-Ccshim=true"
   "-Ccshim=true -contigstack"
@@ -49,6 +50,7 @@ stacks=(
   "-noras "
   "-noras -contigstack"
   "-noras -segstack"
+  "-noras -linkstack"
 )
 
 echo -e "\n\n\t----- testing with MLRISC -----\n\n"
