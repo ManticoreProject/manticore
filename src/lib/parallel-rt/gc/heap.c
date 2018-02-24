@@ -187,7 +187,7 @@ void HeapInit (Options_t *opts)
     
 #if defined(DIRECT_STYLE) || defined(LINKSTACK)
     /* initialize the statepoint table */
-    SPTbl = generate_table((void*)&STACK_MAPS, 0.7);
+    SPTbl = generate_table((void*)&STACK_MAPS, 0.5);
 #endif
 
 #ifdef LINKSTACK
