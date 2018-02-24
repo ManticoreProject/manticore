@@ -237,8 +237,8 @@ void HeapInit (Options_t *opts)
     
 #endif
 
-    if (SPTbl)
-        print_table(stderr, SPTbl, true);
+    // if (SPTbl)
+    //     print_table(stderr, SPTbl, true);
 
 } /* end of HeapInit */
 
