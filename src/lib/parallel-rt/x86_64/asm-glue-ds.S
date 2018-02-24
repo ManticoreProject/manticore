@@ -35,8 +35,8 @@
 .globl	_GSYM(ASM_DS_StartStack)
 _GSYM(ASM_DS_StartStack):
     // this is a special manticore routine used to start a NewStack.
-    popq    TMP_REG1                // retrieve the closure from our stack frame
-                                    // and adjust SP so it points to an invalid ret addr.
+    movq    16(%rsp), TMP_REG1      // retrieve the closure from our stack frame
+    addq    $24, %rsp               // pop this frame
     movq    (TMP_REG1), STD_EP_REG  // set EP
     movq    8(TMP_REG1), TMP_REG2   // grab the CP
     jmp     *TMP_REG2

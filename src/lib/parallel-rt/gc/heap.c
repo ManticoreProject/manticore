@@ -202,9 +202,10 @@ void HeapInit (Options_t *opts)
     frame->numSlots = numPtrs;
     
     pointer_slot_t* currentSlot = frame->slots;
-    for(uint16_t i = 1; i < numPtrs; i++) {
+    uint16_t ptrBase = 1 * sizeof(uint64_t); // starting point in the frame where pointers are.
+    for(uint16_t i = 0; i < numPtrs; i++) {
         currentSlot->kind = -1; // base ptr
-        currentSlot->offset = i * sizeof(uint64_t);
+        currentSlot->offset = ptrBase + (i * sizeof(uint64_t));
         currentSlot++;
     }
     
@@ -216,20 +217,19 @@ void HeapInit (Options_t *opts)
     // insert a custom frame for ASM_DS_StartStack (see stacks.c for details)
     // I have written a general version of initialization in case we need more pointers.
     
-    // FIXME: where is the watermark? for segstacks, where is the size?
-    
     uint64_t retAddr = (uint64_t)(&ASM_DS_StartStack);
     uint16_t numPtrs = 1;
     
     frame_info_t* frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
     frame->retAddr = retAddr;
-    frame->frameSize = sizeof(uint64_t) * numPtrs;
+    frame->frameSize = sizeof(uint64_t) * (numPtrs + 2);
     frame->numSlots = numPtrs;
     
     pointer_slot_t* currentSlot = frame->slots;
+    uint16_t ptrBase = 2 * sizeof(uint64_t); // starting point in the frame where pointers are.
     for(uint16_t i = 0; i < numPtrs; i++) {
         currentSlot->kind = -1; // base ptr
-        currentSlot->offset = i * sizeof(uint64_t);
+        currentSlot->offset = ptrBase + (i * sizeof(uint64_t));
         currentSlot++;
     }
     

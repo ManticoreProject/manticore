@@ -72,17 +72,19 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
     
     /* we initialize one frame:
         low                                            high
-                                              16-byte
-                                                 v
-        [ &ApplyClos | funClos ][ invalidRetAddr ]
-        ^                       ^
-  returned stkPtr            initial sp             
+                                                                       16-byte
+                     v                        v                           v
+        [ &ApplyClos | watermark | frame size | funClos ][ invalidRetAddr ]
+        ^                                                ^
+  returned stkPtr                                    initial sp
                                                                  
     */
     sp[0] = (uint64_t)&EndOfStack; // funClos should not try to return!
     sp[-1] = (uint64_t)funClos;
-    sp[-2] = (uint64_t)&ASM_DS_StartStack;
-    sp = sp - 2;
+    sp[-2] = 24; // 24 bytes, including watermark and frame size
+    sp[-3] = 0;  // watermark.
+    sp[-4] = (uint64_t)&ASM_DS_StartStack;
+    sp = sp - 4;
     
     // now we need to allocate the stack cont object
     Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
