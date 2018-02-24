@@ -260,6 +260,11 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
  */
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
+    
+#ifdef LINKSTACK
+    Die("Tried to start GlobalGC.");
+#endif
+    
     bool	leaderVProc;
 
 #ifndef NO_GC_STATS

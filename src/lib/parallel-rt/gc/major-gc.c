@@ -394,9 +394,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     LogMajorGCEnd (vp, nBytesCopied, 0); /* FIXME: nCopiedBytes, nAvailBytes */
 
     if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit)) {
-#ifdef LINKSTACK
-        Die("needed a Global GC");
-#endif
         StartGlobalGC (vp, roots);
     }
 
