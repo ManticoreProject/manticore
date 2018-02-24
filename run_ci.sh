@@ -5,7 +5,7 @@
 TIMEOUT=timeout
 
 # set -x # echo on
-set -e # exit on failure
+# set -e # exit on failure
 
 # some system info
 uname -a
