@@ -2,7 +2,9 @@
 
 # must be run in the root of the repository.
 
-set -x # echo on
+TIMEOUT=timeout
+
+# set -x # echo on
 set -e # exit on failure
 
 # some system info
@@ -47,30 +49,46 @@ stacks=(
   "-Ccshim=true -contigstack"
   "-Ccshim=true -segstack"
   # now we test noras
-  "-noras "
+  "-noras"
   "-noras -contigstack"
   "-noras -segstack"
   "-noras -linkstack"
 )
 
-echo -e "\n\n\t----- testing with MLRISC -----\n\n"
-BACKEND="-mlrisc" ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
-# ./src/regression-tests/bash-scripts/run-par.bsh || failed=1
-echo -e "\n\n\t----- done -----\n\n"
+CI_REPORT="gitlab_report.txt"
+rm -f $CI_REPORT
+touch $CI_REPORT
+
+# $1 = config
+# $2 = script, e.g., run-seq.bsh
+runTest () {
+    BACKEND="$1" $TIMEOUT 20m ./src/regression-tests/bash-scripts/$2
+    if [ "$?" -ne 0 ]; then
+        echo "$1, $2" >> $CI_REPORT
+    fi
+}
+
+# TODO: run the par tests on CPS LLVM options
 
 for stack in "${stacks[@]}"; do
     for llvm in  "${llvmOptions[@]}"; do
         config="$llvm $stack"
         echo -e "\n\n\t----- testing configuration: $config -----\n\n"
-        BACKEND="$config" timeout 20m ./src/regression-tests/bash-scripts/run-seq.bsh || failed=1
-        # BACKEND="$config" ./src/regression-tests/bash-scripts/run-par.bsh || failed=1
+        runTest "$config" run-seq.bsh
+        runTest "$config" run-cml.bsh
         echo -e "\n\n\t----- done -----\n\n"
     done
 done
 
+echo -e "\n\n\t----- testing with MLRISC -----\n\n"
+runTest -mlrisc run-seq.bsh
+runTest -mlrisc run-par.bsh
+echo -e "\n\n\t----- done -----\n\n"
+
 # Exit with error if any tests failed
-if [ "$failed" -ne 0 ] ; then
-    echo -e "\n\nA failure was detected!! See above output."
+if [ `wc -l < $CI_REPORT` -ne 0 ] ; then
+    echo -e "\n\nA failure was detected in the following configurations:"
+    cat $CI_REPORT
     exit 1
 fi
 
