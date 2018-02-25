@@ -14,7 +14,6 @@
 /* registers that are unused in manticore's calling convention. */
 #define TMP_REG0            %rbx     // NOTE: callee-saved in C-convention
 #define TMP_REG1            %rcx
-#define TMP_REG2            %rdx
 
 // FIXME: get rid of these. these are argument registers!
 #define TMP_REG3            %r15
@@ -38,8 +37,8 @@ _GSYM(ASM_DS_StartStack):
     movq    16(%rsp), TMP_REG1      // retrieve the closure from our stack frame
     addq    $24, %rsp               // pop this frame
     movq    (TMP_REG1), STD_EP_REG  // set EP
-    movq    8(TMP_REG1), TMP_REG2   // grab the CP
-    jmp     *TMP_REG2
+    movq    8(TMP_REG1), TMP_REG0   // grab the CP
+    jmp     *TMP_REG0
     
 
 // used by RequestService to call a function on the given stack,
@@ -172,25 +171,25 @@ _GSYM(ASM_DS_SegUnderflow):
     // refer to FreeStacks in minor-gc.c
     /////////
     
-    movq    LIST_NEXT(TMP_REG1), TMP_REG2  // get allocdNext
+    movq    LIST_NEXT(TMP_REG1), TMP_REG0  // get allocdNext
     movq    LIST_PREV(TMP_REG1), TMP_REG3  // get allocdPrev
     
     // allocdNext == NULL?
-    testq   TMP_REG2, TMP_REG2
+    testq   TMP_REG0, TMP_REG0
     jz  nextIsNull
     // allocdNext->prev = allocdPrev
-    movq    TMP_REG3, LIST_PREV(TMP_REG2)
+    movq    TMP_REG3, LIST_PREV(TMP_REG0)
 nextIsNull:
     // allocdPrev == NULL?
     testq   TMP_REG3, TMP_REG3
     jz      prevIsNull
     // allocdPrev->next = allocdNext
-    movq    TMP_REG2, LIST_NEXT(TMP_REG3)
+    movq    TMP_REG0, LIST_NEXT(TMP_REG3)
     jmp     prevTestJoin
     
 prevIsNull:
     // vp->allocdStacks = allocdNext
-    movq    TMP_REG2, ALLOCD_STKS(VPROC_PTR_REG)
+    movq    TMP_REG0, ALLOCD_STKS(VPROC_PTR_REG)
 
 prevTestJoin:
 
@@ -198,8 +197,8 @@ prevTestJoin:
     movq    $0, AGE(TMP_REG1)         // info->age = AGE_Minor
     movq    $0, LIST_PREV(TMP_REG1)   // info->prev = NULL
     // push it on the free list
-    movq    FREE_STKS(VPROC_PTR_REG), TMP_REG2
-    movq    TMP_REG2, LIST_NEXT(TMP_REG1)
+    movq    FREE_STKS(VPROC_PTR_REG), TMP_REG0
+    movq    TMP_REG0, LIST_NEXT(TMP_REG1)
     movq    TMP_REG1, FREE_STKS(VPROC_PTR_REG)
     
     // done with freeing the current segment
@@ -254,11 +253,11 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
 #endif
 
     /***** alloc cont object ****/
-    leaq    _GSYM(ASM_LongJmp)(%rip), TMP_REG2    // load the resume address
+    leaq    _GSYM(ASM_LongJmp)(%rip), TMP_REG0    // load the resume address
     
     // ** initialize allocation **
     movq    $STACK_HDR, -8(ALLOC_PTR_REG)       // init header
-    movq    TMP_REG2, (ALLOC_PTR_REG)           // init code ptr
+    movq    TMP_REG0, (ALLOC_PTR_REG)           // init code ptr
     
 #ifdef SEGSTACK
     movq    TMP_REG4, 8(ALLOC_PTR_REG)          // init captured stack ptr
@@ -325,8 +324,8 @@ asm_get_service:
 // 1. these std-ds calling convention registers: 
 //      alloc, vproc, exh, stdArg
 // 2. TMP_REG1 -- request code
-    // save the current stack cont to TMP_REG2
-    // leaq    -8(%rsp), TMP_REG2  
+    // save the current stack cont to TMP_REG0
+    // leaq    -8(%rsp), TMP_REG0  
     
     // initialize metadata
     // subq    $16, %rsp
