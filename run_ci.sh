@@ -31,7 +31,7 @@ make local-install
 failed=0
 
 llvmOptions=(
-  # "-O0"   FIXME: right now, big-tuples causes LLVM to hang without optimization.
+  "-O0"
   "-O1"
   "-O2"
   "-O3"

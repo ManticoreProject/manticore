@@ -209,21 +209,6 @@ in (case p
   | (P.F32Neg _ | P.F64Neg _)
       => (fn [a] => f e Op.FSub #[Fconst a (FloatLit.zero false), a])
   
-      (* TODO add support for LLVM instrinsics to
-       perform the primops we need. 
-       http://llvm.org/docs/LangRef.html#llvm-sqrt-intrinsic
-       http://llvm.org/docs/LangRef.html#llvm-fabs-intrinsic
-       
-       a key thing we need to do is declare the intrinsics we're using at the top of the file like so:
-       
-       declare float     @llvm.sqrt.f32(float)
-       
-       define ... {
-          %r = call float @llvm.sqrt.f32(float 2.0)
-       }
-       
-       
-        *)
   | P.F32Sqrt _ => (fn [a] => valOf(LB.call bb (fv (#1(LR.sqrt_f32)), #[a])))
   | P.F64Sqrt _ => (fn [a] => valOf(LB.call bb (fv (#1(LR.sqrt_f64)), #[a])))
   
@@ -255,11 +240,7 @@ in (case p
   (* NOTE we can't use GEP for these address prims mostly because GEP
      requires the offsets to be constants, whereas
      AdrAdd does not nessecarily do that. we lose out on some
-     alias analysis friendliness, but we can worry about that later.
-     
-     TODO evaluate whether this is true or not. we ought to be able to
-     case to i8* , GEP , then cast back? GEP accepts non-const
-     offsets if its an array. *)
+     alias analysis friendliness, but we can worry about that later. *)
      
   | P.AdrAddI32 _ => addrArith bb true Op.Add
   | P.AdrSubI32 _ => addrArith bb true Op.Sub
@@ -388,7 +369,7 @@ in (case p
            it's just recopied and modified down here because the types of the runtime function
            and primop don't line up with the others. *)
     | P.AllocPolyVec _ => let
-            val (label, NONE) = LR.allocVector
+            val (label, SOME cc) = LR.allocVector
             
             (* in prim-gen-fn.sml the args are (n, xs), but n is unused. *)  
             fun cvtr ([ _, xs ]) = raise ParrayPrim (haveStuff xs)
@@ -404,7 +385,7 @@ in (case p
 
                     (* call C routine to do the allocation, with bitcasts as needed *)
                     val res = if not (Controls.get BasicControl.cshim)
-                              then LB.call bb (func, V.fromList args)
+                              then LB.callAs bb cc (func, V.fromList args)
                               else Util.callWithCShim' bb (vproc, func, args)
                     
                     val res = asTy bb resTy (valOf res)
