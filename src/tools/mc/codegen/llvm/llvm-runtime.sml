@@ -38,16 +38,16 @@ structure LLVMRuntime =
        none means to not specify a calling convention. *)
                                 
     (*   (vprocPtr * var) -> var   *)
-    val promote : LV.var * (LB.convention option) = (mkLabel "PromoteObj" (LT.voidStar :: [LT.voidStar, LT.voidStar]), NONE)
+    val promote : LV.var * (LB.convention option) = (mkLabel "PromoteObj" (LT.voidStar :: [LT.voidStar, LT.voidStar]), SOME LB.stdCC)
     
     (* aka AllocPolyVec. (vprocPtr * any) -> any *)
-    val allocVector : LV.var * (LB.convention option) = (mkLabel "AllocVector" (LT.voidStar :: [LT.voidStar, LT.voidStar]), NONE)
+    val allocVector : LV.var * (LB.convention option) = (mkLabel "AllocVector" (LT.voidStar :: [LT.voidStar, LT.voidStar]), SOME LB.stdCC)
     
     (*  the following alloc functions have signature (vprocPtr * int) -> any *)
-    val allocIntArray : LV.var * (LB.convention option) = (mkLabel "AllocIntArray" (LT.voidStar :: [LT.voidStar, LT.i32]), NONE)
-    val allocLongArray : LV.var * (LB.convention option) = (mkLabel "AllocLongArray" (LT.voidStar :: [LT.voidStar, LT.i32]), NONE)
-    val allocFloatArray : LV.var * (LB.convention option) = (mkLabel "AllocFloatArray" (LT.voidStar :: [LT.voidStar, LT.i32]), NONE)
-    val allocDoubleArray : LV.var * (LB.convention option) = (mkLabel "AllocDoubleArray" (LT.voidStar :: [LT.voidStar, LT.i32]), NONE)
+    val allocIntArray : LV.var * (LB.convention option) = (mkLabel "AllocIntArray" (LT.voidStar :: [LT.voidStar, LT.i32]), SOME LB.stdCC)
+    val allocLongArray : LV.var * (LB.convention option) = (mkLabel "AllocLongArray" (LT.voidStar :: [LT.voidStar, LT.i32]), SOME LB.stdCC)
+    val allocFloatArray : LV.var * (LB.convention option) = (mkLabel "AllocFloatArray" (LT.voidStar :: [LT.voidStar, LT.i32]), SOME LB.stdCC)
+    val allocDoubleArray : LV.var * (LB.convention option) = (mkLabel "AllocDoubleArray" (LT.voidStar :: [LT.voidStar, LT.i32]), SOME LB.stdCC)
     
         local
         in

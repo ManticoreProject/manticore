@@ -1130,7 +1130,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         raise Fail "not implemented yet"
       
       and genPromote(env, (lhsVar, var)) = let
-        val (promLab, NONE) = LR.promote
+        val (promLab, SOME cc) = LR.promote
         val llFunc = LB.fromV promLab
         val paramTys = (LT.argsOf o LT.deref o LB.toTy) llFunc
         
@@ -1153,7 +1153,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         
         (* do call *)
         val SOME llCall = if not (Controls.get BasicControl.cshim)
-                          then LB.call b (llFunc, V.fromList llArgs)
+                          then LB.callAs b cc (llFunc, V.fromList llArgs)
                           else Util.callWithCShim b (env, llFunc, llArgs)
             
         val env = Util.updateMV(env, MV.MV_Alloc, Util.restoreAllocPtr b loc)

@@ -54,7 +54,7 @@ local
     fun asTy bb ty instr = LB.cast bb (Op.equivCast(LB.toTy instr, ty)) (instr, ty)
     
     (* the implementation of this follows directly from the output of the old MLRISC backend. *)
-    fun allocXArray bb (label, NONE) = 
+    fun allocXArray bb (label, SOME cc) = 
         (fn [ n ] => raise ParrayPrim (fn {resTy, vproc, alloc, allocOffset} => let
                 val loc = {vproc=vproc, off=allocOffset}
                 
@@ -65,7 +65,7 @@ local
                 val func = LB.fromV label
                 
                 val res = if not (Controls.get BasicControl.cshim)
-                          then LB.callAs bb LB.stdCC (func, V.fromList args)
+                          then LB.callAs bb cc (func, V.fromList args)
                           else Util.callWithCShim' bb (vproc, func, args)
                 
                 val res = asTy bb resTy (valOf res)
