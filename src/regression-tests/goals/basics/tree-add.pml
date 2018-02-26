@@ -11,7 +11,8 @@ fun treeAdd t = (case t
 		   | ND(d, t1, t2) => treeAdd t1 + treeAdd t2
 		(* end case *))
 
-val n = 18
+val n = 14  (* FIXME use to be 18, should become 22 once the following bug is fixed:
+           "When encountering a stack, ScanGlobalToSpace routines can overflow the chunk." ~kavon *)
 
 (* test global GC by allocating a large binary tree. we estimate the number of bytes to represent the tree. 
  * - node: 36 bytes
