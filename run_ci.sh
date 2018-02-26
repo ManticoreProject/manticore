@@ -82,7 +82,7 @@ done
 
 echo -e "\n\n\t----- testing with MLRISC -----\n\n"
 runTest -mlrisc run-seq.bsh
-runTest -mlrisc run-par.bsh
+runTest -mlrisc run-cml.bsh
 echo -e "\n\n\t----- done -----\n\n"
 
 # Exit with error if any tests failed
