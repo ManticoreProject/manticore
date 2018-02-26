@@ -49,13 +49,13 @@ _GSYM(ASM_DS_Apply):
     // setup standard convention registers
     movq    %r9, %rsp
     movq    %rdi, VPROC_PTR_REG
-    movq    %rsi, TMP_REG1      // code ptr
+    movq    %rsi, TMP_REG0      // code ptr
     movq    %rdx, STD_EP_REG
     movq    %rcx, STD_EXH_REG
     movq    %r8, STD_ARG_REG
     movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
     // call the function
-    jmp     *TMP_REG1
+    jmp     *TMP_REG0
     
 
 // called by RequestService to return from GC
