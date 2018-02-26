@@ -351,9 +351,13 @@ void MinorGC (VProc_t *vp)
         
         Word_t hdr = *nextScan++;
 
+        int id = getID(hdr);
+        if (unlikely(id >= tableMaxID))
+            Die("MinorGC: invalid header ID!");
+
         // All objects jump to their table entry function.
         // See minor-gc-scan.c
-        nextScan = table[getID(hdr)].minorGCscanfunction(nextScan, &nextW, allocSzB, nurseryBase);
+        nextScan = table[id].minorGCscanfunction(nextScan, &nextW, allocSzB, nurseryBase);
 
     }
 

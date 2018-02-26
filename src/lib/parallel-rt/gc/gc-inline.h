@@ -20,7 +20,7 @@
 /*! \for new header structure */
 STATIC_INLINE int getID (Word_t hdr)
 {
-    return ((hdr >> TABLE_TAG_BITS) & 0x7FFF);
+    return (uint16_t)((hdr >> TABLE_TAG_BITS) & 0x7FFF);
 }
 
 /*! \brief is a header tagged as a forward pointer? */

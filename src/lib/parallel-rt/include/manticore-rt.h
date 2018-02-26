@@ -64,6 +64,17 @@ typedef uint8_t Byte_t;
 #define NEWVEC(ty, n)		((ty *)MALLOC((n)*sizeof(ty)))
 #define NEWCLRVEC(ty, n)	((ty *)CALLOC((n), sizeof(ty)))
 
+// branch prediction hints
+
+#ifndef likely
+# define likely(x)		__builtin_expect(!!(x), 1)
+#endif
+
+#ifndef unlikely
+# define unlikely(x)		__builtin_expect(!!(x), 0)
+#endif
+
+
 /* function inlining */
 #if defined(NO_INLINE)
 #  define STATIC_INLINE		static

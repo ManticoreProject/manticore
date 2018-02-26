@@ -13,6 +13,7 @@ typedef struct{
 
 //table array to match the tagbits with the entries
 extern tableentry table[];
+extern const int tableMaxID;   // the highest header id, and thus length of the table.
 
 // pre-defined table entries
 

@@ -338,9 +338,13 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 		
 		Word_t hdr = *nextScan++;	// get object header
 		
+        int id = getID(hdr);
+        if (unlikely(id >= tableMaxID))
+            Die("MajorGC: invalid header ID!");
+        
 		// All objects jump to their table entry function.
 		// See major-gc.scan.c
-		nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
+		nextScan = table[id].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
 			
 		
     }
@@ -514,9 +518,13 @@ static void ScanGlobalToSpace (
             while (scanPtr < scanTop) {
                 Word_t hdr = *scanPtr++;	// get object header
                 
+                int id = getID(hdr);
+                if (unlikely(id >= tableMaxID))
+                    Die("MajorGC, ScanGlobalToSpace: invalid header ID!");
+                
                 // All objects jump to their table entry function.
                 // See major-gc-scan.c
-                scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
+                scanPtr = table[id].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
             }
 
             if (vp->globAllocChunk == scanChunk) {

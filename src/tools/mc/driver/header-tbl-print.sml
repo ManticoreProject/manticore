@@ -216,19 +216,22 @@ struct
                 )
             )
             
+            
+        val tableLen = length+predefined
         in
         (* NOTE the order here must match up with the object's ID.
         That is, RAW objects have an ID = 0, so it must be at position 0 in this table.
         Please see minor/major/global-scan.c for the predefined table entry functions below:
         *)
-        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+predefined),"] = {\n"]); 
+        TextIO.output (MyoutStrm, concat["const int tableMaxID = ", Int.toString tableLen, ";\n"]);
+        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString tableLen,"] = {\n"]); 
         TextIO.output (MyoutStrm, "{minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n");
         TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction},\n");
 		TextIO.output (MyoutStrm, "{minorGCscanSTKCONTpointer,majorGCscanSTKCONTpointer,globalGCscanSTKCONTpointer,ScanGlobalToSpaceSTKCONTfunction},\n");
         TextIO.output (MyoutStrm, "{minorGCscanLINKFRAMEpointer,majorGCscanLINKFRAMEpointer,globalGCscanLINKFRAMEpointer,ScanGlobalToSpaceLINKFRAMEfunction},\n");
         TextIO.output (MyoutStrm, "{minorGCscanBITPATpointer,majorGCscanBITPATpointer,globalGCscanBITPATpointer,ScanGlobalToSpaceBITPATfunction}\n");
         
-        printtable (length+predefined,predefined);
+        printtable (tableLen,predefined);
         
         TextIO.output (MyoutStrm," };\n"); 
         TextIO.output (MyoutStrm,"\n");
