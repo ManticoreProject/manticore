@@ -61,8 +61,9 @@ touch $CI_REPORT
 
 # $1 = config
 # $2 = script, e.g., run-seq.bsh
+# $3 = aout flags
 runTest () {
-    BACKEND="$1" $TIMEOUT 20m ./src/regression-tests/bash-scripts/$2
+    AOUTFLAGS="$3" BACKEND="$1" $TIMEOUT 20m ./src/regression-tests/bash-scripts/$2
     if [ "$?" -ne 0 ]; then
         echo "$1, $2" >> $CI_REPORT
     fi
@@ -75,7 +76,7 @@ for stack in "${stacks[@]}"; do
         config="$llvm $stack"
         echo -e "\n\n\t----- testing configuration: $config -----\n\n"
         runTest "$config" run-seq.bsh
-        runTest "$config" run-cml.bsh
+        runTest "$config" run-cml.bsh "-p 1"
         echo -e "\n\n\t----- done -----\n\n"
     done
 done

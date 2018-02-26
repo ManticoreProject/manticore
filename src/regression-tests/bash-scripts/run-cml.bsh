@@ -9,8 +9,8 @@ DIR=`dirname "$ABSPATH"`/..
 PMLC="sml @SMLcmdname=pmlc @SMLload=$DIR/../../src/tools/mc/pmlc"
 #PMLCFLAGS="-Ccps.enable-ho-inline=true -Cstats.report=true -Ccps.copy-propagation-reflow=true"
 PMLCFLAGS="$BACKEND"
-AOUTFLAGS=""
-AOUTFLAGS=""
+# AOUTFLAGS=""
+# AOUTFLAGS=""
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
@@ -23,6 +23,7 @@ rm -rf $LOG
 
 echo "pmlc is $PMLC" | tee -a $REPORT_FILE
 echo "compilation flags: $PMLCFLAGS" | tee -a $REPORT_FILE
+echo "binary flags: $AOUTFLAGS" | tee -a $REPORT_FILE
 
 ( cd $DIR/goals;
 
