@@ -111,10 +111,10 @@
 #define RAW_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((RAW_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
 //Stack continuation object
-#define STACK_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((STACK_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
+#define STACK_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((STACK_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
 //Linked-frame object
-#define LINKFRAME_HDR(len)	((len << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((LINKFRAME_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
+#define LINKFRAME_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((LINKFRAME_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
 #define BITPAT_HDR(pat, len) ((((Word_t)pat) << (TABLE_LEN_LEN+TABLE_LEN_ID+TABLE_TAG_BITS)) | (((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | (BITPAT_TAG_BITS << TABLE_TAG_BITS) | TABLE_TAG)
 

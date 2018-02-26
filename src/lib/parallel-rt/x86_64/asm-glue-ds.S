@@ -10,6 +10,7 @@
 #include "asm-defs.h"
 #include "asm-offsets.h"
 #include "registers.h"
+#include "header-bits.h"
 
 /* registers that are unused in manticore's calling convention. */
 #define TMP_REG0            %rbx     // NOTE: callee-saved in C-convention
@@ -220,10 +221,6 @@ prevTestJoin:
     
 
 
-// note: this has been computed manually for the object below (len = 3 words)
-// hdr = (len << 16 | 2 << 1 | 1)
-#define STACK_HDR    196613
-
 /*
     the layout of stack continuation is as follows
     ======================
@@ -256,7 +253,7 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
     leaq    _GSYM(ASM_LongJmp)(%rip), TMP_REG0    // load the resume address
     
     // ** initialize allocation **
-    movq    $STACK_HDR, -8(ALLOC_PTR_REG)       // init header
+    movq    $STACK_HDR(3), -8(ALLOC_PTR_REG)       // init header
     movq    TMP_REG0, (ALLOC_PTR_REG)           // init code ptr
     
 #ifdef SEGSTACK
@@ -268,13 +265,13 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
     // ** done with initialization **
     
     // update pointers
-    movq    ALLOC_PTR_REG, TMP_REG3             // save ptr to the cont object
+    movq    ALLOC_PTR_REG, TMP_REG0             // save ptr to the cont object
     addq    $32, ALLOC_PTR_REG                  // bump alloc ptr, (numItems * 8) + 8
     
     /***** invoke the function we were given *****/
     movq    (STD_ARG_REG), STD_EP_REG       // load environment pointer
     movq    8(STD_ARG_REG), TMP_REG1        // load code pointer
-    movq    TMP_REG3, STD_ARG_REG           // pass the cont object
+    movq    TMP_REG0, STD_ARG_REG           // pass the cont object
     jmp     *TMP_REG1                       // do the call, leaving stack pointer as-is
     
     
