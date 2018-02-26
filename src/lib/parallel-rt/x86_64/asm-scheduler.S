@@ -26,7 +26,7 @@
  *		+----------------+
  */
 	.text
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_Resume)
 _GSYM(ASM_Resume):
 	movq	8(STD_EP_REG),%r9		/* fetch code address */

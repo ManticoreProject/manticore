@@ -31,7 +31,7 @@
 
     .text  
     
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_DS_StartStack)
 _GSYM(ASM_DS_StartStack):
     // this is a special manticore routine used to start a NewStack.
@@ -44,7 +44,7 @@ _GSYM(ASM_DS_StartStack):
 
 // used by RequestService to call a function on the given stack,
 // and additionally pop any data RequestService placed on the stack.
-    .p2align 3
+    .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_Apply)
 _GSYM(ASM_DS_Apply):
     // setup standard convention registers
@@ -60,7 +60,7 @@ _GSYM(ASM_DS_Apply):
     
 
 // called by RequestService to return from GC
-    .p2align 3
+    .p2align 4, 0xCC
     .globl	_GSYM(ASM_Resume_Stack)
 _GSYM(ASM_Resume_Stack):
     // setup standard convention registers
@@ -72,7 +72,7 @@ _GSYM(ASM_Resume_Stack):
     movq    ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
     ret
     
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_LongJmp)
 _GSYM(ASM_LongJmp):
     // setup args
@@ -80,7 +80,7 @@ _GSYM(ASM_LongJmp):
     movq    $0, STD_ARG_REG         // set 1st arg reg to 0 indicating an escape throw
     // **** fall-through to EscapeThrow ****
     
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_DS_EscapeThrow)
 _GSYM(ASM_DS_EscapeThrow):
     // set the stack ptr.
@@ -112,7 +112,7 @@ _GSYM(ASM_DS_EscapeThrow):
 */
 
 // This version is for segmented stacks a la Bruggeman et al.
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(__manti_growstack)
 _GSYM(__manti_growstack):
     // NOTE we actually start off with RSP 16-byte aligned!
@@ -159,7 +159,7 @@ _GSYM(__manti_growstack_noimplicitcopy):
 
 
 // This version is for segmented stacks a la Bruggeman et al.
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_DS_SegUnderflow)
 _GSYM(ASM_DS_SegUnderflow):    
     // grab current segment
@@ -234,7 +234,7 @@ prevTestJoin:
     ======================
         high addresses
 */
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_Callec)
 _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
 
@@ -276,7 +276,7 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
     
     
     
-    .p2align 3
+    .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_Return)
 _GSYM(ASM_DS_Return):
     // the Manticore main function returns here.
@@ -290,14 +290,14 @@ _GSYM(ASM_DS_Return):
     jmp     asm_get_service
     
 
-    .p2align 3
+    .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_UncaughtExn)
 _GSYM(ASM_DS_UncaughtExn):
     movq    $REQ_UncaughtExn, TMP_REG1
     jmp     asm_get_service
     
 
-    .p2align 3
+    .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_VProcSleep)
 _GSYM(ASM_DS_VProcSleep):
     movq    $REQ_Sleep, TMP_REG1
@@ -309,7 +309,7 @@ _GSYM(ASM_DS_VProcSleep):
    not seen as ptrs. Do that also in the CPS version.
    those fields are not checked for roots anyways though. */
    
-    .p2align 3
+    .p2align 4, 0xCC
     .globl	_GSYM(ASM_InvokeGC_DS_LLVM)
 _GSYM(ASM_InvokeGC_DS_LLVM):
     movq    $REQ_GC, TMP_REG1

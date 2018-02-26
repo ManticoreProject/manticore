@@ -69,7 +69,7 @@
  *	    Value_t ek)		-- function exception continuation; in %r9
  */
 	.text
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_Apply)
 _GSYM(ASM_Apply):
 	/* incoming RSP is 16-byte aligned according to SysV ABI */
@@ -112,21 +112,21 @@ _GSYM(ASM_Apply):
 
 
 /* code address for uncaught exception continuation */
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_UncaughtExn)
 _GSYM(ASM_UncaughtExn):
 	movq	$REQ_UncaughtExn, TMP_REG1
 	jmp	switch_to_c
 
 /* code address for return continuation */
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_Return)
 _GSYM(ASM_Return):
 	movq	$REQ_Return, TMP_REG1
 	jmp	switch_to_c
 
 /* code address for putting the host vproc to sleep */
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_VProcSleep)
 _GSYM(ASM_VProcSleep):
 	movq	$REQ_Sleep, TMP_REG1
@@ -136,7 +136,7 @@ _GSYM(ASM_VProcSleep):
 /* r14 points at the current element of the spill area
  *  r15 points at the last element of the spill area
  */
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_InvalidateSpillArea)
 _GSYM(ASM_InvalidateSpillArea):
 invalidate_spill_area:
@@ -163,7 +163,7 @@ invalidate_spill_area:
 //     rbp - (unchanged from INPUT)
 //     rsp - pointer into the tuple object, ready to push RBP to the frame.
 //     
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_LinkedStack_PrologueGC)
 _GSYM(ASM_LinkedStack_PrologueGC):
 //    We allocate a stack frame with the following layout:
@@ -191,7 +191,7 @@ _GSYM(ASM_LinkedStack_PrologueGC):
 	jmp		_GSYM(ASM_LinkedStack_InvokeGC)
 	
 	
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_LinkedStack_PrologueGC_Ret)
 _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 // INPUT:
@@ -232,7 +232,7 @@ _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 //             ^
 //          ptr to frame
 
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_InvokeGC)
 .globl	_GSYM(ASM_LinkedStack_InvokeGC)
 _GSYM(ASM_InvokeGC):
@@ -243,7 +243,7 @@ _GSYM(ASM_LinkedStack_InvokeGC): // linkstack also uses this version!
     
     
     
-.p2align 3
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_InvokeGC_LLVM)
 _GSYM(ASM_InvokeGC_LLVM):
 // this version is for CPS-style LLVM. we need to save the
@@ -293,14 +293,14 @@ continue_to_c:
 	ret
 
 
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_Error)
 _GSYM(ASM_Error):
 	// if control-flow ends up here for linked-stacks, an unexpected
 	// return occurred. See apply.c for possibilities.
 	ud2
 	
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_ExecuteStack)
 _GSYM(ASM_ExecuteStack):
 	// this label is used as the codeP in apply.c when we want to resume
@@ -313,7 +313,7 @@ _GSYM(ASM_ExecuteStack):
  *
  * Fill in the time stamp using a system-dependent call.
  */
-	.p2align 3
+	.p2align 4, 0xCC
 	.globl	_GSYM(ASM_GetTimeStamp)
 _GSYM(ASM_GetTimeStamp):
 	pushq	%rbp
