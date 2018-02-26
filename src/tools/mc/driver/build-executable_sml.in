@@ -290,16 +290,9 @@ Pass Arguments:  -domtree
      *  flags and options for llc
      **********************)
      
-     (* no reason to not use O3 with llc. The same passes are run for O1 through O3 and
-        the same code is output.  
-        
-        Use -mcpu=native to get code optimized for the specific CPU
-        instead of generic x86-64 instruction set. Seems to only hurt/make performance less stable.
-        would need to experiment more 
-        
-        *)
      val llcLevels = [
-         (0, ["-O3"])
+         (0, ["-O1"]),
+         (1, ["-O3 -mcpu=native"])
      ]
     
     (* llc passes that need to be performed before/after any passes *)
