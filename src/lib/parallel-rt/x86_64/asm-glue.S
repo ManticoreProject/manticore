@@ -197,7 +197,7 @@ _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 // INPUT:
 // r11 - vproc
 // rsi - alloc ptr
-// rsp - pointing to root ptr slot in the frame we allocated above.
+// rsp - pointing to the beginning of the contents portion of the frame above.
 // rbp - the link pointer (_A_) from the frame we allocated above.
 //
 // OUTPUT:
@@ -205,8 +205,9 @@ _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 // rsi - alloc ptr
 // rbx - root pointer
 // rbp - link pointer
-	popq	%rbx
-	retq
+	movq   16(%rsp), TMP_REG1
+	movq   8(%rsp), %rbx
+	jmp    *TMP_REG1
 
 
 // Information for: ASM_LinkedStack_InvokeGC
@@ -268,7 +269,7 @@ continue_to_c:
 	pushq	%rbp					// finish the frame
 	movq	%rsp, STD_CONT_REG		// setup the return cont
 	movq	FFI_STK(VPROC_PTR_REG), %rsp		// switch to the RTS stack
-	popq	%rax			// undo alignment adjustment
+	popq	%r15			// undo alignment adjustment
 #endif
 
       /* save Manticore state */
