@@ -16,6 +16,12 @@ structure BasicControl :  sig
 
   (* base name for pass output files; set based on compilation unit. *)
     val keepPassBaseName : string option Controls.control
+    
+  (* custom arguments to LLVM's opt *)
+    val customOPT : string list Controls.control
+    
+  (* custom arguments to LLVM's llc *)
+    val customLLC : string list Controls.control
 
   (* verbosity of diagnostics. *)
     val verbose : int Controls.control
@@ -143,6 +149,22 @@ structure BasicControl :  sig
 	    obscurity = debugObscurity + 1,
 	    help = "",
 	    default = NONE
+	  }
+      
+    val customOPT : string list Controls.control = Controls.genControl {
+	    name = "customOPT",
+	    pri = [0, 0],
+	    obscurity = 0,
+	    help = "comma-separated argument(s) to pass to LLVM's `opt` instead of pre-defined ones",
+	    default = []
+	  }
+      
+    val customLLC : string list Controls.control = Controls.genControl {
+	    name = "customLLC",
+	    pri = [0, 0],
+	    obscurity = 0,
+	    help = "comma-separated argument(s) to pass to LLVM's `llc` instead of pre-defined ones",
+	    default = []
 	  }
 
     val verbose : int Controls.control = Controls.genControl {
@@ -396,7 +418,17 @@ structure BasicControl :  sig
           ControlRegistry.register topRegistry {
               ctl = Controls.stringControl ControlUtil.Cvt.int maxLeafSize,
               envName = NONE
-            })
+          };
+          ControlRegistry.register topRegistry {
+              ctl = Controls.stringControl ControlUtil.Cvt.stringList customOPT,
+              envName = NONE
+          };
+          ControlRegistry.register topRegistry {
+              ctl = Controls.stringControl ControlUtil.Cvt.stringList customLLC,
+              envName = NONE
+          };
+            ()
+            )
 
 
     local

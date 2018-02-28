@@ -278,7 +278,12 @@ Pass Arguments:  -domtree
     end
     
     fun doOpt verbose inputFile outputFile optPasses = let
-        val cmd = cat ([pathToBin "opt"] @ (o_wrapPasses verbose optPasses) @ [inputFile, "-o", outputFile])
+        val options = (case Controls.get BasicControl.customOPT
+                        of [] => optPasses
+                         | custom => custom
+                        (* end case *))
+            
+        val cmd = cat ([pathToBin "opt"] @ (o_wrapPasses verbose options) @ [inputFile, "-o", outputFile])
         val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
     in
         OS.Process.system cmd
@@ -309,7 +314,12 @@ Pass Arguments:  -domtree
     end
     
     fun doLLC verbose inputFile outputFile optPasses = let
-        val cmd = cat ([pathToBin "llc"] @ (l_wrapPasses verbose optPasses) @ [inputFile, "-o", outputFile])
+        val options = (case Controls.get BasicControl.customLLC
+                        of [] => optPasses
+                         | custom => custom
+                        (* end case *))
+                        
+        val cmd = cat ([pathToBin "llc"] @ (l_wrapPasses verbose options) @ [inputFile, "-o", outputFile])
         val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
     in
         OS.Process.system cmd
@@ -330,7 +340,9 @@ Pass Arguments:  -domtree
         val optRun = doOpt verbose asmFile commonName
         val optOutput = let
             val allPasses = optLevels
-            fun runIt passes = (optRun passes ; commonName)
+            fun runIt passes = (if OS.Process.isSuccess (optRun passes)
+                                then commonName
+                                else raise Fail "failure in running LLVM opt!")
             
             val passes = List.find (fn (lvl, _) => (Controls.get BasicControl.llopt) = lvl) allPasses
         in
@@ -345,7 +357,9 @@ Pass Arguments:  -domtree
         val llcRun = doLLC verbose optOutput llcOutput
         val result = let
             val allPasses = llcLevels
-            fun runIt passes = llcRun passes
+            fun runIt passes = (if OS.Process.isSuccess (llcRun passes)
+                                then ()
+                                else raise Fail "failure in running LLVM llc!")
             
             val passes = List.find (fn (lvl, _) => (Controls.get BasicControl.llopt) = lvl) allPasses
         in
