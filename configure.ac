@@ -574,6 +574,11 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-linkstack, [linkstack])
     MK_BUILD_DIR(mcrt-linkstack-stats, [stats linkstack])
     
+    dnl debug builds of stack-based strategies
+    MK_BUILD_DIR(mcrt-direct-debug, [debug direct])
+    MK_BUILD_DIR(mcrt-segstack-debug, [debug direct segstack])
+    MK_BUILD_DIR(mcrt-linkstack-debug, [debug linkstack])
+    
 if test $OS != darwin; then
     MK_BUILD_DIR(mcrt-perf, [perf])
 fi

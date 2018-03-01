@@ -81,30 +81,42 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
         (* remove the .s *)
         val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 2))
   
-        (* compile the non-debug GC header table *)
-        val filename = asmPrefix ^ "_hdr"
-        val filenamec = concat[filename,".c"]
-        val filenameo = concat[filename,".o"]  
-        val gccfilename = cat [ccCmd,cFlags,"-O2 @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o",filenameo,"-std=c99 -c",filenamec]
-        val _ = PrintTbl.print filenamec
-        val _ = systemWithTiming (gccfilename, false)
+        fun compileTbl (emitter, optFlags, filename) = let
+            val filenamec = concat[filename,".c"]
+            val filenameo = concat[filename,".o"]  
+            
+            (* emit code *)
+            val _ = emitter filenamec
+            
+            val cmd = cat [ccCmd,cFlags,optFlags,
+            " @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/",
+            " -I @MANTICORE_SRCDIR@/include -o ",filenameo," -std=c99 -c ",filenamec]
+            
+            val _ = if OS.Process.isSuccess (systemWithTiming (cmd, false))
+                         then ()
+                         else raise Fail "failed to build GC header table code"
+            
+        in
+            (filenameo, [filenamec, filenameo])
+        end
   
-    (* collect all nessecary compiled GC header tables *)
-    fun tableFiles () =
-              if (debug) 
-              then let
-                val filenamedebug = filename ^ "_debug"
-                val filenamedebugc = concat[filenamedebug,".c"]
-                val filenamedebugo = concat[filenamedebug,".o"]
-                val gccfilenamedebug = cat [ccCmd,cFlags,"-O0 @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o",filenamedebugo,"-std=c99 -c",filenamedebugc]
-                val _ = PrintTblDbg.print filenamedebugc
-                val _ = systemWithTiming (gccfilenamedebug, false)
-              in
-                      (concat[filenameo," ",filenamedebugo],
-                       [filenamec, filenameo, filenamedebugc, filenamedebugo])
-                  end
-              else 
-                  (filenameo, [filenamec, filenameo])
+    (* compile & collect all nessecary compiled GC header tables *)
+    fun tableFiles () = let
+        val basename = asmPrefix ^ "_hdr"
+        val (result, temps) = compileTbl (PrintTbl.print, "-O2", basename)
+        
+        fun mkDebug () = let
+                val (dbg_result, dbg_temps) = 
+                    compileTbl (PrintTblDbg.print, "-g -O0" , basename ^ "_debug")
+            in
+                (concat [result, " ", dbg_result], temps @ dbg_temps)
+            end
+        
+        in
+            if debug
+            then mkDebug()
+            else (result, temps)
+        end
                   
         val (files, temps) = tableFiles ()
 
@@ -116,7 +128,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
           | (_, true, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
           | (_, _, _, true, false) => (cFlags, "mcrt-perf")
           
-          | (gcStats, _, _, _, true) => let (* handle various kinds of stacks *)
+          | (gcStats, _, debug, _, true) => let (* handle various kinds of stacks *)
                 val name = 
                     (case (segstack, linkstack)
                         of (false, false) => "mcrt-direct"
@@ -130,9 +142,11 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
                                (* end case *))
                           (* end case *))
               in
-                if gcStats
+                if debug
+                    then ("-g "^cFlags^" -O0", name ^ "-debug")
+                else if gcStats
                     then (cFlags, name ^ "-stats")
-                    else (cFlags, name)
+                else (cFlags, name)
               end
         (* end case *))
     in

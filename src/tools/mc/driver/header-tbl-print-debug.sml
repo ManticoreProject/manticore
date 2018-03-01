@@ -1,4 +1,4 @@
-(* 
+(* header-tbl-print-debug.sml
  * 
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -9,10 +9,12 @@
 structure PrintTableDebug = 
 struct
 
-    (* NOTE: this code is bit-rotted. May want to fix it based on the non-debug version. *)
+    (* NOTE: this code is still bitrotted! be warned. *)
 
-     (* number of predefined table entries, important for the table length!! *)
-    val predefined = 4
+    (* NOTE: very important for table length!! This number
+       represents the number of non-mixed header kinds that we have
+       manually predefined below. *)
+    val predefined = HeaderTableStruct.predefined
     
     (* Headerfiles *)
     fun header (MyoutStrm) = (  

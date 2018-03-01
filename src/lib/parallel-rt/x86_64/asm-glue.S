@@ -142,8 +142,8 @@ _GSYM(ASM_InvalidateSpillArea):
 invalidate_spill_area:
 	cmpq	%r14,%r15
 	je	continue_to_c
-	movq	$0xdeadb,(%r14)
 	subq	$8,%r14
+	movq	$0xdeadb,(%r14)
 	jmp	invalidate_spill_area
 #endif
 	
@@ -257,13 +257,13 @@ switch_to_c:
 // consistency check for the garbage collector: overwrite all the entries in the spill area,
 // all none of these entries should be live at this point.
 //
-	movq	%rbp,%r14
-	subq	$56,%r14
-	movq	%rbp,%r15
-	subq	$2104,%r15
+	movq	%rsp,%r14
+	movq	%rsp,%r15
+	addq	$FRAME_SZB,%r14
 	jmp 	invalidate_spill_area
-continue_to_c:		
 #endif
+
+continue_to_c:	
 
 #ifdef LINKSTACK
 	pushq	%rbp					// finish the frame
