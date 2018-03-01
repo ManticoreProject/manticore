@@ -259,7 +259,8 @@ switch_to_c:
 //
 	movq	%rsp,%r14
 	movq	%rsp,%r15
-	addq	$FRAME_SZB,%r14
+	addq	$FRAME_SZB, %r14
+	subq	$CALLEE_END, %r14
 	jmp 	invalidate_spill_area
 #endif
 
