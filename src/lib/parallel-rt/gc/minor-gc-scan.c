@@ -88,7 +88,6 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
             state = LS_MarkSeen;
         } else {
             // overwrite the watermark
-            assert(*watermark == 0 && "should only overwrite zero watermarks!");
             *watermark = promoteGen;
         }
         

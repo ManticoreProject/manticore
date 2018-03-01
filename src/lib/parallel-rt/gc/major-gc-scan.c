@@ -95,7 +95,6 @@ Word_t * majorGCscanLINKFRAMEpointer (Word_t* nextScan, VProc_t *vp, Addr_t oldS
             state = LS_MarkSeen;
         } else {
             // overwrite the watermark
-            assert(*watermark == 0 && "should only overwrite zero watermarks!");
             *watermark = promoteGen;
         }
         
@@ -275,7 +274,6 @@ Word_t * ScanGlobalToSpaceLINKFRAMEfunction (Word_t* nextScan, VProc_t *vp, Addr
             state = LS_MarkSeen;
         } else {
             // overwrite the watermark
-            assert(*watermark == 0 && "should only overwrite zero watermarks!");
             *watermark = promoteGen;
         }
         

@@ -116,7 +116,6 @@ void ScanStackMinor (
             state = LS_MarkSeen;
         } else {
             // overwrite the watermark
-            assert(*watermark == 0 && "should only overwrite zero watermarks!");
             *watermark = promoteGen;
         }
         
