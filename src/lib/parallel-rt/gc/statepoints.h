@@ -67,6 +67,10 @@ typedef struct {
 
 /**** Public Functions ****/
 
+#ifdef __cplusplus
+  extern "C" {
+#endif
+
 /**
  * An amortized O(1) return address lookup function for garbage collectors.
  *
@@ -113,6 +117,10 @@ void print_table(FILE *stream, statepoint_table_t* table, bool skip_empty);
 
 // the function print_table uses to print an individual frame, useful for debugging.
 void print_frame(FILE *stream, frame_info_t* frame);
+
+#ifdef __cplusplus
+  } /* end of extern C */
+#endif
 
 #endif /* __LLVM_STATEPOINT_UTILS_API__ */
 #ifndef __LLVM_STATEPOINT_UTILS_HASH_TABLE__
