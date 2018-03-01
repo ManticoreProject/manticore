@@ -269,24 +269,24 @@ statepoint_table_t* generate_table(void* map, float load_factor) {
  * The implementation is one round of the xorshift64* algorithm.
  * Code Source: Wikipedia
  */
-uint64_t hashFn(uint64_t x) {
+uint64_t inline hashFn(uint64_t x) {
     x ^= x >> 12; // a
 	x ^= x << 25; // b
 	x ^= x >> 27; // c
 	return x * UINT64_C(2685821657736338717);
 }
 
-uint64_t computeBucketIndex(statepoint_table_t* table, uint64_t key) {
+uint64_t inline computeBucketIndex(statepoint_table_t* table, uint64_t key) {
     // Using modulo may introduce a little bias in the table. 
     // If you care, use the unbiased version that's floating around the internet.
     return hashFn(key) % table->size;
 }
 
-size_t size_of_frame(uint16_t numSlots) {
+size_t inline size_of_frame(uint16_t numSlots) {
     return sizeof(frame_info_t) + numSlots * sizeof(pointer_slot_t);
 }
 
-size_t frame_size(frame_info_t* frame) {
+size_t inline frame_size(frame_info_t* frame) {
     return size_of_frame(frame->numSlots);
 }
 
