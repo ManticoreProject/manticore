@@ -130,8 +130,8 @@ struct
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
                     then (
                         TextIO.output (MyoutStrm,concat["    v = *(Value_t *)(scanP+",Int.toString pos,");\n"]);
-                        TextIO.output (MyoutStrm,"   if (inVPHeap(heapBase, ValueToAddr(v))) {\n");
-                        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString pos,") = (Word_t)ForwardObjGlobal(vp, v);\n"]);
+                        TextIO.output (MyoutStrm,"   if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {\n");
+                        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString pos,") = (Word_t)ForwardObjMajor(vp, v);\n"]);
                         TextIO.output (MyoutStrm,"  }\n");
                         
                         lp(strlen-1,bites,pos+1)
