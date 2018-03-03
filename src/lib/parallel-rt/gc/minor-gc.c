@@ -39,6 +39,7 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
         return PtrToValue(GetForwardPtr(hdr));
     } else {
         int len = GetLength(hdr);
+        assert(len > 0);
         Word_t *newObj = *nextW;
         newObj[-1] = hdr;
         for (int i = 0;  i < len;  i++) {

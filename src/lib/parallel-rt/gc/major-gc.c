@@ -42,7 +42,7 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 		/* forward object to global heap. */
 		Word_t *nextW = (Word_t *)vp->globNextW;
 		int len = GetLength(hdr);
-		if (nextW+len >= (Word_t *)(vp->globLimit)) {
+		if (nextW+len+1 >= (Word_t *)(vp->globLimit)) {
 			AllocToSpaceChunk (vp);
 			nextW = (Word_t *)vp->globNextW;
 		}
