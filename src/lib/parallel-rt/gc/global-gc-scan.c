@@ -112,8 +112,8 @@ Word_t * globalGCscanLINKFRAMEpointer (Word_t* ptr, VProc_t *vp) {
             break;
         }
         
-        // TODO the frame is somewhere else. perhaps in the vproc's local heap?
-        curFrame = (uint64_t*)linkPtr;
+        // the frame is somewhere else... could it be in the vproc's local heap?
+        Die("globalGCscanLINKFRAMEpointer: link pointer is not in global heap?");
         
     } // end while
     
