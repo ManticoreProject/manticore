@@ -500,6 +500,8 @@ Value_t AllocBigIntArray (VProc_t *vp, int nElems)
     else */
 
     /* FIXME: this array will never get collected */
+    
+    Die("AllocBigIntArray: Does not allocate in the heap.");
 
     /* TODO: extend the GC to support large arrays of raw values */
     return (valloc (nElems * sizeof(int)));
@@ -528,6 +530,8 @@ Value_t AllocBigLongArray (VProc_t *vp, int nElems)
     else  */
 
     /* FIXME: this array will never get collected */
+    
+    Die("AllocBigLongArray: Does not allocate in the heap.");
 
     /* TODO: extend the GC to support large arrays of raw values */
     return (valloc (nElems * sizeof(int)));
@@ -554,6 +558,9 @@ Value_t AllocBigFloatArray (VProc_t *vp, int nElems)
     return GlobalAllocRawArray (vp, nElems, sizeof(float));
     else
   */
+  
+    Die("AllocBigFloatArray: Does not allocate in the heap.");
+    
     /* FIXME: this array will never get collected */
     /* TODO: extend the GC to support large arrays of raw values */
     return (valloc (nElems * sizeof(float)));
@@ -580,6 +587,8 @@ Value_t AllocBigDoubleArray (VProc_t *vp, int nElems)
     if (nElems * sizeof(double) + WORD_SZB < HEAP_CHUNK_SZB)
     GlobalAllocRawArray (vp, nElems, sizeof(double));
     else  */
+
+    Die("AllocBigDoubleArray: Does not allocate in the heap.");
 
     /* FIXME: this array will never get collected */
 
