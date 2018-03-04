@@ -64,7 +64,7 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 }
 
 static void ScanGlobalToSpace (
-	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
+	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr, Addr_t oldSzB);
 #ifndef NDEBUG
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
 void CheckToSpacesAfterGlobalGC (VProc_t *vp);
@@ -349,7 +349,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     }
 
   /* scan to-space objects */
-    ScanGlobalToSpace (vp, heapBase, scanChunk, globScan);
+    ScanGlobalToSpace (vp, heapBase, scanChunk, globScan, oldSzB);
 
   /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop;
@@ -440,7 +440,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	root = ForwardObjMajor (vp, root);
 
       /* promote any reachable values */
-	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr);
+	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr, 0);
 
 #ifndef NO_GC_STATS
 	uint64_t nBytesCopied = 0;
@@ -505,9 +505,12 @@ static void ScanGlobalToSpace (
     VProc_t *vp,
     Addr_t heapBase,
     MemChunk_t *scanChunk,
-    Word_t *scanPtr)
+    Word_t *scanPtr,
+    Addr_t oldSzB)
 {
     Word_t	*scanTop = UsedTopOfChunk (vp, scanChunk);
+    
+    const bool isPromotion = (oldSzB == 0);
 
     do {
     
@@ -523,7 +526,13 @@ static void ScanGlobalToSpace (
                 
                 // All objects jump to their table entry function.
                 // See major-gc-scan.c
-                scanPtr = table[id].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
+                if (isPromotion) {
+                    // then we're scanning the to-space in the context of a promotion.
+                    scanPtr = table[id].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
+                } else {
+                    // otherwise, we're scanning in the context of a Major GC.
+                    scanPtr = table[id].majorGCscanfunction(scanPtr, vp, oldSzB, heapBase);
+                }
             }
 
             if (vp->globAllocChunk == scanChunk) {
