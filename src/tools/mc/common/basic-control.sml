@@ -44,6 +44,9 @@ structure BasicControl :  sig
   (* switch to a seperate stack for all C calls. *)
     val cshim : bool Controls.control
     
+  (* generate code for the native CPU. *)
+    val native : bool Controls.control
+
   (* no return-address stack; emit pop/push jmps instead *)
     val noras : bool Controls.control
     
@@ -244,6 +247,15 @@ structure BasicControl :  sig
         default = false
       }
       
+  (* native instruction selection *)
+    val native : bool Controls.control = Controls.genControl {
+        name = "native",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "use native CPU instructions instead of generic x86_64",
+        default = false
+      }
+
   (* no return-address stack *)
     val noras : bool Controls.control = Controls.genControl {
         name = "noras",
@@ -377,6 +389,10 @@ structure BasicControl :  sig
         };
       ControlRegistry.register topRegistry {
           ctl = Controls.stringControl ControlUtil.Cvt.bool cshim,
+          envName = NONE
+        };
+      ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool native,
           envName = NONE
         };
       ControlRegistry.register topRegistry {

@@ -263,6 +263,7 @@ functor MainFn (
 	  \    -perf            build an executable with hw perf counters enabled\n\
 	  \    -mlrisc          use the MLRISC backend instead of LLVM\n\
 	  \    -O<level>        set optimization level when using LLVM (0 to 5)\n\
+	  \    -native          use native CPU instructions instead of generic x86_64\n\
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -contigstack     use contiguous stacks\n\
 	  \    -linkstack       use mutable, linked-frame stacks\n\
@@ -381,6 +382,7 @@ functor MainFn (
 		| "-perf" => set BasicControl.perf
 		| "-noparray" => set BasicControl.noparray
 		| "-keepTemps" => set BasicControl.keepTemps
+		| "-native" => set BasicControl.native
 		| _ => badopt ()
 	      (* end case *))
 	  end
