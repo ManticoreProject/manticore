@@ -20,10 +20,10 @@ signature BUILD_EXECUTABLE = sig
 end
 
 structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
-  
+
     structure PrintTbl = PrintTable
 	structure PrintTblDbg = PrintTableDebug
-    
+
     val cat = String.concatWith " "
 
     fun ++ ("", l) = l
@@ -35,8 +35,8 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
 
     val ccCmd =  "@CC@"
 
-    val cFlags = cat ("@CFLAGS@" 
-                    ++ "@CFLAG_M64@" 
+    val cFlags = cat ("@CFLAGS@"
+                    ++ "@CFLAG_M64@"
                     ++ [])
 
     fun ldFlags libName = let
@@ -77,47 +77,47 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
         val lazyunderflow = Controls.get BasicControl.lazyunderflow
         val nocopyoverflow = Controls.get BasicControl.nocopyoverflow
         val linkstack = Controls.get BasicControl.linkstack
-        
+
         (* remove the .s *)
         val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 2))
-  
+
         fun compileTbl (emitter, optFlags, filename) = let
             val filenamec = concat[filename,".c"]
-            val filenameo = concat[filename,".o"]  
-            
+            val filenameo = concat[filename,".o"]
+
             (* emit code *)
             val _ = emitter filenamec
-            
+
             val cmd = cat [ccCmd,cFlags,optFlags,
             " @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/",
             " -I @MANTICORE_SRCDIR@/include -o ",filenameo," -std=c99 -c ",filenamec]
-            
+
             val _ = if OS.Process.isSuccess (systemWithTiming (cmd, false))
                          then ()
                          else raise Fail "failed to build GC header table code"
-            
+
         in
             (filenameo, [filenamec, filenameo])
         end
-  
+
     (* compile & collect all nessecary compiled GC header tables *)
     fun tableFiles () = let
         val basename = asmPrefix ^ "_hdr"
         val (result, temps) = compileTbl (PrintTbl.print, "-O2", basename)
-        
+
         fun mkDebug () = let
-                val (dbg_result, dbg_temps) = 
+                val (dbg_result, dbg_temps) =
                     compileTbl (PrintTblDbg.print, "-g -O0" , basename ^ "_debug")
             in
                 (concat [result, " ", dbg_result], temps @ dbg_temps)
             end
-        
+
         in
             if debug
             then mkDebug()
             else (result, temps)
         end
-                  
+
         val (files, temps) = tableFiles ()
 
         val (cFlags, libName) = (case (gcStats, logging, debug, perf, direct)
@@ -127,9 +127,9 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
           | (_, false, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-debug")
           | (_, true, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
           | (_, _, _, true, false) => (cFlags, "mcrt-perf")
-          
+
           | (gcStats, _, debug, _, true) => let (* handle various kinds of stacks *)
-                val name = 
+                val name =
                     (case (segstack, linkstack)
                         of (false, false) => "mcrt-direct"
                          | (false, true) => "mcrt-linkstack"
@@ -161,7 +161,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
                 val (cmdline, temps) = cmd asmFile
                 val cmd' = cat[cmdline, " -o ", outFile]
                 val result = systemWithTiming (cmd', verbose);
-                val keepTemps = Controls.get BasicControl.debug 
+                val keepTemps = Controls.get BasicControl.debug
                                 orelse Controls.get BasicControl.keepTemps
 	      in
                   if not keepTemps
@@ -171,17 +171,17 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
 	      end
 
   end
-  
+
 structure BuildExecutableLLVM :> BUILD_EXECUTABLE = struct
-    
+
     (* THE FULL SET OF 03 done by opt. you can get this info using:  -O3 -debug-pass=Arguments
     Pass Arguments:  -tti -targetlibinfo -tbaa -scoped-noalias -assumption-cache-tracker -verify -simplifycfg -domtree -sroa -early-cse -lower-expect
 Pass Arguments:  -targetlibinfo -tti -tbaa -scoped-noalias -assumption-cache-tracker -forceattrs -inferattrs -ipsccp -globalopt -domtree -mem2reg -deadargelim -basicaa -aa -domtree -instcombine -simplifycfg -basiccg -globals-aa -prune-eh -inline -functionattrs -argpromotion -domtree -sroa -early-cse -lazy-value-info -jump-threading -correlated-propagation -simplifycfg -basicaa -aa -domtree -instcombine -tailcallelim -simplifycfg -reassociate -domtree -loops -loop-simplify -lcssa -loop-rotate -basicaa -aa -licm -loop-unswitch -simplifycfg -basicaa -aa -domtree -instcombine -loops -scalar-evolution -loop-simplify -lcssa -indvars -aa -loop-idiom -loop-deletion -loop-unroll -basicaa -aa -mldst-motion -aa -memdep -gvn -basicaa -aa -memdep -memcpyopt -sccp -domtree -demanded-bits -bdce -basicaa -aa -instcombine -lazy-value-info -jump-threading -correlated-propagation -domtree -basicaa -aa -memdep -dse -loops -loop-simplify -lcssa -aa -licm -adce -simplifycfg -basicaa -aa -domtree -instcombine -barrier -basiccg -rpo-functionattrs -elim-avail-extern -basiccg -globals-aa -float2int -domtree -loops -loop-simplify -lcssa -loop-rotate -branch-prob -block-freq -scalar-evolution -basicaa -aa -loop-accesses -demanded-bits -loop-vectorize -instcombine -scalar-evolution -aa -slp-vectorizer -simplifycfg -basicaa -aa -domtree -instcombine -loops -loop-simplify -lcssa -scalar-evolution -loop-unroll -basicaa -aa -instcombine -loop-simplify -lcssa -aa -licm -scalar-evolution -alignment-from-assumptions -strip-dead-prototypes -globaldce -constmerge -verify
 Pass Arguments:  -domtree
 
     *)
-    
-    
+
+
     (* LLVM does not make the stackmap section global in the output asm, so as a simple
      * workaround, we are just going to find/replace it
      *)
@@ -192,7 +192,7 @@ Pass Arguments:  -domtree
         val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
 	    val stat = OS.Process.system cmd
 	in () end
-    
+
     (* when disabling the use of the return-address stack, we run a script that
      * appropriately replaces call/ret instructions with push/pop-jmp instead.
      *)
@@ -204,29 +204,29 @@ Pass Arguments:  -domtree
         val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
 	    val stat = OS.Process.system cmd
 	in newFile end
-    
-    
+
+
     (* TOOLS *)
     val cat = String.concatWith " "
-    
+
     fun isDirect() = Controls.get BasicControl.direct
     fun noRas() = Controls.get BasicControl.noras
-    
+
     fun pathToBin binaryName = let
         val dir = "@LLVM_DIR@"
     in
-        if String.size dir = 0 
+        if String.size dir = 0
         then raise Fail ("This version of Manticore was not configured with LLVM!\n" ^
                          "See the README.md file for details about how to rebuild Manticore.\n")
-                         
+
         else dir ^ "/bin/" ^ binaryName
-    end 
-    
+    end
+
     (**********************
      *  flags and options for opt
      **********************)
 
-    
+
     (* i dunno *)
     val o_analysis = [
         "-basicaa",
@@ -234,9 +234,9 @@ Pass Arguments:  -domtree
         "-memdep",
         "-domtree"
     ]
-    
+
     val o_essential = ["-lower-expect"]
-    
+
     (* all of the basic cleanup passes LLVM has. things like adce were left off
        not sure if this is reasonable ordering, just guessed *)
     val o_cleanup = [
@@ -251,13 +251,13 @@ Pass Arguments:  -domtree
         "-instcombine",
         "-simplifycfg"
     ]
-    
+
     val o_normal = o_analysis @ o_cleanup @ o_essential
-    
+
     (* run some fancier passes that might help further optimize allocation code *)
-    val o_aggressive = 
+    val o_aggressive =
           o_analysis
-        @ o_cleanup 
+        @ o_cleanup
         @ o_analysis @ [
             "-sink",
             "-mldst-motion",
@@ -265,8 +265,8 @@ Pass Arguments:  -domtree
             "-instcombine",
             "-simplifycfg"
         ]
-        @ o_essential 
-    
+        @ o_essential
+
     val optLevels = [
         (0, o_essential),
         (1, o_normal),
@@ -275,45 +275,45 @@ Pass Arguments:  -domtree
         (4, ["-O2"]),
         (5, ["-O3"])
     ]
-    
-    
-    
+
+
+
     (* opt passes that need to be performed before/after any passes *)
     fun o_wrapPasses verbose passes = let
         val firstPasses = ["-targetlibinfo", "-tti", "-verify", "-lint"]
         val statsPasses = ["-stats", "-time-passes"]
-        
-        val passes = (case passes 
+
+        val passes = (case passes
                       of [] => firstPasses
                        |  _ => firstPasses @ passes @ ["-verify"]
                        (* esac *))
     in
         if verbose then statsPasses @ passes else passes
     end
-    
+
     fun doOpt verbose inputFile outputFile optPasses = let
         val options = (case Controls.get BasicControl.customOPT
                         of [] => optPasses
                          | custom => custom
                         (* end case *))
-            
+
         val cmd = cat ([pathToBin "opt"] @ (o_wrapPasses verbose options) @ [inputFile, "-o", outputFile])
         val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
     in
         OS.Process.system cmd
     end
-    
-    
-    
+
+
+
     (**********************
      *  flags and options for llc
      **********************)
-     
+
      val llcLevels = [
          (0, ["-O1"]),
          (1, ["-O3"])
      ]
-    
+
     (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
         val firstPasses = if isDirect() then [] else ["-stack-alignment=16"]
@@ -321,46 +321,46 @@ Pass Arguments:  -domtree
                             then firstPasses @ ["-mcpu=native"]
                             else firstPasses
         val statsPasses = ["-time-passes"] (* NOTE llc supports "-stats" but in Release mode it throws an error *)
-        
-        val passes = (case passes 
+
+        val passes = (case passes
                       of [] => firstPasses
                        |  _ => firstPasses @ passes
                        (* esac *))
     in
         if verbose then statsPasses @ passes else passes
     end
-    
+
     fun doLLC verbose inputFile outputFile optPasses = let
         val options = (case Controls.get BasicControl.customLLC
                         of [] => optPasses
                          | custom => custom
                         (* end case *))
-                        
+
         val cmd = cat ([pathToBin "llc"] @ (l_wrapPasses verbose options) @ [inputFile, "-o", outputFile])
         val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
     in
         OS.Process.system cmd
     end
-    
-    
+
+
 
     fun build {verbose, asmFile, outFile} = let
         val verbose = verbose orelse (Controls.get BasicControl.verbose > 0)
-        
+
         (* take off the .ll *)
         val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 3))
-        
+
         (* run opt. we do not need to run opt if the llopt level is set to 0, because
            llc will already run a verification pass on the input. we do it anyways though
            so we can run the linter. *)
-        val commonName = asmPrefix ^ "_opt.bc" 
+        val commonName = asmPrefix ^ "_opt.bc"
         val optRun = doOpt verbose asmFile commonName
         val optOutput = let
             val allPasses = optLevels
             fun runIt passes = (if OS.Process.isSuccess (optRun passes)
                                 then commonName
                                 else raise Fail "failure in running LLVM opt!")
-            
+
             val passes = List.find (fn (lvl, _) => (Controls.get BasicControl.llopt) = lvl) allPasses
         in
             (case passes
@@ -368,7 +368,7 @@ Pass Arguments:  -domtree
                  | NONE => runIt (#2(List.last allPasses))
             (* esac *))
         end
-            
+
         (* run llc *)
         val llcOutput = asmPrefix ^ ".s"
         val llcRun = doLLC verbose optOutput llcOutput
@@ -377,7 +377,7 @@ Pass Arguments:  -domtree
             fun runIt passes = (if OS.Process.isSuccess (llcRun passes)
                                 then ()
                                 else raise Fail "failure in running LLVM llc!")
-            
+
             val passes = List.find (fn (lvl, _) => (Controls.get BasicControl.llopt) = lvl) allPasses
         in
             (case passes
@@ -385,15 +385,15 @@ Pass Arguments:  -domtree
                  | NONE => runIt (#2(List.last allPasses))
             (* esac *))
         end
-        
+
         val _ = if isDirect()
                     then makeStackMapGlobl verbose llcOutput
                     else ()
-        
+
         val llcOutput = if noRas()
                     then removeCallRet verbose asmPrefix
                     else llcOutput
-            
+
         (* reuse the MLRISC linking etc *)
         val result = BuildExecutableMLRISC.build {verbose=verbose, asmFile=llcOutput, outFile=outFile}
     in
