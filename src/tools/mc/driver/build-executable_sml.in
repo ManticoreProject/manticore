@@ -316,7 +316,10 @@ Pass Arguments:  -domtree
 
     (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
-        val firstPasses = if isDirect() then [] else ["-stack-alignment=16"]
+        val firstPasses = ["-relocation-model=pic"]
+        val firstPasses = if not(isDirect())
+                            then firstPasses @ ["-stack-alignment=16"]
+                            else firstPasses
         val firstPasses = if Controls.get BasicControl.native
                             then firstPasses @ ["-mcpu=native"]
                             else firstPasses
