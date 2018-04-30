@@ -10,4 +10,5 @@ dnl WARNING: The script that builds distributions overwrite this file,
 dnl so do not add anything else to it!!!
 dnl
 define(MANTICORE_DIST_VERSION, development)
-define(MANTICORE_SET_VERSION, [BUILD_VERSION=0; RELEASE_DATE="development"; REVISION="development"])
+define(MANTICORE_SET_VERSION, [BUILD_VERSION=0; RELEASE_DATE="development"; \
+            REVISION=`git log --pretty=format:'%h %ad' --date=short -n 1`])
