@@ -166,7 +166,7 @@ functor MainFn (
     fun replace8BitRegisters asmFile =
 	let
 	    val stat = OS.Process.system(
-		    "sed -i '' \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile)
+		    "sed -i \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile)
 	in () end
 			
 					  
