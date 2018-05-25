@@ -19,9 +19,9 @@
 #include <stdio.h>
 
 // predefined table entries, important for AllocUniform and GlobalAllocUniform
-// NOTE this value must match up with the predefined literal in the SML 
+// NOTE this value must match up with the predefined literal in the SML
 // structure HeaderTableStruct
-const int predefined = 5;
+const int predefined = 6;
 
 /**
  * Checks if there is enough global heap space in the current chunk,
@@ -29,8 +29,8 @@ const int predefined = 5;
  */
 void EnsureGlobalSpace(VProc_t *vp, int nElems) {
     //check if we have enough global memory in the current chunk, if not we have to allocate a new one
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {     
-        //save the old global allocation pointer 
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+        //save the old global allocation pointer
         MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
         //allocate a new chunk of global memory
         AllocToSpaceChunk(vp);
@@ -42,7 +42,7 @@ void EnsureGlobalSpace(VProc_t *vp, int nElems) {
 }
 
 /**
- * Simply adds an assert statement that checks whether there is enough space. 
+ * Simply adds an assert statement that checks whether there is enough space.
  */
 void EnsureNurserySpace(VProc_t *vp, int nElems) {
     /* 4KB is the slop size */
@@ -90,13 +90,13 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     va_start(ap, nElems);
     for (int i = 0;  i < nElems;  i++) {
         int tag = va_arg(ap, int);
-        
+
         assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
-        
+
         if (tag == PTR_FIELD) {
             bits |= (1<<i);
         }
-        
+
         Value_t arg = va_arg(ap, Value_t);
         obj[i] = (Word_t)arg;
     }
@@ -108,17 +108,17 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
         obj[-1] = MIXED_HDR(predefined+1, nElems);
     } else if (nElems == 1 && bits == 0x1) {
         obj[-1] = MIXED_HDR(predefined+2, nElems);
-    } else if (nElems == 5 && bits == 0x1A) { 
+    } else if (nElems == 5 && bits == 0x1A) {
         obj[-1] = MIXED_HDR(predefined+3, nElems);
     } else if (nElems == 3 && bits == 0x4) {
         obj[-1] = MIXED_HDR(predefined+4, nElems);
     } else {
-        // NOTE if you need to allocate some other mixed header, consult 
+        // NOTE if you need to allocate some other mixed header, consult
         // the SML structure HeaderTableStruct
         fprintf(stderr, "Error AllocNonUniform. Len: %d, Bits: %x\n", nElems, bits);
         exit(5);
     }
-    
+
     vp->allocPtr += WORD_SZB * (nElems+1);
 
     return PtrToValue(obj);
@@ -149,16 +149,16 @@ Value_t AllocRaw (VProc_t *vp, uint32_t len)
 Value_t AllocStkCont (VProc_t *vp, Addr_t codeP, Value_t stkPtr, Value_t stkInfo)
 {
     Word_t  *obj = (Word_t *)(vp->allocPtr);
-    
+
     const int nWords = 3;
-    
+
     EnsureNurserySpace (vp, nWords);
 
     obj[-1] = STACK_HDR(nWords);
     obj[0] = codeP;
     obj[1] = stkPtr;
     obj[2] = stkInfo;
-    
+
     vp->allocPtr += WORD_SZB * (nWords+1);
 
     return PtrToValue(obj);
@@ -185,7 +185,7 @@ Value_t AllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
  */
 Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
 {
-    int nArrayBytes = nElems * szBOfElt; 
+    int nArrayBytes = nElems * szBOfElt;
                       /* number of bytes consumed by the array */
 
     int nObjBytes = WORD_SZB + nArrayBytes;
@@ -196,7 +196,7 @@ Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
     assert(nArrayBytes < HEAP_CHUNK_SZB); /* the array has to fit inside a heap chunk */
 
     EnsureGlobalSpace (vp, nElems);
-            
+
     obj = (Word_t*)(vp->globNextW);
     obj[-1] = RAW_HDR(BYTES_TO_WORDS(nArrayBytes));
     vp->globNextW += nObjBytes;
@@ -217,7 +217,7 @@ Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
 Value_t AllocVector (VProc_t *vp, Value_t values)
 {
     Value_t retval;
-    Word_t  *obj = (Word_t *)(vp->allocPtr);    
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
     int i = 0;
 
     EnsureNurserySpace(vp, i);
@@ -247,7 +247,7 @@ Value_t AllocVectorRev (VProc_t *vp, int len, Value_t values)
 {
     EnsureNurserySpace (vp, len);
 
-    Word_t  *obj = (Word_t *)(vp->allocPtr);    
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
     int i = 0;
 
     while (values != M_NIL) {
@@ -261,7 +261,7 @@ Value_t AllocVectorRev (VProc_t *vp, int len, Value_t values)
     vp->allocPtr += WORD_SZB * (i+1);
 
     assert (len == i);
-    
+
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
 }
 
@@ -346,7 +346,7 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
 #ifndef NO_GC_STATS
     vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
 #endif
-    
+
     return PtrToValue(obj);
 }
 
@@ -365,9 +365,9 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     va_start(ap, nElems);
     for (int i = 0;  i < nElems;  i++) {
         int tag = va_arg(ap, int);
-        
+
         assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
-        
+
         if (tag == PTR_FIELD) {
             bits |= (1<<i);
         }
@@ -383,7 +383,7 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
         obj[-1] = MIXED_HDR(predefined+1, nElems);
     } else if (nElems == 1 && bits == 0x1) {
         obj[-1] = MIXED_HDR(predefined+2, nElems);
-    } else if (nElems == 5 && bits == 0x1A) { 
+    } else if (nElems == 5 && bits == 0x1A) {
         obj[-1] = MIXED_HDR(predefined+3, nElems);
     } else if (nElems == 3 && bits == 0x4) {
         obj[-1] = MIXED_HDR(predefined+4, nElems);
@@ -427,7 +427,7 @@ Value_t GlobalAllocVector (VProc_t *vp, int len, Value_t values)
     assert (i == len);
 
     vp->globNextW += WORD_SZB * (len+1);
-    
+
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(len));
 }
 
@@ -441,11 +441,11 @@ Value_t GlobalAllocPolyArray (VProc_t *vp, int nElems, Value_t init)
 {
     assert (HEAP_CHUNK_SZB > WORD_SZB*(nElems+1) && nElems >= 0);
 
-    EnsureGlobalSpace (vp, nElems);        
-        
+    EnsureGlobalSpace (vp, nElems);
+
     Word_t *obj = (Word_t*)(vp->globNextW);
     obj[-1] = VEC_HDR(nElems);
-    
+
     for (int i = 0;  i < nElems; i++) {
         obj[i] = (Word_t)init;
     }
@@ -500,7 +500,7 @@ Value_t AllocBigIntArray (VProc_t *vp, int nElems)
     else */
 
     /* FIXME: this array will never get collected */
-    
+
     Die("AllocBigIntArray: Does not allocate in the heap.");
 
     /* TODO: extend the GC to support large arrays of raw values */
@@ -517,7 +517,7 @@ Value_t AllocLongArray (VProc_t *vp, int n)
     return AllocRawArray (vp, n, sizeof(int64_t));
 }
 
-/*! \brief allocate a big array of longs 
+/*! \brief allocate a big array of longs
  *  \param vp the host vproc
  *  \param nElems the number of elements in the array
  *  \return pointer to the beginning of the array
@@ -530,7 +530,7 @@ Value_t AllocBigLongArray (VProc_t *vp, int nElems)
     else  */
 
     /* FIXME: this array will never get collected */
-    
+
     Die("AllocBigLongArray: Does not allocate in the heap.");
 
     /* TODO: extend the GC to support large arrays of raw values */
@@ -558,9 +558,9 @@ Value_t AllocBigFloatArray (VProc_t *vp, int nElems)
     return GlobalAllocRawArray (vp, nElems, sizeof(float));
     else
   */
-  
+
     Die("AllocBigFloatArray: Does not allocate in the heap.");
-    
+
     /* FIXME: this array will never get collected */
     /* TODO: extend the GC to support large arrays of raw values */
     return (valloc (nElems * sizeof(float)));

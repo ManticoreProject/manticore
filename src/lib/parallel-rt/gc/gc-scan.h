@@ -22,24 +22,28 @@ extern Word_t * minorGCscanVECTORpointer (Word_t*, Word_t**, Addr_t, Addr_t);
 extern Word_t * minorGCscanSTKCONTpointer (Word_t*, Word_t**, Addr_t, Addr_t);
 extern Word_t * minorGCscanBITPATpointer (Word_t*, Word_t**, Addr_t, Addr_t);
 extern Word_t * minorGCscanLINKFRAMEpointer (Word_t*, Word_t**, Addr_t, Addr_t);
+extern Word_t * minorGCscanPROXYpointer (Word_t*, Word_t**, Addr_t, Addr_t);
 
 extern Word_t * majorGCscanRAWpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
 extern Word_t * majorGCscanVECTORpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
 extern Word_t * majorGCscanSTKCONTpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
 extern Word_t * majorGCscanBITPATpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
 extern Word_t * majorGCscanLINKFRAMEpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
+extern Word_t * majorGCscanPROXYpointer (Word_t*, VProc_t*, Addr_t, Addr_t);
 
 extern Word_t * ScanGlobalToSpaceRAWfunction (Word_t*, VProc_t *, Addr_t);
 extern Word_t * ScanGlobalToSpaceVECTORfunction (Word_t*, VProc_t *, Addr_t);
 extern Word_t * ScanGlobalToSpaceSTKCONTfunction (Word_t*, VProc_t *, Addr_t);
 extern Word_t * ScanGlobalToSpaceBITPATfunction (Word_t*, VProc_t *, Addr_t);
 extern Word_t * ScanGlobalToSpaceLINKFRAMEfunction (Word_t*, VProc_t *, Addr_t);
+extern Word_t * ScanGlobalToSpacePROXYfunction (Word_t*, VProc_t *, Addr_t);
 
 extern Word_t * globalGCscanRAWpointer (Word_t*, VProc_t *);
 extern Word_t * globalGCscanVECTORpointer (Word_t*, VProc_t *);
 extern Word_t * globalGCscanSTKCONTpointer (Word_t*, VProc_t *);
 extern Word_t * globalGCscanBITPATpointer (Word_t*, VProc_t *);
 extern Word_t * globalGCscanLINKFRAMEpointer (Word_t*, VProc_t *);
+extern Word_t * globalGCscanPROXYpointer (Word_t*, VProc_t *);
 
 
 
@@ -52,10 +56,10 @@ extern bool isGlobalHeapPtr (Value_t v);
 typedef struct{
 	void (*minorGCdebug) (VProc_t *, Word_t *);
 	void (*minorGCdebugGlobal) (VProc_t *, Word_t *);
-	
+
 	void (*globalGCdebug) (VProc_t *, Word_t *);
 	void (*globalGCdebugGlobal) (VProc_t *, Word_t *);
-	
+
 	void (*gc_debug)(Word_t * , Addr_t , Addr_t );
 } tableentryDebug;
 

@@ -47,7 +47,7 @@ STATIC_INLINE bool isPtr (Value_t v)
 }
 
 /*! \brief return true if the value is not a pointer */
-STATIC_INLINE bool isNoPtr(Word_t hdr) 
+STATIC_INLINE bool isNoPtr(Word_t hdr)
 {
 	return ((hdr & 0x1) == TABLE_TAG);
 }
@@ -67,33 +67,38 @@ STATIC_INLINE bool isLimitPtr (Value_t v, MemChunk_t *cp)
 
 STATIC_INLINE bool isMixedHdr (Word_t hdr)
 {
-  /* NOTE: this code relies on the fact that the tag is one bit == 1 */
-    return ((getID(hdr) > BITPAT_TAG_BITS)  && (isNoPtr(hdr)));
+    // NOTE: this must be updated anytime a new object type is added.
+    return ((getID(hdr) > PROXY_TAG_VAL)  && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isVectorHdr (Word_t hdr)
 {
-    return ((getID(hdr) == VEC_TAG_BITS) && (isNoPtr(hdr)));
+    return ((getID(hdr) == VEC_TAG_VAL) && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isRawHdr (Word_t hdr)
 {
-    return ((getID(hdr) == RAW_TAG_BITS)  && (isNoPtr(hdr)));
+    return ((getID(hdr) == RAW_TAG_VAL)  && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isStackHdr (Word_t hdr)
 {
-    return ((getID(hdr) == STACK_TAG_BITS)  && (isNoPtr(hdr)));
+    return ((getID(hdr) == STACK_TAG_VAL)  && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isLinkedFrameHdr (Word_t hdr)
 {
-    return ((getID(hdr) == LINKFRAME_TAG_BITS)  && (isNoPtr(hdr)));
+    return ((getID(hdr) == LINKFRAME_TAG_VAL)  && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isBitPatHdr (Word_t hdr)
 {
-    return ((getID(hdr) == BITPAT_TAG_BITS)  && (isNoPtr(hdr)));
+    return ((getID(hdr) == BITPAT_TAG_VAL)  && (isNoPtr(hdr)));
+}
+
+STATIC_INLINE bool isProxyHdr (Word_t hdr)
+{
+    return ((getID(hdr) == PROXY_TAG_VAL)  && (isNoPtr(hdr)));
 }
 
 /* Return the length field of a header */
@@ -133,7 +138,7 @@ STATIC_INLINE Word_t *UsedTopOfChunk (VProc_t *vp, MemChunk_t *cp)
 STATIC_INLINE bool isFromSpacePtr (Value_t p)
 {
     return (isPtr(p) && (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK));
-	
+
 }
 
 extern Value_t ForwardObjMinor (Value_t v, Word_t **nextW);

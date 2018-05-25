@@ -8,16 +8,16 @@
  * flag when compiling a program.
  *)
 
-structure PrintTable = 
+structure PrintTable =
 struct
-    
+
     (* NOTE: very important for table length!! This number
        represents the number of non-mixed header kinds that we have
        manually predefined below. *)
     val predefined = HeaderTableStruct.predefined
-    
+
     (* Headerfiles *)
-    fun header (MyoutStrm) = (  
+    fun header (MyoutStrm) = (
         TextIO.output (MyoutStrm, "#include <stdint.h>\n");
         TextIO.output (MyoutStrm, "#include <stdio.h>\n");
         TextIO.output (MyoutStrm, "\n");
@@ -28,12 +28,12 @@ struct
         ()
         )
 
-    
+
     fun minor (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                
+
 				val size = String.size a
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
@@ -45,7 +45,7 @@ struct
                         TextIO.output (MyoutStrm,"  }\n");
                         lp(strlen-1,bites,pos+1)
                         )
-                    else 
+                    else
                         lp(strlen-1,bites,pos+1)
                     )
                 in
@@ -54,30 +54,30 @@ struct
                 TextIO.output (MyoutStrm, "  Value_t *scanP = (Value_t *)ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(size,a,0);
-                
+
 				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
 
 
-    
+
     fun major (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
-				val size = String.size a	
+
+				val size = String.size a
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -89,10 +89,10 @@ struct
                         TextIO.output (MyoutStrm,"  else if (inVPHeap(heapBase, ValueToAddr(v))) {\n");
                         TextIO.output (MyoutStrm,concat["      *(scanP+",Int.toString pos,") = (Word_t)AddrToValue(ValueToAddr(v) - oldSzB);\n"]);
                         TextIO.output (MyoutStrm,"   }\n");
-                        
+
                         lp(strlen-1,bites,pos+1)
                         )
-                    else 
+                    else
                         lp(strlen-1,bites,pos+1)
                     )
                 in
@@ -101,30 +101,30 @@ struct
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(size,a,0);
-                
+
 				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
-    
 
-    
+
+
     fun globaltospace (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
-				val size = String.size a	
+
+				val size = String.size a
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -133,10 +133,10 @@ struct
                         TextIO.output (MyoutStrm,"   if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {\n");
                         TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString pos,") = (Word_t)ForwardObjMajor(vp, v);\n"]);
                         TextIO.output (MyoutStrm,"  }\n");
-                        
+
                         lp(strlen-1,bites,pos+1)
                         )
-                    else 
+                    else
                         lp(strlen-1,bites,pos+1)
                     )
                 in
@@ -145,29 +145,29 @@ struct
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(size,a,0);
-                
+
 				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
 
-    
+
     fun global (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
-				val size = String.size a	
+
+				val size = String.size a
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -178,7 +178,7 @@ struct
                         TextIO.output (MyoutStrm,"  }\n");
                         lp(strlen-1,bites,pos+1)
                         )
-                    else 
+                    else
                         lp(strlen-1,bites,pos+1)
                     )
                 in
@@ -187,26 +187,26 @@ struct
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(size,a,0);
-                
+
 				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
-    
+
     fun createtable (MyoutStrm) = (let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         val length = List.length s
-        
+
         fun printtable (listlength,i) = (
             if (listlength = i)
             then ()
@@ -215,8 +215,8 @@ struct
                 printtable(listlength,i+1)
                 )
             )
-            
-            
+
+
         val tableLen = length+predefined
         in
         (* NOTE the order here must match up with the object's ID.
@@ -224,39 +224,39 @@ struct
         Please see minor/major/global-scan.c for the predefined table entry functions below:
         *)
         TextIO.output (MyoutStrm, concat["const int tableMaxID = ", Int.toString tableLen, ";\n"]);
-        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString tableLen,"] = {\n"]); 
+        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString tableLen,"] = {\n"]);
         TextIO.output (MyoutStrm, "{minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n");
         TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction},\n");
 		TextIO.output (MyoutStrm, "{minorGCscanSTKCONTpointer,majorGCscanSTKCONTpointer,globalGCscanSTKCONTpointer,ScanGlobalToSpaceSTKCONTfunction},\n");
         TextIO.output (MyoutStrm, "{minorGCscanLINKFRAMEpointer,majorGCscanLINKFRAMEpointer,globalGCscanLINKFRAMEpointer,ScanGlobalToSpaceLINKFRAMEfunction},\n");
-        TextIO.output (MyoutStrm, "{minorGCscanBITPATpointer,majorGCscanBITPATpointer,globalGCscanBITPATpointer,ScanGlobalToSpaceBITPATfunction}\n");
-        
+        TextIO.output (MyoutStrm, "{minorGCscanBITPATpointer,majorGCscanBITPATpointer,globalGCscanBITPATpointer,ScanGlobalToSpaceBITPATfunction},\n");
+        TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer,ScanGlobalToSpacePROXYfunction}\n");
+
         printtable (tableLen,predefined);
-        
-        TextIO.output (MyoutStrm," };\n"); 
+
+        TextIO.output (MyoutStrm," };\n");
         TextIO.output (MyoutStrm,"\n");
-        
+
         ()
         end
-        )        
-    
+        )
+
     fun print (path) = let
             val Myout = TextIO.openOut path
         in
             header Myout;
-            
+
             minor Myout;
-            
+
             major Myout;
-            
+
             globaltospace Myout;
-            
+
             global Myout;
-            
+
             createtable Myout;
-            
+
             TextIO.closeOut(Myout)
         end
-    
+
 end
-    
