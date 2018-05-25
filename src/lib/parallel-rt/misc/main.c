@@ -51,6 +51,7 @@ options:\n\
   -nursery size  Set GC nursery size (debug build only)\n\
   -gcdebug       Enable GC debugging output (debug build only)\n\
   -heapcheck typ Turn on additional heap property checking\n\
+  -stacksz n     Specify the default stack size (if compiled to use them).\n\
   -h             Print this information\n\
   -?             Print this information\n\
 \n\

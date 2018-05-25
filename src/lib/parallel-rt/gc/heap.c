@@ -104,11 +104,13 @@ static FILE     *StatsOutFile = 0;      // stats output file
  */
 void HeapInit (Options_t *opts)
 {
+    GUARD_PAGE_BYTES = sysconf(_SC_PAGESIZE);
+
     MaxNurserySzB = GetSizeConfig ("MAX_NURSERY_SZB", ONE_K, VP_HEAP_SZB/2);
     MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, MaxNurserySzB);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
-	MaxNurserySzB = MIN_NURSERY_SZB;
-    
+      MaxNurserySzB = MIN_NURSERY_SZB;
+
 #ifdef SEGSTACK
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 16 * ONE_K);
 #elif DIRECT_STYLE
@@ -117,7 +119,7 @@ void HeapInit (Options_t *opts)
 
     MajorGCThreshold = GetSizeConfig ("MAJOR_GC_THRESHOLD", ONE_K, VP_HEAP_SZB / 10);
     if (MajorGCThreshold < MIN_NURSERY_SZB)
-	MajorGCThreshold = MIN_NURSERY_SZB;
+      MajorGCThreshold = MIN_NURSERY_SZB;
 
   /* global-heap sizing parameters */
     BaseHeapSzB = GetSizeConfig ("BASE_GLOBAL_HEAP_SZB", ONE_MEG, BASE_GLOBAL_HEAP_SZB);
@@ -168,7 +170,7 @@ void HeapInit (Options_t *opts)
     ToSpaceLimit = BaseHeapSzB; // we don't know the number of vprocs yet!
     TotalVM = 0;
     FromSpaceChunks = (MemChunk_t *)0;
-    
+
     NodeHeaps = NEWVEC(NodeHeap_t, NumHWNodes);
     for (int i = 0;  i < NumHWNodes;  i++) {
         MutexInit(&NodeHeaps[i].lock);
@@ -181,64 +183,8 @@ void HeapInit (Options_t *opts)
     }
 
     InitGlobalGC ();
-    
-    GUARD_PAGE_BYTES = sysconf(_SC_PAGESIZE);
-    
-    
-#if defined(DIRECT_STYLE) || defined(LINKSTACK)
-    /* initialize the statepoint table */
-    SPTbl = generate_table((void*)&STACK_MAPS, 0.5);
-#endif
 
-#ifdef LINKSTACK
-    // for: ASM_LinkedStack_PrologueGC_Ret  (see asm-glue.S:ASM_LinkedStack_PrologueGC)
-    
-    uint64_t retAddr = (uint64_t)(&ASM_LinkedStack_PrologueGC_Ret);
-    uint16_t numPtrs = 1;
-    
-    frame_info_t* frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
-    frame->retAddr = retAddr;
-    frame->frameSize = sizeof(uint64_t) * (numPtrs + 2);
-    frame->numSlots = numPtrs;
-    
-    pointer_slot_t* currentSlot = frame->slots;
-    uint16_t ptrBase = 1 * sizeof(uint64_t); // starting point in the frame where pointers are.
-    for(uint16_t i = 0; i < numPtrs; i++) {
-        currentSlot->kind = -1; // base ptr
-        currentSlot->offset = ptrBase + (i * sizeof(uint64_t));
-        currentSlot++;
-    }
-    
-    insert_key(SPTbl, retAddr, frame);
-    
-#endif
-    
-#ifdef DIRECT_STYLE
-    // insert a custom frame for ASM_DS_StartStack (see stacks.c for details)
-    // I have written a general version of initialization in case we need more pointers.
-    
-    uint64_t retAddr = (uint64_t)(&ASM_DS_StartStack);
-    uint16_t numPtrs = 1;
-    
-    frame_info_t* frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
-    frame->retAddr = retAddr;
-    frame->frameSize = sizeof(uint64_t) * (numPtrs + 2);
-    frame->numSlots = numPtrs;
-    
-    pointer_slot_t* currentSlot = frame->slots;
-    uint16_t ptrBase = 2 * sizeof(uint64_t); // starting point in the frame where pointers are.
-    for(uint16_t i = 0; i < numPtrs; i++) {
-        currentSlot->kind = -1; // base ptr
-        currentSlot->offset = ptrBase + (i * sizeof(uint64_t));
-        currentSlot++;
-    }
-    
-    insert_key(SPTbl, retAddr, frame);
-    
-#endif
-
-    // if (SPTbl)
-    //     print_table(stderr, SPTbl, true);
+    InitStackMaps();
 
 } /* end of HeapInit */
 
@@ -248,7 +194,7 @@ void InitVProcHeap (VProc_t *vp)
 {
     vp->globAllocChunk = (MemChunk_t *)0;
     vp->globalGCPending = false;
-    
+
     vp->freeStacks = NULL;
     vp->allocdStacks = NULL;
 
@@ -256,6 +202,63 @@ void InitVProcHeap (VProc_t *vp)
     AllocToSpaceChunk (vp);
 
 }
+
+void InitStackMaps () {
+  #if defined(DIRECT_STYLE) || defined(LINKSTACK)
+      /* initialize the statepoint table */
+      SPTbl = generate_table((void*)&STACK_MAPS, 0.5);
+  #endif
+
+  #ifdef LINKSTACK
+      // for: ASM_LinkedStack_PrologueGC_Ret  (see asm-glue.S:ASM_LinkedStack_PrologueGC)
+
+      uint64_t retAddr = (uint64_t)(&ASM_LinkedStack_PrologueGC_Ret);
+      uint16_t numPtrs = 1;
+
+      frame_info_t* frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
+      frame->retAddr = retAddr;
+      frame->frameSize = sizeof(uint64_t) * (numPtrs + 2);
+      frame->numSlots = numPtrs;
+
+      pointer_slot_t* currentSlot = frame->slots;
+      uint16_t ptrBase = 1 * sizeof(uint64_t); // starting point in the frame where pointers are.
+      for(uint16_t i = 0; i < numPtrs; i++) {
+          currentSlot->kind = -1; // base ptr
+          currentSlot->offset = ptrBase + (i * sizeof(uint64_t));
+          currentSlot++;
+      }
+
+      insert_key(SPTbl, retAddr, frame);
+
+  #endif
+
+  #ifdef DIRECT_STYLE
+      // insert a custom frame for ASM_DS_StartStack (see stacks.c for details)
+      // I have written a general version of initialization in case we need more pointers.
+
+      uint64_t retAddr = (uint64_t)(&ASM_DS_StartStack);
+      uint16_t numPtrs = 1;
+
+      frame_info_t* frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
+      frame->retAddr = retAddr;
+      frame->frameSize = sizeof(uint64_t) * (numPtrs + 2);
+      frame->numSlots = numPtrs;
+
+      pointer_slot_t* currentSlot = frame->slots;
+      uint16_t ptrBase = 2 * sizeof(uint64_t); // starting point in the frame where pointers are.
+      for(uint16_t i = 0; i < numPtrs; i++) {
+          currentSlot->kind = -1; // base ptr
+          currentSlot->offset = ptrBase + (i * sizeof(uint64_t));
+          currentSlot++;
+      }
+
+      insert_key(SPTbl, retAddr, frame);
+
+  #endif
+
+      // if (SPTbl)
+      //     print_table(stderr, SPTbl, true);
+} /* end of InitStackMaps */
 
 
 /*! \brief Allocate a global-heap memory chunk for the vproc.
@@ -656,7 +659,7 @@ void ReportGCStats ()
 	PrintTime (outF, timeScale * totGlobal.time);
 	fprintf (outF, "\n");
     }
-    
+
     if (outF != stderr) {
 	fclose (outF);
     }
