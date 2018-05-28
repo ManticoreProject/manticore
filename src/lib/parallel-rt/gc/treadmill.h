@@ -14,6 +14,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 
 // NOTE: it is likely that we will have handwritten ASM that accesses
@@ -24,6 +25,10 @@
 
 ////////////////////////////////////////////////
 /////////////     TYPES     ////////////////////
+
+// We need to maintain an efficient means of testing whether an object
+// is in the tospace or not, which flips often.
+typedef bool Color_t;
 
 // all objects are assumed to be the same size.
 // invariants:
@@ -37,18 +42,22 @@
 typedef struct Self {
   struct Self* left;
   struct Self* right;
+  Color_t color;
   uint8_t contents[];
 } LargeObject_t;
 
 
-// invariant:
-// ... { BLACK } scan { GREY } top { WHITE } bottom { FREE } free ...
+// invariant:  "->" is direction of movement, "|" means it's a limit
+//
+//                   ->                |              |             <-
+// ... { BLACK } .. scan .. GREY .. { top,  WHITE, bottom } { TAN, free } ...
 typedef struct {
   LargeObject_t* scan;
   LargeObject_t* top;
   LargeObject_t* bottom;
   LargeObject_t* free;
   size_t size;      // size of large objects in this treadmill
+  Color_t fromSpaceColor;
 } Treadmill_t;
 
 ////////////////////////////////////////////////////
@@ -114,18 +123,54 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
 }
 
 // initializes a new treadmill that manages objects of the given size.
-// FIXME: I feel like we need at least two free areas to get going?
 void tm_init(Treadmill_t* tm, size_t size) {
-  LargeObject_t* firstFree = lo_create_new(size);
-
-  firstFree->left = firstFree;
-  firstFree->right = firstFree;
-
-  tm->free = firstFree;
-  tm->top = firstFree;
-  tm->bottom = firstFree;
-  tm->scan = firstFree;
+  // setup other metadata of the treadmill
   tm->size = size;
+  tm->fromSpaceColor = true; // arbitrary starting value.
+
+  const size_t numLOs = 16; // must be >= 4, and ideally divisible by 2.
+  const Color_t fromSpColor = tm->fromSpaceColor;
+  const Color_t toSpColor = !fromSpColor;
+  LargeObject_t* first = lo_create_new(size);
+
+  {
+    // construct the treadmill's structure
+    LargeObject_t* cur = first;
+    LargeObject_t* next = NULL;
+    for (size_t i = 0; i < numLOs; i++) {
+      next = lo_create_new(size);
+      cur->right = next;
+      next->left = cur;
+      cur = next;
+    }
+    // complete the cycle.
+    cur->right = first;
+    first->left = cur;
+  }
+
+  // partition the treadmill.
+  tm->top = first;
+  tm->scan = tm->top; // no greys
+  tm->free = tm->scan->left; // no objects are currently allocated in tospace
+
+  // setup the bounds of the semi-spaces. the fromspace spans
+  // top -> bottom, inclusive
+  LargeObject_t* cur = tm->top;
+  for (size_t i = 0; i < (numLOs / 2); i++) {
+    cur->color = fromSpColor;
+    cur = cur->right;
+  }
+
+  // at this point, cur points to a tospace node that is unvisited,
+  // so we look left
+  tm->bottom = cur->left;
+
+  // color the tospace, which spans bottom -> top, exclusive.
+  while (cur != tm->top) {
+    cur->color = toSpColor;
+    cur = cur->right;
+  }
+
 }
 
 
@@ -134,31 +179,42 @@ void tm_init(Treadmill_t* tm, size_t size) {
 
 
 // FIXME: in flux right now:
-void tm_start_gc(Treadmill_t* tm) {
-  // (1) swap semi-spaces and setup for scanning.
+void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
+  // Precondition: all objects are Black and in ToSpace.
 
+  // (1) mark all nodes white, by reinterpreting black as white.
+
+  // TODO
+
+  // (2) swap semi-spaces
   LargeObject_t* oldTop = tm->top;
   tm->top = tm->bottom;
   tm->bottom = oldTop;
 
 
 
-  // (2) mark roots grey by moving them into the tospace as a grey
+  // (3) mark roots grey by moving them into the tospace as a grey
   // object. This initializes the "scan queue" which is processed
   // by moving to the right later on.
 
   LargeObject_t* greyStart = tm->top;
-  // for i in roots:
-  //   lo_remove(i)
-  //   lo_ins_LEFTof(greyStart, i);
-  //   scanTop = i;
+  while (*roots != NULL) {
+    LargeObject_t* rt = *roots;
+
+    lo_remove(rt);
+    // TODO color rt grey
+    lo_ins_LEFTof(greyStart, rt);
+    greyStart = rt;
+
+    roots++;
+  }
   tm->scan = greyStart;
 
-  // (3) scan treadmill's tospace
+  // (4) scan treadmill's tospace
   while (tm->scan != tm->top) {
     uint8_t* contents = tm->scan->contents;
 
-    // scan contents for more pointers,
+    // TODO scan contents for more pointers,
     // if any treadmill pointers are encountered,
     // use tm_forward_* to
 
@@ -167,7 +223,7 @@ void tm_start_gc(Treadmill_t* tm) {
   }
     // do stuff
 
-  // (4) set free pointer
+  // (5) set free pointer
 }
 
 // forward this object to the tospace to be scanned in DFS-order
