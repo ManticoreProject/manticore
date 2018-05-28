@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <stdio.h>
+#include <stddef.h>
 
 
 // NOTE: it is likely that we will have handwritten ASM that accesses
@@ -113,10 +115,20 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
   LargeObject_t* curFreeLO = tm->free;
 
   if (curFreeLO == tm->bottom) {
-    // we're out of free LO's, so we obtain a new one.
+    // we're out of free LO's, so we grow the heap.
+
+    // allocate a LO in tospace and mark it Black immediately.
     LargeObject_t* mem = lo_create_new(tm->size);
     mem->flag = !(tm->fromSpaceFlag);
     lo_ins_RIGHTof(curFreeLO, mem);
+
+    // we need a corresponding LO entry in the fromspace to keep the
+    // sides even when flipping.
+    mem = lo_create_new(tm->size);
+    mem->flag = tm->fromSpaceFlag;
+    lo_ins_LEFTof(tm->bottom, mem);
+
+
     return mem->contents;
   }
 
@@ -137,7 +149,7 @@ void tm_init(Treadmill_t* tm, size_t size) {
   tm->size = size;
   tm->fromSpaceFlag = true; // arbitrary starting value.
 
-  const size_t numLOs = 16; // must be >= 4, and ideally divisible by 2.
+  const size_t numLOs = 15; // must be an ODD number >= 4
   const Flag_t fromSpFlag = tm->fromSpaceFlag;
   const Flag_t toSpFlag = !fromSpFlag;
   LargeObject_t* first = lo_create_new(size);
@@ -165,7 +177,7 @@ void tm_init(Treadmill_t* tm, size_t size) {
   // setup the bounds of the semi-spaces. the fromspace spans
   // top -> bottom, inclusive
   LargeObject_t* cur = tm->top;
-  for (size_t i = 0; i < (numLOs / 2); i++) {
+  for (size_t i = 0; i < (numLOs / 2) + 1; i++) {
     cur->flag = fromSpFlag;
     cur = cur->right;
   }
@@ -191,13 +203,14 @@ void tm_init(Treadmill_t* tm, size_t size) {
 // forward this object to the tospace to be scanned in breadth-first order.
 // this marks the object as Grey.
 ALWAYS_INLINE void tm_forward_bfs(Treadmill_t* tm, LargeObject_t* obj) {
-  if (obj->flag != tm->fromSpaceFlag) {
-    // it's already in the tospace
+  const Flag_t toSpace = !(tm->fromSpaceFlag);
+  if (obj->flag == toSpace) {
+    // fprintf(stderr, "Already in tospace\n");
     return;
   }
 
   lo_remove(obj);
-  obj->flag = !(tm->fromSpaceFlag); // mark tospace
+  obj->flag = toSpace; // mark tospace
 
   lo_ins_LEFTof(tm->top, obj);
 
@@ -244,8 +257,6 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
 
   // swap the meaning of the flags.
   tm->fromSpaceFlag = !(tm->fromSpaceFlag);
-  const Flag_t fromSpace = tm->fromSpaceFlag;
-  const Flag_t toSpace = !fromSpace;
 
   // setup other pointers
   tm->scan = tm->top;
@@ -254,26 +265,122 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
 
   // (3) make roots Grey by moving them into the tospace as a Grey
   // object.
-  LargeObject_t* greyStart = tm->top;
-  while (*roots != NULL) {
-    tm_forward_bfs(tm, *roots);
-    roots++;
-  }
-
-  // (4) scan treadmill's tospace
-  while (tm->scan != tm->top) {
-    uint8_t* contents = tm->scan->contents;
-
-    // TODO scan "contents" for more pointers,
-    // if any treadmill pointers are encountered,
-    // use tm_forward_* to put it on the scan queue.
-
-    // move to the next object
-    tm->scan = tm->scan->right;
-  }
+  // while (*roots != NULL) {
+  //   tm_forward_bfs(tm, *roots);
+  //   roots++;
+  // }
+  //
+  // // (4) scan treadmill's tospace
+  // while (tm->scan != tm->top) {
+  //   // uint8_t* contents = tm->scan->contents;
+  //
+  //   // TODO scan "contents" for more pointers,
+  //   // if any treadmill pointers are encountered,
+  //   // use tm_forward_* to put it on the scan queue.
+  //
+  //   // move to the next object
+  //   tm->scan = tm->scan->right;
+  // }
 
   return;
 } // end of tm_start_gc
 
+
+////////////////////////////////////////////////////
+//////////     DEBUGGING PROCEDURES      ///////////
+
+void tm_show(Treadmill_t* tm) {
+  size_t numWhite = 0;
+  size_t numGrey = 0;
+  size_t numBlack = 0;
+  size_t numTan = 0;
+  size_t numFromSpace = 0;
+
+  LargeObject_t* cur = tm->top;
+  char color = 'w';
+  LargeObject_t* colorEndL = tm->bottom;
+  LargeObject_t* colorEndC = NULL;
+  do {
+    numFromSpace = cur->flag == tm->fromSpaceFlag
+                    ? numFromSpace + 1
+                    : numFromSpace;
+
+    // it turns out to be rather complicated to figure out what
+    // particular color items are moving left-to-right.
+    while (cur->left == colorEndL || cur == colorEndC) {
+      switch(color) {
+        case 'w':
+          color = 't';
+          colorEndL = tm->free;
+          colorEndC = NULL;
+          break;
+
+        case 't':
+          color = 'b';
+          colorEndL = NULL;
+          colorEndC = tm->scan;
+          break;
+
+        case 'b':
+          color = 'g';
+          colorEndL = NULL;
+          colorEndC = tm->top;
+          break;
+
+        default:
+          fprintf(stderr, "error in color transition machine.\n");
+          exit(1);
+      };
+    }
+
+    // gather stats
+    switch (color) {
+      case 'w': numWhite++; break;
+      case 'g': numGrey++; break;
+      case 'b': numBlack++; break;
+      case 't': numTan++; break;
+      default: fprintf(stderr, "impossible color"); exit(1);
+    };
+
+    // determine what to print, with some built-in error checking
+    // so that what is printed is not misleading.
+    if ( cur != tm->top
+      && cur != tm->bottom
+      && cur != tm->free
+      && cur != tm->scan
+      ) {
+        fprintf(stderr, "%c ", color);
+
+    } else if (cur == tm->top) {
+        assert(color == 'w');
+        fprintf(stderr, "T ");
+
+    } else if (cur == tm->bottom) {
+        assert(color == 'w');
+        fprintf(stderr, "B ");
+
+    } else if (cur == tm->free) {
+        assert(color == 't' || color == 'w');
+        fprintf(stderr, "F ");
+
+    } else if (cur == tm->scan) {
+        assert(color == 'g' || color == 'w');
+        // while scan can point to white too, it will only be the case
+        // if scan == top == cur, which is handled earlier.
+        fprintf(stderr, "S ");
+
+    } else {
+      fprintf(stderr, "[ERROR] ");
+    }
+
+    cur = cur->right; // advance
+  } while (cur != tm->top);
+
+
+  fprintf(stderr, "\n");
+
+  fprintf(stderr, "numFromSpace = %zd \n", numFromSpace);
+
+}
 
 #endif /* _TREADMILL_H_ */
