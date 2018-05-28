@@ -215,7 +215,7 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   // grey nodes by scanning all of them immediately before
   // continuing, because we can't flip spaces with grey nodes.
   assert( (tm->scan == tm->top)
-          && "unsupported: the mutator has added grey nodes to the treadmill"
+          && "incremental collection is not supported."
         );
 
   //////////////////
