@@ -124,9 +124,11 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
 
     // we need a corresponding LO entry in the fromspace to keep the
     // sides even when flipping.
-    mem = lo_create_new(tm->size);
-    mem->flag = tm->fromSpaceFlag;
-    lo_ins_LEFTof(tm->bottom, mem);
+    
+    // TODO: is this really needed?
+    // LargeObject_t* frmSpMem = lo_create_new(tm->size);
+    // frmSpMem->flag = tm->fromSpaceFlag;
+    // lo_ins_LEFTof(tm->bottom, frmSpMem);
 
 
     return mem->contents;
@@ -205,7 +207,7 @@ void tm_init(Treadmill_t* tm, size_t size) {
 ALWAYS_INLINE void tm_forward_bfs(Treadmill_t* tm, LargeObject_t* obj) {
   const Flag_t toSpace = !(tm->fromSpaceFlag);
   if (obj->flag == toSpace) {
-    // fprintf(stderr, "Already in tospace\n");
+    fprintf(stderr, "Already in tospace\n");
     return;
   }
 
@@ -265,22 +267,22 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
 
   // (3) make roots Grey by moving them into the tospace as a Grey
   // object.
-  // while (*roots != NULL) {
-  //   tm_forward_bfs(tm, *roots);
-  //   roots++;
-  // }
-  //
-  // // (4) scan treadmill's tospace
-  // while (tm->scan != tm->top) {
-  //   // uint8_t* contents = tm->scan->contents;
-  //
-  //   // TODO scan "contents" for more pointers,
-  //   // if any treadmill pointers are encountered,
-  //   // use tm_forward_* to put it on the scan queue.
-  //
-  //   // move to the next object
-  //   tm->scan = tm->scan->right;
-  // }
+  while (*roots != NULL) {
+    tm_forward_bfs(tm, *roots);
+    roots++;
+  }
+
+  // (4) scan treadmill's tospace
+  while (tm->scan != tm->top) {
+    // uint8_t* contents = tm->scan->contents;
+
+    // TODO scan "contents" for more pointers,
+    // if any treadmill pointers are encountered,
+    // use tm_forward_* to put it on the scan queue.
+
+    // move to the next object
+    tm->scan = tm->scan->right;
+  }
 
   return;
 } // end of tm_start_gc
