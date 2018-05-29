@@ -283,10 +283,14 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
 
   // swap the meaning of the flags.
   tm->fromSpaceFlag = !(tm->fromSpaceFlag);
+  const Flag_t toSpFlag = !(tm->fromSpaceFlag);
+  const Flag_t frmSpFlag = tm->fromSpaceFlag;
 
   // setup other pointers
   tm->scan = tm->top;
   tm->free = tm->top->left;
+
+  assert(tm->free->flag == toSpFlag);
 
 
   // (2) make roots Grey by moving them into the tospace as a Grey
@@ -301,6 +305,7 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   size_t numLive = 0;
   while (tm->scan != tm->top) {
     numLive++;
+    assert(tm->scan->flag == toSpFlag);
     // uint8_t* contents = tm->scan->contents;
 
     // TODO scan "contents" for more pointers,
@@ -323,9 +328,6 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   size_t freeSz = (tot - numLive) / 2;
   size_t freeListElms = toSpaceElms - numLive;
   ssize_t spares = ((ssize_t)(freeListElms)) - ((ssize_t)(freeSz));
-
-  Flag_t toSpFlag = !(tm->fromSpaceFlag);
-  Flag_t frmSpFlag = tm->fromSpaceFlag;
 
   assert(tm->top->flag == frmSpFlag);
   assert(tm->bottom->flag == frmSpFlag);
