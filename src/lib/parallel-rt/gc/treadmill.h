@@ -246,13 +246,30 @@ ALWAYS_INLINE void tm_forward_bfs(Treadmill_t* tm, LargeObject_t* obj) {
     return;
   }
 
-  // since obj is in the from-space, to remove it, we need to check
+  // since obj is in the from-space, to remove it, we first need to check
   // if its one of the ends of that subsequence and adjust the head/tail
   // accordingly
 
   if (tm->top == obj) {
     tm->top = obj->right;
-    assert(tm->top->flag == !toSpace);
+
+    // NOTE: If the object being forwarded was the last element
+    // in the from-space, then tm->top == obj == tm-> bottom,
+    // which is equivalent to top->right->flag == tospace.
+    //
+    // Thus the element to the right of top is actually in
+    // the free list, so we need to correctly move it to from-space.
+    //
+    // Since the old, non-empty from-space became the free list
+    // in the current to-space, we can safely steal one of those LO's
+    // so that from-space is not empty, which is our invariant.
+    if (tm->top->flag == toSpace) {
+      tm->top->flag = !toSpace;
+      tm->bottom = tm->top; // don't forget to set bottom here too!
+
+      tm->fromSpaceElms +=  1;
+      tm->toSpaceElms   += -1;
+    }
 
   } else if (tm->bottom == obj) {
     tm->bottom = obj->left;
