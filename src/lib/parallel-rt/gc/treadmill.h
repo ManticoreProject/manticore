@@ -26,6 +26,12 @@
 
 #define ALWAYS_INLINE inline __attribute__((always_inline))
 
+// It is still unclear whether rebalancing is useful or not.
+#define TM_REBALANCE
+
+// for debugging, make sure you're not defining NDEBUG
+// #define TM_DEBUG_GC
+
 ////////////////////////////////////////////////
 /////////////     TYPES     ////////////////////
 
@@ -295,8 +301,10 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
 
   assert(tm->free->flag == toSpFlag);
 
+#ifdef TM_DEBUG_GC
   fprintf(stderr, "\tflipped:\n");
   tm_show(tm);
+#endif
 
 
   // (2) make roots Grey by moving them into the tospace as a Grey
@@ -306,8 +314,10 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
     roots++;
   }
 
+#ifdef TM_DEBUG_GC
   fprintf(stderr, "\tafter roots forwarded:\n");
   tm_show(tm);
+#endif
 
 
   // (3) scan treadmill's tospace
@@ -325,9 +335,13 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
     tm->scan = tm->scan->right;
   }
 
+#ifdef TM_DEBUG_GC
   fprintf(stderr, "after scanned:\n");
   tm_show(tm);
+#endif // TM_DEBUG_GC
 
+
+#ifdef TM_REBALANCE
 
   // (4) rebalance the semi-spaces.
   //     this is a O(unallocated / 2) traversal.
@@ -346,33 +360,43 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
 
   // take away the excess from the free list
   for (ssize_t i = spares; i > 0; i--) {
-    LargeObject_t* lo = tm->bottom->right;
-    assert( lo->flag == toSpFlag );
-    lo->flag = frmSpFlag;
-    tm->bottom = lo;
+    LargeObject_t* newBot = tm->bottom->right;
+
+    assert( newBot->flag == toSpFlag );
+    newBot->flag = frmSpFlag;
+
+    tm->bottom = newBot;
+
     toSpaceElms   += -1;
     fromSpaceElms +=  1;
   }
 
   // give from-space excess to the free list
   for (ssize_t i = spares; i < 0; i++) {
-    LargeObject_t* lo = tm->bottom->left;
-    assert( lo->flag == frmSpFlag );
-    lo->flag = toSpFlag;
-    tm->bottom = tm->bottom->left;
+    LargeObject_t* newTan = tm->bottom;
+
+    assert( newTan->flag == frmSpFlag );
+    newTan->flag = toSpFlag;
+
+    tm->bottom = newTan->left;
+
     toSpaceElms   +=  1;
     fromSpaceElms += -1;
   }
 
+  assert(tm->bottom->flag == frmSpFlag);
+
   tm->fromSpaceElms = fromSpaceElms;
   tm->toSpaceElms = toSpaceElms;
 
+  fprintf(stderr, "freeListSurplus = %zd\n", spares);
+
+#ifdef TM_DEBUG_GC
   fprintf(stderr, "after rebalancing:\n");
-  fprintf(stderr, "toSpaceElms = %zd, fromSpaceElms = %zd, freeListSurplus = %zd\n",
-              tm->toSpaceElms,
-              tm->fromSpaceElms,
-              spares);
   tm_show(tm);
+#endif // TM_DEBUG_GC
+
+#endif // REBALANCE
 
   return;
 } // end of tm_start_gc
