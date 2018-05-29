@@ -122,13 +122,12 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
     mem->flag = !(tm->fromSpaceFlag);
     lo_ins_RIGHTof(curFreeLO, mem);
 
-    // we need a corresponding LO entry in the fromspace to keep the
-    // sides even when flipping.
-    
-    // TODO: is this really needed?
-    // LargeObject_t* frmSpMem = lo_create_new(tm->size);
-    // frmSpMem->flag = tm->fromSpaceFlag;
-    // lo_ins_LEFTof(tm->bottom, frmSpMem);
+    // QUESTION do we really need a corresponding LO entry
+    // in the fromspace to keep the sides even when flipping?
+
+    // LargeObject_t* mirror = lo_create_new(tm->size);
+    // mirror->flag = tm->fromSpaceFlag;
+    // lo_ins_LEFTof(tm->bottom, mirror);
 
 
     return mem->contents;
@@ -151,7 +150,7 @@ void tm_init(Treadmill_t* tm, size_t size) {
   tm->size = size;
   tm->fromSpaceFlag = true; // arbitrary starting value.
 
-  const size_t numLOs = 15; // must be an ODD number >= 4
+  const size_t numLOs = 15; // must be an ODD number
   const Flag_t fromSpFlag = tm->fromSpaceFlag;
   const Flag_t toSpFlag = !fromSpFlag;
   LargeObject_t* first = lo_create_new(size);
@@ -206,10 +205,20 @@ void tm_init(Treadmill_t* tm, size_t size) {
 // this marks the object as Grey.
 ALWAYS_INLINE void tm_forward_bfs(Treadmill_t* tm, LargeObject_t* obj) {
   const Flag_t toSpace = !(tm->fromSpaceFlag);
+
   if (obj->flag == toSpace) {
-    fprintf(stderr, "Already in tospace\n");
+    // fprintf(stderr, "Already in tospace\n");
     return;
   }
+
+  // since obj is in the from-space, to remove it, we need to check
+  // if its one of the ends of that subsequence and adjust the head/tail
+  // accordingly
+
+  if (tm->top == obj)
+    tm->top = obj->right;
+  else if (tm->bottom == obj)
+    tm->bottom = obj->left;
 
   lo_remove(obj);
   obj->flag = toSpace; // mark tospace
