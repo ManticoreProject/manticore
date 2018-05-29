@@ -365,16 +365,17 @@ void tm_show(Treadmill_t* tm) {
   size_t numGrey = 0;
   size_t numBlack = 0;
   size_t numTan = 0;
-  size_t numFromSpace = 0;
+  size_t numMarkedFromSpace = 0;
 
   LargeObject_t* cur = tm->top;
   char color = 'w';
   LargeObject_t* colorEndL = tm->bottom;
   LargeObject_t* colorEndC = NULL;
   do {
-    numFromSpace = cur->flag == tm->fromSpaceFlag
-                    ? numFromSpace + 1
-                    : numFromSpace;
+    bool isFromSpace = cur->flag == tm->fromSpaceFlag;
+    numMarkedFromSpace = isFromSpace
+                       ? numMarkedFromSpace + 1
+                       : numMarkedFromSpace;
 
     // it turns out to be rather complicated to figure out what
     // particular color items are moving left-to-right.
@@ -404,12 +405,12 @@ void tm_show(Treadmill_t* tm) {
       };
     }
 
-    // gather stats
+    // gather stats and check color invariants
     switch (color) {
-      case 'w': numWhite++; break;
-      case 'g': numGrey++; break;
-      case 'b': numBlack++; break;
-      case 't': numTan++; break;
+      case 'w': numWhite++; assert(isFromSpace);  break;
+      case 'g': numGrey++;  assert(!isFromSpace); break;
+      case 'b': numBlack++; assert(!isFromSpace); break;
+      case 't': numTan++;   assert(!isFromSpace); break;
       default: fprintf(stderr, "impossible color"); exit(1);
     };
 
@@ -420,11 +421,11 @@ void tm_show(Treadmill_t* tm) {
       && cur != tm->free
       && cur != tm->scan
       ) {
-        fprintf(stderr, "%c ", color);
+        fprintf(stderr, "%c", color);
 
     } else if (cur == tm->top) {
         assert(color == 'w');
-        fprintf(stderr, "T ");
+        fprintf(stderr, "T");
 
     } else if (cur == tm->bottom) {
         assert(color == 'w');
@@ -432,25 +433,25 @@ void tm_show(Treadmill_t* tm) {
 
     } else if (cur == tm->free) {
         assert(color == 't' || color == 'w');
-        fprintf(stderr, "F ");
+        fprintf(stderr, "F");
 
     } else if (cur == tm->scan) {
         assert(color == 'g' || color == 'w');
         // while scan can point to white too, it will only be the case
         // if scan == top == cur, which is handled earlier.
-        fprintf(stderr, "S ");
+        fprintf(stderr, "S");
 
     } else {
-      fprintf(stderr, "[ERROR] ");
+      assert(false && "misc error");
+      fprintf(stderr, " [ERROR] ");
     }
 
     cur = cur->right; // advance
   } while (cur != tm->top);
 
+  assert(numMarkedFromSpace == numWhite && "flags are not correct");
 
-  fprintf(stderr, "\n");
-
-  fprintf(stderr, "numFromSpace = %zd \n\n", numFromSpace);
+  fprintf(stderr, "\nW%zd, T%zd, G%zd, B%zd\n\n", numWhite, numTan, numGrey, numBlack);
 
 }
 
