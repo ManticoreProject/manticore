@@ -32,6 +32,9 @@
 // for debugging, make sure you're not defining NDEBUG
 // #define TM_DEBUG_GC
 
+// gathers some stats that will be included in tm_show
+// #define TM_STATS
+
 ////////////////////////////////////////////////
 /////////////     TYPES     ////////////////////
 
@@ -68,9 +71,15 @@ typedef struct {
   LargeObject_t* free;
   size_t size;      // size of each large object
   Flag_t fromSpaceFlag;
-
   size_t fromSpaceElms; // number of LO's in the from-space.
   size_t toSpaceElms; // number of LO's in the to-space.
+
+#ifdef TM_STATS
+  // statistics gathering
+  size_t allocHits;     // number of allocs that hit the free list
+  size_t allocMisses;
+#endif
+
 } Treadmill_t;
 
 ////////////////////////////////////////////////////
@@ -136,6 +145,10 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
 
     tm->toSpaceElms += 1;
 
+    #ifdef TM_STATS
+      tm->allocMisses += 1;
+    #endif
+
     return mem->contents;
   }
 
@@ -143,6 +156,10 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
   assert( (curFreeLO->flag == !(tm->fromSpaceFlag))
          && "invariant violation: all new allocations are made in the tospace"
        );
+
+  #ifdef TM_STATS
+   tm->allocHits += 1;
+  #endif
 
   // move free pointer to the left
   tm->free = curFreeLO->left;
@@ -159,6 +176,11 @@ void tm_init(Treadmill_t* tm, size_t size) {
   tm->size = size;
   tm->fromSpaceFlag = true; // arbitrary starting value.
   tm->fromSpaceElms = fromSpaceElms;
+
+  #ifdef TM_STATS
+    tm->allocHits = 0;
+    tm->allocMisses = 0;
+  #endif
 
   const Flag_t fromSpFlag = tm->fromSpaceFlag;
   const Flag_t toSpFlag = !fromSpFlag;
@@ -300,6 +322,7 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   tm->free = tm->top->left;
 
   assert(tm->free->flag == toSpFlag);
+  assert(tm->scan->flag == frmSpFlag);
 
 #ifdef TM_DEBUG_GC
   fprintf(stderr, "\tflipped:\n");
@@ -353,13 +376,13 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   // we allot half of the unused area to the free list.
   size_t freeSz = (tot - numLive) / 2;
   size_t freeListElms = toSpaceElms - numLive;
-  ssize_t spares = ((ssize_t)(freeListElms)) - ((ssize_t)(freeSz));
+  ptrdiff_t spares = ((ptrdiff_t)(freeListElms)) - ((ptrdiff_t)(freeSz));
 
   assert(tm->top->flag == frmSpFlag);
   assert(tm->bottom->flag == frmSpFlag);
 
   // take away the excess from the free list
-  for (ssize_t i = spares; i > 0; i--) {
+  for (ptrdiff_t i = spares; i > 0; i--) {
     LargeObject_t* newBot = tm->bottom->right;
 
     assert( newBot->flag == toSpFlag );
@@ -372,7 +395,7 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   }
 
   // give from-space excess to the free list
-  for (ssize_t i = spares; i < 0; i++) {
+  for (ptrdiff_t i = spares; i < 0; i++) {
     LargeObject_t* newTan = tm->bottom;
 
     assert( newTan->flag == frmSpFlag );
@@ -411,6 +434,12 @@ void tm_show(Treadmill_t* tm) {
   size_t numBlack = 0;
   size_t numTan = 0;
   size_t numMarkedFromSpace = 0;
+
+  const size_t maxPrintWidth = 128;
+
+  const bool tooBig =
+    (    tm->fromSpaceElms > maxPrintWidth
+      || tm->toSpaceElms > maxPrintWidth  );
 
   LargeObject_t* cur = tm->top;
   char color = 'w';
@@ -471,40 +500,53 @@ void tm_show(Treadmill_t* tm) {
 
     // determine what to print, with some built-in error checking
     // so that what is printed is not misleading.
-    if ( cur != tm->top
-      && cur != tm->bottom
-      && cur != tm->free
-      && cur != tm->scan
-      ) {
-        fprintf(stderr, "%c", color);
+    if(!tooBig) {
+      if ( cur != tm->top
+        && cur != tm->bottom
+        && cur != tm->free
+        && cur != tm->scan
+        ) {
+          fprintf(stderr, "%c", color);
 
-    } else if (cur == tm->top) {
-        assert(color == 'w');
-        fprintf(stderr, "T");
+      } else if (cur == tm->top) {
+          assert(color == 'w');
+          fprintf(stderr, "T");
 
-    } else if (cur == tm->bottom) {
-        assert(color == 'w');
-        fprintf(stderr, "B\n");
+      } else if (cur == tm->bottom) {
+          assert(color == 'w');
+          fprintf(stderr, "B\n");
 
-    } else if (cur == tm->free) {
-        assert(color == 't' || color == 'w');
-        fprintf(stderr, "F");
+      } else if (cur == tm->free) {
+          assert(color == 't' || color == 'w');
+          fprintf(stderr, "F");
 
-    } else if (cur == tm->scan) {
-        assert(color == 'g' || color == 'w');
-        // while scan can point to white too, it will only be the case
-        // if scan == top == cur, which is handled earlier.
-        fprintf(stderr, "S");
+      } else if (cur == tm->scan) {
+          assert(color == 'g' || color == 'w');
+          // while scan can point to white too, it will only be the case
+          // if scan == top == cur, which is handled earlier.
+          fprintf(stderr, "S");
 
-    } else {
-      assert(false && "misc error");
-      fprintf(stderr, " [ERROR] ");
+      } else {
+        assert(false && "misc error");
+        fprintf(stderr, " [ERROR] ");
+      }
     }
 
     cur = cur->right; // advance
   } while (cur != tm->top);
 
-  fprintf(stderr, "\nW%zd, T%zd, G%zd, B%zd\n\n", numWhite, numTan, numGrey, numBlack);
+  fprintf(stderr, "\nW%zd, T%zd, G%zd, B%zd\n", numWhite, numTan, numGrey, numBlack);
+
+  #ifdef TM_STATS
+    if (tm->allocMisses > 0) {
+      double ratio = (double)(tm->allocHits) / (double)(tm->allocMisses);
+      fprintf(stderr, "hit/miss ratio = %f\n", ratio);
+    } else {
+      fprintf(stderr, "no misses\n");
+    }
+  #endif
+
+  fprintf(stderr, "\n");
 
 }
 
