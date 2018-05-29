@@ -267,8 +267,16 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
 
   LargeObject_t* oldTop = tm->top;
   LargeObject_t* oldBottom = tm->bottom;
-  tm->bottom = oldTop->left;
-  tm->top = oldBottom->right;
+
+  if (oldBottom == tm->free) {
+    // then we can't do an even flip, since the right-side of
+    // bottom is allocated. instead we just swap top/bottom.
+    tm->top = oldBottom;
+    tm->bottom = oldTop;
+  } else {
+    tm->top = oldBottom->right;
+    tm->bottom = oldTop->left;
+  }
 
   // swap the meaning of the flags.
   tm->fromSpaceFlag = !(tm->fromSpaceFlag);
