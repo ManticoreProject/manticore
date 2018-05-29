@@ -61,8 +61,10 @@ typedef struct {
   LargeObject_t* bottom;
   LargeObject_t* free;
   size_t size;      // size of each large object
-  size_t elms;      // number of large objects
   Flag_t fromSpaceFlag;
+
+  size_t fromSpaceElms; // number of LO's in the from-space.
+  size_t toSpaceElms; // number of LO's in the to-space.
 } Treadmill_t;
 
 ////////////////////////////////////////////////////
@@ -123,14 +125,7 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
     mem->flag = !(tm->fromSpaceFlag);
     lo_ins_RIGHTof(curFreeLO, mem);
 
-    // QUESTION do we really need a corresponding LO entry
-    // in the fromspace to keep the sides even when flipping?
-
-    // LargeObject_t* mirror = lo_create_new(tm->size);
-    // mirror->flag = tm->fromSpaceFlag;
-    // lo_ins_LEFTof(tm->bottom, mirror);
-
-    tm->elms += 1;
+    tm->toSpaceElms += 1;
 
     return mem->contents;
   }
@@ -149,11 +144,12 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
 // initializes a new treadmill that manages objects of the given size.
 void tm_init(Treadmill_t* tm, size_t size) {
   const size_t numLOs = 16; // must be an EVEN number
+  const size_t fromSpaceElms = numLOs / 2;
 
   // setup other metadata of the treadmill
   tm->size = size;
   tm->fromSpaceFlag = true; // arbitrary starting value.
-  tm->elms = numLOs;
+  tm->fromSpaceElms = fromSpaceElms;
 
   const Flag_t fromSpFlag = tm->fromSpaceFlag;
   const Flag_t toSpFlag = !fromSpFlag;
@@ -182,7 +178,7 @@ void tm_init(Treadmill_t* tm, size_t size) {
   // setup the bounds of the semi-spaces. the fromspace spans
   // top -> bottom, inclusive
   LargeObject_t* cur = tm->top;
-  for (size_t i = 0; i < (numLOs / 2); i++) {
+  for (size_t i = 0; i < fromSpaceElms; i++) {
     cur->flag = fromSpFlag;
     cur = cur->right;
   }
@@ -193,10 +189,14 @@ void tm_init(Treadmill_t* tm, size_t size) {
 
   // mark flags for the tospace, which spans bottom -> top, exclusive.
   // aka, everything outside of top -> bottom.
+  size_t toSpaceElms = 0;
   while (cur != tm->top) {
     cur->flag = toSpFlag;
     cur = cur->right;
+    toSpaceElms++;
   }
+
+  tm->toSpaceElms = toSpaceElms;
 
 }
 
@@ -250,6 +250,7 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   // Precondition: ALL objects in the tospace have been scanned. That is,
   // there are no Grey objects in tospace, only Black or Tan.
 
+
   // (1) swap semi-spaces
   //   ____________________________
   //  v                           |
@@ -268,15 +269,13 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   LargeObject_t* oldTop = tm->top;
   LargeObject_t* oldBottom = tm->bottom;
 
-  if (oldBottom == tm->free) {
-    // then we can't do an even flip, since the right-side of
-    // bottom is allocated. instead we just swap top/bottom.
-    tm->top = oldBottom;
-    tm->bottom = oldTop;
-  } else {
-    tm->top = oldBottom->right;
-    tm->bottom = oldTop->left;
-  }
+  tm->top = oldBottom->right;
+  tm->bottom = oldTop->left;
+
+  // even flip
+  size_t tmp = tm->fromSpaceElms;
+  tm->fromSpaceElms = tm->toSpaceElms;
+  tm->toSpaceElms = tmp;
 
   // swap the meaning of the flags.
   tm->fromSpaceFlag = !(tm->fromSpaceFlag);
@@ -286,14 +285,15 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   tm->free = tm->top->left;
 
 
-  // (3) make roots Grey by moving them into the tospace as a Grey
+  // (2) make roots Grey by moving them into the tospace as a Grey
   // object.
   while (*roots != NULL) {
     tm_forward_bfs(tm, *roots);
     roots++;
   }
 
-  // (4) scan treadmill's tospace
+
+  // (3) scan treadmill's tospace
   size_t numLive = 0;
   while (tm->scan != tm->top) {
     numLive++;
@@ -307,23 +307,51 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
     tm->scan = tm->scan->right;
   }
 
-  // (5) split the remaining free space in half, as from and to space.
-  /* XXX below is an attempt to perform the rebalancing that doesn't work.
-  const size_t tot = tm->elms;
-  size_t leftover = tot - numLive;
-  size_t diff = (tot / 2) - (leftover / 2);
 
-  fprintf(stderr, "leftover = %zd, diff = %zd\n", leftover, diff);
+  // (4) rebalance the semi-spaces.
+  //     this is a O(unallocated / 2) traversal.
 
-  bool moveRight = !(tm->fromSpaceFlag); // YUCK
-  while (diff > 0) {
-    if (moveRight)
-      tm->bottom = tm->bottom->right;
-    else
-      tm->bottom = tm->bottom->left;
-    diff--;
+  size_t fromSpaceElms = tm->fromSpaceElms - numLive;
+  size_t toSpaceElms = tm->toSpaceElms + numLive;
+  const size_t tot = fromSpaceElms + toSpaceElms;
+
+  // we allot half of the unused area to the free list.
+  size_t freeSz = (tot - numLive) / 2;
+  size_t freeListElms = toSpaceElms - numLive;
+  ssize_t spares = ((ssize_t)(freeListElms)) - ((ssize_t)(freeSz));
+
+  Flag_t toSpFlag = !(tm->fromSpaceFlag);
+  Flag_t frmSpFlag = tm->fromSpaceFlag;
+
+  // take away the excess from the free list
+  for (ssize_t i = spares; i > 0; i--) {
+    LargeObject_t* lo = tm->bottom->right;
+    assert( lo->flag == toSpFlag );
+    lo->flag = frmSpFlag;
+    tm->bottom = lo;
+    toSpaceElms   += -1;
+    fromSpaceElms +=  1;
   }
-  */
+
+  // give from-space excess to the free list
+  for (ssize_t i = spares; i < 0; i++) {
+    LargeObject_t* lo = tm->bottom->left;
+    assert( lo->flag == frmSpFlag );
+    lo->flag = toSpFlag;
+    tm->bottom = tm->bottom->left;
+    toSpaceElms   +=  1;
+    fromSpaceElms += -1;
+  }
+
+  tm->fromSpaceElms = fromSpaceElms;
+  tm->toSpaceElms = toSpaceElms;
+
+  // fprintf(stderr, "toSpaceElms = %zd, fromSpaceElms = %zd, freeListElms= %zd, freeSz = %zd, spares = %zd\n",
+  //             tm->toSpaceElms,
+  //             tm->fromSpaceElms,
+  //             freeListElms,
+  //             freeSz,
+  //             spares);
 
   return;
 } // end of tm_start_gc
