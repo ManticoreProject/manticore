@@ -60,7 +60,8 @@ typedef struct {
   LargeObject_t* top;
   LargeObject_t* bottom;
   LargeObject_t* free;
-  size_t size;      // size of large objects in this treadmill
+  size_t size;      // size of each large object
+  size_t elms;      // number of large objects
   Flag_t fromSpaceFlag;
 } Treadmill_t;
 
@@ -129,6 +130,7 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
     // mirror->flag = tm->fromSpaceFlag;
     // lo_ins_LEFTof(tm->bottom, mirror);
 
+    tm->elms += 1;
 
     return mem->contents;
   }
@@ -146,11 +148,13 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
 ///////////
 // initializes a new treadmill that manages objects of the given size.
 void tm_init(Treadmill_t* tm, size_t size) {
+  const size_t numLOs = 16; // must be an EVEN number
+
   // setup other metadata of the treadmill
   tm->size = size;
   tm->fromSpaceFlag = true; // arbitrary starting value.
+  tm->elms = numLOs;
 
-  const size_t numLOs = 15; // must be an ODD number
   const Flag_t fromSpFlag = tm->fromSpaceFlag;
   const Flag_t toSpFlag = !fromSpFlag;
   LargeObject_t* first = lo_create_new(size);
@@ -159,7 +163,7 @@ void tm_init(Treadmill_t* tm, size_t size) {
     // construct the treadmill's structure
     LargeObject_t* cur = first;
     LargeObject_t* next = NULL;
-    for (size_t i = 0; i < numLOs; i++) {
+    for (size_t i = 0; i < numLOs-1; i++) {
       next = lo_create_new(size);
       cur->right = next;
       next->left = cur;
@@ -178,7 +182,7 @@ void tm_init(Treadmill_t* tm, size_t size) {
   // setup the bounds of the semi-spaces. the fromspace spans
   // top -> bottom, inclusive
   LargeObject_t* cur = tm->top;
-  for (size_t i = 0; i < (numLOs / 2) + 1; i++) {
+  for (size_t i = 0; i < (numLOs / 2); i++) {
     cur->flag = fromSpFlag;
     cur = cur->right;
   }
@@ -282,7 +286,9 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   }
 
   // (4) scan treadmill's tospace
+  size_t numLive = 0;
   while (tm->scan != tm->top) {
+    numLive++;
     // uint8_t* contents = tm->scan->contents;
 
     // TODO scan "contents" for more pointers,
@@ -292,6 +298,24 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
     // move to the next object
     tm->scan = tm->scan->right;
   }
+
+  // (5) split the remaining free space in half, as from and to space.
+  /* XXX below is an attempt to perform the rebalancing that doesn't work.
+  const size_t tot = tm->elms;
+  size_t leftover = tot - numLive;
+  size_t diff = (tot / 2) - (leftover / 2);
+
+  fprintf(stderr, "leftover = %zd, diff = %zd\n", leftover, diff);
+
+  bool moveRight = !(tm->fromSpaceFlag); // YUCK
+  while (diff > 0) {
+    if (moveRight)
+      tm->bottom = tm->bottom->right;
+    else
+      tm->bottom = tm->bottom->left;
+    diff--;
+  }
+  */
 
   return;
 } // end of tm_start_gc
@@ -368,7 +392,7 @@ void tm_show(Treadmill_t* tm) {
 
     } else if (cur == tm->bottom) {
         assert(color == 'w');
-        fprintf(stderr, "B ");
+        fprintf(stderr, "B\n");
 
     } else if (cur == tm->free) {
         assert(color == 't' || color == 'w');
@@ -390,7 +414,7 @@ void tm_show(Treadmill_t* tm) {
 
   fprintf(stderr, "\n");
 
-  fprintf(stderr, "numFromSpace = %zd \n", numFromSpace);
+  fprintf(stderr, "numFromSpace = %zd \n\n", numFromSpace);
 
 }
 
