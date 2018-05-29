@@ -70,6 +70,8 @@ typedef struct {
 ////////////////////////////////////////////////////
 /////////////     UTILITIES     ////////////////////
 
+void tm_show(Treadmill_t* tm);
+
 // insert val to the right of tgt.
 ALWAYS_INLINE void lo_ins_RIGHTof (LargeObject_t* tgt, LargeObject_t* val) {
   LargeObject_t* oldRight = tgt->right;
@@ -119,6 +121,7 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
 
   if (curFreeLO == tm->bottom) {
     // we're out of free LO's, so we grow the heap.
+    assert(curFreeLO->flag == tm->fromSpaceFlag);
 
     // allocate a LO in tospace and mark it Black immediately.
     LargeObject_t* mem = lo_create_new(tm->size);
@@ -292,6 +295,9 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
 
   assert(tm->free->flag == toSpFlag);
 
+  fprintf(stderr, "\tflipped:\n");
+  tm_show(tm);
+
 
   // (2) make roots Grey by moving them into the tospace as a Grey
   // object.
@@ -299,6 +305,9 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
     tm_forward_bfs(tm, *roots);
     roots++;
   }
+
+  fprintf(stderr, "\tafter roots forwarded:\n");
+  tm_show(tm);
 
 
   // (3) scan treadmill's tospace
@@ -315,6 +324,9 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
     // move to the next object
     tm->scan = tm->scan->right;
   }
+
+  fprintf(stderr, "after scanned:\n");
+  tm_show(tm);
 
 
   // (4) rebalance the semi-spaces.
@@ -355,10 +367,12 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   tm->fromSpaceElms = fromSpaceElms;
   tm->toSpaceElms = toSpaceElms;
 
+  fprintf(stderr, "after rebalancing:\n");
   fprintf(stderr, "toSpaceElms = %zd, fromSpaceElms = %zd, freeListSurplus = %zd\n",
               tm->toSpaceElms,
               tm->fromSpaceElms,
               spares);
+  tm_show(tm);
 
   return;
 } // end of tm_start_gc
