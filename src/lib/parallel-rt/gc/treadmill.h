@@ -219,10 +219,14 @@ ALWAYS_INLINE void tm_forward_bfs(Treadmill_t* tm, LargeObject_t* obj) {
   // if its one of the ends of that subsequence and adjust the head/tail
   // accordingly
 
-  if (tm->top == obj)
+  if (tm->top == obj) {
     tm->top = obj->right;
-  else if (tm->bottom == obj)
+    assert(tm->top->flag == !toSpace);
+
+  } else if (tm->bottom == obj) {
     tm->bottom = obj->left;
+    assert(tm->bottom->flag == !toSpace);
+  }
 
   lo_remove(obj);
   obj->flag = toSpace; // mark tospace
@@ -323,6 +327,9 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   Flag_t toSpFlag = !(tm->fromSpaceFlag);
   Flag_t frmSpFlag = tm->fromSpaceFlag;
 
+  assert(tm->top->flag == frmSpFlag);
+  assert(tm->bottom->flag == frmSpFlag);
+
   // take away the excess from the free list
   for (ssize_t i = spares; i > 0; i--) {
     LargeObject_t* lo = tm->bottom->right;
@@ -346,12 +353,10 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   tm->fromSpaceElms = fromSpaceElms;
   tm->toSpaceElms = toSpaceElms;
 
-  // fprintf(stderr, "toSpaceElms = %zd, fromSpaceElms = %zd, freeListElms= %zd, freeSz = %zd, spares = %zd\n",
-  //             tm->toSpaceElms,
-  //             tm->fromSpaceElms,
-  //             freeListElms,
-  //             freeSz,
-  //             spares);
+  fprintf(stderr, "toSpaceElms = %zd, fromSpaceElms = %zd, freeListSurplus = %zd\n",
+              tm->toSpaceElms,
+              tm->fromSpaceElms,
+              spares);
 
   return;
 } // end of tm_start_gc
@@ -371,9 +376,15 @@ void tm_show(Treadmill_t* tm) {
   char color = 'w';
   LargeObject_t* colorEndL = tm->bottom;
   LargeObject_t* colorEndC = NULL;
+
+  const Flag_t isFromSp = tm->fromSpaceFlag;
+  const Flag_t isToSp = !isFromSp;
   do {
-    bool isFromSpace = cur->flag == tm->fromSpaceFlag;
-    numMarkedFromSpace = isFromSpace
+    // corruption check
+    assert(cur->flag == true || cur->flag == false);
+
+    Flag_t flag = cur->flag;
+    numMarkedFromSpace = flag == isFromSp
                        ? numMarkedFromSpace + 1
                        : numMarkedFromSpace;
 
@@ -407,10 +418,14 @@ void tm_show(Treadmill_t* tm) {
 
     // gather stats and check color invariants
     switch (color) {
-      case 'w': numWhite++; assert(isFromSpace);  break;
-      case 'g': numGrey++;  assert(!isFromSpace); break;
-      case 'b': numBlack++; assert(!isFromSpace); break;
-      case 't': numTan++;   assert(!isFromSpace); break;
+      case 'w': numWhite++; assert(flag == isFromSp);
+                break;
+      case 'g': numGrey++;  assert(flag == isToSp);
+                break;
+      case 'b': numBlack++; assert(flag == isToSp);
+                break;
+      case 't': numTan++;   assert(flag == isToSp);
+                break;
       default: fprintf(stderr, "impossible color"); exit(1);
     };
 
@@ -448,8 +463,6 @@ void tm_show(Treadmill_t* tm) {
 
     cur = cur->right; // advance
   } while (cur != tm->top);
-
-  assert(numMarkedFromSpace == numWhite && "flags are not correct");
 
   fprintf(stderr, "\nW%zd, T%zd, G%zd, B%zd\n\n", numWhite, numTan, numGrey, numBlack);
 
