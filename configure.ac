@@ -122,7 +122,7 @@ AC_PROG_MAKE_SET
 dnl
 dnl extra CFLAGS
 dnl
-CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic"
+CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic-errors -Wall -std=c99"
 CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE -D__STDC_FORMAT_MACROS"
 
 dnl
