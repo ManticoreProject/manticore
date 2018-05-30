@@ -6,56 +6,58 @@
 
 
 Manticore currently only supports the x86-64 (a.k.a. AMD64)
-architecture running on either Linux or Mac OS X. It is possible to
-build the compiler on other systems (see below), but we have not
-ported the runtime or code generator to them yet.
+architecture running on either Linux or macOS. It is possible to
+build the compiler on other systems, but we have not
+ported the runtime system to them yet.
 
 Manticore is implemented in a mix of C and SML code.  You will need a
 recent version of SML/NJ (version 110.81+) installed.  Furthermore,
-your installation of SML/NJ should include the MLRISC library. If you would
-like to use the LLVM backend, follow the instructions below.
+your installation of SML/NJ should include the MLRISC library.
 
-### LLVM Backend
+If you would like to have the LLVM backend available for use,
+follow the instructions below. Otherwise, skip to "Building from Source".
 
-You must have a *custom* version of LLVM installed prior to configuring and
-building Manticore in order to have the LLVM backend available. 
+#### Optional: LLVM Backend
+
+You must have a *custom* version of LLVM built prior to configuring and
+building Manticore in order to have the LLVM backend available for use.
 The following commands will obtain the right LLVM sources and place it in `./llvm/src`
 
     git submodule init llvm/src
     git submodule update llvm/src
-    
+
 Next, we're going to build LLVM, which has its own set of [prerequisites](http://llvm.org/docs/GettingStarted.html#software) that
-any Unix machine setup for C++ development should already have. To configure LLVM, run the following commands
+any Unix machine setup for C++ development should already have.
+To configure LLVM, run the following commands
 
     cd llvm
-    mkdir build install
+    mkdir build
     cd build
-    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ../src
+    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ../src
 
-Next, we will compile and install LLVM locally, which typically takes 5-10 minutes.
-Replace `n` below with the number of parallel jobs you would like to use during the build.
-If you have a spinning disk hard drive, we recommend `n` to be *at most* `(RAM / 2.5GB)`,
-as the linking stage eats up a huge amount of virtual memory, and once you start swapping,
-it may not finish. To get the installation going, run the following
+Next, we will build only the parts of LLVM that we need, which will take a few minutes.
+Replace `n` below with the number of parallel jobs you would like to use during
+the build, such as the number of cores on your system.
+To get the build going, run the following
 
-    make install -j n 
+    make llc opt -j n
 
 then, move back to the root directory with
 
     cd ../..
 
 and continue with configuring and building Manticore below. Note that LLVM will now be
-installed under `./llvm/install` and you should not need to rebuild it again.
+available under `./llvm/build` and you should not need to rebuild it again.
 
 
-## BUILDING FROM SOURCE
+## Building From Source
 
-If building and installing the system from source, you first must 
+If building and installing the system from source, you first must
 generate the configuration script.  To do so, run the following two commands:
 
 	autoheader -Iconfig
 	autoconf -Iconfig
-    
+
 Then proceed with configuration.
 
 ### Configuring
@@ -71,19 +73,19 @@ of the following options to `configure` before moving on to building.
 
 #### Configuring with external MLRISC
 
-If you would like to configure with external MLRISC libraries, 
+If you would like to configure with external MLRISC libraries,
 add the `--with-mlrisc` option.
 
 	./configure --with-mlrisc=<path to mlrisc>
 
 #### Configuring with LLVM
 
-If you want to have the LLVM backend available, configure with the local 
-installation of LLVM after building it (using the instructions above) by 
+If you want to have the LLVM backend available, configure with the local
+installation of LLVM after building it (using the instructions above) by
 adding the `--with-llvm` option to configure.
 
-    ./configure --with-llvm=./llvm/install
-    
+    ./configure --with-llvm=./llvm/build
+
 
 ### Building and Installing the Distribution
 
@@ -107,7 +109,7 @@ Details about running the regression suite with various backends goes here.
 
     git submodule init src/benchmarks
     git submodule update src/benchmarks
-    
+
 Then, see the README file under src/benchmarks for more details.
 
 ### Known Issues
