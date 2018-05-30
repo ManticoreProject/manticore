@@ -30,8 +30,28 @@ structure Word64 =
 	  return (alloc (U64Div (#0 (#0(arg)), #0 (#1(arg)))))
 	;
 
+      define @andb (arg : [ml_word, ml_word] / exh : exh) : ml_word =
+	  return (alloc (I64AndB (#0 (#0(arg)), #0 (#1(arg)))))
+	;
+
+      define @orb (arg : [ml_word, ml_word] / exh : exh) : ml_word =
+	  return (alloc (I64OrB (#0 (#0(arg)), #0 (#1(arg)))))
+	;
+
+      define @xorb (arg : [ml_word, ml_word] / exh : exh) : ml_word =
+	  return (alloc (I64XorB (#0 (#0(arg)), #0 (#1(arg)))))
+	;
+
+      define @notb (arg : ml_word / exh : exh) : ml_word =
+	  return (alloc (I64NotB (#0 (arg))))
+	;
+
       define @lsh (arg : [ml_word, ml_word] / exh : exh) : ml_word =
 	  return (alloc (I64LSh (#0 (#0(arg)), #0 (#1(arg)))))
+	;
+
+      define @rsh (arg : [ml_word, ml_word] / exh : exh) : ml_word =
+	  return (alloc (I64RSh (#0 (#0(arg)), #0 (#1(arg)))))
 	;
 
       define @same (arg : [ml_word, ml_word] / exh : exh) : bool =
@@ -63,7 +83,12 @@ structure Word64 =
     val sub : (word * word) -> word = _prim (@sub)
     val mul : (word * word) -> word = _prim (@mul)
     val udiv : (word * word) -> word = _prim (@udiv)
+    val andb : (word * word) -> word = _prim (@andb)
+    val orb : (word * word) -> word = _prim (@orb)
+    val xorb : (word * word) -> word = _prim (@xorb)
+    val notb : word -> word = _prim (@notb)
     val lsh : (word * word) -> word = _prim (@lsh)
+    val rsh : (word * word) -> word = _prim (@rsh)
     val same : (word * word) -> bool = _prim (@same)
     val lessThan : (word * word) -> bool = _prim (@less-than)
     val fromInt : int -> word = _prim (@from-int)

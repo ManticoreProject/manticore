@@ -10,6 +10,9 @@ val _ = Print.print("~5 mod ~4 = " ^ Int.toString(~5 mod ~4) ^ "\n")	(* ~1 *)
 val _ = Print.print("5 mod ~4 = " ^ Int.toString(5 mod ~4) ^ "\n")		(* 1 *)
 val _ = Print.print("5 mod 4 = " ^ Int.toString(5 mod 4) ^ "\n")		(* 1 *)
 
+val _ = Print.print("~3 div 2 = " ^ Long.toString((~3 : long) div 2) ^ "\n")	(* ~1 *)
+val _ = Print.print("~5 mod 4 = " ^ Long.toString((~5 : long) mod 4) ^ "\n")	(* ~1 *)
+
 
 (* NOTE once the MLRISC bug involving 32-bit sign extensions are fixed,
    or once we've transitioned to LLVM backend by default, use the below

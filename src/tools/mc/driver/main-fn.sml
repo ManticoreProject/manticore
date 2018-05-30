@@ -166,7 +166,7 @@ functor MainFn (
     fun replace8BitRegisters asmFile =
 	let
 	    val stat = OS.Process.system(
-		    "sed -i '' \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile)
+		    "sed -i \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile)
 	in () end
 			
 					  
@@ -264,6 +264,7 @@ functor MainFn (
 	  \    -llvm            use LLVM backend with its default optimizations\n\
       \    -llopt<level>    use LLVM backend and set its optimization level (0 to 3)\n\
 	  \    -sequential      compile a sequential-mode program\n\
+	  \    -noparray        disable parray basis inclusion\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
 
@@ -362,6 +363,7 @@ functor MainFn (
 		| "-gcstats" => set BasicControl.gcStats
 		| "-debug" => set BasicControl.debug
 		| "-perf" => set BasicControl.perf
+		| "-noparray" => set BasicControl.noparray
 		| _ => badopt ()
 	      (* end case *))
 	  end

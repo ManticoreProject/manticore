@@ -19,6 +19,7 @@ end
 
   vector-seq.pml
   int-seq.pml
+  long-seq.pml
   double-seq.pml
   seq-util.pml
 
@@ -28,6 +29,7 @@ end
   rope.pml
   rope-pair.pml
   int-rope.pml
+  long-rope.pml
   double-rope.pml
   int-dbl-rope-pair.pml
 
