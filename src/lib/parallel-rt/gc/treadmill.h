@@ -19,6 +19,8 @@
 #include <stdio.h>
 #include <stddef.h>
 
+///////////
+// TODO: tm is a candidate for marking it `restrict`
 
 /////////////////
 //  Build options
@@ -139,9 +141,12 @@ ALWAYS_INLINE LargeObject_t* lo_create_new(size_t sz) {
 ////////////////////////////////////////////////////
 /////////////     OPERATIONS     ///////////////////
 
-///////////
-// TODO: tm is a candidate for marking it `restrict`
-uint8_t* tm_alloc(Treadmill_t* tm) {
+
+/**
+ * allocates and returns a new chunk of memory whose size
+ * is defined by the given treadmill, i.e., tm->size.
+ */
+void* tm_alloc(Treadmill_t* tm) {
   LargeObject_t* curFreeLO = tm->free;
 
   if (curFreeLO == tm->bottom) {
@@ -178,8 +183,45 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
   return curFreeLO->contents;
 }
 
-///////////
-// initializes a new treadmill that manages objects of the given size.
+
+
+/**
+ * Eagerly frees a chunk of memory allocated by the given treadmill.
+ * This function pushes the memory on top of the free list.
+ *
+ * NOTE: This function is *not* meant to be called by the garbage collector.
+ *
+ * NOTE: Everything will go horribly wrong if you do not ensure that this mem
+ * belongs to the given treadmill!
+ */
+void tm_free(Treadmill_t* tm, void* ptr) {
+  uint8_t* mem = (uint8_t*)ptr;
+  LargeObject_t* lo = (LargeObject_t*)(mem - offsetof(LargeObject_t, contents));
+
+  // things might get complicated if we're in the middle of a GC, as we're
+  // ripping this element out of the tospace, so we ensure there are
+  // no grey nodes at all.
+  assert(tm->scan == tm->top);
+
+  // if it's allocated memory, it must reside in the tospace.
+  assert(lo->flag == !(tm->fromSpaceFlag));
+
+  // remove from allocated area of tospace.
+  // this should be safe to do without updating
+  // any pointers because lo can't be grey by assumption,
+  // so this is a simple Black -> Tan move.
+  lo_remove(lo);
+
+  // push onto free list
+  lo_ins_RIGHTof(tm->free, lo);
+  tm->free = lo;
+}
+
+
+
+/**
+ * initializes a new treadmill that manages objects of the given size.
+ */
 void tm_init(Treadmill_t* tm, size_t size) {
   const size_t numLOs = 16; // must be an EVEN number
   const size_t fromSpaceElms = numLOs / 2;
