@@ -237,7 +237,7 @@ CHECK_SMLNJ([AC_MSG_ERROR([unable to find SML/NJ installation; check your PATH o
 if test $SMLNJ_MAJOR_VERSION -lt 110 \
   -o $SMLNJ_MINOR_VERSION -lt 81
 then
-  AC_MSG_ERROR([installation requires SML/NJ version 110.81])
+  AC_MSG_ERROR([installation requires SML/NJ version 110.81 or newer, but not 110.82])
 fi
 AC_SUBST(SMLNJ_VERSION)
 
