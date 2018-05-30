@@ -19,7 +19,7 @@ build system.
 If you would like to have the LLVM backend available for use,
 follow the instructions below. Otherwise, skip to "Building from Source".
 
-#### Optional: LLVM Backend
+#### Optional Prerequisite: LLVM
 
 You must have a *custom* version of LLVM built prior to configuring and
 building Manticore in order to have the LLVM backend available for use.
@@ -35,7 +35,7 @@ To configure LLVM, run the following commands
     cd llvm
     mkdir build
     cd build
-    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ../src
+    cmake -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD="X86" -DCMAKE_BUILD_TYPE=Release ../src
 
 Next, we will build only the parts of LLVM that we need, which will take a few minutes.
 Replace `n` below with the number of parallel jobs you would like to use during
@@ -57,8 +57,8 @@ available under `./llvm/build` and you should not need to rebuild it again.
 If building and installing the system from source, you first must
 generate the configuration script.  To do so, run the following two commands:
 
-	autoheader -Iconfig
-	autoconf -Iconfig
+    autoheader -Iconfig
+    autoconf -Iconfig
 
 Then proceed with configuration.
 
@@ -103,6 +103,10 @@ or globally.
 
     make install
 
+If you chose to do a local install, you'll find the compiler, `pmlc`,
+under the `bin` directory.
+Run `pmlc -h` for usage information.
+
 ### Testing
 
 Details about running the regression suite with various backends goes here.
@@ -112,7 +116,9 @@ Details about running the regression suite with various backends goes here.
     git submodule init src/benchmarks
     git submodule update src/benchmarks
 
-Then, see the README file under src/benchmarks for more details.
+Then, see the README file under `src/benchmarks` for more details.
+
+------------------
 
 ### Known Issues
 
