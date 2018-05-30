@@ -20,20 +20,27 @@
 #include <stddef.h>
 
 
+/////////////////
+//  Build options
+////////////////
+
+// It is still unclear whether rebalancing is useful or not, so its optional.
+//#define TM_REBALANCE
+
+// For debugging, make sure you're also not defining NDEBUG
+// #define TM_DEBUG_GC
+
+// Gathers some additional stats that will be included in tm_show
+// #define TM_STATS
+
+////////////////////////////////
+
+
 // NOTE: it is likely that we will have handwritten ASM that accesses
 // the treadmill, so if you need to align the fields use this:
 #define ALIGN_8  __attribute__ ((aligned (8)))
 
 #define ALWAYS_INLINE inline __attribute__((always_inline))
-
-// It is still unclear whether rebalancing is useful or not.
-#define TM_REBALANCE
-
-// for debugging, make sure you're not defining NDEBUG
-// #define TM_DEBUG_GC
-
-// gathers some stats that will be included in tm_show
-// #define TM_STATS
 
 ////////////////////////////////////////////////
 /////////////     TYPES     ////////////////////
@@ -71,8 +78,11 @@ typedef struct {
   LargeObject_t* free;
   size_t size;      // size of each large object
   Flag_t fromSpaceFlag;
+
+#ifdef TM_REBALANCE
   size_t fromSpaceElms; // number of LO's in the from-space.
   size_t toSpaceElms; // number of LO's in the to-space.
+#endif
 
 #ifdef TM_STATS
   // statistics gathering
@@ -143,7 +153,9 @@ uint8_t* tm_alloc(Treadmill_t* tm) {
     mem->flag = !(tm->fromSpaceFlag);
     lo_ins_RIGHTof(curFreeLO, mem);
 
-    tm->toSpaceElms += 1;
+    #ifdef TM_REBALANCE
+      tm->toSpaceElms += 1;
+    #endif
 
     #ifdef TM_STATS
       tm->allocMisses += 1;
@@ -175,7 +187,10 @@ void tm_init(Treadmill_t* tm, size_t size) {
   // setup other metadata of the treadmill
   tm->size = size;
   tm->fromSpaceFlag = true; // arbitrary starting value.
+
+#ifdef TM_REBALANCE
   tm->fromSpaceElms = fromSpaceElms;
+#endif
 
   #ifdef TM_STATS
     tm->allocHits = 0;
@@ -227,7 +242,9 @@ void tm_init(Treadmill_t* tm, size_t size) {
     toSpaceElms++;
   }
 
+#ifdef TM_REBALANCE
   tm->toSpaceElms = toSpaceElms;
+#endif
 
 }
 
@@ -267,8 +284,10 @@ ALWAYS_INLINE void tm_forward_bfs(Treadmill_t* tm, LargeObject_t* obj) {
       tm->top->flag = !toSpace;
       tm->bottom = tm->top; // don't forget to set bottom here too!
 
-      tm->fromSpaceElms +=  1;
-      tm->toSpaceElms   += -1;
+      #ifdef TM_REBALANCE
+        tm->fromSpaceElms +=  1;
+        tm->toSpaceElms   += -1;
+      #endif
     }
 
   } else if (tm->bottom == obj) {
@@ -324,10 +343,12 @@ void tm_start_gc(Treadmill_t* tm, LargeObject_t** roots) {
   tm->top = oldBottom->right;
   tm->bottom = oldTop->left;
 
-  // even flip
-  size_t tmp = tm->fromSpaceElms;
-  tm->fromSpaceElms = tm->toSpaceElms;
-  tm->toSpaceElms = tmp;
+  #ifdef TM_REBALANCE
+    // update element counts
+    size_t tmp = tm->fromSpaceElms;
+    tm->fromSpaceElms = tm->toSpaceElms;
+    tm->toSpaceElms = tmp;
+  #endif
 
   // swap the meaning of the flags.
   tm->fromSpaceFlag = !(tm->fromSpaceFlag);
@@ -452,11 +473,16 @@ void tm_show(Treadmill_t* tm) {
   size_t numTan = 0;
   size_t numMarkedFromSpace = 0;
 
+#ifdef TM_REBALANCE
   const size_t maxPrintWidth = 128;
 
   const bool tooBig =
     (    tm->fromSpaceElms > maxPrintWidth
       || tm->toSpaceElms > maxPrintWidth  );
+#else
+  // no count info is kept, so lets play it safe and not spam output.
+  const bool tooBig = true;
+#endif
 
   LargeObject_t* cur = tm->top;
   char color = 'w';
