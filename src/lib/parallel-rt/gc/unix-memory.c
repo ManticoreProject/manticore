@@ -51,12 +51,12 @@ STATIC_INLINE void UnmapMemory (void *base, size_t szb)
 
 void* SimpleAlloc(size_t szb) {
     void* mem = MapMemory(0, szb);
-    
+
     if(mem == MAP_FAILED) {
         Die("SimpleAlloc failed to allocate memory!");
         return 0;
     }
-    
+
     return mem;
 }
 
@@ -103,7 +103,7 @@ void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedB
 
 /* FreeMemory:
  *
- * free a memory object allocated by AllocMemory (its size is 
+ * free a memory object allocated by AllocMemory (its size is
  * szB bytes).
  */
 void FreeMemory (void *base, int szB)
@@ -114,11 +114,11 @@ void FreeMemory (void *base, int szB)
 } /* end of FreeMemory */
 
 // Allocates a region of memory suitable for
-// use as a stack. 
+// use as a stack.
 //
 // Returns the pointer to the mmap information of the stack for GC tracking, etc.
 //
-// The stack pointer p returned is guarenteed to be such that p+8 is 
+// The stack pointer p returned is guarenteed to be such that p+8 is
 // 16-byte aligned, per the SysV ABI. The pointer returned
 // is ready to be used as a stack pointer after writing a ret addr.
 // Here's a picture (where numBytes is approximate):
@@ -127,28 +127,28 @@ void FreeMemory (void *base, int szB)
 //                                   v
 // | guard |  numBytes-ish  |bbbbbbbb| ... StackInfo_t ... |  high addresses >
 //                          ^
-//                   info->initialSP 
+//                   info->initialSP
 //
 StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
     StackInfo_t* info;
-    
+
     // NOTE automatic resizing using MAP_GROWSDOWN has
 	// been deprecated: https://lwn.net/Articles/294001/
-    
+
 	size_t guardSz = GUARD_PAGE_BYTES;
     size_t bonusSz = 8 * sizeof(uint64_t); // extra space for realigning, etc.
     size_t stackLen = numBytes + guardSz + bonusSz;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
-    
+
     totalSz = ROUNDUP(totalSz, guardSz);
-    
+
     uint8_t* mem;
     if (top == 0 || ((*top) + totalSz) >= lim) {
         mem = MapMemory(0, totalSz);
-        
+
         if(mem == MAP_FAILED) {
             Die("AllocStack: failed to mmap more memory");
-            return 1;
+            return NULL;
         }
     } else {
         mem = *top;
@@ -156,18 +156,18 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
         mem = (uint8_t*) (ROUNDUP(asI, guardSz));
         *top = mem + totalSz;
     }
-    
+
     // we protect the low end of the block to
     // detect stack overflow. this is done manually
     // because mmap on OS X seems to only place a protected
     // page after the buffer, not before it.
     if(mprotect(mem, guardSz, PROT_NONE)) {
         Die("AllocStack: failed to initialize guard area");
-        return 2;
+        return NULL;
     }
-    
+
     uint64_t val = (uint64_t) mem;
-    
+
     // initialize the stack's info descriptor
     info = (StackInfo_t*)(val + stackLen);
     info->mmapBase = mem;
@@ -178,18 +178,18 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
     info->prev = NULL;
     info->prevSegment = NULL;
     info->currentSP = NULL;
-    
+
     // setup stack pointer
     val = val + stackLen - 16;		// switch sides, leaving some headroom.
     val = ROUNDDOWN(val, 16ULL);	// realign downwards.
     val = val - 8;					// make space for return addr.
-    
+
     void* sp = (void*)val;
     void* spLim = (void*)(val - numBytes);
-    
+
     info->initialSP = sp;
     info->stkLimit  = spLim;
-    
+
     return info;
 }
 
@@ -198,46 +198,46 @@ StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim) {
 //
 // Returns the pointer to the mmap information of the stack for GC tracking, etc.
 //
-// The stack pointer p returned is guarenteed to be such that p+8 is 
+// The stack pointer p returned is guarenteed to be such that p+8 is
 // 16-byte aligned, per the SysV ABI. The pointer returned
 // is ready to be used as a stack pointer after writing a ret addr.
 // Here's a picture (where numBytes is approximate):
 //
 //                 16-byte aligned --| |-- dummy watermark
-//                                   v v 
+//                                   v v
 // | guard |  STACK_REGION  |bbbbbbbb| 2 | ~0 | ... StackInfo_t ... |  high addresses >
 //                          ^              ^
 //                   info->initialSP     invalid frame size
 //
 //  where STACK_REGION looks like this:
-//  
+//
 //                  info->stkLimit
 //                        v
 //  | C stack area | slop | usable stack space |
-//         ^          ^             ^    
+//         ^          ^             ^
 //      1kb-ish      128b      numBytes-ish
 //
 StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     StackInfo_t* info;
-    
+
 	size_t guardSz = GUARD_PAGE_BYTES;
     size_t slopSz = 128;
     size_t ccallSz = 8192;
     size_t bonusSz = 8 * sizeof(uint64_t);  // watermark + frame size + max realign
-    
+
     size_t totalRegion = ccallSz + slopSz + numBytes + bonusSz;
     size_t stackLen = guardSz + totalRegion;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
-    
+
     totalSz = ROUNDUP(totalSz, guardSz);
-    
+
     uint8_t* mem;
     if (top == 0 || ((*top) + totalSz) >= lim) {
         mem = MapMemory(0, totalSz);
-        
+
         if(mem == MAP_FAILED) {
             Die("AllocStackSegment: failed to mmap more memory");
-            return 1;
+            return NULL;
         }
     } else {
         mem = *top;
@@ -245,7 +245,7 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
         mem = (uint8_t*) (ROUNDUP(asI, guardSz));
         *top = mem + totalSz;
     }
-    
+
     // we protect the low end of the block to
     // detect stack overflow. this is done manually
     // because mmap on OS X seems to only place a protected
@@ -253,11 +253,11 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     if(mprotect(mem, guardSz, PROT_NONE)) {
         // failed to initialize guard area.
         Die("AllocStackSegment: failed to initialize guard area");
-        return 2;
+        return NULL;
     }
-    
+
     uint64_t val = (uint64_t) mem;
-    
+
     // initialize the stack's info descriptor
     info = (StackInfo_t*)(val + stackLen);
     info->mmapBase = mem;
@@ -268,30 +268,30 @@ StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim) {
     info->prev = NULL;
     info->prevSegment = NULL;
     info->currentSP = NULL;
-    
+
     // setup stack pointer
     val = val + stackLen - 16;		// switch sides, leaving some headroom.
     val = ROUNDDOWN(val, 16ULL);	// realign downwards.
-        
+
     uint8_t* valP = (uint8_t*)val;
-    
+
     // push an invalid frame size
     valP -= sizeof(uint64_t);
     *((uint64_t*)valP) = ~0ULL;
-    
+
     // push a dummy watermark
     valP -= sizeof(uint64_t);
     *((uint64_t*)valP) = AGE_Global;
-    
+
     // leave space for a return addr
     valP -= sizeof(uint64_t);
-    
+
 	uint8_t* sp = (uint8_t*)valP;
     uint8_t* spLim = (uint8_t*)(valP - numBytes);
-    
+
     info->initialSP = sp;
     info->stkLimit = spLim;
-    
+
     return info;
 }
 

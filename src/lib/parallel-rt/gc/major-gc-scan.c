@@ -309,7 +309,7 @@ Word_t * ScanGlobalToSpaceLINKFRAMEfunction (Word_t* nextScan, VProc_t *vp, Addr
 
 /////////////////////// phase specific code
         } else if (inVPHeap(heapBase, (Addr_t)linkPtr)) {
-            *curFrame = ForwardObjMajor(vp, (Value_t)linkPtr);
+            *curFrame = (uint64_t) ForwardObjMajor(vp, (Value_t)linkPtr);
 
 ///////////////////////
             break;

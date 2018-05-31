@@ -156,8 +156,8 @@ Value_t AllocStkCont (VProc_t *vp, Addr_t codeP, Value_t stkPtr, Value_t stkInfo
 
     obj[-1] = STACK_HDR(nWords);
     obj[0] = codeP;
-    obj[1] = stkPtr;
-    obj[2] = stkInfo;
+    obj[1] = (Word_t) stkPtr;
+    obj[2] = (Word_t) stkInfo;
 
     vp->allocPtr += WORD_SZB * (nWords+1);
 

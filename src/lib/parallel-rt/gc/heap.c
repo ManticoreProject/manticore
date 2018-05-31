@@ -54,6 +54,7 @@ uint32_t	NumGlobalGCs = 0;
 statepoint_table_t* SPTbl = NULL;  // the statepoint table
 extern int ASM_DS_StartStack;
 extern int ASM_LinkedStack_PrologueGC_Ret;
+void InitStackMaps ();
 
 
 /* Heap sizing parameters.  The normal to-space size is computed as
