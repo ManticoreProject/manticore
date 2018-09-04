@@ -60,7 +60,7 @@ STATIC_INLINE void postWord64(EventsBuf *eb, uint64_t i)
 {
     postWord32(eb, (uint32_t)(i >> 32));
     postWord32(eb, (uint32_t)i);
-}	      
+}
 
 void sanity(EventsBuf * eb, VProc_t * vp){
     int i = 0;
@@ -100,7 +100,7 @@ STATIC_INLINE void postEventType(EventsBuf *eb, uint16_t event_num){
      int desclen = strlen(desc);
      postWord32(eb, desclen);
      for(d = 0; d < desclen; d++){
-         postWord8(eb, desc[d]);	   
+         postWord8(eb, desc[d]);
      }
      postWord32(eb, 0);
      postWord32(eb, EVENT_ET_END);
@@ -109,12 +109,12 @@ STATIC_INLINE void postEventType(EventsBuf *eb, uint16_t event_num){
 STATIC_INLINE void postEventTypes(EventsBuf * eb){
     postWord32(eb, EVENT_HEADER_BEGIN);
     postWord32(eb, EVENT_HET_BEGIN);
-    
+
     uint32_t i;
     for(i = 1; i < NumLogEvents; i++){
 	postEventType(eb, i);
     }
-    
+
     postWord32(eb, EVENT_HET_END);
     postWord32(eb, EVENT_HEADER_END);
 
@@ -242,10 +242,10 @@ void printAndClearEventBuf (VProc_t * vp)
 {
     EventsBuf * ebuf = vp->event_log;
     uint64_t numBytes = 0, written = 0;
-    
+
     closeBlockMarker(vp->event_log);
-    
-    if (ebuf->begin != NULL && ebuf->pos != ebuf->begin)
+
+    if (ebuf->pos != ebuf->begin)
     {
         numBytes = ebuf->pos - ebuf->begin;
 
@@ -257,7 +257,7 @@ void printAndClearEventBuf (VProc_t * vp)
 	ebuf->marker = NULL;
 
 	postBlockMarker(vp);
-	
+
     }
 }
 
@@ -269,7 +269,7 @@ void InitEventLogFile (const char *name, int nvps, int ncpus)
 {
     if ((LogFD = open(name, O_TRUNC|O_CREAT|O_WRONLY|O_APPEND, 0664)) < 0) {
 	Die ("unable to open log file: %s", strerror(errno));
-    }    
+    }
 }
 
 /* InitLog:
@@ -290,7 +290,7 @@ void InitEventLog (VProc_t *vp)
     }else{
         postBlockMarker(vp);
     }
-    
+
 }
 
 /* FinishLog:
@@ -309,7 +309,7 @@ void FinishEventLog (VProc_t * main_vp)
 
     main_vp->event_log->pos = main_vp->event_log->begin;
     main_vp->event_log->marker = NULL;
-    
+
     postWord16(main_vp->event_log, EVENT_DATA_END);
     printAndClearEventBuf(main_vp);
 
@@ -318,4 +318,3 @@ void FinishEventLog (VProc_t * main_vp)
     LogFD = -1;
 
 } /* end of FinishLog */
-

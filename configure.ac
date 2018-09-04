@@ -111,7 +111,7 @@ dnl
 dnl check for standard programs
 dnl
 AC_PROG_CC([clang gcc cc])
-AC_PROG_CC_C99
+dnl AC_PROG_CC_C99  FIXME not sure how to enforce c11 support here...
 AC_PROG_CXX
 AC_GNU_SOURCE
 AC_CHECK_PROG(AR, ar, ar)
@@ -122,7 +122,14 @@ AC_PROG_MAKE_SET
 dnl
 dnl extra CFLAGS
 dnl
-CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic-errors -Wall -std=c99"
+dnl NOTE: We can't error on pedantic errors because perf-counter.h, which is
+dnl from the Linux kernel, uses non-standard enum values.
+dnl
+dnl The other "don't care" values are just because there are a lot of them
+dnl and it's not a big deal right now.
+DONT_CARE_WARNS="-Wno-unused-variable -Wno-unused-function -Wno-format -Wno-pedantic"
+
+CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic -Wall -Werror -std=c11 $DONT_CARE_WARNS"
 CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE -D__STDC_FORMAT_MACROS"
 
 dnl

@@ -25,7 +25,7 @@
 #include "options.h"
 #include "value.h"
 #include "scheduler.h"
-#include "event-log.h"
+#include "inline-log.h"
 #include "log-file.h"
 #include "time.h"
 #include "perf.h"
@@ -85,9 +85,9 @@ void VProcInit (bool isSequential, Options_t *opts)
 
     // Will point to a static non-null value if locations were specified.
     int *procs = NULL;
-    
+
     NumIdleVProcs = 0;
-	
+
   /* get command-line options */
     if (isSequential) {
 	NumVProcs = 1;
@@ -149,8 +149,8 @@ void VProcInit (bool isSequential, Options_t *opts)
     NumVProcsPerNode = NEWVEC(int, NumHWNodes);
     MinVProcPerNode = NEWVEC(int, NumHWNodes);
     for (int i = 0; i < NumHWNodes; i++) {
-        NumVProcsPerNode[i] = 0;        
-        MinVProcPerNode[i] = MAX_NUM_VPROCS;        
+        NumVProcsPerNode[i] = 0;
+        MinVProcPerNode[i] = MAX_NUM_VPROCS;
     }
 
   /* assign locations */
@@ -270,7 +270,7 @@ void *NewVProc (void *arg)
     vproc->id = initData->id;
     vproc->hostID = pthread_self();
     vproc->location = initData->loc;
-    vproc->nodeID = LocationNode(initData->loc); 
+    vproc->nodeID = LocationNode(initData->loc);
 
     vproc->heapBase =
     vproc->oldTop = vprocHeap;
@@ -313,7 +313,7 @@ void *NewVProc (void *arg)
     TIMER_Init (&(vproc->timer));
 #if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
     InitPerfCounters (vproc);
-#endif 
+#endif
 
 #ifndef NO_GC_STATS
     vproc->nPromotes = 0;
@@ -339,10 +339,10 @@ void *NewVProc (void *arg)
     // initialize the stack area with one gig of space for bump alloc
     const size_t ONE_GIG = ONE_K * ONE_K * ONE_K;
     uint8_t* mem = SimpleAlloc(ONE_GIG);
-    
+
     vproc->stackArea_top = mem;
     vproc->stackArea_lim = mem + (ONE_GIG - 8);
-    
+
     // warm up the free list with 128MB worth of stack
     WarmUpFreeList(vproc, 128 * ONE_MEG);
 #endif
@@ -402,29 +402,29 @@ void VProcExit (VProc_t *vp)
 
 #if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
     ReportPerfCounters ();
-#endif 
+#endif
 
 #ifndef NO_GC_STATS
 	ReportGCStats ();
 #endif
-		
+
 	exit (0);
     }
     else {
 	ThreadExit ();
-    }    
+    }
 }
 
 /* MainVProc:
  *
  * The main vproc is responsible for running the Manticore code.  The
  * argument is the address of the initial entry-point in Manticore program.
- */ 
+ */
 static void MainVProc (VProc_t *vp, void *arg)
 {
     extern int mantEntry;		/* the entry-point of the Manticore code */
 
-    LogStartup (vp, NumVProcs);
+    // LogStartup (vp, NumVProcs); // FIXME logging is a mess right now
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -550,7 +550,7 @@ STATIC_INLINE struct timespec TimespecAdd (struct timespec time1, struct timespe
     result.tv_sec = time1.tv_sec + time2.tv_sec;
     result.tv_nsec = time1.tv_nsec + time2.tv_nsec;
     while (result.tv_nsec > ONE_SECOND) {
-        result.tv_sec++;  
+        result.tv_sec++;
 	result.tv_nsec -= ONE_SECOND;
     }
     return result;
@@ -576,7 +576,7 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 
 #ifndef NDEBUG
     if (DebugFlg)
-        SayDebug ("[%2d] VProcNanosleep for %" PRIu64 " seconds and %" PRIu64 " nanoseconds\n", 
+        SayDebug ("[%2d] VProcNanosleep for %" PRIu64 " seconds and %" PRIu64 " nanoseconds\n",
 	    vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
 #endif
 
@@ -618,7 +618,7 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 #endif
 
     assert (status == 0 || status == ETIMEDOUT || status == EINTR);
-    
+
     return ManticoreBool (status == 0);
 }
 
@@ -634,14 +634,14 @@ static void IdleVProc (VProc_t *vp, void *arg)
 #endif
 
     VProcSleep(vp);
-    
+
 #ifndef DIRECT_STYLE
-  
+
   /* Activate scheduling code on the vproc. */
     Value_t envP = vp->schedCont;
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
     RunManticore (vp, codeP, vp->dummyK, envP);
-    
+
 #else
 
     /* Activate scheduling code on the vproc. */
@@ -746,11 +746,11 @@ VProc_t* GetNthVProc (int n)
  */
 Value_t SleepCont (VProc_t *self)
 {
-    
+
 #ifdef DIRECT_STYLE
     return WrapWord(self, (Word_t)&ASM_DS_VProcSleep);
 #else
     return WrapWord(self, (Word_t)&ASM_VProcSleep);
 #endif
-    
+
 }

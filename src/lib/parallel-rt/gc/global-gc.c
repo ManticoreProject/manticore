@@ -18,9 +18,13 @@
 #include "gc-inline.h"
 #include "atomic-ops.h"
 #include "bibop.h"
-#include "event-log.h"
+#include "inline-log.h"
 #include "work-stealing-deque.h"
 #include "gc-scan.h"
+
+#ifdef ENABLE_PERF_COUNTERS
+	#include "perf.h"
+#endif
 
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
@@ -86,22 +90,22 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 				newObj[i] = p[i];
 			}
 			vp->globNextW = (Addr_t)(newObj+len+1);
-        
+
             assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
                     IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
-            assert (AddrToChunk(newObj)->sts == TO_SP_CHUNK);
-        
+            assert (AddrToChunk((Addr_t)newObj)->sts == TO_SP_CHUNK);
+
 			return PtrToValue(newObj);
 		}
 		else {
 			// some other vproc forwarded the object, so return the forwarded
 			// object.
 			assert (isForwardPtr(hdr));
-            assert (AddrToChunk(GetForwardPtr(hdr))->sts == TO_SP_CHUNK);
+            assert (AddrToChunk((Addr_t)GetForwardPtr(hdr))->sts == TO_SP_CHUNK);
 			return PtrToValue(GetForwardPtr(hdr));
 		}
 	}
-	
+
 }
 
 void ScanStackGlobal (
@@ -112,78 +116,78 @@ void ScanStackGlobal (
 // #define DEBUG_STACK_SCAN_GLOBAL
 
     uint64_t framesSeen = 0;
-    
+
 #ifdef SEGSTACK
   stkInfo->currentSP = origStkPtr;
-        
+
   while (stkInfo != NULL) {
-        
+
     origStkPtr = stkInfo->currentSP;
 #endif // SEGSTACK
-        
+
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
-    
+
     // NOTE we might need to do an atomic update on the deepestScan field?
-    
+
     uint64_t deepest = (uint64_t)stkInfo->deepestScan;
     if(deepest <= (uint64_t)origStkPtr) {
         goto nextIter; // this part of the stack has already been scanned.
     }
-    
+
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
-    
+
     while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
 
 #ifdef DEBUG_STACK_SCAN_GLOBAL
         framesSeen++;
-        print_frame(stderr, frame);    
+        print_frame(stderr, frame);
 #endif
-        
+
         // step into frame
         stackPtr += sizeof(uint64_t);
-        
+
         // everything is being forwarded to another part of global heap
         uint64_t* watermark = (uint64_t*)stackPtr;
         *watermark = AGE_Global;
-        
+
         // process pointers
         for (uint16_t i = 0; i < frame->numSlots; i++) {
             pointer_slot_t slotInfo = frame->slots[i];
             if (slotInfo.kind >= 0) {
                 Die("unexpected derived pointer\n");
             }
-            
+
             Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
             Value_t p = *root;
             Value_t newP;
-            
+
             if (isFromSpacePtr(p)) {
                 newP = ForwardObjGlobal(vp, p);
                 *root = newP;
-                
+
 #ifdef DEBUG_STACK_SCAN_GLOBAL
                 fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, newP);
 #endif
             }
         } // end for
-        
+
 #ifdef DEBUG_STACK_SCAN_GLOBAL
         fprintf(stderr, "------------------------------------------\n");
 #endif
-        
+
         // move to next frame
         stackPtr += frame->frameSize;
-        
+
     } // end while
-    
+
     // the roots have been forwarded to another part of the global heap
     stkInfo->age = AGE_Global;
-    
+
 nextIter:
 #ifdef SEGSTACK
     stkInfo = stkInfo->prevSegment;
-    
+
     #ifdef DEBUG_STACK_SCAN_GLOBAL
         // end of a stack segment
         fprintf(stderr, "=============================================\n");
@@ -191,7 +195,7 @@ nextIter:
 
   } // end stkInfo while
 #endif // SEGSTACK
-    
+
 #ifdef DEBUG_STACK_SCAN_GLOBAL
         if (framesSeen == 0) {
             Die("GlobalGC: Should have seen at least one frame!");
@@ -260,7 +264,7 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
  */
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
-    
+
     bool	leaderVProc;
 
 #ifndef NO_GC_STATS
@@ -353,7 +357,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
     /* finish the GC setup for this vproc */
 	self->globAllocChunk = (MemChunk_t *)0;
-    
+
 #ifdef DIRECT_STYLE
     /* unmark all stacks from the major collection earlier */
     UnmarkStacks(self);
@@ -382,7 +386,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
 #ifndef NO_GC_STATS
     // compute the number of bytes copied in this GC on this vproc
-    
+
     uint32_t used = (self->globNextW - WORD_SZB) -
         self->globAllocChunk->baseAddr;
     self->globalStats.nBytesCopied += used;
@@ -426,7 +430,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
                 cp->sts = FREE_CHUNK;
                 cp->usedTop = cp->baseAddr;
 #ifndef NDEBUG
-                
+
                 if (GCDebug >= GC_DEBUG_GLOBAL)
                     SayDebug("[%2d]   Free-Space chunk %#tx..%#tx\n",
                              self->id, cp->baseAddr, cp->baseAddr+cp->szB);
@@ -440,7 +444,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
             NodeHeaps[i].fromSpace = NULL;
             MutexUnlock(&NodeHeaps[i].lock);
         }
-        
+
 #ifndef NDEBUG
         if (HeapCheck >= GC_DEBUG_GLOBAL)
             CheckToSpacesAfterGlobalGC(self);
@@ -459,7 +463,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		self->id, (unsigned long)(ToSpaceLimit >> 20));
 #endif
     }
-    
+
 #ifdef DIRECT_STYLE
     /* another part of phase 4 is for each vproc to reclaim unmarked stacks */
     size_t freedBytes = FreeStacks(self, AGE_Global);
@@ -500,8 +504,8 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 
   /* collect roots that were pruned away from the minor collector's root set */
     M_AddDequeEltsToGlobalRoots(vp, roots);
-    
-    
+
+
 #ifdef DIRECT_STYLE
     /* scan the current stack. */
     StackInfo_t* stkInfo = (StackInfo_t*)(vp->stdCont);
@@ -544,11 +548,11 @@ static void ScanVProcHeap (VProc_t *vp)
     while (scanPtr < top) {
 
 		Word_t hdr = *scanPtr++;	// get object header
-        
+
         int id = getID(hdr);
         if (unlikely(id >= tableMaxID))
             Die("GlobalGC, ScanVProcHeap: invalid header ID!");
-        
+
 		// All objects jump to their table entry function.
 		// See header-tbl-print.sml, and use -saveTemps to view
 		// the C code generated by that module.
@@ -607,11 +611,11 @@ MemChunk_t *GetNextScanChunk(VProc_t *vp, int node) {
             CondBroadcast(&NodeHeaps[node].scanWait);
             return NULL;
         }
-        
+
         if (!NodeHeaps[node].completed) {
             CondWait(&NodeHeaps[node].scanWait, &NodeHeaps[node].lock);
         }
-        
+
         NodeHeaps[node].numWaiting--;
         if (NodeHeaps[node].completed) {
             MutexUnlock(&NodeHeaps[node].lock);
@@ -639,11 +643,11 @@ static void ScanGlobalToSpace (VProc_t *vp)
         do {
             while (scanPtr < scanTop) {
                 Word_t hdr = *scanPtr++;	// get object header
-                
+
                 int id = getID(hdr);
                 if (unlikely(id >= tableMaxID))
                     Die("GlobalGC, ScanGlobalToSpace: invalid header ID!");
-                
+
                 // All objects jump to their table entry function.
                 // See header-tbl-print.sml, and use -saveTemps to view
                 // the C code generated by that module.
@@ -660,7 +664,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
                 // this case, we have changed the allocation chunk but are
                 // not guaranteed to have scanned any objects allocated
                 // between the previous scanTop value and the final usedTop.
-                scanTop = UsedTopOfChunk (vp, scanChunk);                
+                scanTop = UsedTopOfChunk (vp, scanChunk);
             }
         } while (scanPtr < scanTop);
 
@@ -747,11 +751,11 @@ void CheckGlobalAddr (VProc_t *self, void *addr, char *where)
 	    else if (cq->sts != VPROC_CHUNK(self->id)) {
                SayDebug("[%2d] CheckGlobalAddr: bogus remote pointer %p in %s\n",
                         self->id, ValueToPtr(v), where);
-	    } 
+	    }
 	    else if (cq->sts == VPROC_CHUNK(self->id)) {
 		   SayDebug("[%2d] CheckGlobalAddr: bogus local pointer %p in %s\n",
 			    self->id, ValueToPtr(v), where);
-	    }	      
+	    }
 	    else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
 		SayDebug("[%2d] CheckGlobalAddr: bogus local pointer %p is out of bounds in %s\n",
 			 self->id, ValueToPtr(v), where);
@@ -766,7 +770,7 @@ void CheckGlobalAddr (VProc_t *self, void *addr, char *where)
 
 
 /* Check the invariant that the value pointed to by addr is a pointer living in either
- * the root set or the local heap. 
+ * the root set or the local heap.
  * Precondition: this check should only occur just after a global collection.
  */
 void CheckLocalPtrGlobal (VProc_t *self, void *addr, const char *where)
@@ -814,7 +818,7 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 	    Word_t hdr = *p++;
 	    Word_t *scanptr = p;
 		tableDebug[getID(hdr)].globalGCdebug(self,scanptr);
-		
+
 		p += GetLength(hdr);
 	}
     }
@@ -830,11 +834,11 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
             Word_t hdr = *p++;
             Word_t *scanptr = p;
             tableDebug[getID(hdr)].globalGCdebugGlobal(self,scanptr);
-		
+
             p += GetLength(hdr);
         }
     }
-    
+
   // check the VProc structure
 #define CHECK_VP(fld)	CheckLocalPtrGlobal(self, &(self->fld), "self->" #fld)
     CHECK_VP(atomic);
@@ -863,7 +867,7 @@ void CheckToSpacesAfterGlobalGC (VProc_t *self)
         assert (NodeHeaps[i].scannedTo == NULL);
         assert (NodeHeaps[i].fromSpace == NULL);
         MemChunk_t	*cp = NodeHeaps[i].unscannedTo;
-        
+
         while (cp != (MemChunk_t *)0) {
             assert (cp->sts = TO_SP_CHUNK);
             Word_t *p = (Word_t *)(cp->baseAddr);
@@ -878,7 +882,7 @@ void CheckToSpacesAfterGlobalGC (VProc_t *self)
                 }
 
 		tableDebug[getID(hdr)].globalGCdebugGlobal(self,scanptr);
-		
+
 		p += GetLength(hdr);
             }
             cp = cp->next;

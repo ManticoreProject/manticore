@@ -17,6 +17,10 @@
 #include "os-threads.h"
 #include "asm-offsets.h" /* for RUNTIME_MAGIC */
 
+#ifdef ENABLE_PERF_COUNTERS
+	#include "perf.h"
+#endif
+
 static void PingLoop ();
 static void Ping (int n);
 #ifndef HAVE_SIGTIMEDWAIT

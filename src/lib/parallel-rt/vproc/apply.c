@@ -11,7 +11,7 @@
 #include "request-codes.h"
 #include "scheduler.h"
 #include "heap.h"
-#include "event-log.h"
+#include "inline-log.h"
 #include "os-memory.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
@@ -57,7 +57,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
         - we need some sort of "unit" continuation, that is not heap allocated.
         - some of the code after ASM_Apply returns needs to be updated.
     */
-    
+
     /* allocate the return and exception continuation objects
      * in the VProc's heap.
      */
@@ -78,11 +78,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 #endif
         if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
           /* schedule a continuation that will cleanly shut down the runtime */
-                  
+
 #ifdef LINKSTACK
             vp->stdCont = M_UNIT;  // for safety, kill the old stack.
             closObj = ValueToClosure(vp->shutdownCont);
-            
+
             envP = closObj->ep;
             codeP = ValueToAddr(closObj->cp);
             retCont = CreateBaseFrame(vp, (Word_t)&ASM_Error);
@@ -98,9 +98,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
             vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
         }
 
-        LogRunThread(vp, 0);
+        // LogRunThread(vp, 0); // FIXME logging is a mess right now
         RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
-        LogStopThread(vp, 0, req); //thread id and stop status, TODO: thread id is not currently used
+        // LogStopThread(vp, 0, req); //thread id and stop status, TODO: thread id is not currently used
 
         Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
 
@@ -185,7 +185,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
                 VProcSleep(vp);
              else
                 status = VProcNanosleep(vp, timeToSleep);
-                
+
              assert (vp->wakeupCont != M_NIL);
              envP = vp->wakeupCont;
              codeP = ValueToAddr (ValueToCont(envP)->cp);
@@ -218,24 +218,24 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 #else /* DIRECT_STYLE && !(LINKSTACK) */
 
 // This version is for contiguous and segmented stacks, since
-// both of these are designed to run RTS services, FFI calls, and 
+// both of these are designed to run RTS services, FFI calls, and
 // manticore code on the same stack.
 
 extern void ASM_DS_Apply (
     VProc_t *vp,
-    Addr_t cp, 
+    Addr_t cp,
     Value_t ep,
     Value_t exh,
     Value_t arg,
     Value_t stkPtr);
-    
+
 extern void ASM_Resume_Stack (
     VProc_t *vp,
-    Value_t stk, 
+    Value_t stk,
     Value_t ep,
     Value_t exh,
     Value_t arg);
-    
+
 extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_UncaughtExn;
 
@@ -251,53 +251,53 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 {
   /* allocate the top-level exception handler in the heap */
     Value_t exnCont = WrapWord(vp, (Word_t)&ASM_DS_UncaughtExn);
-  
+
   /* allocate the main function's stack */
   void* stkPtr;
   StackInfo_t* info = NewMainStack(vp, &stkPtr);
-    
+
   // write 'info' to vp->stdCont to establish that it is the current stack.
-  vp->stdCont = info;
+  vp->stdCont = (Value_t) info;
 
 #ifdef SEGSTACK
   // set stack limit
   vp->stdEnvPtr = GetStkLimit(info);
 #endif
-  
+
   /* apply the given function  */
   LogRunThread(vp, 0);
   ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
-  
+
   Die("unexpected return to RunManticore");
-    
+
 } /* end RunManticore */
 
-/* 
- * This function doesn't return normally. 
+/*
+ * This function doesn't return normally.
  *
  * If we perform a context switch to some other stack,
  * we place the captured stack into a closure that will
  * effectively perform a longjmp when invoked.
  *
  * That closure is placed in the scheduling queue,
- * and then another very similar closure is retrieved 
- * from the queue and invoked. 
+ * and then another very similar closure is retrieved
+ * from the queue and invoked.
  */
 VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
     LogStopThread(vp, 0, req);
-    
+
     /*
         vp->stdEp == current stack pointer
         vp->stdCont == current stack's descriptor.
     */
-    
+
     Value_t envP, arg, exnCont;
     Addr_t codeP;
     FunClosure_t* closObj;
     Value_t stkPtr;
-    
+
     Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
-    
+
 doShutdown:
     if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
         closObj = ValueToClosure(vp->shutdownCont);
@@ -308,21 +308,21 @@ doShutdown:
         vp->atomic = M_TRUE;
         vp->sigPending = M_FALSE;
         vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
-        
+
         stkPtr = vp->stdEnvPtr;
-        
+
         #ifdef SEGSTACK
           // set stack limit
-          vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+          vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
         #endif
-        
+
         LogRunThread(vp, 0);
         ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
     }
-    
+
     switch (req) {
         case REQ_GC:
-        
+
         /* check to see if we actually need to do a GC, since this request
          * might be from a pending signal.
          */
@@ -330,14 +330,14 @@ doShutdown:
               /* request a minor GC */
                 MinorGC (vp);
           }
-          
+
           /* check for asynchronous signals */
                 if (oldLimitPtr == 0) {
     #ifndef NDEBUG
                   if (DebugFlg)
                     SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
     #endif
-    
+
                   /* an asynchronous signal has arrived */
                     vp->sigPending = M_TRUE;
                 }
@@ -347,9 +347,9 @@ doShutdown:
                 Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
                                                     vp->stdEnvPtr, // stack ptr
                                                     vp->stdCont); // stack info
-                
+
                   /* pass the signal to scheduling code in the BOM runtime */
-            
+
             closObj = ValueToClosure(vp->schedCont);
             // yes, the two lines below look fishy.
             // FunClosure_t uses {cp, ep}, but
@@ -361,36 +361,36 @@ doShutdown:
             vp->atomic = M_TRUE;
             vp->sigPending = M_FALSE;
             LogPreemptSignal(vp);
-            
+
             stkPtr = vp->stdEnvPtr;
-            
+
             #ifdef SEGSTACK
               // set stack limit
-              vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+              vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
             #endif
-            
+
             LogRunThread(vp, 0);
             ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
-            
+
                 }
                 else {
                  /* setup the return from GC */
                 stkPtr = vp->stdEnvPtr; // actually the stack pointer
-                envP = M_UNIT;                
+                envP = M_UNIT;
                 exnCont = M_UNIT;
                 arg = M_UNIT;
-                
+
                 #ifdef SEGSTACK
                   // set stack limit
-                  vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+                  vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
                 #endif
-                
+
                 LogRunThread(vp, 0);
                 ASM_Resume_Stack (vp, stkPtr, envP, exnCont, arg);
                 }
-                
+
             Die("unreachable in REQ_GC");
-            break;  
+            break;
         /********************/
         case REQ_Return:
                   /* shutdown the runtime
@@ -403,12 +403,12 @@ doShutdown:
                     VProcSendSignal(vp, wvp, wvp->currentFLS, wvp->dummyK);
                     VProcPreempt (vp, wvp);
                 }
-        
+
                 goto doShutdown;
-                
+
                 Die("unreachable in REQ_Return");
                 break;
-                
+
         case REQ_Sleep:
             /* make the VProc idle */
           {
@@ -418,36 +418,36 @@ doShutdown:
                 VProcSleep(vp);
              else
                 status = VProcNanosleep(vp, timeToSleep);
-                
+
              assert (vp->wakeupCont != M_NIL);
              envP = vp->wakeupCont;
              codeP = ValueToAddr (ValueToCont(envP)->cp);
              arg = AllocNonUniform (vp, 1, PTR(status));
              exnCont = M_UNIT;
              vp->wakeupCont = M_NIL;
-             
+
              stkPtr = vp->stdEnvPtr;
-             
+
              #ifdef SEGSTACK
                // set stack limit
-               vp->stdEnvPtr = GetStkLimit(vp->stdCont);
+               vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
              #endif
-             
+
              LogRunThread(vp, 0);
              ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
-             
+
              Die("unreachable in REQ_Sleep");
           }
             break;
-            
+
         case REQ_UncaughtExn:
             Die ("uncaught exception\n");
             break;
-            
+
         default:
             Die("unknown signal %d\n", req);
             break;
-        
+
     }
 }
 

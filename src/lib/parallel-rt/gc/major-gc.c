@@ -5,7 +5,7 @@
  *
  * A major GC is the process of copying live data from a VProc's local heap
  * to the global heap.  It will occur immediately after a minor GC in the
- * case where the amount of free space falls below some threshold.  
+ * case where the amount of free space falls below some threshold.
  *
  * TODO:
  *	update ToSpaceSize
@@ -18,7 +18,7 @@
 #include "vproc.h"
 #include "gc-inline.h"
 #include "internal-heap.h"
-#include "event-log.h"
+#include "inline-log.h"
 #ifndef NDEBUG
 #include "bibop.h"
 #endif
@@ -56,11 +56,11 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 
                 assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
                         IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
-                assert (AddrToChunk(newObj)->sts == TO_SP_CHUNK);
-        
+                assert (AddrToChunk((Addr_t)newObj)->sts == TO_SP_CHUNK);
+
 		return PtrToValue(newObj);
 	}
-	
+
 }
 
 static void ScanGlobalToSpace (
@@ -97,7 +97,7 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
             tmp->next = NodeHeaps[node].unscannedTo;
             NodeHeaps[node].unscannedTo = tmp;
         }
-        
+
         MutexUnlock (&NodeHeaps[node].lock);
         if (inGlobal)
             CondSignal (&NodeHeaps[node].scanWait);
@@ -110,7 +110,7 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
 void ScanStackMajor (
     void* origStkPtr,
     StackInfo_t* stkInfo,
-    Addr_t heapBase,  
+    Addr_t heapBase,
     Addr_t oldSzB,
     VProc_t *vp,
     bool scanningGlobalToSpace) {
@@ -118,27 +118,27 @@ void ScanStackMajor (
 // #define DEBUG_STACK_SCAN_MAJOR
 
     uint64_t framesSeen = 0;
-    
+
     enum LimitState {
         LS_NoMark,
         LS_MarkSeen,
         LS_Stop
     };
-    
+
     Age_t promoteGen = AGE_Global;
     enum LimitState state = LS_NoMark;
-    
+
 #ifdef SEGSTACK
   stkInfo->currentSP = origStkPtr;
-        
+
   while (stkInfo != NULL) {
-        
+
     origStkPtr = stkInfo->currentSP;
 #endif // SEGSTACK
-        
+
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
-    
+
     // only during a GC cycle is it valid to do this test, because
     // otherwise during a PromoteObj, we never end up clearing this,
     // and will not scan the stack.
@@ -149,21 +149,21 @@ void ScanStackMajor (
         }
         stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
     }
-    
+
     while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
            && state != LS_Stop) {
 
 #ifdef DEBUG_STACK_SCAN_MAJOR
         framesSeen++;
-        print_frame(stderr, frame);    
+        print_frame(stderr, frame);
 #endif
-        
+
         // step into frame
         stackPtr += sizeof(uint64_t);
-        
+
         // handle watermark
         uint64_t* watermark = (uint64_t*)stackPtr;
-        
+
         if (state == LS_MarkSeen) {
             // this is the last frame we'll check.
             state = LS_Stop;
@@ -174,18 +174,18 @@ void ScanStackMajor (
             // overwrite the watermark
             *watermark = promoteGen;
         }
-        
+
         // process pointers
         for (uint16_t i = 0; i < frame->numSlots; i++) {
             pointer_slot_t slotInfo = frame->slots[i];
             if (slotInfo.kind >= 0) {
                 Die("unexpected derived pointer\n");
             }
-            
+
             Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
             Value_t p = *root;
             Value_t newP;
-            
+
             if(scanningGlobalToSpace) {
                 if (isPtr(p) && inVPHeap(heapBase, ValueToAddr(p))) {
                     newP = ForwardObjMajor(vp, p);
@@ -215,26 +215,26 @@ void ScanStackMajor (
                     }
                 }
             }
-            
-            
+
+
         } // end for
-        
+
 #ifdef DEBUG_STACK_SCAN_MAJOR
         fprintf(stderr, "------------------------------------------\n");
 #endif
-        
+
         // move to next frame
         stackPtr += frame->frameSize;
-        
+
     } // end while
-    
+
     // the roots have been forwarded to the global heap
     stkInfo->age = promoteGen;
-    
+
 nextIter:
 #ifdef SEGSTACK
     stkInfo = stkInfo->prevSegment;
-    
+
     #ifdef DEBUG_STACK_SCAN_MAJOR
         // end of a stack segment
         fprintf(stderr, "=============================================\n");
@@ -242,7 +242,7 @@ nextIter:
 
   } // end stkInfo while
 #endif // SEGSTACK
-    
+
 #ifdef DEBUG_STACK_SCAN_MAJOR
         if (framesSeen == 0) {
             Die("MajorGC: Should have seen at least one frame!");
@@ -262,7 +262,7 @@ nextIter:
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
-    Addr_t	heapBase = vp->heapBase;	
+    Addr_t	heapBase = vp->heapBase;
     Addr_t	oldSzB = vp->oldTop - heapBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
    * data word of the next object (not the header word)!
@@ -272,8 +272,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
     LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);
 
-	
-	
+
+
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
     vp->majorStats.nBytesCollected += top - heapBase;
@@ -292,7 +292,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 #ifdef DIRECT_STYLE
     /* unmark all stacks from the minor collection earlier */
     UnmarkStacks(vp);
-    
+
     /* scan the current stack. */
     StackInfo_t* stkInfo = (StackInfo_t*)(vp->stdCont);
     void* stkPtr = vp->stdEnvPtr;
@@ -334,18 +334,18 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
    */
     Word_t *nextScan = (Word_t *)(vp->oldTop);
     while (nextScan < (Word_t *)top) {
-		
+
 		Word_t hdr = *nextScan++;	// get object header
-		
+
         int id = getID(hdr);
         if (unlikely(id >= tableMaxID))
             Die("MajorGC: invalid header ID!");
-        
+
 		// All objects jump to their table entry function.
 		// See major-gc.scan.c
 		nextScan = table[id].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
-			
-		
+
+
     }
 
   /* scan to-space objects */
@@ -355,8 +355,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Addr_t youngSzB = top - vp->oldTop;
     memmove ((void *)heapBase, (void *)(vp->oldTop), youngSzB);
     vp->oldTop = vp->heapBase + youngSzB;
-    
-    
+
+
 #ifdef DIRECT_STYLE
     size_t freedBytes = FreeStacks(vp, AGE_Major);
     /* NOTE our caller will unmark stacks when we return. */
@@ -453,7 +453,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 #endif
 
     PushToSpaceChunks (vp, scanChunk, false);
-    
+
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_ALL)
 	    SayDebug("[%2d]  ==> %p; %"PRIu64" bytes\n", vp->id, (void *)root, nBytesCopied);
@@ -469,7 +469,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
         Die("PromoteObj doesn't know how to handle this case.");
     }
 #endif
-    
+
 #ifndef NDEBUG
     else {
       /* check for a bogus pointer */
@@ -477,7 +477,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	if (cq->sts == TO_SP_CHUNK) {
         /* fall through, returning root later */
     }
-/* 
+/*
 	else if ((cq->sts == FROM_SP_CHUNK) && (! GlobalGCInProgress))
 	    Die("PromoteObj: unexpected from-space pointer %p\n", ValueToPtr(root));
 */
@@ -509,21 +509,21 @@ static void ScanGlobalToSpace (
     Addr_t oldSzB)
 {
     Word_t	*scanTop = UsedTopOfChunk (vp, scanChunk);
-    
+
     const bool isPromotion = (oldSzB == 0);
 
     do {
-    
+
         bool handlingAlloc = scanChunk == vp->globAllocChunk;
 
         do {
             while (scanPtr < scanTop) {
                 Word_t hdr = *scanPtr++;	// get object header
-                
+
                 int id = getID(hdr);
                 if (unlikely(id >= tableMaxID))
                     Die("MajorGC, ScanGlobalToSpace: invalid header ID!");
-                
+
                 // All objects jump to their table entry function.
                 // See major-gc-scan.c
                 if (isPromotion) {
@@ -545,13 +545,13 @@ static void ScanGlobalToSpace (
                 // this case, we have changed the allocation chunk but are
                 // not guaranteed to have scanned any objects allocated
                 // between the previous scanTop value and the final usedTop.
-                scanTop = UsedTopOfChunk (vp, scanChunk);                
+                scanTop = UsedTopOfChunk (vp, scanChunk);
             }
         } while (scanPtr < scanTop);
 
         if (scanChunk->next != (MemChunk_t *)0) {
             scanChunk = scanChunk->next;
-        
+
             if (scanChunk->next == NULL) {
                 assert ((scanChunk->baseAddr < vp->globNextW)
                         && (vp->globNextW < scanChunk->baseAddr+scanChunk->szB));

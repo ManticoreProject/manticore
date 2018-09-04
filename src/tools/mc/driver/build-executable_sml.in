@@ -88,9 +88,9 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
             (* emit code *)
             val _ = emitter filenamec
 
-            val cmd = cat [ccCmd,cFlags,optFlags,
+            val cmd = cat [ccCmd,cFlags,optFlags,"-Wno-unused-command-line-argument",
             " @LIBS@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/",
-            " -I @MANTICORE_SRCDIR@/include -o ",filenameo," -std=c99 -c ",filenamec]
+            " -I @MANTICORE_SRCDIR@/include -o ",filenameo," -c ",filenamec]
 
             val _ = if OS.Process.isSuccess (systemWithTiming (cmd, false))
                          then ()

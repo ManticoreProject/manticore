@@ -16,14 +16,14 @@
 #include "value.h"
 #include "internal-heap.h"
 #include "gc-inline.h"
-#include "event-log.h"
+#include "inline-log.h"
 #include "work-stealing-deque.h"
 #include "bibop.h"
 #include "gc-scan.h"
 
 extern Addr_t   MajorGCThreshold;   /* when the size of the nursery goes below */
                     /* this limit it is time to do a GC. */
-                    
+
 #ifdef DIRECT_STYLE
   extern int ASM_DS_Return;
 #endif
@@ -34,7 +34,7 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
 {
     Word_t  *p = (Word_t *)ValueToPtr(v);
     Word_t  hdr = p[-1];
-    
+
     if (isForwardPtr(hdr)) {
         return PtrToValue(GetForwardPtr(hdr));
     } else {
@@ -46,11 +46,11 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
             newObj[i] = p[i];
         }
         *nextW = newObj+len+1;
-        
+
         p[-1] = MakeForwardPtr(hdr, newObj);
         return PtrToValue(newObj);
     }
-    
+
 }
 
 #ifndef NDEBUG
@@ -60,41 +60,41 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots);
 void ScanStackMinor (
     void* origStkPtr,
     StackInfo_t* stkInfo,
-    Addr_t nurseryBase,  
+    Addr_t nurseryBase,
     Addr_t allocSzB,
     Word_t **nextW) {
 
 // #define DEBUG_STACK_SCAN_MINOR
 
     uint64_t framesSeen = 0;
-    
+
     enum LimitState {
         LS_NoMark,
         LS_MarkSeen,
         LS_Stop
     };
-  
+
   const Age_t promoteGen = AGE_Major;
   enum LimitState state = LS_NoMark;
-  
+
 #ifdef SEGSTACK
   stkInfo->currentSP = origStkPtr;
-        
+
   while (stkInfo != NULL) {
-        
+
     origStkPtr = stkInfo->currentSP;
 #endif // SEGSTACK
-        
+
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
-    
+
     uint64_t deepest = (uint64_t)stkInfo->deepestScan;
     if(deepest <= (uint64_t)origStkPtr) {
         goto nextIter; // this part of the stack has already been scanned.
     }
-    
+
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
-    
+
     while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
            && state != LS_Stop) {
 
@@ -102,13 +102,13 @@ void ScanStackMinor (
         framesSeen++;
         print_frame(stderr, frame);
 #endif
-        
+
         // step into frame
         stackPtr += sizeof(uint64_t);
-        
+
         // handle watermark
         uint64_t* watermark = (uint64_t*)stackPtr;
-        
+
         if (state == LS_MarkSeen) {
             // this is the last frame we'll check.
             state = LS_Stop;
@@ -119,17 +119,17 @@ void ScanStackMinor (
             // overwrite the watermark
             *watermark = promoteGen;
         }
-        
+
         // process pointers
         for (uint16_t i = 0; i < frame->numSlots; i++) {
             pointer_slot_t slotInfo = frame->slots[i];
             if (slotInfo.kind >= 0) {
                 Die("unexpected derived pointer\n");
             }
-            
+
             Value_t *root = (Value_t *)(stackPtr + slotInfo.offset);
             Value_t p = *root;
-            
+
             if (isPtr(p) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
 #ifdef DEBUG_STACK_SCAN_MINOR
                 fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, *nextW);
@@ -137,20 +137,20 @@ void ScanStackMinor (
                 *root = ForwardObjMinor(p, nextW);
             }
         } // end for
-        
+
 #ifdef DEBUG_STACK_SCAN_MINOR
         fprintf(stderr, "------------------------------------------\n");
 #endif
-        
+
         // move to next frame
         stackPtr += frame->frameSize;
-        
+
     } // end while
- 
-#ifdef DEBUG_STACK_SCAN_MINOR   
+
+#ifdef DEBUG_STACK_SCAN_MINOR
  #ifdef DIRECT_STYLE
     uint64_t lastRetAddr = *(uint64_t*)(stackPtr);
-    if (lookup_return_address(SPTbl, lastRetAddr) == 0 
+    if (lookup_return_address(SPTbl, lastRetAddr) == 0
             && lastRetAddr != (uint64_t)&EndOfStack
             && lastRetAddr != (uint64_t)&ASM_DS_Return)
         Die("Encountered an unexpected return address on the stack: %p\n", (void*)lastRetAddr);
@@ -166,7 +166,7 @@ void ScanStackMinor (
 nextIter:
 #ifdef SEGSTACK
     stkInfo = stkInfo->prevSegment;
-    
+
     #ifdef DEBUG_STACK_SCAN_MINOR
         // end of a stack segment
         fprintf(stderr, "=============================================\n");
@@ -174,7 +174,7 @@ nextIter:
 
   } // end stkInfo while
 #endif // SEGSTACK
-  
+
   #ifdef DEBUG_STACK_SCAN_MINOR
           if (framesSeen == 0) {
               Die("MinorGC: Should have seen at least one frame!");
@@ -196,21 +196,21 @@ nextIter:
 size_t FreeStacks(VProc_t *vp, Age_t epoch) {
     StackInfo_t* allocd = vp->allocdStacks;
     size_t freedBytes = 0;
-    
+
     while (allocd != NULL) {
-        
+
         StackInfo_t* nextIter = allocd->next;
-        
+
         if ((allocd->age <= epoch)  // young enough
             && (allocd->deepestScan == allocd) // unmarked
            ) {
-            
+
             freedBytes += allocd->mmapSize;
-            
+
             // save links
             StackInfo_t* allocdNext = allocd->next;
             StackInfo_t* allocdPrev = allocd->prev;
-            
+
             // demote and put allocd on free list
             // note that we don't bother with prev links
             // on the free list since we never unlink
@@ -219,12 +219,12 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
             allocd->next = vp->freeStacks;
             allocd->prev = NULL;
             vp->freeStacks = allocd;
-            
+
             // update links in next/prev
             if (allocdNext != NULL)
                 allocdNext->prev = allocdPrev;
-            
-            
+
+
             if (allocdPrev != NULL) {
                 allocdPrev->next = allocdNext;
             } else {
@@ -257,7 +257,7 @@ void MinorGC (VProc_t *vp)
     Word_t  *nextW = nextScan + 1;      /* next object address in to-space */
 
     //LogMinorGCStart (vp, (uint32_t)allocSzB);
-    LogStartGC(vp);
+    // LogStartGC(vp); // FIXME logging is a mess right now
 
 #ifndef NO_GC_STATS
     TIMER_Start(&(vp->minorStats.timer));
@@ -295,12 +295,12 @@ void MinorGC (VProc_t *vp)
 #ifdef LINKSTACK
     // protocol is different: stdCont holds the stack pointer
     *rp++ = &(vp->stdCont);
-    
+
 #elif ! defined(DIRECT_STYLE)
     // In the in the CPS-style RTS, the stdEnvPtr is a pointer to the root set.
     *rp++ = &(vp->stdEnvPtr);
 #endif
-    
+
     rp = M_AddDequeEltsToLocalRoots(vp, rp);
     *rp++ = 0;
 
@@ -326,7 +326,7 @@ void MinorGC (VProc_t *vp)
                         // the root is a frame in a later generation.
                         // we don't forward or move the frame, but instead simply scan it,
                         // looking for nursery pointers.
-                        
+
                         // NOTE that we throw away the returned value because we are
                         // not scanning the object adjacent to this frame.
                         minorGCscanLINKFRAMEpointer (ptr, &nextW, allocSzB, nurseryBase);
@@ -334,9 +334,9 @@ void MinorGC (VProc_t *vp)
                 }
             #endif
         }
-        
+
     }
-    
+
 #ifdef DIRECT_STYLE
     /* stdEnvPtr contains a raw pointer to the top of the current stack. */
     StackInfo_t* stkInfo = (StackInfo_t*)(vp->stdCont);
@@ -348,7 +348,7 @@ void MinorGC (VProc_t *vp)
     while (nextScan < nextW-1) {
 
         assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
-        
+
         Word_t hdr = *nextScan++;
 
         int id = getID(hdr);
@@ -413,7 +413,7 @@ void MinorGC (VProc_t *vp)
 
     /* reset the allocation pointer */
     SetAllocPtr (vp);
-    LogEndGC(vp);
+    // LogEndGC(vp); // FIXME logging is a mess right now
 
 }
 
@@ -462,19 +462,19 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
     Word_t *top = (Word_t *)(self->oldTop);
     Word_t *p = (Word_t *)self->heapBase;
     while (p < top) {
-        
+
         Word_t hdr = *p++;
         Word_t *scanptr = p;
-        
+
         if (isForwardPtr(hdr)) {
           // forward pointer
             Word_t *forwardPtr = GetForwardPtr(hdr);
             CheckLocalPtrMinor(self, forwardPtr, "forward pointer");
             Word_t hdr = forwardPtr[-1];
-            
+
             p += GetLength(hdr);
-        
-        } else {    
+
+        } else {
             tableDebug[getID(hdr)].minorGCdebug(self,scanptr);
             p += GetLength(hdr);
         }
@@ -490,7 +490,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
     while (p < top) {
         Word_t hdr = *p++;
         Word_t *scanptr = p;
-        
+
         tableDebug[getID(hdr)].minorGCdebugGlobal(self,scanptr);
         p += GetLength(hdr);
     }

@@ -14,6 +14,7 @@
 #ifdef ENABLE_LOGGING
 #include "log.h"
 #include "vproc.h"
+#include "log-events.h"
 #if defined(HAVE_MACH_ABSOLUTE_TIME)
 #  include <mach/mach_time.h>
 #elif defined(HAVE_CLOCK_GETTIME)
@@ -31,7 +32,7 @@ STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
     LogBuffer_t *buf;
 
     do {
-	buf = vp->log;
+	buf = (LogBuffer_t*) vp->log;
 	int index = buf->next++;
 	if (index < LOGBUF_SZ) {
 	    return &(buf->log[index]);
@@ -82,4 +83,3 @@ STATIC_INLINE uint64_t NewEventId (VProc_t *vp)
 
 #endif
 #endif /* !_INLINE_LOG_H_ */
-
