@@ -19,7 +19,7 @@ llvm:
         - ninja llc opt
         # skip install and use just build/bin
     cache:
-        key: "$CI_BUILD_REF"
+        key: "$CI_COMMIT_SHA"
         paths:
             - llvm/build/bin
             - llvm/install
@@ -36,3 +36,9 @@ pmlc:
         - ./src/regression-tests/bash-scripts/run-par.bsh
     dependencies:
       - llvm
+    cache:
+        key: "$CI_COMMIT_SHA"
+        paths:
+            - llvm/build/bin
+            - llvm/install
+        policy: pull
