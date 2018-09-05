@@ -1,0 +1,14 @@
+before retEarly
+about to throw
+after retEarly
+
+==
+before retNormal
+returning
+after retNormal
+
+==
+before skipOver
+at callec of inner
+at inner's throw
+after skipOver

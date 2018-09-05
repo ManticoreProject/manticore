@@ -24,7 +24,7 @@ make local-install
 
 ########## start of testing stuff ##########
 
-# we want to try all configurations and _then_ 
+# we want to try all configurations and _then_
 # report failure if any one of them fails,
 # so we use || here to collect failure results.
 
@@ -32,11 +32,11 @@ failed=0
 
 llvmOptions=(
   "-O0"
-  "-O1"
-  "-O2"
+  # "-O1"
+  # "-O2"
   "-O3"
-  "-O4"
-  "-O5"
+  # "-O4"
+  # "-O5"
 )
 
 stacks=(
@@ -44,15 +44,17 @@ stacks=(
   "-contigstack"
   "-segstack"
   "-linkstack"
+
   # now we test with the cshim
-  "-Ccshim=true"
-  "-Ccshim=true -contigstack"
-  "-Ccshim=true -segstack"
+  # "-Ccshim=true"
+  # "-Ccshim=true -contigstack"
+  # "-Ccshim=true -segstack"
+
   # now we test noras
-  "-noras"
-  "-noras -contigstack"
-  "-noras -segstack"
-  "-noras -linkstack"
+  # "-noras"
+  # "-noras -contigstack"
+  # "-noras -segstack"
+  # "-noras -linkstack"
 )
 
 CI_REPORT="gitlab_report.txt"
