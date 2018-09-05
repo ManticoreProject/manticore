@@ -25,7 +25,7 @@ llvm:
             - llvm/install
 
 pmlc:
-    stage: build
+    stage: test
     script:
         - uname -a
         - autoheader -Iconfig
@@ -34,3 +34,5 @@ pmlc:
         - make local-install
         - ./src/regression-tests/bash-scripts/run-seq.bsh
         - ./src/regression-tests/bash-scripts/run-par.bsh
+    dependencies:
+      - llvm
