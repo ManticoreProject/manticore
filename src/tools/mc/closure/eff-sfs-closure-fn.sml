@@ -61,17 +61,17 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             }) [
               Controls.control {
                   ctl = enableClosureConversion,
-                  name = "closure-convert",
+                  name = "sfs-closure-convert",
                   pri = [0, 1],
                   obscurity = 0,
-                  help = "enable Shao/Appel Eff/SfS closure conversion"
+                  help = "enable Shao/Appel safe-for-space closure conversion"
                 },
               Controls.control {
                   ctl = closureConversionDebug,
-                  name = "closure-convert-debug",
+                  name = "sfs-closure-convert-debug",
                   pri = [0, 1],
                   obscurity = 0,
-                  help = "debug closure conversion "
+                  help = "debug safe-for-space closure conversion"
                   }
             ]
 
@@ -90,7 +90,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 
     fun getSafe f = (CV.useCount f = CV.appCntOf f andalso
                          case CFACPS.callersOf f of CFACPS.Known _ => true | CFACPS.Unknown => false)
-                      
+
     fun isCont f =
         case CV.typeOf f
          of CTy.T_Cont _ => true
@@ -139,7 +139,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                            val fut = valOf (getSN f)
                        in
                            VSet.foldl (fn (x, m) => VMap.insert (m, x, (fut, fut)))
-                           VMap.empty fvSet                           
+                           VMap.empty fvSet
                        end)
     (* +DEBUG *)
 
@@ -147,7 +147,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	    fun varToString (x,p,s) = concat [s,CPS.Var.toString x, ", "]
 	in
 	    VMap.foldli varToString "" fvmap
-	end  
+	end
 
 
     fun setFVMap (f, map)= (
@@ -186,7 +186,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
               setSN (f, i);
               doExp (body, i))
           and doCont (CPS.FB{f, params, rets, body}, i) = f::doExp (body, i)
-          and doExp (CPS.Exp(_, e), i) = (case e 
+          and doExp (CPS.Exp(_, e), i) = (case e
                  of CPS.Let(xs, _, e) => (doExp (e, i))
                   | CPS.Fun(fbs, e) => (List.foldl (fn (f,l) => l@doLambda (f,i+1)) [] fbs) @ doExp (e, i)
                   | CPS.Cont(fb, e) => (doCont (fb, i+1) @ doExp (e, i))
@@ -294,11 +294,11 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             val childMap = doExp body
 	    val _ = print(concat["childMap has ", Int.toString(VMap.numItems(childMap)), "\n"])
             val (newMap, retMap) =
-                VMap.foldli (fn (v, p as (fut, lut), (newMap, retMap)) => 
+                VMap.foldli (fn (v, p as (fut, lut), (newMap, retMap)) =>
                                 case VMap.find (retMap, v)
                                  of NONE => (VMap.insert (newMap, v, p),
                                              VMap.insert (retMap, v, p))
-                                  | SOME (_, lut') => 
+                                  | SOME (_, lut') =>
                                     if (lut' > lut)
                                     then (VMap.insert (newMap, v, (fut, lut')),
                                           retMap)
@@ -309,7 +309,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             retMap
         end
         and doExp (CPS.Exp(_, e)) = (
-            case e 
+            case e
              of CPS.Let(xs, _, e) => (doExp e)
               | CPS.Fun(fbs, e) => (mergeFVMaps ((doExp e)::(List.map doLambda fbs)))
               | CPS.Cont(fb, e) => (mergeFVMaps([doLambda fb, doExp e]))
@@ -348,7 +348,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             (f::(doExp body))
         end
         and doExp (CPS.Exp(_, e)) = (
-            case e 
+            case e
              of CPS.Let(xs, _, e) => (List.app setVarContKind xs;
                                         doExp e)
               | CPS.Fun(fbs, e) => (doExp e @ (List.foldl (fn (fb,l) => l @ doLambda fb) [] fbs))
@@ -368,7 +368,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     in
         funs
     end
-                                
+
     (* Assign the # of slots to functions for their free variables
      * a. Initialize S(f) = max(AVAIL_REG - arg_count(f), 0)  for known, = 1 for escaping
      * b. Iterate S(f) = min ({T(g, f) | g \in V(f)} U {S(f)})
@@ -443,14 +443,14 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
              of 0 => (setParams (f, VMap.empty))
               | n => (if n <= i
                       then (ST.tick cntFunsClosed;
-                            setParams (f, 
+                            setParams (f,
                                        VMap.foldli (fn (p, _, m) => VMap.insert (m, p, CV.copy p))
                                        VMap.empty map))
                       else (let
                                 val _ = ST.tick cntFunsPartial
                                 val toCopy = findBest (i-1, map)
                             in
-                                setParams (f, 
+                                setParams (f,
                                            List.foldl (fn (p, m) => VMap.insert (m, p, CV.copy p))
                                                        VMap.empty toCopy)
                             end))
@@ -470,7 +470,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                   else ());
             (doExp body))
         and doExp (CPS.Exp(_, e)) = (
-            case e 
+            case e
              of CPS.Let(xs, _, e) => (doExp e)
               | CPS.Fun(fbs, e) => (List.app doLambda fbs; doExp e )
               | CPS.Cont(fb, e) => (doLambda fb ; doExp e)
@@ -591,7 +591,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                     val newType = case origType
                                    of CTy.T_Fun (_, retTys) =>
                                       CTy.T_Fun(List.map CV.typeOf params', retTys)
-                                    | CTy.T_Cont (_) => 
+                                    | CTy.T_Cont (_) =>
                                       CTy.T_Cont(List.map CV.typeOf params')
                                     | x => raise Fail (concat["Non-function type - ", CV.toString f,
                                                               ":", CPSTyUtil.toString (CV.typeOf f)])
@@ -620,7 +620,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                     val newType = case origType
                                    of CTy.T_Fun (_, retTys) =>
                                       CTy.T_Fun(List.map CV.typeOf params, retTys)
-                                    | CTy.T_Cont (_) => 
+                                    | CTy.T_Cont (_) =>
                                       CTy.T_Cont(List.map CV.typeOf params)
                                     | x => raise Fail (concat["Non-function type - ", CV.toString f,
                                                               ":", CPSTyUtil.toString (CV.typeOf f)])
@@ -644,7 +644,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
               | C.If (cond, e1, e2) => C.mkIf(cond,
 		                              convertExp(e1),
 		                              convertExp(e2))
-              | C.Switch(x, cases, dflt) => 
+              | C.Switch(x, cases, dflt) =>
 	        C.mkSwitch (x,
 		            List.map (fn (l, e) => (l, convertExp(e))) cases,
 		            Option.map (fn e => convertExp(e)) dflt)
@@ -713,13 +713,13 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                     then dst
                     else src
                   | cleanup (dst, _) = dst
-                val result = cleanup (typ, rhsType) 
+                val result = cleanup (typ, rhsType)
             in
                 SOME (result)
             end
           | typeOfRHS(C.Const (_, typ)) = SOME(typ)
           | typeOfRHS(C.Select (i, v)) = (
-            (* Select is often used as a pseudo-cast, so only "change" the type if we've 
+            (* Select is often used as a pseudo-cast, so only "change" the type if we've
              * come across a slot that is a function type, which we might have updated.
              *)
             case CV.typeOf v
@@ -735,7 +735,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             (* end case *))
           | typeOfRHS(C.Update (_, _, _)) = NONE
           | typeOfRHS(C.AddrOf (i, v)) = (
-            (* Select is often used as a pseudo-cast, so only "change" the type if we've 
+            (* Select is often used as a pseudo-cast, so only "change" the type if we've
              * come across a slot that is a function type, which we might have updated.
              *)
             case CV.typeOf v
@@ -790,7 +790,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         (* end case *))
     end
 
-    (* 
+    (*
      * The function types on all variables that are equivalent to the
      * safe/converted functions need to be fixed up to have the same
      * type as the function now has.
@@ -1000,7 +1000,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             case t
              of C.Let (lhs, rhs, exp) => C.mkLet(lhs, convertRHS(env, lhs, rhs),
                                                  convertExp (env, exp))
-              | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (env, fb)) lambdas, convertExp (env, exp))) 
+              | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (env, fb)) lambdas, convertExp (env, exp)))
               | C.Cont (lambda, exp) => (C.mkCont (convertFB (env, lambda), convertExp (env, exp)))
               | C.If (cond, e1, e2) => C.mkIf(CondUtil.map (fn x => subst(env, x)) cond,
 		                              convertExp(env, e1),
@@ -1065,7 +1065,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                                        " renamed to: ", CV.toString f', " safe call target named: ",
                                                        CV.toString a, "with args: ", String.concatWith "," (List.map CV.toString args),
                                                        "\n"])
-                                    else ()       
+                                    else ()
                         in
                             maybeWrap (matchTypes (getParamTypes f', args, [], fn (args) =>
                                                                                   C.mkApply (f', args, conts')))
@@ -1096,7 +1096,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                                        " renamed to: ", CV.toString k', " safe call target named: ",
                                                        CV.toString a, "with args: ", String.concatWith "," (List.map CV.toString args),
                                                        "\n"])
-                                    else ()       
+                                    else ()
                         in
                             matchTypes (getParamTypes k', args, [], fn (args) => C.mkThrow (k', args))
                         end
@@ -1228,7 +1228,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
       | cvtTy (CPSTy.T_Raw rTy, CFA.TOP) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Raw rTy, CFA.TUPLE _) = CFGTy.T_Raw rTy (* datatypes *)
       | cvtTy (CPSTy.T_Raw rTy, CFA.BOT) = CFGTy.T_Raw rTy
-      | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.TOP) = 
+      | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.TOP) =
           CFG.T_Tuple(mut, List.map cvtTyTop tys)
       | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.TUPLE vs) = let
           val tysLen = List.length tys
@@ -1239,7 +1239,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
           in
             CFG.T_Tuple(mut, ListPair.map cvtTy (tys, vs'))
           end
-      | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.BOT) = 
+      | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.BOT) =
           CFG.T_Tuple(mut, List.map cvtTyBot tys)
       | cvtTy (CPSTy.T_Addr ty, CFA.TOP) = CFG.T_Addr(cvtTyTop ty)
       | cvtTy (CPSTy.T_Addr ty, CFA.BOT) = CFG.T_Addr(cvtTyBot ty)
@@ -1297,7 +1297,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
           in
             CFGTy.T_KnownFunc{
               clos = CFGTy.T_Any,
-              args = (ListPair.mapEq cvtTy' (argTys, args)) @ 
+              args = (ListPair.mapEq cvtTy' (argTys, args)) @
                      (ListPair.mapEq cvtStdContTy' (retTys, rets))
             }
           end
@@ -1320,7 +1320,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
           "bogus continuation type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
     and cvtStdContTyAuxStd (CPSTy.T_Cont(argTys)) =
           CFGTyUtil.stdContTy(CFGTy.T_Any, List.map cvtTyTop argTys)
-      | cvtStdContTyAuxStd (CPSTy.T_Any) = 
+      | cvtStdContTyAuxStd (CPSTy.T_Any) =
           CFGTyUtil.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
       | cvtStdContTyAuxStd ty = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty])
@@ -1490,13 +1490,13 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
           in
             (insertVar(env, x, Local x'), x')
           end
- 
+
     fun newLocalVar (env, x, ty) = let
           val x' = CFG.Var.new (CPS.Var.nameOf x, ty)
           in
             (insertVar(env, x, Local x'), x')
           end
- 
+
     fun newLocals (E{ep, env}, xs) = let
           fun f (x, (env, xs')) = let
                 val x' = newVar x
@@ -1507,7 +1507,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
           in
             (E{ep=ep, env=env}, List.rev xs)
           end
- 
+
     fun bindLabel lab = let
           val labVar = CFG.Var.new(CFG.Label.nameOf lab, CFG.Label.typeOf lab)
           in
@@ -1555,7 +1555,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 		  val binds = (CFG.mkSelect(tmp, n, t0))::binds
 	      in
 		  (binds, tmp)
-	      end		  
+	      end
             | SOME EnclFun => let (* build <ep, cp> pair *)
                 val (b, lab) = bindLabel(labelOf x)
 		val ty = CFGTy.T_Tuple(false, [CFG.Var.typeOf ep, CFG.Var.typeOf lab])
@@ -1651,8 +1651,8 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
     (* yeah this is poor reuse of code, but I can refactor it later.
-     * this is just to get a prototype working. 
-     * The reason I duplicated mergeFVMaps is because one version 
+     * this is just to get a prototype working.
+     * The reason I duplicated mergeFVMaps is because one version
      * uses a ref cell and the other doesn't, and I'm not immediately
      * sure how to work around that. *)
 
@@ -1744,14 +1744,14 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	    else (map, emptyEnv, emptyBind, ~1) (* if |TFV(f)| < 0 there is nothing to do *)
 	end
 
-								       
+
 	(* note changed signature: *)
 	(* TODO: get rid of whatMap argument; we have implemented whatMap as part of the
 	 * env. This may change however. *)
     fun mkFunClosure externEnv (env, recs, whatMap, whereMap) = let
 	val f = List.hd recs
 	(* + DEBUG *)
-	val _ = print (concat ["I think the raw free vars of ", CPS.Var.toString f, 
+	val _ = print (concat ["I think the raw free vars of ", CPS.Var.toString f,
 			       " are: ", freeVarsToString(getFVMap f), " in other words, "])
 	val _ = prSet (FreeVars.envOfFun f)
 
@@ -1788,7 +1788,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	val (fvMap, sharedClos as E{ep = closEP, env = closEnv}, closBind, closLut) = shareClosures(f, whereMap)
 	val _ = setFVMap (f, fvMap)
 	(* + DEBUG *)
-	val _ = print (concat ["I think the true free vars of ", CPS.Var.toString f, 
+	val _ = print (concat ["I think the true free vars of ", CPS.Var.toString f,
 			       " are: \n", freeVarsToString(getFVMap f), "\n"])
 
 	(* - DEBUG *)
@@ -1870,7 +1870,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	in
 	    (i+1, b@binds, VMap.insert(clos, x, location), x'::xs)
 	end
-		       
+
 	(* At some point I will have to add the new closures I create to *)
         (* the environment (and whereMap) so I can look them up later. *)
 
@@ -1954,7 +1954,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	(* probably be externs and encls and other things like that that I need *)
 	(* to add to the environment, not to mention the new closure records themselves, *)
 	(* and I cannot add these things directly to the closures that I intend to reuse. *)
-		 
+
 	(* N.B. I'll have to watch the semantics of what I am doing *)
 	(* here closely to make sure I don't mess things up when *)
 	(* dealing with the externs in externEnv. *)
@@ -1994,9 +1994,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
 	(* - CARSEN *)
-           
 
-                  
+
+
   (* given a set of free CPS variables that define the environment of a function, create the
    * argument variables and bindings to build the closure and the parameter variables and
    * environment for the function's body.
@@ -2101,7 +2101,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                           (bEnv', x' :: args, x'' :: params)
                                         end
                                     | Global is => (
-                                        needsEP := true; 
+                                        needsEP := true;
                                         (insertVar(bEnv, x, Global is), args, params))
                                     | EnclFun => (
                                         needsEP := true;
@@ -2169,7 +2169,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                                  of NONE => (NONE, rr)
                                                   | SOME ((db as CFG.BLK{lab=dlab,...}, rs), dargs) =>
                                                     (SOME (dlab,dargs), db::rs@rr)
-                                                        
+
 			      in
                                 (CFG.mkBlock(lab, params, rev (binds@stms),
                                      CFG.Switch(x, cJumps, dJump)),
@@ -2274,7 +2274,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 val clos = envPtrOf env
                 val conv = CFG.StdFunc{
                         clos = clos,
-                        ret = ret, 
+                        ret = ret,
                         exh = exh
                       }
                 val convTy = CFGTy.T_StdFun {
@@ -2286,7 +2286,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 in
                   (env, args, conv, convTy)
                 end
-            | stdFuncConvention (env, args, rets as [_]) = 
+            | stdFuncConvention (env, args, rets as [_]) =
                 kwnFuncConvention (env, args, rets)
             | stdFuncConvention (env, args, rets) =
                 raise Fail "non-standard apply convention"
@@ -2336,13 +2336,13 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
  (*                     mkFunClosure (env, FV.envOfFun(funVar(hd fbs))) *)
               (* map the names of the bound functions to EnclFun *)
                 val sharedEnv = List.foldl
-                      (fn (fb, env) => insertVar(env, funVar fb, EnclFun)) 
+                      (fn (fb, env) => insertVar(env, funVar fb, EnclFun))
                       sharedEnv fbs
               (* convert an individual function binding; this includes creating its
                * code-pointer/environment-pointer pair and converting the function's body.
                *)
                 fun cvtFB (CPS.FB{f, params, rets, body}, (binds, env)) = let
-                      val (fbEnv, params, conv, convTy) = 
+                      val (fbEnv, params, conv, convTy) =
                             if CFA.isEscaping f
                               then stdFuncConvention (sharedEnv, params, rets)
                               else kwnFuncConvention (sharedEnv, params, rets)
@@ -2412,7 +2412,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 		  val lab = CFG.Label.new(
 			CPS.Var.nameOf k,
 			CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
-		  val _ = setLabel (k, lab) 
+		  val _ = setLabel (k, lab)
                   val (start, body) = cvtExp (bodyEnv, params, k, lab, body, whatMap, whereMap)
 		  in
 		    ([], insertVar (env, k, JoinCont), start::body)
@@ -2422,14 +2422,14 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 			if CFA.isEscaping k
 			  then (CFGTyUtil.stdContTy, CFG.StdCont, CFGTy.T_StdCont)
 			  else (CFGTyUtil.kwnContTy, CFG.KnownFunc, CFGTy.T_KnownFunc)
-		  val (binds, clos, lambdaEnv, params') = 
+		  val (binds, clos, lambdaEnv, params') =
 			mkContClosure (env, params, FV.envOfFun k, mkContTy)
 		  val clos' = envPtrOf lambdaEnv
 		  val conv = mkEntry{
 			  clos = clos'
 			}
 		  val convTy = mkEntryTy{
-			  clos = CFG.Var.typeOf clos', 
+			  clos = CFG.Var.typeOf clos',
 			  args = List.map CFG.Var.typeOf params'
 			}
 		  val lab = labelOf k
@@ -2452,7 +2452,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                   | CFA.LAMBDAS gs => let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
                       val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
-                      val fTgt = if CPS.Var.Set.numItems gs = 1 
+                      val fTgt = if CPS.Var.Set.numItems gs = 1
                                     then CPS.Var.Set.find (fn _ => true) gs
                                  else NONE
                       in
@@ -2507,9 +2507,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 in
                   (binds @ retBinds @ argBinds, xfer)
                 end
-            | cvtStdApply (env, f, fTgt, args, rets as [_]) = 
+            | cvtStdApply (env, f, fTgt, args, rets as [_]) =
                 cvtKwnApply (env, f, fTgt, args, rets)
-            | cvtStdApply (env, f, fTgt, args, rets) = 
+            | cvtStdApply (env, f, fTgt, args, rets) =
                 raise Fail "non-standard apply convention"
           and cvtKwnApply (env, f, fTgt, args, rets) = let
                 val (argBinds, args) = lookupVars(env, args)
@@ -2558,13 +2558,13 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         (* convert a throw *)
           and cvtThrow (env, k, args) = if ClassifyConts.isJoinCont k
 		then cvtJoinThrow (env, k, args)
-		else (case CFA.valueOf k 
+		else (case CFA.valueOf k
 		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
 		    | CFA.BOT => cvtStdThrow (env, k, NONE, args)
 		    | CFA.LAMBDAS gs => let
 			val SOME g = CPS.Var.Set.find (fn _ => true) gs
 			val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
-			val kTgt = if CPS.Var.Set.numItems gs = 1 
+			val kTgt = if CPS.Var.Set.numItems gs = 1
 				      then CPS.Var.Set.find (fn _ => true) gs
 				   else NONE
 			in
@@ -2632,7 +2632,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
                 val ep = CFG.Var.new ("dummyEP", CFGTy.T_Any)
-                val (env, params, conv, convTy) = 
+                val (env, params, conv, convTy) =
                       stdFuncConvention (E{ep = ep, env = externEnv}, params, rets)
                 val lab = labelOf f
                 val () = CFG.Label.setType (lab, convTy)
