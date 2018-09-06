@@ -10,7 +10,7 @@ fun retNormal k = print "returning\n"
 
 fun skipOver k1 = let
   fun inner k2 = (
-    print "at inner's throw\n" ;
+    print "at inner throw\n" ;
     Cont.throw (k1, ()) ;
     print "ERROR!\n"
     )
