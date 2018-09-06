@@ -84,6 +84,25 @@
 
  *)
 
+ (* NOTE [single-param cont]
+   The reason for single parameter conts is that this continuation has unknown call sites.
+    By the nature of how these continuations are captured in direct-style, we
+    must merge the types of the parameters to the return continuation and
+    this continuation so they have the same calling convention (both must return
+    to the same basic block in the end, just like setjmp/longjmp).
+
+    We can (and do) eta-expand the throw to the original return cont to match up
+    the calling convention with the landing pad. However, we _cannot_ do the
+    same for this escape cont, because then the cont we wrapped around the throw
+    would be used as a Goto/Other cont, and we're back where we started!
+
+    If we were to simply change every Throw exp using an escape cont, by bundling up
+    the arguments, we would break code where the cont came from somewhere else
+    (read from memory, passed as a param, etc) and our simple renaming operation
+    with the parameter of manipK would not be sufficient. We would need to throughly
+    change the types of all such unknown cont vars in the program.
+ *)
+
 structure WrapCaptures : sig
 
     val transform : CPS.module -> CPS.module
@@ -294,63 +313,61 @@ structure WrapCaptures : sig
 
          | C.Throw (k, args) => wrap(C.Throw(subst env k, L.map (subst env) args))
 
-         | C.Cont (C.FB{f, params, rets, body}, e) => wrap (case K.kindOfCont f
-             of (K.GotoCont | K.OtherCont) => let   (* TODO change the classification of f, set the classification of retkWrap *)
+         | C.Cont (cont as (C.FB{f, params, rets, body}, e)) => wrap (case K.kindOfCont f
+             of (K.GotoCont | K.OtherCont) => let
+                (* determine how to wrap this capture *)
 
-                    (* The reason for the check below is that this continuation has unknown call sites.
-                       By the nature of how these continuations are captured in direct-style, we
-                       must merge the types of the parameters to the return continuation and
-                       this continuation so they have the same calling convention (both must return
-                       to the same basic block in the end, just like setjmp/longjmp).
+                (* see NOTE [single-param cont] *)
+                val _ = if L.length params > 1 then
+                            raise Fail ("escape cont "
+                                        ^ (CV.toString f)
+                                        ^ " takes more than 1 parameter!")
+                        else ST.tick cntExpand
 
-                       We can (and do) eta-expand the throw to the original return cont to match up
-                       the calling convention with the landing pad. However, we _cannot_ do the
-                       same for this escape cont, because then the cont we wrapped around the throw
-                       would be used as a Goto/Other cont, and we're back where we started!
-
-                       If we were to simply change every Throw exp using an escape cont, by bundling up
-                       the arguments, we would break code where the cont came from somewhere else
-                       (read from memory, passed as a param, etc) and our simple renaming operation
-                       with the parameter of manipK would not be sufficient. We would need to throughly
-                       change the types of all such unknown cont vars in the program.
-                    *)
-                    val _ = if L.length params > 1 then
-                                raise Fail ("escape cont " ^ (CV.toString f) ^ " takes more than 1 parameter!")
-                            else ST.tick cntExpand
-
-                    (* val _ = print ("Wrapping cont " ^ (CV.toString f) ^ "\n") *)
-
-                    val retk = getRet env
-                    val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
-
-                    fun mkManipKBody env (newF, newActiveRetk, manipKRetParam) = let
-                        val env = insertV(env, retk, RetCont newActiveRetk)
-                        val env = insertV(env, f, EscapeCont newF)
-                        val env = setRet(env, newActiveRetk)
-                        val env = setParamRet(env, manipKRetParam)
-                        val env = setManipScope(env, true)
-                    in
-                        doExp(env, e)
-                    end
-
-                    val (manipFB as C.FB{f=manipK,...}) = mkManipFun(f, retk, mkManipKBody env)
-
-                    val contBody = doExp(env, body)
-
-                    (* set/update classifications *)
-                    val _ = (K.setKind(retkWrap, K.ReturnCont) ; K.setKind(f, K.JoinCont))
-                 in
-                    C.Cont(C.FB{f=f,params=params,rets=rets, body=contBody},
-                        C.mkCont(padFB,
-                            C.mkFun([manipFB],
-                                MK.dummyExh(fn unitExh =>
-                                    C.mkCallec(manipK, [retkWrap, unitExh])))))
-                 end
-
+                val retk = getRet env
+             in
+              (* if retk in e
+                 then *) landingPadCapture env cont
+                 (* else simpleCapture env cont *)
+             end
+                      (* TODO: if the retk in the env is not in FV(e) then
+                         produce a simple wrapping *)
               | _ => C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)}, doExp(env, e))
              (* esac *))
         (* esac *))
     end
+
+    (* a full wrapping, assuming a normal return is also possible, so a
+       landing-pad with a switch is produced. *)
+    and landingPadCapture env (C.FB{f, params, rets, body}, e) = let
+            (* TODO change the classification of f, set the classification of retkWrap *)
+
+           val retk = getRet env
+           val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
+
+           fun mkManipKBody env (newF, newActiveRetk, manipKRetParam) = let
+               val env = insertV(env, retk, RetCont newActiveRetk)
+               val env = insertV(env, f, EscapeCont newF)
+               val env = setRet(env, newActiveRetk)
+               val env = setParamRet(env, manipKRetParam)
+               val env = setManipScope(env, true)
+           in
+               doExp(env, e)
+           end
+
+           val (manipFB as C.FB{f=manipK,...}) = mkManipFun(f, retk, mkManipKBody env)
+
+           val contBody = doExp(env, body)
+
+           (* set/update classifications *)
+           val _ = (K.setKind(retkWrap, K.ReturnCont) ; K.setKind(f, K.JoinCont))
+        in
+           C.Cont(C.FB{f=f,params=params,rets=rets, body=contBody},
+               C.mkCont(padFB,
+                   C.mkFun([manipFB],
+                       MK.dummyExh(fn unitExh =>
+                           C.mkCallec(manipK, [retkWrap, unitExh])))))
+        end
 
     and doFun env (C.FB{f, params, rets as (retk::_), body}) = let
         val env = setRet(env, retk)
