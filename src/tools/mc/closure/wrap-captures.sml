@@ -325,17 +325,19 @@ structure WrapCaptures : sig
                         else ST.tick cntExpand
 
                 val retk = getRet env
+                val fvs = FreeVars.freeVarsOfExp e
              in
-              (* if retk in e
-                 then *) landingPadCapture env cont
-                 (* else simpleCapture env cont *)
+              if CV.Set.member(fvs, retk)
+                 then landingPadCapture env cont
+                 else simpleCapture env cont
              end
-                      (* TODO: if the retk in the env is not in FV(e) then
-                         produce a simple wrapping *)
               | _ => C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)}, doExp(env, e))
              (* esac *))
         (* esac *))
     end
+
+    and simpleCapture env (C.FB{f, params, rets, body}, e) =
+        raise Fail "todo: implement simpleCapture"
 
     (* a full wrapping, assuming a normal return is also possible, so a
        landing-pad with a switch is produced. *)

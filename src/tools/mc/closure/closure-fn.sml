@@ -34,12 +34,13 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
             passName = passName,
             pass = pass
           }
-          
+
     val cfa = analyze {passName = "cfa", pass = CFACPS.analyze}
     val cfaClear = analyze {passName = "cfa-clear", pass = CFACPS.clearInfo}
     val freeVars = analyze {passName = "freeVars", pass = FreeVars.analyze}
+    val freeVarsClear = analyze {passName = "freeVars-clear", pass = FreeVars.clear}
     val classify = analyze {passName = "classify-conts", pass = ClassifyConts.analyze}
-    
+
     val wrapCaptures = transform {passName = "wrap-captures", pass = WrapCaptures.transform}
 
     structure ConvertStyle =
@@ -64,21 +65,21 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
             help = "closure convert style (flat or safeForSpace)",
             default = ConvertStyle.Flat
           }
-          
+
 
     val () = (ControlRegistry.register ClosureControls.registry {
                 ctl = Controls.stringControl ConvertStyle.cvt convertStyle,
                 envName = NONE
               })
-            
+
 
     fun doConvert module = (
       case Controls.get convertStyle
-       of ConvertStyle.Flat => 
+       of ConvertStyle.Flat =>
             if (Controls.get BasicControl.direct)
                 then DirectFlatClosureWithCFA.convert module
                 else FlatClosureWithCFA.convert module
-                
+
         | ConvertStyle.SafeForSpace => SafeForSpaceClosures.newConvert module
 (* raise Fail "Safe-for-space closure conversion is not yet implemented" *)
       (* end case *))
@@ -95,10 +96,18 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
 
     fun convert module = let
         val _ = classify module
-        val module = wrapCaptures module
+
+        val module = if Controls.get BasicControl.direct
+                      then ( freeVarsClear module ;
+                             freeVars module ;
+                             wrapCaptures module )
+                      else module
+
         val _ = cfaClear module
         val _ = cfa module
-        val _ = freeVars module 
+
+        val _ = freeVarsClear module
+        val _ = freeVars module
     in
         convert' module
     end
