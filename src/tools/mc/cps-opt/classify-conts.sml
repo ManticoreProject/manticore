@@ -171,6 +171,10 @@ structure ClassifyConts : sig
            of NONE => OtherCont
             | SOME kind => kind
           (* end case *))
+    fun isJoin k = (case kindOf k
+          of JoinCont => true
+           | _ => false
+           (* end case *))
     fun markAsJoin k = (setFn(k, JoinCont); initUse k)
     fun markAsReturn k = (setFn(k, ReturnCont); trackUses k)
     fun markAsExn k = setFn(k, ExnCont)
@@ -286,8 +290,6 @@ structure ClassifyConts : sig
                 end
 
             | C.Cont(C.FB{f, body, ...}, e) => let
-                val notEscaping = (not o CFA.isEscaping) f
-
                 (* JoinCont iff
                      not escaping
                      AND not thrown to recursively (in its own body)
@@ -309,16 +311,19 @@ structure ClassifyConts : sig
                 (* initialize properties for this continuation *)
                 setOuter (f, outer);
 
-                if notEscaping
-                    then markAsJoin f
-                    else markAsOther f;
+                (* if CFA says it's not escaping, conservatively mark it
+                    as a Join for now. *)
+                if CFA.isEscaping f
+                    then markAsOther f
+                    else markAsJoin f;
 
                 (* analyse its body *)
                 analExp (f, body);
 
-                if (not o List.null) (usesOf f) andalso notEscaping
+                if isJoin f andalso (not o List.null) (usesOf f)
                         then (* after analyzing the body, we found out
-                                that it's a recursive Join, so we turn it into a Goto *)
+                                that it's a recursive Join,
+                                so we turn it into a Goto *)
                             markAsGoto f
                         else ();
 
@@ -370,6 +375,12 @@ structure ClassifyConts : sig
                              | _ => raise Fail "an apply with unexpected rets"
                         (* esac *))
 
+                (*  mark any conts in the arg list as Other, since CFA's
+                    definition of escaping is different from ours, i.e.,
+                    passing a cont to a known function as an arg is considered
+                    escaping for us. *)
+                val _ = List.app markAsOther args
+
                 (* now we check whether it's a tail call by comparing the retk param
                    with what is passed in this apply. *)
                 val retk :: _ = rets
@@ -404,6 +415,7 @@ structure ClassifyConts : sig
 
                    this may happen if a Cont is casted/rebound, which can be introduced
                    after arity raising. *)
+                     val _ = List.app markAsOther args (* see App case *)
                      val SOME encl = enclosingFun outer
                    in
                     addUse (outer, actualCont k) ; addThrowContext (k, encl)
