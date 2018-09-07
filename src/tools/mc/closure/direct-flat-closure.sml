@@ -469,18 +469,28 @@ structure DirectFlatClosureWithCFA : sig
           val blocks = ref []
         (* construct an initial environment that maps the CPS externs to CFG labels *)
 
-        val (mantiExterns, asm_callec_cfg) = let
-                  (* see wrap-captures.sml for details. *)
-                  val asm_callecTy_cfg = CFGTy.T_StdDirFun {
+        val (mantiExterns, asm_callec1_cfg, asm_callec2_cfg) = let
+                  (* see wrap-captures.sml for details.
+                     NOTE the only difference is the number of returned values
+                  *)
+                  val asm_callec1Ty_cfg = CFGTy.T_StdDirFun {
                                   clos = CFGTy.unitTy,
                                   args = [CFGTy.T_Any],
-                                  ret = [CFGTy.T_Raw RawTypes.T_Int, CFGTy.T_Any],
+                                  ret = [CFGTy.T_Any],
                                   exh = cvtTy (CPSTy.T_Cont[CPSTy.T_Any], CFACPS.TOP)
                               }
-                  val asm_callec_cfg = CFG.mkMantiExtern(CFG.Label.new("ASM_Callec", asm_callecTy_cfg))
+                  val asm_callec2Ty_cfg = CFGTy.T_StdDirFun {
+                                  clos = CFGTy.unitTy,
+                                  args = [CFGTy.T_Any],
+                                  ret = [CFGTy.T_Any, CFGTy.T_Raw RawTypes.T_Int],
+                                  exh = cvtTy (CPSTy.T_Cont[CPSTy.T_Any], CFACPS.TOP)
+                              }
+
+                  val asm_callec1_cfg = CFG.mkMantiExtern(CFG.Label.new("ASM_Callec1", asm_callec1Ty_cfg))
+                  val asm_callec2_cfg = CFG.mkMantiExtern(CFG.Label.new("ASM_Callec2", asm_callec2Ty_cfg))
 
             in
-              ([asm_callec_cfg], asm_callec_cfg)
+              ([asm_callec1_cfg, asm_callec2_cfg], asm_callec1_cfg, asm_callec2_cfg)
             end
 
           val (externs, externEnv) = let
@@ -912,7 +922,10 @@ structure DirectFlatClosureWithCFA : sig
           end
 
           and cvtCallec(env, funarg, [retk, exnh]) = let
-            val (bindLab, cp) = bindLabel asm_callec_cfg
+            val (bindLab, cp) = (case List.length (retTyOf retk)
+                                    of 1 => bindLabel asm_callec1_cfg
+                                     | 2 => bindLabel asm_callec2_cfg
+                                (* end case *))
 
             val (bindEP, ep) = let
                     val epTy = CFGTy.unitTy
