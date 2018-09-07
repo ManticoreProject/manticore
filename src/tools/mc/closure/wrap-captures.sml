@@ -344,16 +344,18 @@ structure WrapCaptures : sig
            val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f, neverReturns)
 
            fun mkManipKBody env (newF, newActiveRetk, manipKRetParam) = let
-               val env = insertV(env, retk, RetCont newActiveRetk)
+               val env = (case newActiveRetk
+                            of SOME rk => insertV(setRet(env, rk), retk, RetCont rk)
+                             | NONE    => env
+                             (* end case *))
                val env = insertV(env, f, EscapeCont newF)
-               val env = setRet(env, newActiveRetk)
                val env = setParamRet(env, manipKRetParam)
                val env = setManipScope(env, true)
            in
                doExp(env, e)
            end
 
-           val (manipFB as C.FB{f=manipK,...}) = mkManipFun(f, retk, mkManipKBody env)
+           val (manipFB as C.FB{f=manipK,...}) = mkManipFun(f, retk, neverReturns, mkManipKBody env)
 
            val contBody = doExp(env, body)
 
@@ -390,7 +392,10 @@ structure WrapCaptures : sig
     *)
     and mkLandingPad (retk, kont, neverReturns) = let
 
-        val padTy = CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
+        val padTy = if neverReturns
+                    then CPSTy.T_Cont([CPSTy.T_Any])
+                    else CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
+
         val padVar = CV.new("setjmpLandingPad", padTy)
 
         val boolParam = CV.new("regularRet", indicatorTy)
@@ -412,17 +417,25 @@ structure WrapCaptures : sig
                           C.mkThrow(cont, args)))
              (* esac *))
     in
-        C.FB{f = padVar, params = [boolParam, valParam], rets = [],
-                body = if neverReturns
-                        then dispatch kont
-                        else branch(dispatch retk, dispatch kont)}
+      if neverReturns
+
+      then C.FB{f = padVar, params = [valParam], rets = [],
+              body = dispatch kont
+              }
+
+      else C.FB{f = padVar, params = [boolParam, valParam], rets = [],
+              body = branch(dispatch retk, dispatch kont)
+              }
+
     end
 
     (* the reason manipK takes an exh that will be unused is because it will use
        the standard calling convention (its caller is actually an unknown fun). *)
-    and mkManipFun(origLetCont, origRetk, k) = let
+    and mkManipFun(origLetCont, origRetk, neverReturns, k) = let
         val contAny = CPSTy.T_Cont([CPSTy.T_Any])
-        val retkTy = CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
+        val retkTy = if neverReturns
+                      then CPSTy.T_Cont([CPSTy.T_Any])
+                      else CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
 
         val contP = CV.copy origLetCont
         val retkP = CV.new("landingPadK", retkTy)
@@ -431,16 +444,9 @@ structure WrapCaptures : sig
         val num = Int.toString(ST.count cntExpand) (* aids debugging *)
         val fname = CV.new("manipK" ^ num, CPSTy.T_Fun([CV.typeOf contP], [retkTy, contAny]))
 
-        (* build the invoke return cont *)
-        val invokeParamTys = L.map (fn _ => CPSTy.T_Any) (MK.argTysOf origRetk)
-        val invokeRet = CV.new("invokeRetk", CPSTy.T_Cont invokeParamTys)
-        val invokeParams = L.map (fn ty => CV.new("param", ty)) invokeParamTys
-
         (* set kind. also need to set contexts since this is a ParamCont *)
-        val _ = (K.setKind(invokeRet, K.JoinCont) ;
-                 K.setContextOfThrow(retkP, VSet.singleton fname) ;
+        val _ = (K.setContextOfThrow(retkP, VSet.singleton fname) ;
                  K.setContextOfThrow(contP, VSet.singleton fname))
-
                  (* TODO: more accurately:
                         contextsOf(contP) :=
                             if enclosingFunOf(origLetCont) in contextsOf(origLetCont)
@@ -453,7 +459,13 @@ structure WrapCaptures : sig
                     tells closure conversion it's not a ret param.
                   *)
 
-        fun mkInvokeRet k =
+        fun mkInvokeRet k = let
+            (* build the invoke return cont *)
+            val invokeParamTys = L.map (fn _ => CPSTy.T_Any) (MK.argTysOf origRetk)
+            val invokeRet = CV.new("invokeRetk", CPSTy.T_Cont invokeParamTys)
+            val invokeParams = L.map (fn ty => CV.new("param", ty)) invokeParamTys
+        in
+        (  K.setKind(invokeRet, K.JoinCont) ;
             C.mkCont(C.FB {
                 f = invokeRet,
                 params = invokeParams,
@@ -463,13 +475,17 @@ structure WrapCaptures : sig
                            MK.bindTrue(fn tru =>
                              C.mkThrow(retkP, tru::paddedArgs))))},
                 k invokeRet)
+          )
+        end
 
     in
         C.FB {
             f = fname,
             params = [contP],
             rets = [retkP, exnP],
-            body = mkInvokeRet(fn invokeRet => k (contP, invokeRet, retkP))
+            body = if neverReturns
+                    then k (contP, NONE, retkP)
+                    else mkInvokeRet(fn invokeRet => k (contP, SOME invokeRet, retkP))
         }
     end
 
