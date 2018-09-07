@@ -323,29 +323,25 @@ structure WrapCaptures : sig
                                         ^ (CV.toString f)
                                         ^ " takes more than 1 parameter!")
                         else ST.tick cntExpand
-
-                val retk = getRet env
-                val fvs = FreeVars.freeVarsOfExp e
              in
-              if CV.Set.member(fvs, retk)
-                 then landingPadCapture env cont
-                 else simpleCapture env cont
+              landingPadCapture env cont
              end
               | _ => C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)}, doExp(env, e))
              (* esac *))
         (* esac *))
     end
 
-    and simpleCapture env (C.FB{f, params, rets, body}, e) =
-        raise Fail "todo: implement simpleCapture"
-
-    (* a full wrapping, assuming a normal return is also possible, so a
-       landing-pad with a switch is produced. *)
+    (* uses a "landing pad" to discern whether the callee
+      has invoked the continuation or wants to return
+      from the enclosing function. both cases have their
+      live values saved on the stack. This is similar to
+      setjmp/longjmp.  *)
     and landingPadCapture env (C.FB{f, params, rets, body}, e) = let
-            (* TODO change the classification of f, set the classification of retkWrap *)
-
            val retk = getRet env
-           val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
+           val fvs = FreeVars.freeVarsOfExp e
+           val neverReturns =  not (CV.Set.member(fvs, retk))
+
+           val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f, neverReturns)
 
            fun mkManipKBody env (newF, newActiveRetk, manipKRetParam) = let
                val env = insertV(env, retk, RetCont newActiveRetk)
@@ -392,7 +388,7 @@ structure WrapCaptures : sig
        then it must be bundled up as a tuple. Once we enter the landing pad,
        we unbundle and throw.
     *)
-    and mkLandingPad (retk, kont) = let
+    and mkLandingPad (retk, kont, neverReturns) = let
 
         val padTy = CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
         val padVar = CV.new("setjmpLandingPad", padTy)
@@ -417,7 +413,9 @@ structure WrapCaptures : sig
              (* esac *))
     in
         C.FB{f = padVar, params = [boolParam, valParam], rets = [],
-                body = branch(dispatch retk, dispatch kont)}
+                body = if neverReturns
+                        then dispatch kont
+                        else branch(dispatch retk, dispatch kont)}
     end
 
     (* the reason manipK takes an exh that will be unused is because it will use
