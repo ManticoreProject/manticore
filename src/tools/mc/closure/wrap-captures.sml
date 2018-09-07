@@ -261,6 +261,12 @@ structure WrapCaptures : sig
 
                 val newRetk = ref false
 
+                fun isUnit v = (case CV.kindOf v
+                    of C.VK_Let(C.Cast(_, v)) => isUnit v
+                     | C.VK_Let(C.Const _) => true
+                     | _ => false
+                    (* esac *))
+
                 fun substRets (env, [retk, exnk], k) =
                         replaceRetk(env, retk, fn newRetk => k [newRetk, exnk])
                   | substRets (env, [retk], k) =
@@ -269,7 +275,22 @@ structure WrapCaptures : sig
                 and replaceRetk (env, oldRetk, k) = (case lookupKind(env, oldRetk)
                     of SOME(EscapeCont _) => raise Fail (CV.toString oldRetk ^ " should not appear as a ret!")
                      | SOME(RetCont newV) => k (newRetk := true ; newV)
-                     | NONE => k oldRetk
+                     | NONE =>
+                        if not (isUnit oldRetk)
+                          then k oldRetk
+                          else let val paramRet = getParamRet env in
+                                 if inManipScope env
+                                     andalso (not (
+                                       CPSTyUtil.match(CV.typeOf oldRetk,
+                                                       CV.typeOf paramRet)))
+                                  (* the type of the unit retk needs to
+                                      change to match the enclosing manipK's
+                                      return continuation type. *)
+                                  then MK.unitRetk(CV.typeOf paramRet,
+                                          fn newUnitRK => k newUnitRK)
+
+                                  else k oldRetk
+                               end
                      (* esac *))
              in
                 substRets(env, rets, fn rets => let
