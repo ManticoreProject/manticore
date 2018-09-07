@@ -21,7 +21,7 @@ structure DirectFlatClosureWithCFA : sig
     structure VMap = CPS.Var.Map
     structure ST = Stats
     structure CC = ClassifyConts
-    
+
     (********** Counters for statistics **********)
     val cntJoinContOpt    = ST.newCounter "clos:optimize-joink"
 
@@ -37,7 +37,7 @@ structure DirectFlatClosureWithCFA : sig
       | cvtTy (CPSTy.T_Raw rTy, CFA.TOP) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Raw rTy, CFA.TUPLE _) = CFGTy.T_Raw rTy (* datatypes *)
       | cvtTy (CPSTy.T_Raw rTy, CFA.BOT) = CFGTy.T_Raw rTy
-      | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.TOP) = 
+      | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.TOP) =
           CFG.T_Tuple(mut, List.map cvtTyTop tys)
       | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.TUPLE vs) = let
           val tysLen = List.length tys
@@ -48,7 +48,7 @@ structure DirectFlatClosureWithCFA : sig
           in
             CFG.T_Tuple(mut, ListPair.map cvtTy (tys, vs'))
           end
-      | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.BOT) = 
+      | cvtTy (CPSTy.T_Tuple(mut, tys), CFA.BOT) =
           CFG.T_Tuple(mut, List.map cvtTyBot tys)
       | cvtTy (CPSTy.T_Addr ty, CFA.TOP) = CFG.T_Addr(cvtTyTop ty)
       | cvtTy (CPSTy.T_Addr ty, CFA.BOT) = CFG.T_Addr(cvtTyBot ty)
@@ -63,7 +63,7 @@ structure DirectFlatClosureWithCFA : sig
            "bogus type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
     and cvtTyTop ty = cvtTy (ty, CFA.TOP)
     and cvtTyBot ty = cvtTy (ty, CFA.BOT)
-    
+
     (* for converted return conts *)
     and extractArgs (CFGTy.T_OpenTuple [ty]) = (case ty
         of CFGTy.T_StdCont{args,...} => args
@@ -113,7 +113,7 @@ structure DirectFlatClosureWithCFA : sig
           fun cvtExn ([], []) = []
             | cvtExn ([exnT], [exn]) = [ cvtStdContTy(exnT, CFA.valueOf exn) ]
             | cvtExn _ = raise Fail "mismatch in whether an exn is included or not!"
-            
+
           fun cvtTy' (ty, x) = cvtTy (ty, CFA.valueOf x)
           in
             CFGTy.T_KnownDirFunc {
@@ -129,10 +129,10 @@ structure DirectFlatClosureWithCFA : sig
     and cvtStdContTy (ty, v) = CFG.T_OpenTuple[cvtStdContTyAux (ty, v)]
     and cvtStdContTyAux (ty, CFA.TOP) = cvtStdContTyAuxStd ty
       | cvtStdContTyAux (ty, CFA.BOT) = cvtStdContTyAuxStd ty
-      | cvtStdContTyAux (ty, CFA.LAMBDAS fs) = 
+      | cvtStdContTyAux (ty, CFA.LAMBDAS fs) =
         if CPS.Var.Set.numItems fs = 0
         then cvtStdContTyAuxStd ty
-        else 
+        else
         let
           val SOME f = CPS.Var.Set.find (fn _ => true) fs (*If fs is empty, then this returns NONE and fails*)
           val CPS.VK_Cont (CPS.FB {params, rets = [], ...}) = CPS.Var.kindOf f
@@ -145,7 +145,7 @@ structure DirectFlatClosureWithCFA : sig
           "bogus continuation type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
     and cvtStdContTyAuxStd (CPSTy.T_Cont(argTys)) =
           CFGTyUtil.stdContTy(CFGTy.T_Any, List.map cvtTyTop argTys)
-      | cvtStdContTyAuxStd (CPSTy.T_Any) = 
+      | cvtStdContTyAuxStd (CPSTy.T_Any) =
           CFGTyUtil.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
       | cvtStdContTyAuxStd ty = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty])
@@ -157,10 +157,10 @@ structure DirectFlatClosureWithCFA : sig
       | cvtStdContTyAuxKwn (ty, _) = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty])
 
-    fun cvtTyOfVar x = 
+    fun cvtTyOfVar x =
        ((cvtTy (CPS.Var.typeOf x, CFA.valueOf x))
         handle Fail s => raise Fail(concat["cvtTyOfVar(", CPS.Var.toString x, ") ==> ", s]))
-        
+
     val cvtTyOfVar = fn x => let
           val ty = CPS.Var.typeOf x
           val v = CFA.valueOf x
@@ -283,7 +283,7 @@ structure DirectFlatClosureWithCFA : sig
           in
             if Controls.get ClosureControls.debug
               then print(concat[
-                "newVar(", CPS.Var.toString x, " : ", CPSTyUtil.toString (CPS.Var.typeOf x), ") => ", 
+                "newVar(", CPS.Var.toString x, " : ", CPSTyUtil.toString (CPS.Var.typeOf x), ") => ",
                     CFG.Var.toString x', " : ", CFGTyUtil.toString (CFG.Var.typeOf x') , "\n"])
               else ();
             x'
@@ -315,13 +315,13 @@ structure DirectFlatClosureWithCFA : sig
           in
             (insertVar(env, x, Local x'), x')
           end
- 
+
     fun newLocalVar (env, x, ty) = let
           val x' = CFG.Var.new (CPS.Var.nameOf x, ty)
           in
             (insertVar(env, x, Local x'), x')
           end
- 
+
     fun newLocals (E{ep, env}, xs) = let
           fun f (x, (env, xs')) = let
                 val x' = newVar x
@@ -332,7 +332,7 @@ structure DirectFlatClosureWithCFA : sig
           in
             (E{ep=ep, env=env}, List.rev xs)
           end
- 
+
     fun bindLabel lab = let
           val labVar = CFG.Var.new(CFG.Label.nameOf lab, CFG.Label.typeOf lab)
           in
@@ -374,12 +374,12 @@ structure DirectFlatClosureWithCFA : sig
                 in
                   ([CFG.mkLabel(tmp, lab)], tmp)
                 end
-                
+
         | SOME RetCont => raise Fail(concat[
 		  "unbound retk ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep,
           "\n did you forget to filter it out?"
 		])
-        
+
         | NONE => raise Fail(concat[
 		  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
 		])
@@ -409,7 +409,7 @@ structure DirectFlatClosureWithCFA : sig
                      of CPSTy.K_UNIFORM => true
                       | CPSTy.K_BOXED => true
                       | _ => false
-                             
+
   (* given a set of free CPS variables that define the environment of a function, create the
    * argument variables and bindings to build the closure and the parameter variables and
    * environment for the function's body.
@@ -468,7 +468,7 @@ structure DirectFlatClosureWithCFA : sig
     fun convert (m as CPS.MODULE{name, externs, body}) = let
           val blocks = ref []
         (* construct an initial environment that maps the CPS externs to CFG labels *)
-        
+
         val (mantiExterns, asm_callec_cfg) = let
                   (* see wrap-captures.sml for details. *)
                   val asm_callecTy_cfg = CFGTy.T_StdDirFun {
@@ -478,11 +478,11 @@ structure DirectFlatClosureWithCFA : sig
                                   exh = cvtTy (CPSTy.T_Cont[CPSTy.T_Any], CFACPS.TOP)
                               }
                   val asm_callec_cfg = CFG.mkMantiExtern(CFG.Label.new("ASM_Callec", asm_callecTy_cfg))
-                  
+
             in
               ([asm_callec_cfg], asm_callec_cfg)
             end
-        
+
           val (externs, externEnv) = let
                 fun cvt (CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}, (cfs, env)) = let
                       val lab = CFG.Label.new(name, cvtTyOfVar var)
@@ -526,7 +526,7 @@ structure DirectFlatClosureWithCFA : sig
                                           (bEnv', x' :: args, x'' :: params)
                                         end
                                     | Global i => (
-                                        needsEP := true; 
+                                        needsEP := true;
                                         (insertVar(bEnv, x, Global i), args, params))
                                     | EnclFun => (
                                         needsEP := true;
@@ -534,7 +534,7 @@ structure DirectFlatClosureWithCFA : sig
                                     | EnclCont => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclCont), args, params))
-                                        
+
                                     | RetCont => (insertVar(bEnv, x, RetCont), args, params)
                                     | JoinCont => (bEnv, args, params)
                                     | Extern _ => raise Fail "unexpected extern in free-var list"
@@ -561,30 +561,30 @@ structure DirectFlatClosureWithCFA : sig
                                 cvt (env', args, e, binds @ stms, encl)
                               end
                           | CPS.Fun(fbs, e) => let
-                              
-                              (* debug prints 
+
+                              (* debug prints
                               val _ = print "env before handling following func group:\n"
                               val _ = prEnv env
                               val _ = let
                                     fun nameOf (CPS.FB{f,...}) = CPS.Var.toString f
                                   in
-                                    print ("converting func group: " 
+                                    print ("converting func group: "
                                             ^ String.concatWith ", " (List.map nameOf fbs)
                                             ^ "\n")
                                   end
                               *)
-                              
+
                               val (binds, env) = cvtFunc(env, fbs)
-                              
+
                               (*val _ = print "done.\n"*)
-                              
+
                               in
                                 cvt (env, args, e, binds @ stms, encl)
                               end
                           | CPS.Cont(fb, e) => let
                               val (binds, env, joinBlocks) = cvtCont(env, fb)
-                              
-                              (* debug prints 
+
+                              (* debug prints
                               val _ = let
                                     val (CPS.FB{f,...}) = fb
                                   in
@@ -592,7 +592,7 @@ structure DirectFlatClosureWithCFA : sig
                                   end
                               val _ = prEnv env
                               *)
-                              
+
                               val (start, body) = cvt (env, args, e, binds @ stms, encl)
                               val body = joinBlocks@body
                               in
@@ -621,7 +621,7 @@ structure DirectFlatClosureWithCFA : sig
                                                  of NONE => (NONE, rr)
                                                   | SOME ((db as CFG.BLK{lab=dlab,...}, rs), dargs) =>
                                                     (SOME (dlab,dargs), db::rs@rr)
-                                                        
+
 			      in
                                 (CFG.mkBlock(lab, params, rev (binds@stms),
                                      CFG.Switch(x, cJumps, dJump)),
@@ -650,7 +650,7 @@ structure DirectFlatClosureWithCFA : sig
                 end
         (* convert a CPS RHS to a list of CFG expressions, plus a new environment *)
           and cvtRHS (env, lhs, rhs) = (case (newLocals(env, lhs), rhs)
-                 of ((env, lhs), CPS.Var ys) => let                              
+                 of ((env, lhs), CPS.Var ys) => let
                       val (binds, ys) = lookupVars (env, ys)
                       in
                         ([CFG.mkVar(lhs, ys)] @ binds, env)
@@ -742,7 +742,7 @@ structure DirectFlatClosureWithCFA : sig
                 in
                   (env, args, conv, convTy)
                 end
-            | stdFuncConvention (env, args, rets as [_]) = 
+            | stdFuncConvention (env, args, rets as [_]) =
                 kwnFuncConvention (env, args, rets)
             | stdFuncConvention (env, args, rets) =
                 raise Fail "non-standard apply convention"
@@ -773,13 +773,13 @@ structure DirectFlatClosureWithCFA : sig
                       mkFunClosure (env, FV.envOfFun(funVar(hd fbs)))
               (* map the names of the bound functions to EnclFun *)
                 val sharedEnv = List.foldl
-                      (fn (fb, env) => insertVar(env, funVar fb, EnclFun)) 
+                      (fn (fb, env) => insertVar(env, funVar fb, EnclFun))
                       sharedEnv fbs
               (* convert an individual function binding; this includes creating its
                * code-pointer/environment-pointer pair and converting the function's body.
                *)
                 fun cvtFB (CPS.FB{f, params, rets, body}, (binds, env)) = let
-                      val (fbEnv, params, conv, convTy) = 
+                      val (fbEnv, params, conv, convTy) =
                             if CFA.isEscaping f
                               then stdFuncConvention (sharedEnv, params, rets)
                               else kwnFuncConvention (sharedEnv, params, rets)
@@ -813,7 +813,7 @@ structure DirectFlatClosureWithCFA : sig
         (* convert a bound continuation *)
           and cvtCont (env, CPS.FB{f=k, params, body, ...}) = let
                 fun cvtJoinK () = let
-                
+
             		(* f is a join continuation, so we will translate it to a *
              		 * block.  We have to extend its parameters with the locally *
              		 * bound free variables. *
@@ -849,12 +849,12 @@ structure DirectFlatClosureWithCFA : sig
             		  val lab = CFG.Label.new(
             			CPS.Var.nameOf k,
             			CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
-            		  val _ = setLabel (k, lab) 
+            		  val _ = setLabel (k, lab)
                               val (start, body) = cvtExp (bodyEnv, params, k, lab, body)
             		  in
             		    ([], insertVar (env, k, JoinCont), start::body)
             		  end
-                      
+
                 fun cvtRetK () = let
                     (* handle a return continuation. *)
                     val needsEP = ref false
@@ -890,16 +890,16 @@ structure DirectFlatClosureWithCFA : sig
                     val lab = CFG.Label.new(
                       CPS.Var.nameOf k,
                       CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
-                    val _ = setLabel (k, lab) 
+                    val _ = setLabel (k, lab)
                             val (start, body) = cvtExp (bodyEnv, params, k, lab, body)
                 in
                   ([], insertVar (env, k, RetCont), start::body)
                 end
-                
-                
-                
-                
-                
+
+
+
+
+
                 fun cvtExnK () = raise Fail "installing an exception handler is not supported!"
                                             (* TODO would have to change how we throw to exceptions. *)
           in
@@ -910,10 +910,10 @@ structure DirectFlatClosureWithCFA : sig
                  | x => raise Fail ((CC.kindToString x) ^ " conts are unexpected.")
             (* esac *))
           end
-          
+
           and cvtCallec(env, funarg, [retk, exnh]) = let
             val (bindLab, cp) = bindLabel asm_callec_cfg
-            
+
             val (bindEP, ep) = let
                     val epTy = CFGTy.unitTy
                     val ep = newEP epTy
@@ -921,39 +921,39 @@ structure DirectFlatClosureWithCFA : sig
                 in
                     (bindEP, ep)
                 end
-                
+
             (* args to callec *)
             val (exnBinds, exnh) = lookupVar(env, exnh)
             val (argBinds, funarg) = lookupVar(env, funarg)
-            
+
             (* handle the retk args *)
             val needsEP = ref false
-            
+
             fun f (x, args) = (case findVar(env, x)
                     of Local x' => x' :: args
                      | Extern _ => raise Fail "unexpected extern in free-var list"
                      | (RetCont | JoinCont) => args
                      | _ => (needsEP := true; args)
                     (* end case *))
-            
-            
+
+
             val freeVars = CPS.Var.Set.foldr f nil (FreeVars.envOfFun retk)
-            
+
             (* bindings for the values from the return throw *)
             val lhs = let
                     val argTys = retTyOf retk
-                                  
+
                     fun fresh ty = CFG.Var.new ("rv", ty)
                 in
                     List.map fresh argTys
                 end
-            
+
             (* ep, free vars, retk's params *)
-            val retkArgs = freeVars @ lhs 
+            val retkArgs = freeVars @ lhs
             val retkArgs = if !needsEP then envPtrOf env :: retkArgs else retkArgs
             (* done handling retk args *)
-                                
-            
+
+
             val xfer = CFG.Call {
                     f = cp,
                     clos = ep,
@@ -963,7 +963,7 @@ structure DirectFlatClosureWithCFA : sig
           in
             (bindLab :: bindEP :: exnBinds @ argBinds, xfer)
           end
-          
+
         (* convert an apply *)
           and cvtApply (env, f, args, rets, isTail) = (case CFA.valueOf f
                  of CFA.TOP => cvtApplyAux (env, f, NONE, args, rets, isTail)
@@ -971,7 +971,7 @@ structure DirectFlatClosureWithCFA : sig
                   | CFA.LAMBDAS gs => let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
                       val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
-                      val fTgt = if CPS.Var.Set.numItems gs = 1 
+                      val fTgt = if CPS.Var.Set.numItems gs = 1
                                     then CPS.Var.Set.find (fn _ => true) gs
                                  else NONE
                       in
@@ -980,26 +980,26 @@ structure DirectFlatClosureWithCFA : sig
                 (* end case *))
 
           and cvtApplyAux (env, f, fTgt, args, rets, isTail) = let
-                
+
                 (* sanity checks  *)
                 val _ = (case (rets, CFA.isEscaping f)
                           of ([retk], false) => () (* exnh is only optional if f is known *)
                            | ([retk, exnh], _) => ()
                            | _ => raise Fail "rets did not meet expectations!"
                            (* esac *))
-                           
+
                 (*val _ = print ("hit an apply to arg: " ^ ((CPS.Var.toString o List.hd) args) ^ "\n")*)
-                
+
                 val (argBinds, args) = lookupVars(env, args)
                 val (exnhBinds, exnh) = lookupVars(env, List.tl rets)
-                
+
                 fun bindEP () = let
                       val (fBinds, f') = lookupVar(env, f)
                       val ep = CFG.Var.new (CPS.Var.nameOf f ^ "_ep", CFGTy.T_Any)
                   in
                     (CFG.mkSelect(ep, 0, f') :: fBinds, f', ep)
                   end
-                      
+
                 val (cp, ep, binds') = (case fTgt
                      of SOME g => let
                           val (gBind, cp) = bindLabel (labelOf g)
@@ -1023,7 +1023,7 @@ structure DirectFlatClosureWithCFA : sig
                             (cp, ep, cpBind :: epBinds)
                           end
                     (* end case *))
-                
+
                 fun doTailCall () = let
                     val xfer = CFG.Call {
                             f = cp,
@@ -1034,39 +1034,39 @@ structure DirectFlatClosureWithCFA : sig
                     in
                       (binds' @ exnhBinds @ argBinds, xfer)
                     end
-                    
-                    
+
+
                 fun doCall () = let
-                    
+
                     val (retk :: _) = rets
-                    
+
                     (*val _ = prEnv env*)
-                    
+
                     val needsEP = ref false
-                    
+
                     fun f (x, args) = (case findVar(env, x)
                             of Local x' => x' :: args
                              | Extern _ => raise Fail "unexpected extern in free-var list"
                              | (RetCont | JoinCont) => args
                              | _ => (needsEP := true; args)
                             (* end case *))
-                    
-                    
+
+
                     val freeVars = CPS.Var.Set.foldr f nil (FreeVars.envOfFun retk)
-                    
+
                     (* bindings for the values from the return throw *)
                     val lhs = let
                             val argTys = retTyOf retk
-                                          
+
                             fun fresh ty = CFG.Var.new ("rv", ty)
                         in
                             List.map fresh argTys
                         end
-                    
+
                     (* ep, free vars, retk's params *)
-                    val retkArgs = freeVars @ lhs 
+                    val retkArgs = freeVars @ lhs
                     val retkArgs = if !needsEP then envPtrOf env :: retkArgs else retkArgs
-                    
+
                     val xfer = CFG.Call {
                             f = cp,
                             clos = ep,
@@ -1076,16 +1076,16 @@ structure DirectFlatClosureWithCFA : sig
                 in
                     (binds' @ exnhBinds @ argBinds, xfer)
                 end
-            
-            
+
+
           in
             if isTail
             then doTailCall()
             else doCall()
           end
-          
-          
-          
+
+
+
         (* convert a throw *)
           and cvtThrow (env, k, args) = let
           (*
@@ -1116,26 +1116,26 @@ structure DirectFlatClosureWithCFA : sig
                             end
 
                        | SOME(CC.ExnCont) => (* not sure if a check is worth doing or even possible *)
-                                cvtExnThrow(env, k, args)  
-                        
+                                cvtExnThrow(env, k, args)
+
                         (* Must be an escape cont. We translate this to a throw just like an exn,
                             i.e., we jump to the continuation just like in CPS.
-                            
+
                             The actual routine invoked for escape conts is an assembly routine
                             that will cut the stack correctly, etc.
-                            
-                            CFA should have found out no information about any escape conts, 
+
+                            CFA should have found out no information about any escape conts,
                             so it should turn into a std throw.
-                            
+
                         *)
                        | NONE => cvtExnThrow(env, k, args)
                        (* esac *))
                   end
-                  
+
                   | (CC.JoinCont | CC.ReturnCont) => cvtJoinThrow (env, k, args)
-                  
+
                   | CC.OtherCont => cvtExnThrow(env, k, args)
-                  
+
                   | _ => raise Fail (
                       "encountered a throw that I can't handle: "
                       ^ (CC.kindToString o CC.kindOfCont) k
@@ -1161,24 +1161,24 @@ structure DirectFlatClosureWithCFA : sig
 		in
 		  (argBinds, CFG.Goto(labelOf k, args))
 		end
-        
+
         and cvtReturnThrow (env, CPS.FB{f,...}, args) = let
             val (argBinds, args) = lookupVars(env, args)
         in
             (argBinds, CFG.Return {args=args, name = labelOf f})
         end
-        
+
         and cvtExnThrow (env, k, args) = let
             (* NOTE FIXME this will only work because we're assuming you can only throw
                to the top level exception handler, since I have not implemented
                the conversion of an exception handler cont. *)
-                    fun cvtThrow (env, k, args) = (case CFA.valueOf k 
+                    fun cvtThrow (env, k, args) = (case CFA.valueOf k
             		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
             		    | CFA.BOT => cvtStdThrow (env, k, NONE, args)
             		    | CFA.LAMBDAS gs => let
             			val SOME g = CPS.Var.Set.find (fn _ => true) gs
             			val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
-            			val kTgt = if CPS.Var.Set.numItems gs = 1 
+            			val kTgt = if CPS.Var.Set.numItems gs = 1
             				      then CPS.Var.Set.find (fn _ => true) gs
             				   else NONE
             			in
@@ -1216,7 +1216,7 @@ structure DirectFlatClosureWithCFA : sig
                            * then we can refer directly to labelOf(g)
                            *)
                             val bindCP = (case kTgt
-                                   of SOME g => CFG.mkLabel(cp, labelOf g)  
+                                   of SOME g => CFG.mkLabel(cp, labelOf g)
                                     | NONE => CFG.mkSelect(cp, 0, k')
                                   (* end case *))
                             val xfer = CFG.Apply {
@@ -1230,11 +1230,11 @@ structure DirectFlatClosureWithCFA : sig
               in
                 cvtThrow(env, k, args)
               end
-        
+
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let
                 val ep = CFG.Var.new ("dummyEP", CFGTy.T_Any)
-                val (env, params, conv, convTy) = 
+                val (env, params, conv, convTy) =
                       stdFuncConvention (E{ep = ep, env = externEnv}, params, rets)
                 val lab = labelOf f
                 val () = CFG.Label.setType (lab, convTy)
