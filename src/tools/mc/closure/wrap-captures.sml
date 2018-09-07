@@ -224,21 +224,9 @@ structure WrapCaptures : sig
 
         fun unitRetk(ty, k) = let
             val retk = CV.new("unitRetk", CPSTy.T_Any)
-            val rhs = C.Const(Literal.unitLit, CPSTy.T_Any)
         in
-          C.mkLet([retk], rhs,
-            cast(retk, ty, fn castedRetK => (
-              (* NOTE ugly hack
-                 We set a kind _now_ to communicate the fact that
-                 this retK is a unit value. The code processing
-                 the expression inside 'k' needs to know, and
-                 this mkLet call will not happen until _after_ we get
-                 a value back!
-                 In particular, the info is needed in 'replaceRetk'
-               *)
-              CV.setKind(castedRetK, C.VK_Let rhs) ;
-              k castedRetK
-              )))
+            C.mkLet([retk], C.Const(Literal.unitLit, CPSTy.T_Any),
+              cast(retk, ty, k))
         end
 
         fun bindTrue k =
@@ -271,7 +259,7 @@ structure WrapCaptures : sig
                    to non-tail due to manipKRetk, which are the only types of retk's
                    in the environment in the case of a substution in an Apply. *)
 
-                val isNowNonTail = ref false
+                val newRetk = ref false
 
                 (* it turns out that if the retk was eliminated, then it is
                    replaced with unit casted to the type of the retk in the enclosing
@@ -284,51 +272,40 @@ structure WrapCaptures : sig
                   | substRets (env, [retk], k) =
                         replaceRetk(env, retk, fn newRetk => k [newRetk])
 
-                (* check if the value is actually "unit" *)
-                and isUnit v = (case CV.kindOf v
-                    of C.VK_Let(C.Cast(_, v)) => isUnit v
-                     | C.VK_Let(C.Const _) => true
-                     | _ => false
-                    (* esac *))
-
                 and replaceRetk (env, oldRetk, k) = (case lookupKind(env, oldRetk)
                     of SOME(EscapeCont _) => raise Fail (CV.toString oldRetk ^ " should not appear as a ret!")
-                     | SOME(RetCont newV) =>
-                          k (isNowNonTail := (not o isUnit) newV ; newV)
+                     | SOME(RetCont newV) => k (newRetk := true ; newV)
                      | NONE => let
+                        (* check if the oldRetk is unit *)
+                        fun isConst v = (case CV.kindOf v
+                            of C.VK_Let(C.Cast(_, v)) => isConst v
+                             | C.VK_Let(C.Const _) => true
+                             | _ => false
+                            (* esac *))
+
                         val curRet = getRet env
                         val paramRet = getParamRet env
-                        (* DEBUG *)
+                        (* DEBUG
                         val _ = print ("inspecting: "
                                     ^ CV.toString oldRetk
                                     ^ " VS paramRet " ^ CV.toString paramRet
-                                    ^ " VS curRet " ^ CV.toString curRet
-                                    ^ " isNowNonTail = " ^ Bool.toString (!isNowNonTail)
-                                    ^ " old is unit = " ^ Bool.toString (isUnit oldRetk)
-                                    ^ " | cur is unit = " ^ Bool.toString (isUnit curRet)
-                                    ^ " ... \n")
-
+                                    ^ " VS curRet " ^ CV.toString curRet ^ " ... \n")
+                        *)
                      in
-                        if (isUnit curRet) andalso (isUnit oldRetk)
-                            (* NOTE: ugly way to get types right ???? *)
-                            then MK.unitRetk(CV.typeOf oldRetk,
-                                      fn correctRetk => k correctRetk)
-
-                        else (if inManipScope env
-                            andalso isUnit oldRetk
+                        if inManipScope env
+                            andalso isConst oldRetk
                             andalso CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf curRet)
 
-                            then k (isNowNonTail := true ; curRet)
+                        then k (newRetk := true ; curRet)
 
-                        else k oldRetk)
+                        else k oldRetk
                      end
                      (* esac *))
              in
                 substRets(env, rets, fn rets => let
                         val applyExp = wrap (C.Apply(f, L.map (subst env) args, rets))
-                        val _ = print (" isNowNonTail = " ^ Bool.toString (!isNowNonTail) ^ "\n\n")
                     in
-                        if !isNowNonTail
+                        if !newRetk
                         then (K.setTailApply(applyExp, false) ; applyExp)
                         else applyExp
                     end)
@@ -359,34 +336,28 @@ structure WrapCaptures : sig
         (* esac *))
     end
 
-    (* we need to simply reify the continuation, since there's
-       no possibility that we'll return from the the function we're
-       contained in.
-    *)
-    and simpleCapture env (C.FB{f, params, rets, body}, e) = let
-        val retk = getRet env
-        val contBody = doExp(env, body)
-
-        val (manipFB as C.FB{f=manipK,...}) =
-             mkSimpleManipFun(f, retk, mkManipKBody env e (f, retk))
-
-        val _ = K.setKind(f, K.ReturnCont) (* we use it like a return cont *)
-      in
-        C.Cont(C.FB{f=f,params=params,rets=rets, body=contBody},
-          C.mkFun([manipFB],
-              MK.dummyExh(fn unitExh =>
-                  C.mkCallec(manipK, [f, unitExh]))))
-      end
-
+    and simpleCapture env (C.FB{f, params, rets, body}, e) =
+        raise Fail "todo: implement simpleCapture"
 
     (* a full wrapping, assuming a normal return is also possible, so a
        landing-pad with a switch is produced. *)
     and landingPadCapture env (C.FB{f, params, rets, body}, e) = let
+            (* TODO change the classification of f, set the classification of retkWrap *)
+
            val retk = getRet env
            val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f)
 
-           val (manipFB as C.FB{f=manipK,...}) =
-                mkManipFun(f, retk, mkManipKBody env e (f, retk))
+           fun mkManipKBody env (newF, newActiveRetk, manipKRetParam) = let
+               val env = insertV(env, retk, RetCont newActiveRetk)
+               val env = insertV(env, f, EscapeCont newF)
+               val env = setRet(env, newActiveRetk)
+               val env = setParamRet(env, manipKRetParam)
+               val env = setManipScope(env, true)
+           in
+               doExp(env, e)
+           end
+
+           val (manipFB as C.FB{f=manipK,...}) = mkManipFun(f, retk, mkManipKBody env)
 
            val contBody = doExp(env, body)
 
@@ -449,45 +420,6 @@ structure WrapCaptures : sig
                 body = branch(dispatch retk, dispatch kont)}
     end
 
-
-    and mkManipKBody env e (f, retk) (newF, newActiveRetk, manipKRetParam) = let
-        val env = insertV(env, retk, RetCont newActiveRetk)
-        val env = insertV(env, f, EscapeCont newF)
-        val env = setRet(env, newActiveRetk)
-        val env = setParamRet(env, manipKRetParam)
-        val env = setManipScope(env, true)
-    in
-        doExp(env, e)
-    end
-
-
-    (* barebones versions of the regular one. see there for comments etc. *)
-    and mkSimpleManipFun (origLetCont, origRetk, k) = let
-        val contAny = CPSTy.T_Cont([CPSTy.T_Any])
-        val cxtRetTy = CV.typeOf origRetk
-
-        val contP = CV.copy origLetCont
-        val retkTy = CV.typeOf contP (* it's the same as the reified cont! *)
-        val exnP = CV.new("deadExnK", contAny)
-        val retkP = CV.new("unusedRetK", retkTy)
-
-        val num = Int.toString(ST.count cntExpand) (* aids debugging *)
-        val fname = CV.new("s_manipK" ^ num, CPSTy.T_Fun([CV.typeOf contP], [retkTy, contAny]))
-
-        val _ = (K.setContextOfThrow(retkP, VSet.singleton fname) ;
-                 K.setContextOfThrow(contP, VSet.singleton fname))
-
-      in
-        C.FB {
-            f = fname,
-            params = [contP],
-            rets = [retkP, exnP],
-            body = MK.unitRetk (cxtRetTy, (fn unitRetk =>
-                        k (contP, unitRetk, retkP)
-                        ))
-        }
-      end
-
     (* the reason manipK takes an exh that will be unused is because it will use
        the standard calling convention (its caller is actually an unknown fun). *)
     and mkManipFun(origLetCont, origRetk, k) = let
@@ -539,8 +471,7 @@ structure WrapCaptures : sig
             f = fname,
             params = [contP],
             rets = [retkP, exnP],
-            body = mkInvokeRet(fn invokeRet =>
-                      k (contP, invokeRet, retkP))
+            body = mkInvokeRet(fn invokeRet => k (contP, invokeRet, retkP))
         }
     end
 
