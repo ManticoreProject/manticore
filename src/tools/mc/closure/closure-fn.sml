@@ -42,6 +42,7 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
     val classify = analyze {passName = "classify-conts", pass = ClassifyConts.analyze}
 
     val wrapCaptures = transform {passName = "wrap-captures", pass = WrapCaptures.transform}
+    val unifyNonret = transform {passName = "unify-nonret-sigs", pass = UnifyNonRetSigs.transform}
 
     structure ConvertStyle =
        struct
@@ -95,6 +96,10 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
 	  }
 
     fun convert module = let
+        val module = if Controls.get BasicControl.direct
+                      then unifyNonret module
+                      else module
+
         val _ = classify module
 
         val module = if Controls.get BasicControl.direct

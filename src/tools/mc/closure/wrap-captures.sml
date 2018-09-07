@@ -476,7 +476,7 @@ structure WrapCaptures : sig
         }
     end
 
-    (* ClassifyConts must be run before this transform. *)
+    (* UnifyNonRetSigs and ClassifyConts must be run before this transform. *)
     fun transform (m as C.MODULE{name, externs, body}) =
         if not(Controls.get BasicControl.direct)
         then m
