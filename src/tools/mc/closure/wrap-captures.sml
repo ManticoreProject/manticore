@@ -261,12 +261,6 @@ structure WrapCaptures : sig
 
                 val newRetk = ref false
 
-                (* it turns out that if the retk was eliminated, then it is
-                   replaced with unit casted to the type of the retk in the enclosing
-                   fun. This becomes a problem for us because when we wrap C
-                   with manipK, the type of the retk changes. So a simple substitute
-                   becomes ineffective. Thus, we specifically detect this case and
-                   change the retk to the currently active retk (as opposed to the enclosing fun's). *)
                 fun substRets (env, [retk, exnk], k) =
                         replaceRetk(env, retk, fn newRetk => k [newRetk, exnk])
                   | substRets (env, [retk], k) =
@@ -275,31 +269,7 @@ structure WrapCaptures : sig
                 and replaceRetk (env, oldRetk, k) = (case lookupKind(env, oldRetk)
                     of SOME(EscapeCont _) => raise Fail (CV.toString oldRetk ^ " should not appear as a ret!")
                      | SOME(RetCont newV) => k (newRetk := true ; newV)
-                     | NONE => let
-                        (* check if the oldRetk is unit *)
-                        fun isConst v = (case CV.kindOf v
-                            of C.VK_Let(C.Cast(_, v)) => isConst v
-                             | C.VK_Let(C.Const _) => true
-                             | _ => false
-                            (* esac *))
-
-                        val curRet = getRet env
-                        val paramRet = getParamRet env
-                        (* DEBUG
-                        val _ = print ("inspecting: "
-                                    ^ CV.toString oldRetk
-                                    ^ " VS paramRet " ^ CV.toString paramRet
-                                    ^ " VS curRet " ^ CV.toString curRet ^ " ... \n")
-                        *)
-                     in
-                        if inManipScope env
-                            andalso isConst oldRetk
-                            andalso CPSTyUtil.match(CV.typeOf oldRetk, CV.typeOf curRet)
-
-                        then k (newRetk := true ; curRet)
-
-                        else k oldRetk
-                     end
+                     | NONE => k oldRetk
                      (* esac *))
              in
                 substRets(env, rets, fn rets => let
@@ -314,18 +284,14 @@ structure WrapCaptures : sig
          | C.Throw (k, args) => wrap(C.Throw(subst env k, L.map (subst env) args))
 
          | C.Cont (cont as (C.FB{f, params, rets, body}, e)) => wrap (case K.kindOfCont f
-             of (K.GotoCont | K.OtherCont) => let
-                (* determine how to wrap this capture *)
-
-                (* see NOTE [single-param cont] *)
-                val _ = if L.length params > 1 then
-                            raise Fail ("escape cont "
-                                        ^ (CV.toString f)
-                                        ^ " takes more than 1 parameter!")
-                        else ST.tick cntExpand
-             in
-              landingPadCapture env cont
-             end
+             of (K.GotoCont | K.OtherCont) =>
+                 (* see NOTE [single-param cont] *)
+                 if L.length params > 1
+                   then raise Fail ("escape cont "
+                                   ^ (CV.toString f)
+                                   ^ " takes more than 1 parameter!")
+                   else ( ST.tick cntExpand ;
+                          landingPadCapture env cont )
               | _ => C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)}, doExp(env, e))
              (* esac *))
         (* esac *))
@@ -394,7 +360,7 @@ structure WrapCaptures : sig
 
         val padTy = if neverReturns
                     then CPSTy.T_Cont([CPSTy.T_Any])
-                    else CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
+                    else CPSTy.T_Cont([CPSTy.T_Any, indicatorTy])
 
         val padVar = CV.new("setjmpLandingPad", padTy)
 
@@ -423,7 +389,7 @@ structure WrapCaptures : sig
               body = dispatch kont
               }
 
-      else C.FB{f = padVar, params = [boolParam, valParam], rets = [],
+      else C.FB{f = padVar, params = [valParam, boolParam], rets = [],
               body = branch(dispatch retk, dispatch kont)
               }
 
@@ -435,7 +401,7 @@ structure WrapCaptures : sig
         val contAny = CPSTy.T_Cont([CPSTy.T_Any])
         val retkTy = if neverReturns
                       then CPSTy.T_Cont([CPSTy.T_Any])
-                      else CPSTy.T_Cont([indicatorTy, CPSTy.T_Any])
+                      else CPSTy.T_Cont([CPSTy.T_Any, indicatorTy])
 
         val contP = CV.copy origLetCont
         val retkP = CV.new("landingPadK", retkTy)
