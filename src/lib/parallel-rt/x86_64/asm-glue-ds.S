@@ -77,8 +77,7 @@ _GSYM(ASM_Resume_Stack):
 .globl	_GSYM(ASM_DS_EscapeThrow)
 _GSYM(ASM_LongJmp):
     // setup args
-    movq    STD_ARG_REG, %r10       // shift the arg to the 2nd arg reg
-    movq    $0, STD_ARG_REG         // set 1st arg reg to 0 indicating an escape throw
+    movq    $0, %r10         // set 2nd arg reg to 0 indicating an escape throw
     // **** fall-through to EscapeThrow ****
 .p2align 4, 0x90              // must pad with NOPs!
 _GSYM(ASM_DS_EscapeThrow):
@@ -234,8 +233,10 @@ prevTestJoin:
         high addresses
 */
 .p2align 4, 0xCC
-.globl	_GSYM(ASM_Callec)
-_GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
+.globl	_GSYM(ASM_Callec1)
+.globl	_GSYM(ASM_Callec2)
+_GSYM(ASM_Callec2):
+_GSYM(ASM_Callec1):  /* uses the direct-style manticore calling convention */
 
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG1     // grab the stack descriptor
 
