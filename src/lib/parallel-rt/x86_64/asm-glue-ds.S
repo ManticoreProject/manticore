@@ -29,8 +29,8 @@
 #define LIST_PREV   40
 #define AGE         56
 
-    .text  
-    
+    .text
+
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_DS_StartStack)
 _GSYM(ASM_DS_StartStack):
@@ -40,7 +40,7 @@ _GSYM(ASM_DS_StartStack):
     movq    (TMP_REG1), STD_EP_REG  // set EP
     movq    8(TMP_REG1), TMP_REG0   // grab the CP
     jmp     *TMP_REG0
-    
+
 
 // used by RequestService to call a function on the given stack,
 // and additionally pop any data RequestService placed on the stack.
@@ -57,7 +57,7 @@ _GSYM(ASM_DS_Apply):
     movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
     // call the function
     jmp     *TMP_REG0
-    
+
 
 // called by RequestService to return from GC
     .p2align 4, 0xCC
@@ -71,7 +71,7 @@ _GSYM(ASM_Resume_Stack):
     movq    %r8, STD_ARG_REG
     movq    ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
     ret
-    
+
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_LongJmp)
 .globl	_GSYM(ASM_DS_EscapeThrow)
@@ -94,9 +94,9 @@ _GSYM(ASM_DS_EscapeThrow):
 #endif
     // do a pop;jmp to resume the stack
     ret
-    
-    
-    
+
+
+
 /*
 
     caller2 addr
@@ -121,9 +121,9 @@ _GSYM(__manti_growstack):
     movq    $1, TMP_REG1      // 0 indicates no copying.
 #endif
 ////// FALL THROUGH //////
-    
+
 _GSYM(__manti_growstack_noimplicitcopy):
-    
+
     leaq    8(%rsp), TMP_REG0   // save the current top of segment
     // save manticore registers
     // NOTE: FIXME we are omitting xmm registers here! FIXME
@@ -133,16 +133,16 @@ _GSYM(__manti_growstack_noimplicitcopy):
     pushq   STD_EXH_REG
     pushq   STD_ARG_REG
     pushq   %r10            // arg 2
-    // the rest of the manticore registers are 
+    // the rest of the manticore registers are
     // saved by the C callee
     // setup args
     movq    VPROC_PTR_REG, %rdi     // vproc is arg 1
     movq    TMP_REG0, %rsi              // current top is arg 2
     movq    TMP_REG1, %rdx              // whether to copy is arg 3
     callq   _GSYM(StkSegmentOverflow)
-    
+
     movq    %rax, TMP_REG0  // move new SP out of the way
-    
+
     // restore manticore registers
     popq    %r10
     popq   STD_ARG_REG
@@ -150,7 +150,7 @@ _GSYM(__manti_growstack_noimplicitcopy):
     popq   STD_EP_REG
     popq   VPROC_PTR_REG
     popq   ALLOC_PTR_REG
-    
+
     // swap out the stack pointer FIXME make this cheaper. xchg is not so cheap.
     xchgq   %rsp, TMP_REG0
     movq    (TMP_REG0), TMP_REG0 // load return addr
@@ -160,20 +160,20 @@ _GSYM(__manti_growstack_noimplicitcopy):
 // This version is for segmented stacks a la Bruggeman et al.
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_DS_SegUnderflow)
-_GSYM(ASM_DS_SegUnderflow):    
+_GSYM(ASM_DS_SegUnderflow):
     // grab current segment
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
 
 #ifndef LAZY_UNDERFLOW
     /////////
-    // remove current segment from allocated list, 
+    // remove current segment from allocated list,
     // which is doubly linked to support this operation.
     // refer to FreeStacks in minor-gc.c
     /////////
-    
+
     movq    LIST_NEXT(TMP_REG1), TMP_REG0  // get allocdNext
     movq    LIST_PREV(TMP_REG1), TMP_REG3  // get allocdPrev
-    
+
     // allocdNext == NULL?
     testq   TMP_REG0, TMP_REG0
     jz  nextIsNull
@@ -186,7 +186,7 @@ nextIsNull:
     // allocdPrev->next = allocdNext
     movq    TMP_REG0, LIST_NEXT(TMP_REG3)
     jmp     prevTestJoin
-    
+
 prevIsNull:
     // vp->allocdStacks = allocdNext
     movq    TMP_REG0, ALLOCD_STKS(VPROC_PTR_REG)
@@ -200,24 +200,24 @@ prevTestJoin:
     movq    FREE_STKS(VPROC_PTR_REG), TMP_REG0
     movq    TMP_REG0, LIST_NEXT(TMP_REG1)
     movq    TMP_REG1, FREE_STKS(VPROC_PTR_REG)
-    
+
     // done with freeing the current segment
     /////////////
 #endif
-    
-    // grab the previous segment descriptor 
+
+    // grab the previous segment descriptor
     // from the current segment
     movq    PREV_SEG(TMP_REG1), TMP_REG1
-    
+
     // install the segment descriptor
     movq    TMP_REG1, STD_CONT(VPROC_PTR_REG)
-    
+
     // change the SP and limit, then return
     movq    CUR_SP(TMP_REG1), %rsp
     movq    STK_LIM(TMP_REG1), TMP_REG1
     movq    TMP_REG1, STD_EP(VPROC_PTR_REG)
     retq
-    
+
 
 
 /*
@@ -229,7 +229,7 @@ prevTestJoin:
     ----------------------
         stack ptr
     ----------------------
-     stack descriptor ptr 
+     stack descriptor ptr
     ======================
         high addresses
 */
@@ -238,7 +238,7 @@ prevTestJoin:
 _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
 
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG1     // grab the stack descriptor
-    
+
 #ifdef SEGSTACK
     movq    %rsp, TMP_REG4                      // save the SP
     // switch to a new segment without copying
@@ -250,11 +250,11 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
 
     /***** alloc cont object ****/
     leaq    _GSYM(ASM_LongJmp)(%rip), TMP_REG0    // load the resume address
-    
+
     // ** initialize allocation **
     movq    $STACK_HDR(3), -8(ALLOC_PTR_REG)       // init header
     movq    TMP_REG0, (ALLOC_PTR_REG)           // init code ptr
-    
+
 #ifdef SEGSTACK
     movq    TMP_REG4, 8(ALLOC_PTR_REG)          // init captured stack ptr
 #else
@@ -262,19 +262,19 @@ _GSYM(ASM_Callec):  /* uses the direct-style manticore calling convention */
 #endif
     movq    TMP_REG1, 16(ALLOC_PTR_REG)         // init stack descriptor
     // ** done with initialization **
-    
+
     // update pointers
     movq    ALLOC_PTR_REG, TMP_REG0             // save ptr to the cont object
     addq    $32, ALLOC_PTR_REG                  // bump alloc ptr, (numItems * 8) + 8
-    
+
     /***** invoke the function we were given *****/
     movq    (STD_ARG_REG), STD_EP_REG       // load environment pointer
     movq    8(STD_ARG_REG), TMP_REG1        // load code pointer
     movq    TMP_REG0, STD_ARG_REG           // pass the cont object
     jmp     *TMP_REG1                       // do the call, leaving stack pointer as-is
-    
-    
-    
+
+
+
     .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_Return)
 _GSYM(ASM_DS_Return):
@@ -287,14 +287,14 @@ _GSYM(ASM_DS_Return):
     pushq   TMP_REG1
     movq    $REQ_Return, TMP_REG1
     jmp     asm_get_service
-    
+
 
     .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_UncaughtExn)
 _GSYM(ASM_DS_UncaughtExn):
     movq    $REQ_UncaughtExn, TMP_REG1
     jmp     asm_get_service
-    
+
 
     .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_VProcSleep)
@@ -304,10 +304,10 @@ _GSYM(ASM_DS_VProcSleep):
 
 
 /* NOTE: this function only accepts vproc and alloc ptrs.
-   might be worth clearing the other registers so they're 
+   might be worth clearing the other registers so they're
    not seen as ptrs. Do that also in the CPS version.
    those fields are not checked for roots anyways though. */
-   
+
     .p2align 4, 0xCC
     .globl	_GSYM(ASM_InvokeGC_DS_LLVM)
 _GSYM(ASM_InvokeGC_DS_LLVM):
@@ -317,12 +317,12 @@ _GSYM(ASM_InvokeGC_DS_LLVM):
 
 asm_get_service:
 // live-ins
-// 1. these std-ds calling convention registers: 
+// 1. these std-ds calling convention registers:
 //      alloc, vproc, exh, stdArg
 // 2. TMP_REG1 -- request code
     // save the current stack cont to TMP_REG0
-    // leaq    -8(%rsp), TMP_REG0  
-    
+    // leaq    -8(%rsp), TMP_REG0
+
     // initialize metadata
     // subq    $16, %rsp
     // movq    $STACK_HDR_STKDATA, (%rsp)
@@ -336,7 +336,7 @@ asm_get_service:
     /* in essence, the environment (with all roots)
        is the stack. the stack's descriptor should
        already be in STD_CONT. */
-    
+
     /* move vproc and request code to the right registers */
     movq    VPROC_PTR_REG, %rdi // rdi = arg 1
     movq    TMP_REG1, %rsi      // rsi = arg 2
