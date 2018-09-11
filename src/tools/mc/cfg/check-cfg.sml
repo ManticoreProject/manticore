@@ -73,7 +73,7 @@ structure CheckCFG : sig
 			  error ["type mismatch in ", ctx, "\n"];
 			  cerror ["  expected  ", TyU.toString pty, "\n"];
 			  cerror ["  but found ", TyU.toString aty, "\n"])
-	        in 
+	        in
 	          if (length paramTys = length argTys)
                     then ListPair.app chk1 (argTys, paramTys)
                     else (
@@ -110,10 +110,10 @@ structure CheckCFG : sig
                   | (CFG.LK_Block _, true) => ()
                   | (CFG.LK_Block _, false) => error["unbound block label ", l2s l, " in ", cxt, "\n"]
                 (* end case *))
-	(* check the entry against the declared type of the label;  The declared type is 
+	(* check the entry against the declared type of the label;  The declared type is
          * allowed to be more specific.
          *)
-          fun chkEntry (lab, entry, args) = (case (entry, L.typeOf lab) 
+          fun chkEntry (lab, entry, args) = (case (entry, L.typeOf lab)
                  of (CFG.StdFunc {clos, ret, exh},
                      Ty.T_StdFun {clos = closTy, args = argTys, ret = retTy, exh = exhTy}) => (
                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " clos"],
@@ -125,7 +125,7 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " exh"],
                                     [exhTy], typesOf [exh]);
                       addVars(VSet.empty, clos::ret::exh::args))
-                      
+
                   | (CFG.StdDirectFunc {clos, ret, exh},
                       Ty.T_StdDirFun {clos = closTy, args = argTys, ret = retTy, exh = exhTy}) => (
                        checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " clos"],
@@ -137,7 +137,7 @@ structure CheckCFG : sig
                        checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " exh"],
                                      [exhTy], typesOf [exh]);
                        addVars(VSet.empty, clos::exh::args))
-                      
+
                   | (CFG.StdCont {clos},
                      Ty.T_StdCont {clos = closTy, args = argTys}) => (
                       checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " clos"],
@@ -145,16 +145,16 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
-                      
-                  | (CFG.KnownFunc {clos}, 
+
+                  | (CFG.KnownFunc {clos},
                      Ty.T_KnownFunc {clos = closTy, args = argTys}) => (
                       checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
                       checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
-                      
-                  | (CFG.KnownDirectFunc {clos, ret}, 
+
+                  | (CFG.KnownDirectFunc {clos, ret},
                      Ty.T_KnownDirFunc {clos = closTy, args = argTys, ret = retTy}) => (
                       checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
@@ -163,20 +163,20 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " retTy"],
                                     retTy, ret);
                       addVars(VSet.empty, clos::args))
-                      
+
                   | (conv, ty) => (
-                      error["entry of ", l2s lab, " is ", 
-                            (case conv 
+                      error["entry of ", l2s lab, " is ",
+                            (case conv
                               of CFG.StdFunc _ => "stdfunc"
                                | CFG.StdCont _ => "stdcont"
                                | CFG.KnownFunc _ => "known"
                                | CFG.KnownDirectFunc _ => "ds-kfun"
                                | CFG.StdDirectFunc _ => "ds-stdfun"
-                             (* end case *)), 
+                             (* end case *)),
                             " (expected ", TyU.toString ty, ")\n"];
                       addVars(VSet.empty, CFG.paramsOfConv (conv, args)))
                 (* end case *))
-          fun chkExp (env, exp) = (case exp 
+          fun chkExp (env, exp) = (case exp
                  of CFG.E_Var (xs, ys) => (
                       chkVars (env, ys, "Var");
                       checkArgTypes (TyU.equal, "Var", typesOf xs, typesOf ys);
@@ -185,7 +185,7 @@ structure CheckCFG : sig
                       fun err () = error[
                              "type mismatch in Const: ", v2s' x, " = ",
                              Literal.toString lit, "\n"]
-                      in 
+                      in
 		      (* first, check the literal against ty *)
 			case (lit, ty)
 			 of (Literal.Enum _, Ty.T_Enum _) => ()
@@ -202,7 +202,7 @@ structure CheckCFG : sig
 			  | (Literal.Char _, Ty.T_Raw Ty.T_Int) => ()
 			  | (Literal.String _, Ty.T_Any) => ()
 			  | _ => error[
-			      "literal has bogus type: ",  v2s x, " = ", 
+			      "literal has bogus type: ",  v2s x, " = ",
 			      Literal.toString lit, ":", TyU.toString ty, "\n"
 			      ]
 			(* end case *);
@@ -244,7 +244,7 @@ structure CheckCFG : sig
                              "#", Int.toString i, "(", v2s' y, ")\n"]
                       in
 			chkVar (env, y, "Select");
-			
+
 			case V.typeOf y
 			 of Ty.T_Tuple(_, tys) =>
 			      if (i < List.length tys) andalso TyU.match (List.nth (tys, i), V.typeOf x)
@@ -267,7 +267,7 @@ structure CheckCFG : sig
 			chkVar (env, y, "Update");
 			chkVar (env, z, "Update");
 			case V.typeOf y
-			 of Ty.T_Tuple(true, tys) => 
+			 of Ty.T_Tuple(true, tys) =>
 			      if (i < List.length tys)
 			      andalso TyU.validCast (V.typeOf z, List.nth (tys, i))
 				then ()
@@ -425,13 +425,13 @@ structure CheckCFG : sig
                             chkVars (env, args, "StdApply args");
                             chkVar (env, ret, "StdApply ret");
                             chkVar (env, exh, "StdApply exh");
-                            checkArgTypes (TyU.match, concat ["StdApply ", v2s f, " clos"], 
+                            checkArgTypes (TyU.match, concat ["StdApply ", v2s f, " clos"],
                                            [closTy], typesOf [clos]);
-                            checkArgTypes (TyU.match, concat ["StdApply ", v2s f, " args"], 
+                            checkArgTypes (TyU.match, concat ["StdApply ", v2s f, " args"],
                                            argTys, typesOf args);
-                            checkArgTypes (TyU.match, concat ["StdApply ", v2s f, " ret"], 
+                            checkArgTypes (TyU.match, concat ["StdApply ", v2s f, " ret"],
                                            [retTy], typesOf [ret]);
-                            checkArgTypes (TyU.match, concat ["StdApply ", v2s f, " exh"], 
+                            checkArgTypes (TyU.match, concat ["StdApply ", v2s f, " exh"],
                                            [exhTy], typesOf [exh]))
                         | ty => error[v2s f, ":", TyU.toString ty, " is not a stdfun\n"]
                       (* end case *))
@@ -441,21 +441,21 @@ structure CheckCFG : sig
                        of Ty.T_StdCont{clos = closTy, args = argTys} => (
                             chkVar (env, clos, "StdThrow clos");
                             chkVars (env, args, "StdThrow args");
-                            checkArgTypes (TyU.match, concat ["StdThrow ", v2s k, " clos"], 
+                            checkArgTypes (TyU.match, concat ["StdThrow ", v2s k, " clos"],
                                            [closTy], typesOf [clos]);
-                            checkArgTypes (TyU.match, concat ["StdThrow ", v2s k, " args"], 
+                            checkArgTypes (TyU.match, concat ["StdThrow ", v2s k, " args"],
                                            argTys, typesOf args))
                         | ty => error[v2s k, ":", TyU.toString ty, " is not a stdcont\n"]
                       (* end case *))
                   | CFG.Apply{f, clos, args} => (
                       chkVar (env, f, "Apply");
-                      case V.typeOf f 
+                      case V.typeOf f
                        of Ty.T_KnownFunc {clos = closTy, args = argTys} => (
                             chkVar (env, clos, "Apply clos");
                             chkVars (env, args, "Apply args");
-                            checkArgTypes (TyU.match, concat ["Apply ", v2s f, " clos"], 
+                            checkArgTypes (TyU.match, concat ["Apply ", v2s f, " clos"],
                                            [closTy], typesOf [clos]);
-                            checkArgTypes (TyU.match, concat ["Apply ", v2s f, " args"], 
+                            checkArgTypes (TyU.match, concat ["Apply ", v2s f, " args"],
                                            argTys, typesOf args))
                         | ty => error[v2s f, ":", TyU.toString ty, " is not a known\n"]
                       (* end case *))
@@ -481,10 +481,10 @@ structure CheckCFG : sig
                               Option.app (fn j => chkJump (env, j, "Switch/dflt")) dflt
                             end
                         | Ty.T_Raw rt => let
-                            fun chkCase (tag, jmp) = 
+                            fun chkCase (tag, jmp) =
                                    chkJump(env, jmp, "Switch/case")
                             fun chk () = (
-                                   List.app chkCase cases; 
+                                   List.app chkCase cases;
                                    Option.app (fn j => chkJump (env, j, "Switch/dflt")) dflt)
                             fun bad () = (
                                    error ["type mismatch in Switch argument\n"];
@@ -518,24 +518,24 @@ structure CheckCFG : sig
                        (* end case *);
                        chkJump (addVars (env, lhs), (l,lhs@rargs), "AllocCCall"))
 
-                  
+
                   | CFG.Call {f, clos, args, next} => let
                         val name = "Call "
-                                                
-                        fun chkAfter env (lhs, jmp) = 
+
+                        fun chkAfter env (lhs, jmp) =
                             chkJump(addVars(env, lhs), jmp, name)
-                        
-                        fun chkLHS retTys (SOME(lhs, _)) = 
+
+                        fun chkLHS retTys (SOME(lhs, _)) =
                                     checkArgTypes (TyU.match, concat [name, v2s f, " retVals"],
                                                     retTys, typesOf lhs)
-                                            
+
                           | chkLHS retTys NONE = (case L.typeOf enclF
                               of (Ty.T_StdDirFun{ret,...} | Ty.T_KnownDirFunc{ret,...}) =>
                                     checkArgTypes (TyU.match, concat [name, v2s f, " tailcall"],
                                                    ret, retTys)
                                | _ => error ["tailcall can only appear in a direct-style fun"]
                                (* esac *))
-                        
+
                         fun chkTys () = (case V.typeOf f
                             of Ty.T_KnownDirFunc {clos = closTy, args = argTys, ret = retTys} => (
                                     checkArgTypes (TyU.match, concat [name, v2s f, " clos"],
@@ -544,7 +544,7 @@ structure CheckCFG : sig
                                                    argTys, typesOf args);
                                     chkLHS retTys next
                                     )
-                                
+
                                 (* see paramsOfConv, exh is expected at the end of arg list *)
                              | Ty.T_StdDirFun {clos = closTy, args = argTys, ret = retTys, exh = exhTy} => (
                                      checkArgTypes (TyU.match, concat [name, v2s f, " clos"],
@@ -563,28 +563,28 @@ structure CheckCFG : sig
                      Option.app (chkAfter env) next
                     )
                   end
-                  
-                  | CFG.Return {args, name} => ( 
+
+                  | CFG.Return {args, name} => (
                     chkVars(env, args, "Return");
-                    
+
                     (case L.typeOf enclF
                       of (Ty.T_StdDirFun{ret,...} | Ty.T_KnownDirFunc{ret,...}) =>
                             checkArgTypes (TyU.match, "Return", ret, typesOf args)
                        | _ => error ["Return can only appear in a direct-style fun"]
                        (* esac *)) ;
-                       
+
                     if L.same(enclF, name)
                     then ()
                     else error ["expected the name of a return to be the enclosing function."]
                      )
-                  
+
                 (* end case *))
 		and chkJump (env, (lab, args), cxt) = let
 		      val cxt = String.concat[cxt, " jump to ", l2s lab]
 		      in
 			chkLbl (lEnv, lab, cxt);
 			chkVars (env, args, cxt);
-			case L.typeOf lab 
+			case L.typeOf lab
 			 of Ty.T_Block{args = paramTys} => (
 			      checkArgTypes (TyU.match, cxt, paramTys, typesOf args))
 			  | ty => error[cxt, " is not a block\n"]
