@@ -575,7 +575,12 @@ structure CheckCFG : sig
 
                     if L.same(enclF, name)
                     then ()
-                    else error ["expected the name of a return to be the enclosing function."]
+                    else error ["expected the name of a return to be the enclosing function, got\n",
+                                L.toString name,
+                                " instead of ",
+                                L.toString enclF,
+                                "\n\n"
+                               ]
                      )
 
                 (* end case *))
