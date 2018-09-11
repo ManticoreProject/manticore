@@ -100,19 +100,22 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
                       then unifyNonret module
                       else module
 
-        val _ = classify module
+        val () = classify module
 
         val module = if Controls.get BasicControl.direct
-                      then ( freeVarsClear module ;
-                             freeVars module ;
-                             wrapCaptures module )
+                      then let
+                              val () = freeVarsClear module
+                              val () = FreeVars.analyzeForWrapCaptures module
+                          in
+                              wrapCaptures module
+                          end
                       else module
 
-        val _ = cfaClear module
-        val _ = cfa module
+        val () = cfaClear module
+        val () = cfa module
 
-        val _ = freeVarsClear module
-        val _ = freeVars module
+        val () = freeVarsClear module
+        val () = freeVars module
     in
         convert' module
     end

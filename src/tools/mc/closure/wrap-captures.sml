@@ -116,29 +116,44 @@ structure WrapCaptures : sig
     structure ST = Stats
     structure L = List
     structure K = ClassifyConts
+    structure FV = FreeVars
 
     (********** Counters for statistics **********)
     val cntExpand = ST.newCounter "wrap-captures:expand"
 
     (***** environment utils *****)
-    datatype environment = E of { sub : cont_kind VMap.map, retk : CV.var, paramRetk : CV.var, manipScope : bool }
+    datatype environment = E of { sub : cont_kind VMap.map, (* cont substitution map *)
+                                  retk : CV.var, (* the current "active" retk that should
+                                                    be used wherever a return would have occured *)
+                                  paramRetk : CV.var, (* the retk currently bound as a param of the encl fun *)
+                                  manipScope : bool, (* indicates whether we'll be enclosed by a manipK fun *)
+                                  allRets : VSet.set (* a set containing all ret conts we've encountered *)
+                                }
         and cont_kind = RetCont of CV.var
                       | EscapeCont of CV.var
 
     fun emptyEnv () = E{ sub = VMap.empty,
                          retk = CV.new("wrongRetk", CPSTy.T_Any),
                          paramRetk = CV.new("wrongRetk", CPSTy.T_Any),
-                         manipScope = false
+                         manipScope = false,
+                         allRets = VSet.empty
                        }
 
     (* get and set the "active" retk *)
-    fun setRet ((E{sub, retk, paramRetk, manipScope}), r) =
-        E{sub=sub, retk=r, paramRetk=paramRetk, manipScope=manipScope}
+    fun setRet ((E{sub, retk, paramRetk, manipScope, allRets}), r) =
+        E{sub=sub, paramRetk=paramRetk, manipScope=manipScope,
+          retk = r,
+          allRets = VSet.add(allRets, r) }
     fun getRet (E{retk,...}) = retk
 
     (* get and set the enclosing function's retk; for the hack in Apply. *)
-    fun setParamRet ((E{sub, retk, paramRetk,manipScope}), r) = E{sub=sub, retk=retk, paramRetk=r, manipScope=manipScope}
+    fun setParamRet ((E{sub, retk, paramRetk,manipScope,allRets}), r) =
+        E{sub=sub, retk=retk, manipScope=manipScope,
+          paramRetk = r,
+          allRets = VSet.add(allRets, r) }
     fun getParamRet (E{paramRetk,...}) = paramRetk
+
+    fun getAllRets (E{allRets,...}) = allRets
 
     (* finds the latest substitution in the env *)
     fun lookupKind (E{sub,...}, v) = let
@@ -160,13 +175,23 @@ structure WrapCaptures : sig
          | NONE => v)
 
     fun inManipScope (E{manipScope,...}) = manipScope
-    fun setManipScope (E{sub, retk, paramRetk, manipScope}, flag) =
-        E{sub=sub, retk=retk, paramRetk=paramRetk, manipScope=flag}
+    fun setManipScope (E{sub, retk, paramRetk, manipScope, allRets}, flag) =
+        E{sub=sub, retk=retk, paramRetk=paramRetk, allRets=allRets,
+          manipScope = flag
+        }
 
-    fun insertV (E{sub,retk,paramRetk,manipScope}, var, valu) =
-        E{sub = VMap.insert(sub, var, valu), retk=retk, paramRetk=paramRetk, manipScope=manipScope}
+    fun insertV (E{sub,retk,paramRetk,manipScope,allRets}, var, valu) =
+        E{retk=retk, paramRetk=paramRetk, manipScope=manipScope, allRets=allRets,
+          sub = VMap.insert(sub, var, valu) }
 
     fun subst env v = lookupV(env, v)
+
+    fun dumpEnv msg env = print (concat [
+        "----\n", msg, "\n",
+        "active retK = ", CV.toString (getRet env), "\n",
+        "param retK = ", CV.toString (getParamRet env), "\n",
+        "in manipScope = ", Bool.toString (inManipScope env), "\n"
+      ])
 
     (***** end of environment utils *****)
 
@@ -318,6 +343,24 @@ structure WrapCaptures : sig
         (* esac *))
     end
 
+    and doesNotReturn env curRets fvs = let
+      val curRets = VSet.addList(VSet.empty, curRets)
+
+      (* sanity checks about rets *)
+      val allRets = getAllRets env
+      val withoutCur = VSet.difference(fvs, curRets)
+      val nonLocalRets = VSet.intersection(allRets, withoutCur)
+      val () = if VSet.isEmpty nonLocalRets
+                then ()
+                else let val offender::_ = VSet.listItems nonLocalRets in
+                raise Fail (concat [
+                    "the return cont ", CV.toString offender,
+                    " is thrown to from an enclosing function!"
+                  ]) end
+    in
+      VSet.isEmpty (VSet.intersection(fvs, curRets))
+    end
+
     (* uses a "landing pad" to discern whether the callee
       has invoked the continuation or wants to return
       from the enclosing function. both cases have their
@@ -325,8 +368,13 @@ structure WrapCaptures : sig
       setjmp/longjmp.  *)
     and landingPadCapture env (C.FB{f, params, rets, body}, e) = let
            val retk = getRet env
-           val fvs = FreeVars.freeVarsOfExp e
-           val neverReturns =  not (CV.Set.member(fvs, retk))
+           val neverReturns = doesNotReturn env
+                                (* NOTE: excluding param ret might be overly
+                                    strict, since it should get replaced if
+                                    active != param *)
+                                [retk, getParamRet env]
+                                (FV.freeVarsOfExp e)
+
 
            val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f, neverReturns)
 

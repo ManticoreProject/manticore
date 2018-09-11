@@ -12,6 +12,7 @@ structure FreeVars : sig
    *)
     val analyze : CPS.module -> unit             (* this one should be used for closure conversion. *)
     val analyzeIgnoringJoin : CPS.module -> unit (* this one should be used for CPS opts *)
+    val analyzeForWrapCaptures : CPS.module -> unit
 
   (* return the free variables of a function or continuation variable *)
     val envOfFun : CPS.var -> CPS.Var.Set.set
@@ -42,6 +43,7 @@ structure FreeVars : sig
 
     val checkJoin = ref true
     val checkDS = ref true
+    val checkWrapCap = ref true
 
     val {getFn = getFV, setFn = setFV, clrFn=clearFV,  ...} = V.newProp (fn _ => VSet.empty)
     val {getFn = getFVOfPt, setFn = setFVOfPt, clrFn = clearFVOfPt, ...} = PPt.newProp (fn _ => VSet.empty)
@@ -96,19 +98,20 @@ structure FreeVars : sig
 		(* also remove the function names from the free variables of e *)
 		  List.foldl g (VSet.union(analExp e, fbEnv)) fbs
 		end
-	    | CPS.Cont(fb, e) => let
+	    | CPS.Cont(fb, ex) => let
 	      (* compute the free variables of the lambda *)
 		val fbEnv = analFB fb
 	      (* remove the continuation's name from the set *)
 		val fbEnv = remove(fbEnv, funVar fb)
 
-    val eEnv = if !checkDS
+    val _ = setFV (funVar fb, fbEnv)
+
+    val eEnv = if !checkWrapCap
                 (* we need to record E's fvs for wrap-captures *)
-               then analExpAndRecord e
-               else analExp e
+               then analExpAndRecord ex
+               else analExp ex
 
 		in
-		  setFV (funVar fb, fbEnv);
 		  remove (VSet.union (fbEnv, eEnv), funVar fb)
 		end
 	    | CPS.If(cond, e1, e2) => let
@@ -201,9 +204,20 @@ structure FreeVars : sig
 	  }
 
 
-    fun analyze m = (checkJoin := true ; checkDS := (Controls.get BasicControl.direct) ; doAnalysis m)
+    fun analyze m = (checkWrapCap := false ;
+                    checkJoin := true ;
+                    checkDS := (Controls.get BasicControl.direct) ;
+                    doAnalysis m)
 
-    and analyzeIgnoringJoin m = (checkJoin := false ; checkDS := false ; doAnalysis m)
+    and analyzeIgnoringJoin m = (checkWrapCap := false ;
+                                 checkJoin := false ;
+                                 checkDS := false ;
+                                 doAnalysis m)
+
+    and analyzeForWrapCaptures m = (checkWrapCap := true ;
+                                    checkJoin := true ;
+                                    checkDS := (Controls.get BasicControl.direct) ;
+                                    doAnalysis m)
 
     fun envOfFun f = let
 	  val fv = getFV f
