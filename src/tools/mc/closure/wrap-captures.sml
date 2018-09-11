@@ -508,7 +508,7 @@ structure WrapCaptures : sig
                 body = MK.bundle(invokeParams, fn newArgs =>
                          MK.atLeastOneArg(newArgs, fn paddedArgs =>
                            MK.bindTrue(fn tru =>
-                             C.mkThrow(retkP, tru::paddedArgs))))},
+                             C.mkThrow(retkP, paddedArgs @ [tru]))))},
                 k invokeRet)
           )
         end

@@ -216,7 +216,9 @@ structure FreeVars : sig
 
     and analyzeForWrapCaptures m = (checkWrapCap := true ;
                                     checkJoin := true ;
-                                    checkDS := (Controls.get BasicControl.direct) ;
+                                    (* NOTE we want to include return
+                                       conts as FVs in this analysis! *)
+                                    checkDS := false ;
                                     doAnalysis m)
 
     fun envOfFun f = let
