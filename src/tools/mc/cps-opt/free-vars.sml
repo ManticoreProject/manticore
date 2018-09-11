@@ -128,25 +128,25 @@ structure FreeVars : sig
                  in
                     if ClassifyConts.isTailApply theExp
                         then fv
-                        else VSet.union(fv, (getFV o List.hd) rets) 
+                        else VSet.union(fv, (getFV o List.hd) rets)
                         (* in a non-tail apply, the FV's of the retk are used here. *)
                  end
-            
-            else 
+
+            else
                 addVars(VSet.empty, f::args@rets)
-        
-	    | CPS.Callec(f, rets) => if not(!checkDS) 
+
+	    | CPS.Callec(f, rets) => if not(!checkDS)
             then raise Fail "how did a Callec appear without using direct-style?"
-            else let 
+            else let
                 val fv = addVars(VSet.empty, f :: (List.tl rets))
                 (* callec should always be non-tail call, so we include
                    the return cont's fvs as used here. *)
                 val fv = VSet.union(fv, (getFV o List.hd) rets)
             in
                 fv
-            end 
-        
-        
+            end
+
+
 	    | CPS.Throw(k, args) => let
 		val fv = addVars(VSet.empty, args)
 		in
@@ -155,7 +155,7 @@ structure FreeVars : sig
 		 * path from where k is defined to here.  Otherwise, we add
 		 * k in as a free variable.
 		 *)
-		  if (!checkJoin andalso ClassifyConts.isJoinCont k) 
+		  if (!checkJoin andalso ClassifyConts.isJoinCont k)
                 orelse
              (!checkDS andalso ClassifyConts.isReturnThrow k)
 		    then VSet.union(fv, getFV k)
@@ -193,10 +193,10 @@ structure FreeVars : sig
 	    passName = "free-vars",
 	    pass = doAnalysis
 	  }
-      
-      
+
+
     fun analyze m = (checkJoin := true ; checkDS := (Controls.get BasicControl.direct) ; doAnalysis m)
-    
+
     and analyzeIgnoringJoin m = (checkJoin := false ; checkDS := false ; doAnalysis m)
 
     fun envOfFun f = let
