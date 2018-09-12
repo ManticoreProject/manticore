@@ -96,6 +96,12 @@
     same for this escape cont, because then the cont we wrapped around the throw
     would be used as a Goto/Other cont, and we're back where we started!
 
+
+    FIXME: I do not believe this paragraph below is true actually? Any
+           non exn, ret, or join cont must be an escape cont made by us!
+           Only other source would be maybe the RTS/ASM, but we just need to
+           update it.
+
     If we were to simply change every Throw exp using an escape cont, by bundling up
     the arguments, we would break code where the cont came from somewhere else
     (read from memory, passed as a param, etc) and our simple renaming operation
