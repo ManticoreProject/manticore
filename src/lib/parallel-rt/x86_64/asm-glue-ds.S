@@ -73,9 +73,9 @@ _GSYM(ASM_Resume_Stack):
     ret
 
 .p2align 4, 0xCC
-.globl	_GSYM(ASM_LongJmp)
+.globl	_GSYM(ASM_LongJmp2)
 .globl	_GSYM(ASM_DS_EscapeThrow)
-_GSYM(ASM_LongJmp):
+_GSYM(ASM_LongJmp2):
     // setup args
     movq    $0, %r10         // set 2nd arg reg to 0 indicating an escape throw
     // **** fall-through to EscapeThrow ****
@@ -235,8 +235,15 @@ prevTestJoin:
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_Callec1)
 .globl	_GSYM(ASM_Callec2)
+/* uses the direct-style manticore calling convention */
+_GSYM(ASM_Callec1):
+  leaq    _GSYM(ASM_DS_EscapeThrow)(%rip), TMP_REG0    // load the resume address
+  jmp callec_body
+
 _GSYM(ASM_Callec2):
-_GSYM(ASM_Callec1):  /* uses the direct-style manticore calling convention */
+    leaq    _GSYM(ASM_LongJmp2)(%rip), TMP_REG0    // load the resume address
+
+callec_body:
 
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG1     // grab the stack descriptor
 
@@ -250,7 +257,6 @@ _GSYM(ASM_Callec1):  /* uses the direct-style manticore calling convention */
 #endif
 
     /***** alloc cont object ****/
-    leaq    _GSYM(ASM_LongJmp)(%rip), TMP_REG0    // load the resume address
 
     // ** initialize allocation **
     movq    $STACK_HDR(3), -8(ALLOC_PTR_REG)       // init header
