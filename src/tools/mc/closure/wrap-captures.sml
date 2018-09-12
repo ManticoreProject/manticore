@@ -111,6 +111,7 @@ structure WrapCaptures : sig
 
     structure C = CPS
     structure CV = C.Var
+    structure CTU = CPSTyUtil
     structure VMap = CV.Map
     structure VSet = CV.Set
     structure ST = Stats
@@ -231,7 +232,7 @@ structure WrapCaptures : sig
 
         (* this should match up with 'dispatch' below *)
         fun bundle ([], k) = k [] (* NOTE kind of unexpected but okay *)
-          | bundle ([a], k) = k [a]
+          (* | bundle ([a], k) = k [a] see NOTE in 'dispatch' *)
           | bundle (args, k) = let (* we need to bundle them up *)
                 val allocTy = CPSTy.T_Tuple(false, L.map CV.typeOf args)
                 val lhs = CV.new("bundle", allocTy)
@@ -416,14 +417,21 @@ structure WrapCaptures : sig
 
     and start moduleBody = doFun (emptyEnv()) moduleBody
 
-    (* the tricky part here is that we need to merge the type of the arguments
+    (* The tricky part here is that we need to merge the type of the arguments
        to these two continuations so we can longjmp or return to the same block.
        Of course, we do not know all throw sites of an escape cont, so we need a
        uniform calling convention.
 
-       The approach we're taking is that if there is more than 1 arg,
-       then it must be bundled up as a tuple. Once we enter the landing pad,
-       we unbundle and throw.
+       The approach we're taking right now is that the args are always boxed
+       in a tuple.
+
+       NOTE:
+       Once things are working well, we could start optimizing this by
+       avoiding the box for single arity conts. For example:
+          1. if both arg kinds are UNIFORM, then the any type works for both
+             and only a cast is needed
+          2. if both are equal RAW types that will be passed in a GPR,
+             then nothing special is needed. Floats would need a box.
     *)
     and mkLandingPad (retk, kont, neverReturns) = let
 
@@ -434,6 +442,8 @@ structure WrapCaptures : sig
         val padVar = CV.new("setjmpLandingPad", padTy)
 
         val boolParam = CV.new("regularRet", indicatorTy)
+
+        (* NOTE: always assuming the use of a box right now *)
         val valParam = CV.new("arg", CPSTy.T_Any)
 
         fun branch(trueExp, falseExp) =
@@ -443,14 +453,25 @@ structure WrapCaptures : sig
 
         (* this should match up with MK.bundle !! *)
         fun dispatch cont = (case MK.argTysOf cont
-            of [] => C.mkThrow(cont, []) (* weird but okay i guess *)
+            of [] => raise Fail "no-arg cont?" (* C.mkThrow(cont, []) (* weird but okay i guess *) *)
 
-             | [ty] => MK.cast(valParam, ty, fn arg => C.mkThrow(cont, [arg]))
+            (* NOTE: disabled b/c this implementation of the optimization
+                     doesn't work if the ty is a RAW float, as there is
+                     a convention mismatch (indicator would be arg 1)!
+             | [ty] => if CTU.isKind CTy.K_UNIFORM ty
+                        (* we can just do a cast: any => ty *)
+                        then MK.cast(valParam, ty, fn arg => C.mkThrow(cont, [arg]))
+                        (* it was boxed, so unbox it *)
+                        else unpack cont [ty]
+            *)
 
-             | tys => MK.cast(valParam, CPSTy.T_Tuple(false, tys), fn tup =>
-                        MK.selectAll(tys, tup, fn args =>
-                          C.mkThrow(cont, args)))
+             | tys => unpack cont tys
              (* esac *))
+
+        and unpack cont tys = MK.cast(valParam, CPSTy.T_Tuple(false, tys), fn tup =>
+                                MK.selectAll(tys, tup, fn args =>
+                                  C.mkThrow(cont, args)))
+
     in
       if neverReturns
 
@@ -473,6 +494,10 @@ structure WrapCaptures : sig
                       else CPSTy.T_Cont([CPSTy.T_Any, indicatorTy])
 
         val contP = CV.copy origLetCont
+
+        (* NOTE: less-optimial type *)
+        val _ = CV.setType (contP, contAny)
+
         val retkP = CV.new("landingPadK", retkTy)
         val exnP = CV.new("deadExnK", contAny)
 
