@@ -1,18 +1,7 @@
 
+(* never returns normally *)
 
-
-fun fib n = (case n
-  of 0 => 0
-   | 1 => 1
-   | n => (fib (n-1)) + (fib (n-2))
-  (* end case *))
-
-val depth = 4
-
-fun contFib n k = ((
-  if n < depth
-    then Cont.throw (k, fib n)
-    else (case n
+fun contFib n k = ((case n
       of 0 => Cont.throw (k, 0)
        | 1 => Cont.throw (k, 1)
        | n => let
@@ -22,7 +11,7 @@ fun contFib n k = ((
                 Cont.throw (k, n1 + n2)
               end
       (* end case *))
-  ) ; 500)  (* 500 is not a fibonacci number. *)
+  ; 500)  (* 500 is not a fibonacci number. *)
 
 
 val i2s = Int.toString
