@@ -7,11 +7,11 @@
 functor UnboxFn (Spec : TARGET_SPEC) : sig
 
   (* A simplistic pass that unboxes (or flattens) some arguments
-     and/or the return type for known functions. 
-     
+     and/or the return type for known functions.
+
      This is essentially a less sophisticated version
      of arity raising that exists for the CPS IR.
-     
+
      This pass depends on accurate Census information,
      and expects a BOM contraction pass to be run
      immediately afterwards.
@@ -28,56 +28,74 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
     structure C = Census
     structure L = List
     structure ST = Stats
-    
+
+    val enableFlg = ref true
+
+    val () = List.app (fn ctl => ControlRegistry.register BOMOptControls.registry {
+                        ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+                        envName = NONE })
+                      [Controls.control {
+                        ctl = enableFlg,
+                        name = "enable-unbox",
+                        pri = [0, 1],
+                        obscurity = 0,
+                        help = "enable the unboxing pass"
+                      }]
+
     val cntSigChanges       = ST.newCounter "unbox:funs-changed"
-    
+
     (********** Get variable info **********)
     fun useCntRef (VarRep.V{useCnt, ...}) = useCnt
     fun useCntOf v = !(useCntRef v)
     val appCntOf = BV.appCntOf
-    
+
     (* functions to update census counts *)
     fun inc x = BV.addToCount(x, 1)
     fun dec x = BV.addToCount(x, ~1)
-    
-    local 
+
+    local
         (** translation environment utils **)
         type newParams = (BV.var * (BTy.ty list)) option list
         type newRet    = BTy.ty list option
         type newSig    = newParams * newRet
-        
+
         datatype gamma = E of { info : newSig M.map, cxt : BV.var option }
     in
         val emptyEnv = E { info = M.empty, cxt = NONE }
-        
+
         fun insertSig (E{info, cxt}, f, sgn) = E{info = M.insert(info, f, sgn),
                                                 cxt = cxt}
-                                                
-        fun findSig (E{info,...}, f) = M.find(info, f) 
-                                                
+
+        fun findSig (E{info,...}, f) = M.find(info, f)
+
         fun setCxt (E{info,...}, cxt') = E{info=info, cxt=cxt'}
-        
+
         fun getCxt (E{cxt,...}) = cxt
-        
-        fun getCxtRetTy env = 
+
+        fun getCxtRetTy env =
             (case getCxt env
-                of SOME func => 
+                of SOME func =>
                     (case findSig (env, func)
                         of SOME (_, SOME [rty]) => SOME rty
                          | _ => NONE
                         (* esac *))
                  | _ => NONE
                  (* esac *))
- 
+
     end
-    
-    
+
+
     (* we take the min because right now I don't
-       count parameter types based on their eventual register assignment. *)
+       count parameter types based on their eventual register assignment.
+
+       NOTE: we shouldn't need to limit the maxParams, as cfg-opt/implement-calls-fn.sml
+       will take care of the "too many args" issue by dumping the excess into a single-level
+       tuple. -kavon 2/2/18
+        *)
     val maxParams = Int.min(Spec.maxFPRArgs, Spec.maxGPRArgs)
-    
-    (* utility functions *)  
-    
+
+    (* utility functions *)
+
     fun unwrap f p = (case BV.typeOf p
         of BTy.T_Tuple(false, tys) => SOME (p, L.map f tys)
          | _ => NONE
@@ -87,16 +105,16 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
     in
         (inc var ; var)  (* it will be used exactly once later on. *)
     end
-    
+
     and newArg ty = let
         val var = BV.new("unboxA", ty)
     in
         (inc var; var)
     end
-    
+
     and justTy ty = ty
-    
-    (* we only look for functions that return exactly one value: 
+
+    (* we only look for functions that return exactly one value:
        a tuple with a single element. *)
     and unwrapRet func = (case BV.typeOf func
         of BTy.T_Fun(_,_,[rty]) => (case rty
@@ -105,7 +123,7 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
             (* esac *))
          | _ => NONE
         (* esac *))
-    
+
     and withNewTy (f, newParams, maybeNewRet) = let
             val (_, exhTys, oldRets) = BOMTyUtil.asFunTy (BV.typeOf f)
             val newTy = BTy.T_Fun (L.map BV.typeOf newParams, exhTys,
@@ -113,7 +131,7 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
         in
             (BV.setType (f, newTy) ; f)
         end
-    
+
     and newSignature (params, unwrapped) = let
         fun lp ([], [], new) = new
           | lp (p::ps, repl as ((v, items)::ws), new) =
@@ -121,88 +139,88 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
                     lp(ps, ws, new @ items)
                 else
                     lp(ps, repl, new @ [p])
-          | lp (ps, [], new) = new @ ps 
+          | lp (ps, [], new) = new @ ps
     in
         lp (params, unwrapped, [])
     end
-      
+
     fun shouldUnbox (B.FB{f,params,...}) = let
             fun count ((_, items), tot) = L.length items + tot
             val newParams = L.mapPartial (unwrap justTy) params
             val numUnboxed = L.length newParams
-            val totalParams = L.length params 
+            val totalParams = L.length params
                               + L.foldl count 0 newParams
                               - numUnboxed
-            
+
             val maybeNewRetTy = unwrapRet f
             val uses = useCntOf f
         in
             (* TODO: be lazy about computing the above stuff for more speed. *)
-            
+
             uses > 0                   (* don't bother with dead functions, or "main" *)
             andalso uses = appCntOf f  (* this means its call-sites are obviously known *)
             andalso (numUnboxed > 0 orelse isSome maybeNewRetTy)    (* we actually unbox something *)
             andalso totalParams <= maxParams
         end
     (*****************************)
-    
-    
+
+
     (* transform functions *)
-    
+
     fun doFn env (fb as B.FB{f, params, exh, body}) =
         if (not o shouldUnbox) fb then
             B.FB {f=f, params=params, exh=exh, body = doExp (env, body)}
         else let
-            (* all we do is move the binding of unboxed 
+            (* all we do is move the binding of unboxed
                parameters into the function body:
-               
-                fun f (param : int * int) = 
+
+                fun f (param : int * int) =
                     let x = #0(param)
                     let y = #1(param)
                     ...
-                
+
                 ~~ turns into ~~>
-                
-                fun f (unbox1 : int, unbox2 : int) = 
+
+                fun f (unbox1 : int, unbox2 : int) =
                     let param = alloc(unbox1, unbox2)
                     let x = #0(param)
                     let y = #1(param)
                     ...
-                    
+
                 We can get away with this because BOM's contract
                 pass will clean this up, since it already looks through
                 a select to see if it can find a local alloc.
              *)
-            
+
             val unboxed = L.mapPartial (unwrap newParam) params
             val params' = newSignature (params, unboxed)
-                     
+
             fun replaceParam ((p, items), acc) =
                 ([p], B.E_Alloc(BV.typeOf p, items)) :: acc
-            
+
             val bodyFixups = L.foldr replaceParam [] unboxed
             val body' = B.mkStmts (bodyFixups, body)
 
         in
-            B.FB {f = withNewTy (f, params', unwrapRet f), 
-                  params = params', 
-                  exh = exh, 
+            B.FB {f = withNewTy (f, params', unwrapRet f),
+                  params = params',
+                  exh = exh,
                   body = doExp (env, body')
                  }
         end
-        
-        
-    and doExp (env, B.E_Pt(ppt, term)) = let 
+
+
+    and doExp (env, B.E_Pt(ppt, term)) = let
         fun withP exp = B.E_Pt(ppt, exp)
-        fun collectSigs (fb as B.FB{f, params, ...}, env) = 
+        fun collectSigs (fb as B.FB{f, params, ...}, env) =
             if shouldUnbox fb
-                then (ST.tick cntSigChanges ; 
+                then (ST.tick cntSigChanges ;
                       insertSig(env, f, (L.map (unwrap justTy) params, unwrapRet f))
                       )
                 else env
     in
       case term
-        of B.E_Let (v, e1, e2)      => withP (B.E_Let (v, doExp (setCxt(env, NONE), e1), 
+        of B.E_Let (v, e1, e2)      => withP (B.E_Let (v, doExp (setCxt(env, NONE), e1),
                                                             doExp (env, e2)))
          | B.E_Stmt (lhs, rhs, exp) => withP (B.E_Stmt(lhs, rhs, doExp (env, exp)))
          | B.E_Fun (funs, exp)      => let
@@ -211,7 +229,7 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
              in
                 withP (B.E_Fun (L.map unboxIt funs, doExp (newEnv, exp)))
              end
-            
+
          | B.E_Cont (B.FB{f, params, exh, body}, exp) => let
                 val newBody = doExp (env, body)
                 val k = B.FB{f=f, params=params, exh=exh, body=newBody}
@@ -228,7 +246,7 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
             of SOME newSig => doApply (env, newSig, withP) xs
              | NONE => withP term
             (* end case *))
-            
+
          | B.E_Ret [var] => (case getCxtRetTy env
                 (* this return is in the context of a function who's return type changed *)
              of SOME rty => doReturn (withP, rty, var)
@@ -237,7 +255,7 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
              (* esac *))
          | _ => withP term
     end
-    
+
     and doReturn (withP, rty, var) = let
         val rv = BV.new("unboxRet", rty)
         val _ = inc rv
@@ -245,50 +263,50 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
         B.mkStmt([rv], B.E_Select(0, var),
             withP (B.E_Ret [rv]))
     end
-         
+
     and doApply (env, (newPs, calleeRet), withP) (f, args, exh) = let
         (* Similar to the above, instead of introducing an alloc,
-           we introduce selects for the arguments: 
-           
+           we introduce selects for the arguments:
+
            let tpl = alloc(int1, int2)
            let x = apply f (tpl)
            ...
-           
+
            ~~ turns into ~~>
-           
+
            let tpl = alloc(int1, int2)
            let unbox1 = #0(tpl)
            let unbox2 = #1(tpl)
-           let x = 
+           let x =
                let x' = apply f (unbox1, unbox2)
                let box = alloc (x')
                return (box)
             ...
-           
+
            and then contract cleans it up later. Note that a tail-position
            apply will turn into a non-tail position to box up the argument, if needed.
            This does not effect self-recursive functions.
         *)
-        
+
         fun matchArgs (SOME (p, tys), arg) = SOME (BV.typeOf p, arg, L.map newArg tys)
           | matchArgs (NONE, _) = NONE
-          
+
         val unboxed = ListPair.mapPartialEq matchArgs (newPs, args)
-        
-        
+
+
         fun replaceArg ((paramTy, tpl, items), acc) = let
                 val (castTpl, castBinds) = maybeCast (paramTy, tpl)
                 val (_, stms) = List.foldl (selectFrom castTpl) (0, []) items
             in
                 castBinds @ stms @ acc
             end
-            
+
         and selectFrom tpl (arg, (i, stms)) = (
                 inc tpl ;
                 (i+1, ([arg], B.E_Select(i, tpl)) :: stms)
             )
-            
-        and maybeCast (paramTy, tpl) = 
+
+        and maybeCast (paramTy, tpl) =
             if TU.equal(paramTy, BV.typeOf tpl)
                 then (dec tpl ; (tpl, []))
                 else let
@@ -297,63 +315,63 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
                     in
                         (newV, [newStm])
                     end
-        
+
         val argBinds = L.foldr replaceArg [] unboxed
-        
+
         val unboxed = L.map (fn (_, b, c) => (b, c)) unboxed
         val args' = newSignature (args, unboxed)
-        
+
         fun withBoxedRet ty = let
             val rv = BV.new("unboxRV", ty)
             val box = BV.new("rebox", BTy.T_Tuple(false, [ty]))
-            val appExp = 
+            val appExp =
                 B.mkLet([rv], withP (B.E_Apply(f, args', exh)),
                     B.mkStmt([box], B.E_Alloc(BV.typeOf box, [rv]),
                         B.mkRet([box])))
-                        
+
             val _ = (inc rv ; inc box)
         in
             B.mkStmts (argBinds, appExp)
         end
-        
+
         fun withUnBoxedRet ty = let
             val boxRV = BV.new("boxedRV", BTy.T_Tuple(false, [ty]))
             val unbox = BV.new("unboxedRV", ty)
-            val appExp = 
+            val appExp =
                 B.mkLet([boxRV], withP (B.E_Apply(f, args', exh)),
                     B.mkStmt([unbox], B.E_Select(0, boxRV),
                         B.mkRet([unbox])))
-                        
+
             val _ = (inc boxRV ; inc unbox)
         in
             B.mkStmts (argBinds, appExp)
         end
-        
+
         (* we avoid the nested-let in this case *)
-        and withoutRet () = 
+        and withoutRet () =
             B.mkStmts (argBinds,
                 withP (B.E_Apply(f, args', exh)))
     in
         (case getCxt env
             (* tail apply, so we need to analyze the callee's ret ty and context's ret ty *)
             of (SOME _) =>  (case (calleeRet, getCxtRetTy env)
-            
+
                 (* both were unboxed. double-check the types. *)
                 of (SOME [calleeRty], SOME cxtRty) =>
                     if TU.match(calleeRty, cxtRty)
                         then withoutRet ()
                         else raise Fail "unbox: mismatched types!"
-                        
+
                  (* only the context was unboxed, so we need to unbox the ret val *)
                  | (NONE, SOME cxtRty) => withUnBoxedRet cxtRty
-                 
+
                  (* only the callee was unboxed, so we need to rebox the ret val.  *)
                  | (SOME [calleeRty], NONE) => withBoxedRet calleeRty
-                 
+
                  (* neither the context or callee's return vals were changed. *)
                  | (NONE, NONE) => withoutRet ()
                  (* esac *))
-            
+
             (* non-tail apply, so the let binding the value returns to will remain boxed. *)
              | NONE => (case calleeRet
                  of SOME [newTy] => withBoxedRet newTy  (* need to rebox the callee's return val *)
@@ -362,18 +380,18 @@ functor UnboxFn (Spec : TARGET_SPEC) : sig
              (* esac *))
     end
 
-    fun transform (m as B.MODULE{name, externs, hlops, rewrites, body}) = 
+    fun transform (m as B.MODULE{name, externs, hlops, rewrites, body}) =
     (* There's a bug somewhere deep in the implementation of parray and its hand-written
        basis that is exposed by this pass. I gave up trying to debug it because
        it's not relevant for me. It seems to only manifest when compiling a parallel
        program that uses parray (specifying a range like [| 1 to 10 |] is all it takes).
         ~kavon (12/7/17) *)
-        if Controls.get BasicControl.noparray 
-            orelse Controls.get BasicControl.sequential
+        if !enableFlg andalso (Controls.get BasicControl.noparray
+                        orelse Controls.get BasicControl.sequential)
             then let
                 val newBody = doFn emptyEnv body
                 (* we iterate at most twice to unwrap things like [[int],[int]] *)
-                val newBody = 
+                val newBody =
                     if ST.count cntSigChanges > 0
                     then doFn emptyEnv newBody (* try once more *)
                     else newBody
