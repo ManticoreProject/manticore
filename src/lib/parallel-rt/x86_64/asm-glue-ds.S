@@ -16,10 +16,6 @@
 #define TMP_REG0            %rbx     // NOTE: callee-saved in C-convention
 #define TMP_REG1            %rcx
 
-// FIXME: get rid of these. these are argument registers!
-#define TMP_REG3            %r15
-#define TMP_REG4            %r14
-
 // stack descriptor offsets
 #define CUR_SP      0
 #define PREV_SEG    8
@@ -189,21 +185,26 @@ _GSYM(ASM_DS_SegUnderflow):
     // refer to FreeStacks in minor-gc.c
     /////////
 
+// this is okay since it's definitely not live on underflow.
+#define SPARE_REG    %r8
+
     movq    LIST_NEXT(TMP_REG1), TMP_REG0  // get allocdNext
-    movq    LIST_PREV(TMP_REG1), TMP_REG3  // get allocdPrev
+    movq    LIST_PREV(TMP_REG1), SPARE_REG  // get allocdPrev
 
     // allocdNext == NULL?
     testq   TMP_REG0, TMP_REG0
     jz  nextIsNull
     // allocdNext->prev = allocdPrev
-    movq    TMP_REG3, LIST_PREV(TMP_REG0)
+    movq    SPARE_REG, LIST_PREV(TMP_REG0)
 nextIsNull:
     // allocdPrev == NULL?
-    testq   TMP_REG3, TMP_REG3
+    testq   SPARE_REG, SPARE_REG
     jz      prevIsNull
     // allocdPrev->next = allocdNext
-    movq    TMP_REG0, LIST_NEXT(TMP_REG3)
+    movq    TMP_REG0, LIST_NEXT(SPARE_REG)
     jmp     prevTestJoin
+
+#undef SPARE_REG
 
 prevIsNull:
     // vp->allocdStacks = allocdNext
@@ -255,38 +256,44 @@ prevTestJoin:
 .globl	_GSYM(ASM_Callec1)
 .globl	_GSYM(ASM_Callec2)
 /* uses the direct-style manticore calling convention */
+
+// using the 2nd through 4th arg registers to hold important values
+// that must be preserved, since we know Callec only takes 1 argument.
+#define OLD_SP       %r10
+#define RESUME_ADDR  %r12
+#define STACK_DISC   %r13
+
 _GSYM(ASM_Callec1):
-  leaq    _GSYM(ASM_DS_EscapeThrow)(%rip), TMP_REG0    // load the resume address
+  leaq    _GSYM(ASM_DS_EscapeThrow)(%rip), RESUME_ADDR    // load the resume address
   jmp callec_body
 
 _GSYM(ASM_Callec2):
-    leaq    _GSYM(ASM_LongJmp2)(%rip), TMP_REG0    // load the resume address
+    leaq    _GSYM(ASM_LongJmp2)(%rip), RESUME_ADDR    // load the resume address
 
 callec_body:
 
-    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1     // grab the stack descriptor
+    movq    STD_CONT(VPROC_PTR_REG), STACK_DISC     // grab the stack descriptor
 
 #ifdef SEGSTACK
-    movq    %rsp, TMP_REG4                      // save the SP
+    movq    %rsp, OLD_SP                      // stash the sp
     // switch to a new segment without copying
-    xorq    TMP_REG3, TMP_REG3              // 0 in TMP_REG3 indicates no copying
+    movq    $0, TMP_REG1              // 0 in TMP_REG1 indicates no copying
     callq   _GSYM(__manti_growstack_noimplicitcopy)
-    // at this point we're operating in a new stack segment.
-    // TMP_REG1 and TMP_REG4 were preserved by growstack.
+    // at this point forward we're operating in a new stack segment.
 #endif
 
     /***** alloc cont object ****/
 
     // ** initialize allocation **
     movq    $STACK_HDR(3), -8(ALLOC_PTR_REG)       // init header
-    movq    TMP_REG0, (ALLOC_PTR_REG)           // init code ptr
+    movq    RESUME_ADDR, (ALLOC_PTR_REG)           // init code ptr
 
 #ifdef SEGSTACK
-    movq    TMP_REG4, 8(ALLOC_PTR_REG)          // init captured stack ptr
+    movq    OLD_SP, 8(ALLOC_PTR_REG)          // init captured stack ptr
 #else
     movq    %rsp, 8(ALLOC_PTR_REG)              // capture current stack ptr
 #endif
-    movq    TMP_REG1, 16(ALLOC_PTR_REG)         // init stack descriptor
+    movq    STACK_DISC, 16(ALLOC_PTR_REG)         // init stack descriptor
     // ** done with initialization **
 
     // update pointers
@@ -299,7 +306,9 @@ callec_body:
     movq    TMP_REG0, STD_ARG_REG           // pass the cont object
     jmp     *TMP_REG1                       // do the call, leaving stack pointer as-is
 
-
+#undef OLD_SP
+#undef RESUME_ADDR
+#undef STACK_DISC
 
     .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_Return)
