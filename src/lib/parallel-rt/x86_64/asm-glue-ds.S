@@ -125,13 +125,23 @@ _GSYM(__manti_growstack_noimplicitcopy):
 
     leaq    8(%rsp), TMP_REG0   // save the current top of segment
     // save manticore registers
-    // NOTE: FIXME we are omitting xmm registers here! FIXME
     pushq   ALLOC_PTR_REG
     pushq   VPROC_PTR_REG
     pushq   STD_EP_REG
     pushq   STD_EXH_REG
     pushq   STD_ARG_REG
     pushq   %r10            // arg 2
+
+    // RSP should be 16-byte aligned at this point.
+    // now save XMM registers, which are 128 bit / 16 bytes wide
+    movaps %xmm2, -1*16(%rsp)
+    movaps %xmm3, -2*16(%rsp)
+    movaps %xmm4, -3*16(%rsp)
+    movaps %xmm5, -4*16(%rsp)
+    movaps %xmm6, -5*16(%rsp)
+    movaps %xmm7, -6*16(%rsp)
+    leaq   -6*16(%rsp), %rsp
+
     // the rest of the manticore registers are
     // saved by the C callee
     // setup args
@@ -143,6 +153,14 @@ _GSYM(__manti_growstack_noimplicitcopy):
     movq    %rax, TMP_REG0  // move new SP out of the way
 
     // restore manticore registers
+    leaq   6*16(%rsp), %rsp
+    movaps -1*16(%rsp), %xmm2
+    movaps -2*16(%rsp), %xmm3
+    movaps -3*16(%rsp), %xmm4
+    movaps -4*16(%rsp), %xmm5
+    movaps -5*16(%rsp), %xmm6
+    movaps -6*16(%rsp), %xmm7
+
     popq    %r10
     popq   STD_ARG_REG
     popq   STD_EXH_REG
