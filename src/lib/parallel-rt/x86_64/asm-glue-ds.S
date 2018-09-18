@@ -168,10 +168,11 @@ _GSYM(__manti_growstack_noimplicitcopy):
     popq   VPROC_PTR_REG
     popq   ALLOC_PTR_REG
 
-    // swap out the stack pointer FIXME make this cheaper. xchg is not so cheap.
-    xchgq   %rsp, TMP_REG0
-    movq    (TMP_REG0), TMP_REG0 // load return addr
-    jmpq    *TMP_REG0        // resume
+    // swap out the stack pointer
+    movq    %rsp, TMP_REG1
+    movq    TMP_REG0, %rsp    // establish new stack pointer
+    movq    (TMP_REG1), TMP_REG1 // load return addr
+    jmpq    *TMP_REG1        // resume
 
 
 // This version is for segmented stacks a la Bruggeman et al.
