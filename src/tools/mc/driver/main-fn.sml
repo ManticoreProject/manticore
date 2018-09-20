@@ -94,7 +94,7 @@ functor MainFn (
       | printTrees ({tree,span}::rest) = (
         PrintPT.print tree;
         printTrees rest)
-        
+
     fun treeShake p2s =
 	  if Controls.get BasicControl.treeShake
 	     then (
@@ -148,18 +148,19 @@ functor MainFn (
 		  asmFile = asmFile,
 		  outFile = !exeFile
 		}
-        
+
 	  val sts = if (Controls.get BasicControl.llvm) then
                     BuildExecutableLLVM.build buildArg
                 else
                     BuildExecutableMLRISC.build buildArg
-      
+
 	  in
 	    if OS.Process.isSuccess sts
 	      then ()
 	      else err "error compiling generated assembly code\n"
 	  end
 
+<<<<<<< HEAD
     (* MLRISC is incorrectly naming some of the 8-bit registers, so as a simple
      * workaround, we are just going to find/replace them in the output text file
      *)
@@ -168,24 +169,20 @@ functor MainFn (
 	    val stat = OS.Process.system(
 		    "sed -i \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile)
 	in () end
-			
-					  
+
+
+=======
+>>>>>>> 2c0e72e7a... remove ugly workaround for a bug. filed as issue #7
     fun codegen (verbose, outFile, cfg) = let
 	  val outStrm = TextIO.openOut outFile
-	  fun doit () = 
+	  fun doit () =
 	  	if (Controls.get BasicControl.llvm)
 	  	then CG_LLVM.codeGen {dst=outStrm, code=cfg}
 	  	else CG_MLRISC.codeGen {dst=outStrm, code=cfg}
-	  in	  
+	  in
 	    AsmStream.withStream outStrm doit ();
 	    TextIO.closeOut outStrm;
-
-	    (if not (Controls.get BasicControl.llvm) 
-	    then (replace8BitRegisters outFile)
-		else ()) ;
-        
-        buildExe (verbose, outFile)
-
+	    buildExe (verbose, outFile)
 	  end (* compile *)
 
     fun runPreproc (dir', cmd, args) = let
@@ -196,7 +193,7 @@ functor MainFn (
 	      OS.FileSys.chDir dir;
 	      x
     end
-					   
+
   (* compile an MLB or PML file *)
     fun mlbC (verbose, errStrm, srcFile, asmFile) = let
 	  val _ = if verbose then print "initializing environment\n" else ()
@@ -237,7 +234,7 @@ functor MainFn (
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)
 
     fun bad s = (
-	  err s; 
+	  err s;
           err "!* try `-h' or `-h<level>' for help\n";
           quit false)
 
@@ -285,7 +282,7 @@ functor MainFn (
                 BasicControl.showAll err
                   (Controls.name o #ctl,
                     fn ci => concat [
-			"(", #help (Controls.info (#ctl ci)), 
+			"(", #help (Controls.info (#ctl ci)),
                         "; ", Controls.get (#ctl ci), ")"
 		      ])
                   (valOf level));
@@ -342,22 +339,22 @@ functor MainFn (
                 then let
                     val level = String.extract (arg, 2, NONE)
                     in
-                        if level = "" 
+                        if level = ""
                             then help NONE
                         else if CharVector.all Char.isDigit level
                             then help (SOME (Int.fromString level))
                         else badopt ()
                     end
-                    
+
             else if String.isPrefix "-O" arg
                 then (case (Int.fromString o String.extract) (arg, 2, NONE)
                         of NONE => badopt ()
-                         | SOME level => 
+                         | SOME level =>
                             ( Controls.set(BasicControl.llvm, true) ;
                               Controls.set(BasicControl.llopt, level) ;
                               processArgs args )
-                     (* esac *)) 
-                    
+                     (* esac *))
+
             else (case arg
 	       of "-o" => (case args
 		     of exe::r => (exeFile := exe; processArgs r)
@@ -388,5 +385,5 @@ functor MainFn (
 	  end
 
     fun main (_, args) = processArgs args
- 
+
   end
