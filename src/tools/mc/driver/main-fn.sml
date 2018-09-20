@@ -157,15 +157,6 @@ functor MainFn (
 	      else err "error compiling generated assembly code\n"
 	  end
 
-    (* MLRISC is incorrectly naming some of the 8-bit registers, so as a simple
-     * workaround, we are just going to find/replace them in the output text file
-     *)
-    fun replace8BitRegisters asmFile = let
-	  val cmd = "sed -i \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile
-	  in
-	    ignore (OS.Process.system cmd)
-	  end
-
     fun codegen (verbose, outFile, cfg) = let
 	  val outStrm = TextIO.openOut outFile
 	  fun doit () = if (Controls.get BasicControl.llvm)
@@ -174,10 +165,7 @@ functor MainFn (
 	  in
 	    AsmStream.withStream outStrm doit ();
 	    TextIO.closeOut outStrm;
-	    if not (Controls.get BasicControl.llvm)
-	      then (replace8BitRegisters outFile)
-	      else ();
-            buildExe (verbose, outFile)
+	    buildExe (verbose, outFile)
 	  end (* compile *)
 
     fun runPreproc (dir', cmd, args) = let
