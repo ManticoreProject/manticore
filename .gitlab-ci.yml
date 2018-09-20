@@ -33,7 +33,9 @@ pmlc:
         - ./configure --with-llvm=./llvm/build
         - make local-install
         - ./src/regression-tests/bash-scripts/run-seq.bsh
+        # - BACKEND="-llvm" ./src/regression-tests/bash-scripts/run-seq.bsh
         - ./src/regression-tests/bash-scripts/run-par.bsh
+        # - BACKEND="-llvm" ./src/regression-tests/bash-scripts/run-par.bsh
     dependencies:
       - llvm
     cache:

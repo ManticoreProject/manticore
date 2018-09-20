@@ -55,7 +55,7 @@ do
          echo "fail" >> $LOG
 	 echo "fail"
        fi
-       rm -f a.out $fname.s $fname.test
+       rm -f a.out $fname.s $fname.test $fname.ll ${fname}_opt.bc
      fi
    done
 )
