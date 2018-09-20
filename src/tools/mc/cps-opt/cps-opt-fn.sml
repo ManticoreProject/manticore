@@ -11,7 +11,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
   end = struct
 
     structure ArityRaising = ArityRaisingFn (Spec)
-
+                               
   (* a wrapper for CPS optimization passes.  The wrapper includes an invariant check. *)
     fun transform {passName, pass} = let
 	  val xform = BasicControl.mkKeepPassSimple {
@@ -50,7 +50,6 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
     val inline = transform {passName = "inline", pass = Inline.transform}
     val cse = transform {passName = "cse", pass = CommonSubexpressionElimination.transform}
     val branch = transform {passName = "branch-elim", pass = BranchElim.transform}
-    val etaReduce = transform{passName = "eta-reduction", pass = EtaReduce.transform}
 
     val reorder = transform {passName = "reorder-funs", pass = FunctionHoisting.transform}
 
@@ -63,24 +62,23 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 	  val module = branch module
 	  val _ = CFACPS.clearInfo module
 	  val _ = cfa module
-          val module = copy module
-          val module = etaReduce module
+          val module = copy module 
 	  val module = eta module
-          val _ = CFACPS.clearInfo module
+          val _ = CFACPS.clearInfo module 
           val _ = cfa module
 	  val module = arity module
 	  val module = contract module
 	  val _ = CFACPS.clearInfo module
           val _ = cfa module
-          val module = reorder module
+          val module = reorder module 
 	  val _ = CFACPS.clearInfo module
 	  val _ = cfa module
-	  val module = inline module
+	  val module = inline module 
           val _ = CFACPS.clearInfo module
           val _ = cfa module
           val module = cse module
           val module = contract module
-          val module = elim module
+          val module = elim module 
           val _ = CFACPS.clearInfo module
           val _ = cfa module
 	  in
