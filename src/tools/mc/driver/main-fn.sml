@@ -94,7 +94,7 @@ functor MainFn (
       | printTrees ({tree,span}::rest) = (
         PrintPT.print tree;
         printTrees rest)
-        
+
     fun treeShake p2s =
 	  if Controls.get BasicControl.treeShake
 	     then (
@@ -134,7 +134,7 @@ functor MainFn (
   (* the compiler's backend *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom
-      val cps = Convert.transform bom
+          val cps = Convert.transform bom
 	  val cps = CPSOpt.optimize cps
 	  val cfg = Closure.convert cps
 	  val cfg = CFGOpt.optimize cfg
@@ -143,17 +143,14 @@ functor MainFn (
 	  end
 
     fun buildExe (verbose, asmFile) = let
-      val buildArg = {
+          val buildArg = {
 		  verbose = verbose,
 		  asmFile = asmFile,
 		  outFile = !exeFile
 		}
-        
-	  val sts = if (Controls.get BasicControl.llvm) then
-                    BuildExecutableLLVM.build buildArg
-                else
-                    BuildExecutableMLRISC.build buildArg
-      
+	  val sts = if (Controls.get BasicControl.llvm)
+		then BuildExecutableLLVM.build buildArg
+                else BuildExecutableMLRISC.build buildArg
 	  in
 	    if OS.Process.isSuccess sts
 	      then ()
@@ -163,29 +160,24 @@ functor MainFn (
     (* MLRISC is incorrectly naming some of the 8-bit registers, so as a simple
      * workaround, we are just going to find/replace them in the output text file
      *)
-    fun replace8BitRegisters asmFile =
-	let
-	    val stat = OS.Process.system(
-		    "sed -i \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile)
-	in () end
-			
-					  
+    fun replace8BitRegisters asmFile = let
+	  val cmd = "sed -i \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile
+	  in
+	    ignore (OS.Process.system cmd)
+	  end
+
     fun codegen (verbose, outFile, cfg) = let
 	  val outStrm = TextIO.openOut outFile
-	  fun doit () = 
-	  	if (Controls.get BasicControl.llvm)
+	  fun doit () = if (Controls.get BasicControl.llvm)
 	  	then CG_LLVM.codeGen {dst=outStrm, code=cfg}
 	  	else CG_MLRISC.codeGen {dst=outStrm, code=cfg}
-	  in	  
+	  in
 	    AsmStream.withStream outStrm doit ();
 	    TextIO.closeOut outStrm;
-
-	    (if not (Controls.get BasicControl.llvm) 
-	    then (replace8BitRegisters outFile)
-		else ()) ;
-        
-        buildExe (verbose, outFile)
-
+	    if not (Controls.get BasicControl.llvm)
+	      then (replace8BitRegisters outFile)
+	      else ();
+            buildExe (verbose, outFile)
 	  end (* compile *)
 
     fun runPreproc (dir', cmd, args) = let
@@ -193,10 +185,10 @@ functor MainFn (
 	  val _ = OS.FileSys.chDir dir'
 	  val x = Unix.execute(cmd, args)
 	  in
-	      OS.FileSys.chDir dir;
-	      x
-    end
-					   
+	    OS.FileSys.chDir dir;
+	    x
+          end
+
   (* compile an MLB or PML file *)
     fun mlbC (verbose, errStrm, srcFile, asmFile) = let
 	  val _ = if verbose then print "initializing environment\n" else ()
@@ -213,19 +205,21 @@ functor MainFn (
           val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom
 	  in
-	      codegen (verbose, asmFile, cfg);
-              if verbose
-              then TextIO.print(concat ["Full compilation finished in: ",
-					(Time.toString (Time.- (Time.now(), inclusiveStart))),
-					"\n"])
-              else ();
+	    codegen (verbose, asmFile, cfg);
+	    if verbose
+              then TextIO.print(concat [
+		  "Full compilation finished in: ",
+		  (Time.toString (Time.- (Time.now(), inclusiveStart))),
+		  "\n"
+		])
+                else ();
 	      Stats.report ()
-    end
+          end
 
     fun doFile file = BackTrace.monitor (fn () => let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
 	  val {base, ext} = OS.Path.splitBaseExt file
-      val asmExt = if (Controls.get BasicControl.llvm) then SOME "ll" else SOME "s"
+          val asmExt = if (Controls.get BasicControl.llvm) then SOME "ll" else SOME "s"
 	  in
             case Controls.get BasicControl.keepPassBaseName
 	     of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
@@ -237,7 +231,7 @@ functor MainFn (
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)
 
     fun bad s = (
-	  err s; 
+	  err s;
           err "!* try `-h' or `-h<level>' for help\n";
           quit false)
 
@@ -262,7 +256,7 @@ functor MainFn (
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -perf            build an executable with hw perf counters enabled\n\
 	  \    -llvm            use LLVM backend with its default optimizations\n\
-      \    -llopt<level>    use LLVM backend and set its optimization level (0 to 3)\n\
+          \    -llopt<level>    use LLVM backend and set its optimization level (0 to 3)\n\
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -noparray        disable parray basis inclusion\n\
 	  \    -verbose         compile in verbose mode\n\
@@ -277,7 +271,7 @@ functor MainFn (
                 BasicControl.showAll err
                   (Controls.name o #ctl,
                     fn ci => concat [
-			"(", #help (Controls.info (#ctl ci)), 
+			"(", #help (Controls.info (#ctl ci)),
                         "; ", Controls.get (#ctl ci), ")"
 		      ])
                   (valOf level));
@@ -333,22 +327,22 @@ functor MainFn (
                 then let
                     val level = String.extract (arg, 2, NONE)
                     in
-                        if level = "" 
+                        if level = ""
                             then help NONE
                         else if CharVector.all Char.isDigit level
                             then help (SOME (Int.fromString level))
                         else badopt ()
                     end
-                    
+
             else if String.isPrefix "-llopt" arg
                 then (case (Int.fromString o String.extract) (arg, 6, NONE)
                         of NONE => badopt ()
-                         | SOME level => 
+                         | SOME level =>
                             ( Controls.set(BasicControl.llvm, true) ;
                               Controls.set(BasicControl.llopt, level) ;
                               processArgs args )
-                     (* esac *)) 
-                    
+                     (* esac *))
+
             else (case arg
 	       of "-o" => (case args
 		     of exe::r => (exeFile := exe; processArgs r)
@@ -369,5 +363,5 @@ functor MainFn (
 	  end
 
     fun main (_, args) = processArgs args
- 
+
   end
