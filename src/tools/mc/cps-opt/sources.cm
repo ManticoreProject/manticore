@@ -41,3 +41,4 @@ is
   reflow.sml
   sizes.sml
   function-hoisting.sml
+  eta-reduce.sml
