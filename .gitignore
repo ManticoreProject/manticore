@@ -1,5 +1,4 @@
-#ignore all cm dirs
-.cm/
+# manticore specific
 /bin
 /lib
 /autom4te.cache
@@ -7,5 +6,46 @@
 /configure
 /config.status
 /config.log
-.DS_Store
 /playground
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+
+# macOS finder
+.DS_Store
+
+# SML/NJ
+.cm/
+
+# Makefile dependencies
+.depend
