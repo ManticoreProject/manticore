@@ -121,26 +121,68 @@ structure Uncurry : sig
 		 of SOME(DEF n) => n
 		  | _ => 1
 		(* end case *))
-	  fun mkApply (f, allArgs, exh) = let
-		val f = VTbl.lookup uncurried f
-		val args = List.foldl (op @) [] allArgs
-		in
-		  C.incAppCnt f;
-		  List.app C.incUseCnt args;
-		  List.app C.incUseCnt exh;
-		  B.mkApply (f, args, exh)
-		end
-	  fun xformFB (B.FB{f, params, exh, body}, fbs) = let
-		val arity = arityOf f
-		fun copyParam n x = let val x' as VarRep.V{useCnt, ...} = BV.copy x
+	  fun mkApply (f, allArgs, exh) = (case VTbl.find uncurried f
+		 of SOME f => let
+		    (* reverse and flatten the arguments *)
+		      val args = List.foldl (op @) [] allArgs
 		      in
-			useCnt := n;
-			x'
+			C.incAppCnt f;
+			List.app C.incUseCnt args;
+			List.app C.incUseCnt exh;
+			B.mkApply (f, args, exh)
 		      end
+		  | NONE => raise Fail(concat[
+			"mkApply: uncurried ", BV.toString f, " is missing"
+		      ])
+		(* end case *))
+	(* to handle mutually recursive curried functions, we need to process the function
+	 * bindings in two passes.  The first pass (`uncurryFB`) adds the names of the
+	 * uncurried functions to the `uncurried` mapping and the second pass does the
+	 * actual rewriting of the BOM code.
+	 *)
+	  fun xformFBs fbs = (
+		List.app uncurryFB fbs;
+		List.foldr xformFB [] fbs)
+	(* first pass over function bindings *)
+	  and uncurryFB (B.FB{f, params, exh, body}) = let
+		val arity = arityOf f
 		in
 		  if arity > 1
 		    then let
-		    (* this function constructs the uncurried version of the function.  It also
+		      fun mkUncurry (g, 0, paramTys, exhTys, _) = let
+			    val bty = BTy.T_Fun(paramTys, exhTys, BOMTyUtil.returnTy(BV.typeOf g))
+			    val f' = BV.alias(f, SOME "_uncurried", bty)
+			    in
+			      VTbl.insert uncurried (f, f')
+			    end
+			  | mkUncurry (_, n, paramTys, _, B.E_Pt(_, B.E_Fun([fb], e))) = let
+			      val B.FB{f, params, exh, body} = fb
+			      in
+				mkUncurry(
+				  f, n-1,
+				  paramTys @ List.map BV.typeOf params,
+				  List.map BV.typeOf exh,
+				  body)
+			      end
+			  | mkUncurry _ = raise Fail "expected function binding"
+		      in
+			mkUncurry (
+			  f, arity - 1,
+			  List.map BV.typeOf params,
+			  List.map BV.typeOf exh,
+			  body)
+		      end
+		    else ()
+		end (* uncurryFB *)
+	(* second pass over function bindings *)
+	  and xformFB (B.FB{f, params, exh, body}, fbs) = (case VTbl.find uncurried f
+		 of SOME f' => let
+		      fun copyParam n x = let val x' as VarRep.V{useCnt, ...} = BV.copy x
+			    in
+			      useCnt := n;
+			      x'
+			    end
+		    (* flatten constructs the uncurried version of the function.  It also
 		     * returns a new version of the curried definition that calls the uncurried version.
 		     * For example, if the original function is
 		     *
@@ -152,14 +194,8 @@ structure Uncurry : sig
 		     *	and f' (x, y / exh2) = e1
 		     *)
 		      fun flatten (g, 0, allParams, newParams, exh, newExh, body) = let
-			    val bty = BTy.T_Fun(
-				    List.map BV.typeOf allParams,
-				    List.map BV.typeOf exh,
-				    BOMTyUtil.returnTy(BV.typeOf g)
-				  )
-			    val f' = BV.alias(f, SOME "_uncurried", bty)
                             val () = List.app C.incUseCnt newExh
-			    val newFB = B.FB{f=f', params=allParams, exh=exh, body=body}
+			    val newFB = B.FB{f=f', params=allParams, exh=exh, body= xformExp body}
 			    in
 			      C.incAppCnt f';
 			      (B.mkApply(f', newParams, newExh), newFB)
@@ -181,15 +217,13 @@ structure Uncurry : sig
 			| flatten _ = raise Fail "expected function binding"
 		      val params' = List.map (copyParam 1) params
 		      val exh' = List.map (copyParam 0) exh
-		      val (curriedFun, uncurriedFB as B.FB{f=uncurriedF, ...}) =
-			    flatten (f, arity-1, params, params', exh, exh', body)
+		      val (curriedBody, uncurriedFB) =
+			    flatten (f, arityOf f - 1, params, params', exh, exh', body)
 		      in
-			VTbl.insert uncurried (f, uncurriedF);
-			B.FB{f=f, params=params', exh=exh', body=curriedFun} :: uncurriedFB :: fbs
+			B.FB{f=f, params=params', exh=exh', body=curriedBody} :: uncurriedFB :: fbs
 		      end
-		    else B.FB{f=f, params=params, exh=exh, body=xformExp body} :: fbs
-		end
-	  and xformFBs fbs = List.foldr xformFB [] fbs
+		  | NONE => B.FB{f=f, params=params, exh=exh, body=xformExp body} :: fbs
+		(* end case *))
 	  and xformExp (e as B.E_Pt(_, t)) = (case t
 		 of B.E_Let([g], rhs as B.E_Pt(_, B.E_Apply(f, args, rets)), e) => (
 		      case findCurried g
@@ -247,7 +281,9 @@ structure Uncurry : sig
 	      then let
 		val B.FB{f, params, exh, body} = body
 		in
-		  B.mkModule(name, externs, hlops, rewrites, B.FB{f=f, params=params, exh=exh, body=xformExp body})
+		  B.mkModule(
+		    name, externs, hlops, rewrites,
+		    B.FB{f=f, params=params, exh=exh, body=xformExp body})
 		end
 	      else module
 	  end
