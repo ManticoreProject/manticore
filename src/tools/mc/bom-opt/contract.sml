@@ -50,7 +50,7 @@ structure Contract : sig
     val cntPrimFold             = ST.newCounter "contract:prim-fold"
     val cntTrivCase             = ST.newCounter "contract:triv-case"
     val cntCaseConst            = ST.newCounter "contract:case-const"
-    val cntCaseIfFold		= ST.newCounter "contract:case-if-fold"
+    val cntCaseIfFold           = ST.newCounter "contract:case-if-fold"
     val cntBeta                 = ST.newCounter "contract:beta"
     val cntBetaCont             = ST.newCounter "contract:beta-cont"
     val cntUnusedCFun           = ST.newCounter "contract:unused-cfun"
@@ -101,12 +101,15 @@ structure Contract : sig
     fun pureRHS (B.E_Update _) = false
       | pureRHS (B.E_Prim p) = PrimUtil.isPure p
       | pureRHS (B.E_CCall(cf, _)) = (case BV.kindOf cf
-	   of B.VK_CFun cf => CFunctions.isPure cf
-	    | _ => false
-	  (* end case *))
+           of B.VK_CFun cf => CFunctions.isPure cf
+            | _ => false
+          (* end case *))
       | pureRHS (B.E_VPStore _) = false
       | pureRHS _ = true
 
+  (* is an expression pure?  We use a program-point property to cache the results of the
+   * analysis for reuse.
+   *)
     local
       val {peekFn, setFn, ...} = ProgPt.newProp (fn _ => false)
     in
@@ -119,7 +122,7 @@ structure Contract : sig
                         | B.E_Fun(_, e) => pureExp e
                         | B.E_Cont(_, e) => pureExp e
                         | B.E_If(cond, e1, e2) =>
-			    CondUtil.isPure cond andalso pureExp e1 andalso pureExp e2
+                            CondUtil.isPure cond andalso pureExp e1 andalso pureExp e2
                         | B.E_Case(x, cases, dflt) =>
                             List.all (fn (_, e) => pureExp e) cases
                             andalso (case dflt of SOME e => pureExp e | _ => true)
@@ -139,13 +142,13 @@ structure Contract : sig
   (********** Contraction **********)
 
   (* extend the environment with a mapping from the "toVars" to the "fromVars" (i.e.,
-   * instances of a ftoVarromVar will be replaced with the corresponding fromVar),
+   * instances of a toVar will be replaced with the corresponding fromVar),
    * inserting type casts as necessary
    *)
     fun extendWithCasts {env, fromVars, toVars} = let
         (* FIXME -- Do this right! *)
           fun needsCast (fromTy, toTy) = (case fromTy
-                 of BTy.T_Any => not (BOMTyUtil.equal (BTy.T_Any, toTy)) 
+                 of BTy.T_Any => not (BOMTyUtil.equal (BTy.T_Any, toTy))
                   | BTy.T_Tuple(b, ts) => (case toTy
                        of BTy.T_Tuple (b', ts') => ListPair.exists needsCast (ts, ts')
                         | _ => false
@@ -153,7 +156,7 @@ structure Contract : sig
                   | _ => false
                 (* end case *))
           fun mkCasts ([], [], fromVars', casts) = (List.rev fromVars', List.rev casts)
-            | mkCasts (_::_, [], _, _) = raise Fail "more fromVars than toVars" 
+            | mkCasts (_::_, [], _, _) = raise Fail "more fromVars than toVars"
             | mkCasts ([], _::_, _, _) = raise Fail "more toVars than fromVars"
             | mkCasts (fromVar::fromVars, toVar::toVars, fromVars', casts) = let
                 val fromTy = BV.typeOf fromVar
@@ -163,7 +166,7 @@ structure Contract : sig
                     then mkCasts (fromVars, toVars, fromVar::fromVars', casts)
                     else let
                       val name = let val x = BV.nameOf fromVar
-                            in 
+                            in
                               concat ["_cast", (if String.isPrefix "_" x then "" else "_"), x]
                             end
                       val c = BV.new (name, toTy)
@@ -180,7 +183,7 @@ structure Contract : sig
                 U.extend (env, toVar, fromVar'))
           val env' = ListPair.foldl bind env (fromVars', toVars)
           in
-	    (env', casts)
+            (env', casts)
           end
 
   (* we use this global to hold the eta flag that the contract function gets
@@ -189,23 +192,22 @@ structure Contract : sig
     val doEta = ref false
 
   (* try to eta contract a function definition *)
-    fun etaContract (B.FB{f, params, exh, body}) =
-          if !doEta
-            then (case body
-               of (B.E_Pt(_, B.E_Apply(g, args, rets))) => let
-                    fun eq ([], []) = true
-                      | eq (x::xs, y::ys) = BV.same(x, y) andalso eq(xs, ys)
-                      | eq _ = false
-                    in
-                      if not(BV.same(f, g))
-                      andalso eq(params, args)
-                      andalso eq(exh, rets)
-                        then SOME g
-                        else NONE
-                    end
-                | _ => NONE
-              (* end case *))
-            else NONE
+    fun etaContract (B.FB{f, params, exh, body}) = if !doEta
+          then (case body
+             of (B.E_Pt(_, B.E_Apply(g, args, rets))) => let
+                  fun eq ([], []) = true
+                    | eq (x::xs, y::ys) = BV.same(x, y) andalso eq(xs, ys)
+                    | eq _ = false
+                  in
+                    if not(BV.same(f, g))
+                    andalso eq(params, args)
+                    andalso eq(exh, rets)
+                      then SOME g
+                      else NONE
+                  end
+              | _ => NONE
+            (* end case *))
+          else NONE
 
     datatype const_fold_result = datatype PrimContract.const_fold_result
 
@@ -251,9 +253,9 @@ structure Contract : sig
                   | _ => FAIL
                 (* end case *))
             | B.E_Prim p => (case PrimContract.contract (env, x, p)
-            of FAIL => FAIL
-             | res => (ST.tick cntPrimFold ; res)
-            (* end case *))
+                 of FAIL => FAIL
+                  | res => (ST.tick cntPrimFold ; res)
+                (* end case *))
             | _ => FAIL
           (* end case *))
 
@@ -262,24 +264,24 @@ structure Contract : sig
    *)
     local
       fun match pred = let
-	    fun test (_, []) = NONE
-	      | test (prefix, (pat, e)::r) = (case pred pat
-		   of SOME params => SOME{
-			  params = params, act = e,
-			  other = List.revAppend(prefix, r)
-			}
-		    | NONE => test ((pat, e)::prefix, r)
-		  (* end case *))
-	    in
-	      fn cases => test ([], cases)
-	    end
+            fun test (_, []) = NONE
+              | test (prefix, (pat, e)::r) = (case pred pat
+                   of SOME params => SOME{
+                          params = params, act = e,
+                          other = List.revAppend(prefix, r)
+                        }
+                    | NONE => test ((pat, e)::prefix, r)
+                  (* end case *))
+            in
+              fn cases => test ([], cases)
+            end
     in
     fun matchDC dc = match
-	  (fn (B.P_DCon(dc', params)) => if BOMTyCon.dconSame(dc, dc') then SOME params else NONE
-	    | _ => NONE)
+          (fn (B.P_DCon(dc', params)) => if BOMTyCon.dconSame(dc, dc') then SOME params else NONE
+            | _ => NONE)
     fun matchLit lit = match
-	  (fn (B.P_Const(lit', _)) => if Literal.same(lit, lit') then SOME[] else NONE
-	    | _ => NONE)
+          (fn (B.P_Const(lit', _)) => if Literal.same(lit, lit') then SOME[] else NONE
+            | _ => NONE)
     end (* local *)
 
     fun doExp (env, B.E_Pt(_, t), kid) = (case t
@@ -290,40 +292,39 @@ structure Contract : sig
                     C.deleteWithRenaming (env, rhs);
                     doExp (env, e, kid))
                   else let
-                          val e' = doExp(env, rhs, kid+1)
-                      in
-                          if (List.all unused lhs andalso pureExp rhs)
-                          then (
-                              ST.tick cntLetElim;
-                              C.deleteWithRenaming (env, rhs);
-                              e')
-                          else (
-                              case e'
-                               of B.E_Pt(_, B.E_Ret ys) => let
-                                      (* let lhs = ys in e ==> e[ys/lhs] *)
-                                      val (env',casts) = extendWithCasts {env = env, fromVars = ys, toVars = lhs}
-                                  in
-                                      ST.tick cntLetRename;
-                                      B.mkStmts (casts, doExp (env', e, kid))
-                                  end
-                                | B.E_Pt(_, B.E_Let(xs, e1, e2)) => (
-                                  (* let lhs = (let xs = e1 in e2) in e ==> let xs = e1 let lhs = e2 in e *)
-                                  ST.tick cntLetFloat;
-                                  setBindings (lhs, B.VK_Let e2);
-                                  B.mkLet(xs, e1, B.mkLet(lhs, e2, doExp (env, e, kid))))
-                                | B.E_Pt(_, B.E_Stmt(xs, rhs, e2)) => (
-                                  ST.tick cntLetFloat;
-                                  setBindings (lhs, B.VK_Let e2);
-                                  B.mkStmt(xs, rhs, B.mkLet(lhs, e2, doExp (env, e, kid))))
-                                | B.E_Pt(_, B.E_Fun(fbs, e2)) => (
-                                  ST.tick cntLetFloat;
-                                  setBindings (lhs, B.VK_Let e2);
-                                  B.mkFun(fbs, B.mkLet(lhs, e2, doExp (env, e, kid))))
-                                | rhs => (
-                                  setBindings (lhs, B.VK_Let rhs);
-                                  B.mkLet(lhs, rhs, doExp(env, e, kid)))
-                              (* end case *))
-                      end
+                    val e' = doExp(env, rhs, kid+1)
+                    in
+                      if (List.all unused lhs andalso pureExp rhs)
+                        then (
+                          ST.tick cntLetElim;
+                          C.deleteWithRenaming (env, rhs);
+                          e')
+                        else (case e'
+                           of B.E_Pt(_, B.E_Ret ys) => let
+                              (* let lhs = ys in e ==> e[ys/lhs] *)
+                                val (env',casts) = extendWithCasts {env = env, fromVars = ys, toVars = lhs}
+                                in
+                                  ST.tick cntLetRename;
+                                  B.mkStmts (casts, doExp (env', e, kid))
+                                end
+                            | B.E_Pt(_, B.E_Let(xs, e1, e2)) => (
+                              (* let lhs = (let xs = e1 in e2) in e ==> let xs = e1 let lhs = e2 in e *)
+                                ST.tick cntLetFloat;
+                                setBindings (lhs, B.VK_Let e2);
+                                B.mkLet(xs, e1, B.mkLet(lhs, e2, doExp (env, e, kid))))
+                            | B.E_Pt(_, B.E_Stmt(xs, rhs, e2)) => (
+                                ST.tick cntLetFloat;
+                                setBindings (lhs, B.VK_Let e2);
+                                B.mkStmt(xs, rhs, B.mkLet(lhs, e2, doExp (env, e, kid))))
+                            | B.E_Pt(_, B.E_Fun(fbs, e2)) => (
+                                ST.tick cntLetFloat;
+                                setBindings (lhs, B.VK_Let e2);
+                                B.mkFun(fbs, B.mkLet(lhs, e2, doExp (env, e, kid))))
+                            | rhs => (
+                                setBindings (lhs, B.VK_Let rhs);
+                                B.mkLet(lhs, rhs, doExp(env, e, kid)))
+                          (* end case *))
+                    end
             | B.E_Stmt([x], rhs, e) => let
                 val rhs = U.substRHS(env, rhs)
                 val _ = setBinding(x, B.VK_RHS rhs)
@@ -478,16 +479,16 @@ structure Contract : sig
                   end
             | B.E_If(cond, e1, e2) => let
                 val cond = CondUtil.map (U.subst env) cond
-		fun reduce (keepExp, deleteExp) = (
-		      ST.tick cntIfReduce;
-		      C.deleteWithRenaming(env, deleteExp);
-		      doExp(env, keepExp, kid))
+                fun reduce (keepExp, deleteExp) = (
+                      ST.tick cntIfReduce;
+                      C.deleteWithRenaming(env, deleteExp);
+                      doExp(env, keepExp, kid))
                 in
                   case CondContract.contract cond
-		   of CondContract.UNKNOWN => B.mkIf(cond, doExp(env, e1, kid), doExp(env, e2, kid))
-		    | CondContract.TRUE => reduce (e1, e2)
-		    | CondContract.FALSE => reduce (e2, e1)
-		  (* end case *)
+                   of CondContract.UNKNOWN => B.mkIf(cond, doExp(env, e1, kid), doExp(env, e2, kid))
+                    | CondContract.TRUE => reduce (e1, e2)
+                    | CondContract.FALSE => reduce (e2, e1)
+                  (* end case *)
                 end
             | B.E_Case(x, [], SOME e) => let
               (* eliminate a trivial case *)
@@ -500,83 +501,83 @@ structure Contract : sig
             | B.E_Case(x, cases, dflt) => let
                 val x = U.subst env x
                 fun doCase (pat, e) = (pat, doExp(env, e, kid))
-		fun doit () = B.mkCase(x,
-		      List.map doCase cases,
-		      Option.map (fn e => doExp(env, e, kid)) dflt)
-		fun deleteCase (_, e) = C.deleteWithRenaming(env, e)
-		fun deleteDflt () = Option.app (fn e => C.deleteWithRenaming(env, e)) dflt
-	      (* reduce to a single matched case *)
-		fun reduce (args, matchedCase) = (
-		      ST.tick cntCaseConst;
-		      dec x;
-		      case matchedCase
-		       of SOME{params, act, other} => let
-			    val (env, casts) = extendWithCasts {
-				    env = env, fromVars = args, toVars = params
-				  }
-			    in
-			      List.app deleteCase other;
-			      deleteDflt ();
-			      List.app inc args;
-			      B.mkStmts (casts, doExp(env, act, kid))
-			    end
-			| NONE => (
-			    List.app deleteCase cases;
-			    doExp(env, valOf dflt, kid))
-		      (* end case *))
+                fun doit () = B.mkCase(x,
+                      List.map doCase cases,
+                      Option.map (fn e => doExp(env, e, kid)) dflt)
+                fun deleteCase (_, e) = C.deleteWithRenaming(env, e)
+                fun deleteDflt () = Option.app (fn e => C.deleteWithRenaming(env, e)) dflt
+              (* reduce to a single matched case *)
+                fun reduce (args, matchedCase) = (
+                      ST.tick cntCaseConst;
+                      dec x;
+                      case matchedCase
+                       of SOME{params, act, other} => let
+                            val (env, casts) = extendWithCasts {
+                                    env = env, fromVars = args, toVars = params
+                                  }
+                            in
+                              List.app deleteCase other;
+                              deleteDflt ();
+                              List.app inc args;
+                              B.mkStmts (casts, doExp(env, act, kid))
+                            end
+                        | NONE => (
+                            List.app deleteCase cases;
+                            doExp(env, valOf dflt, kid))
+                      (* end case *))
                 in
-		  case bindingOf x
-		   of B.VK_Let(B.E_Pt(_, B.E_If(cond, e1, e2))) => let
-		      (* check for the situation where we are pattern matching
-		       * on the result of an if-then-else that has constant-valued
-		       * arms.  This situation comes up with the conditional operators
-		       * in the basis.
-		       *)
+                  case bindingOf x
+                   of B.VK_Let(B.E_Pt(_, B.E_If(cond, e1, e2))) => let
+                      (* check for the situation where we are pattern matching
+                       * on the result of an if-then-else that has constant-valued
+                       * arms.  This situation comes up with the conditional operators
+                       * in the basis.
+                       *)
 (* FIXME: this code does not handle the situation where the default case is the one matching
  * one of the arms of the if!
  *)
-			fun asDCon (cases, B.E_Pt(_, e)) = (case e
-			       of B.E_Stmt([x], B.E_DCon(dc, args), B.E_Pt(_, B.E_Ret[y])) =>
-				    if BV.same(x, y)
-				      then (case matchDC dc cases
-					 of SOME{params, act, other} =>
-					      SOME{args=args, params=params, act=act, other=other}
-					  | NONE => NONE
-					(* end case *))
-				      else NONE
-				| _ => NONE
-			      (* end case *))
-			in
-			  case asDCon (cases, e1)
-			   of SOME{args=args1, params=params1, act=act1, other} => (case asDCon (other, e2)
-				 of SOME{args=args2, params=params2, act=act2, other} => let
-				      val (env1, casts1) = extendWithCasts {
-					      env = env, fromVars = args1, toVars = params1
-					    }
-				      val (env2, casts2) = extendWithCasts {
-					      env = env, fromVars = args2, toVars = params2
-					    }
-				      in
-					ST.tick cntCaseIfFold;
-				        dec x;
-					CondUtil.app inc cond;
-					List.app deleteCase other;
-					deleteDflt ();
-					List.app inc args1;
-					List.app inc args2;
-					B.mkIf(cond,
-					  B.mkStmts(casts1, doExp(env1, act1, kid)),
-					  B.mkStmts(casts2, doExp(env2, act2, kid)))
-				      end
-				  | _ => doit ()
-				(* end case *))
-			    | _ => doit ()
-			  (* end case *)
-			end
-		    | B.VK_RHS(B.E_Const(lit, ty)) => reduce ([], matchLit lit cases)
-		    | B.VK_RHS(B.E_DCon(dc, args)) => reduce (args, matchDC dc cases)
-		    | _ => doit()
-		  (* end case *)
+                        fun asDCon (cases, B.E_Pt(_, e)) = (case e
+                               of B.E_Stmt([x], B.E_DCon(dc, args), B.E_Pt(_, B.E_Ret[y])) =>
+                                    if BV.same(x, y)
+                                      then (case matchDC dc cases
+                                         of SOME{params, act, other} =>
+                                              SOME{args=args, params=params, act=act, other=other}
+                                          | NONE => NONE
+                                        (* end case *))
+                                      else NONE
+                                | _ => NONE
+                              (* end case *))
+                        in
+                          case asDCon (cases, e1)
+                           of SOME{args=args1, params=params1, act=act1, other} => (case asDCon (other, e2)
+                                 of SOME{args=args2, params=params2, act=act2, other} => let
+                                      val (env1, casts1) = extendWithCasts {
+                                              env = env, fromVars = args1, toVars = params1
+                                            }
+                                      val (env2, casts2) = extendWithCasts {
+                                              env = env, fromVars = args2, toVars = params2
+                                            }
+                                      in
+                                        ST.tick cntCaseIfFold;
+                                        dec x;
+                                        CondUtil.app inc cond;
+                                        List.app deleteCase other;
+                                        deleteDflt ();
+                                        List.app inc args1;
+                                        List.app inc args2;
+                                        B.mkIf(cond,
+                                          B.mkStmts(casts1, doExp(env1, act1, kid)),
+                                          B.mkStmts(casts2, doExp(env2, act2, kid)))
+                                      end
+                                  | _ => doit ()
+                                (* end case *))
+                            | _ => doit ()
+                          (* end case *)
+                        end
+                    | B.VK_RHS(B.E_Const(lit, ty)) => reduce ([], matchLit lit cases)
+                    | B.VK_RHS(B.E_DCon(dc, args)) => reduce (args, matchDC dc cases)
+                    | _ => doit()
+                  (* end case *)
                 end
             | B.E_Apply(f, args, rets) => let
                 val f = U.subst env f
@@ -657,12 +658,12 @@ structure Contract : sig
                 val body = doFunBody (U.empty, body, 0)
                 val sum = ticks()
                 fun needsFloat() = let
-                    val letFloats = ST.count cntLetFloat
-                    val netFloats = letFloats-prevFloats
-                    val netTicks = (sum-prevSum)
-                in
-                    ((Real.fromInt(netFloats))/Real.fromInt(netTicks) > 0.8)
-                end
+                      val letFloats = ST.count cntLetFloat
+                      val netFloats = letFloats - prevFloats
+                      val netTicks = (sum - prevSum)
+                      in
+                        ((Real.fromInt(netFloats))/Real.fromInt(netTicks) > 0.8)
+                      end
                 in
 (*DEBUG*
 print(concat["contract: ", Int.toString(sum - prevSum), " ticks\n"]);
@@ -673,8 +674,8 @@ if ((sum-prevSum < 4) andalso (sum-prevSum > 0)) then (
 *DEBUG*)
                   if (prevSum <> sum)
                     then (if needsFloat()
-                          then loop (LetFloat.denestLambda(body, true), sum, ST.count cntLetFloat)
-                          else loop (body, sum, ST.count cntLetFloat))
+                      then loop (LetFloat.denestLambda(body, true), sum, ST.count cntLetFloat)
+                      else loop (body, sum, ST.count cntLetFloat))
                     else body
                 end
           val body = LetFloat.denestLambda(body, true)
@@ -683,8 +684,8 @@ if ((sum-prevSum < 4) andalso (sum-prevSum > 0)) then (
           fun removeUnusedExtern cf = if unused(CFunctions.varOf cf)
                 then (
                   ST.tick cntUnusedCFun;
-                  false) 
-                else true 
+                  false)
+                else true
           val externs = if false (*#removeExterns flags*)
                 then List.filter removeUnusedExtern externs
                 else externs

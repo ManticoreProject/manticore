@@ -517,7 +517,7 @@ DEBUG*)
 			  val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt}
 			  in
 			    (SOME joinFB, SOME(B.mkThrow(join, [])))
-			  end			  
+			  end
 			else (NONE, dflt)
                   fun maxEnumVal ((dc as BTy.DCon{rep=BTy.Enum w, ...},_)::rules) = Word.max (w, maxEnumVal rules)
                     | maxEnumVal (_) = 0w0
@@ -536,7 +536,7 @@ DEBUG*)
                                   B.mkCase(enm, List.map enumCase rules, NONE))
 			(* end case *))
 		  val consCase = (case cons
-			 of {rules=[], hasDflt=true} => valOf dflt 
+			 of {rules=[], hasDflt=true} => valOf dflt
 			  | {rules=[], hasDflt=false} =>
 			      raise Fail("badly-formed sub-case of " ^ BV.toString x)
 			  | {rules, hasDflt=true} => consCase (rules, dflt)
