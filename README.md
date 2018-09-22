@@ -1,6 +1,6 @@
 # Manticore
 
-[![pipeline status](https://gitlab.com/kavon1/manticore/badges/trunk/pipeline.svg)](https://gitlab.com/kavon1/manticore/commits/trunk)
+[![pipeline status](https://gitlab.com/kavon1/manticore/badges/stack/pipeline.svg)](https://gitlab.com/kavon1/manticore/commits/stack)
 
 [Manticore](http://manticore.cs.uchicago.edu) is a high-level parallel programming language aimed at general-purpose applications running on multi-core processors. Manticore supports parallelism at multiple levels: explicit concurrency and coarse-grain parallelism via CML-style constructs and fine-grain parallelism via various light-weight notations, such as parallel tuple expressions and NESL/Nepal-style parallel array comprehensions.
 
@@ -23,12 +23,12 @@ like to use the LLVM backend, follow the instructions below.
 ### LLVM Backend
 
 You must have a *custom* version of LLVM installed prior to configuring and
-building Manticore in order to have the LLVM backend available. 
+building Manticore in order to have the LLVM backend available.
 The following commands will obtain the right LLVM sources and place it in `./llvm/src`
 
     git submodule init llvm/src
     git submodule update llvm/src
-    
+
 Next, we're going to build LLVM, which has its own set of [prerequisites](http://llvm.org/docs/GettingStarted.html#software) that
 any Unix machine setup for C++ development should already have. To configure LLVM, run the following commands
 
@@ -36,7 +36,7 @@ any Unix machine setup for C++ development should already have. To configure LLV
     mkdir build install
     cd build
     cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=host ../src
-    
+
 If you're hacking on Manticore or LLVM, you might want to replace `-DCMAKE_BUILD_TYPE=Release` with the following:
 
     -DCMAKE_BUILD_TYPE=Debug -DLLVM_ENABLE_ASSERTIONS=1
@@ -47,7 +47,7 @@ If you have a spinning disk hard drive, we recommend `n` to be *at most* `(RAM /
 as the linking stage eats up a huge amount of virtual memory, and once you start swapping,
 it may not finish. To get the installation going, run the following
 
-    make install -j n 
+    make install -j n
 
 then, move back to the root directory with
 
@@ -58,12 +58,12 @@ installed under `./llvm/install` and you should not need to rebuild it again.
 
 ## BUILDING FROM SOURCE
 
-If building and installing the system from source, you first must 
+If building and installing the system from source, you first must
 generate the configuration script.  To do so, run the following two commands:
 
 	autoheader -Iconfig
 	autoconf -Iconfig
-    
+
 Then proceed with configuration.
 
 ### Configuring
@@ -79,19 +79,19 @@ of the following options to `configure` before moving on to building.
 
 #### Configuring with external MLRISC
 
-If you would like to configure with external MLRISC libraries, 
+If you would like to configure with external MLRISC libraries,
 add the `--with-mlrisc` option.
 
 	./configure --with-mlrisc=<path to mlrisc>
 
 #### Configuring with LLVM
 
-If you want to have the LLVM backend available, configure with the local 
-installation of LLVM after building it (using the instructions above) by 
+If you want to have the LLVM backend available, configure with the local
+installation of LLVM after building it (using the instructions above) by
 adding the `--with-llvm` option to configure.
 
     ./configure --with-llvm=./llvm/install
-    
+
 
 ### Building and Installing the Distribution
 
@@ -115,7 +115,7 @@ Details about running the regression suite with various backends goes here.
 
     git submodule init src/benchmarks
     git submodule update src/benchmarks
-    
+
 Then, see the README file under src/benchmarks for more details.
 
 ### Known Issues
