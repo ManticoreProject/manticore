@@ -1,6 +1,6 @@
 # Manticore
 
-[![pipeline status](https://gitlab.com/kavon1/manticore/badges/stack/pipeline.svg)](https://gitlab.com/kavon1/manticore/commits/stack)
+[![pipeline status](https://gitlab.com/kavon1/manticore/badges/stacks/pipeline.svg)](https://gitlab.com/kavon1/manticore/commits/stacks)
 
 [Manticore](http://manticore.cs.uchicago.edu) is a high-level parallel programming language aimed at general-purpose applications running on multi-core processors. Manticore supports parallelism at multiple levels: explicit concurrency and coarse-grain parallelism via CML-style constructs and fine-grain parallelism via various light-weight notations, such as parallel tuple expressions and NESL/Nepal-style parallel array comprehensions.
 
