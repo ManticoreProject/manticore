@@ -160,19 +160,6 @@ functor MainFn (
 	      else err "error compiling generated assembly code\n"
 	  end
 
-<<<<<<< HEAD
-    (* MLRISC is incorrectly naming some of the 8-bit registers, so as a simple
-     * workaround, we are just going to find/replace them in the output text file
-     *)
-    fun replace8BitRegisters asmFile =
-	let
-	    val stat = OS.Process.system(
-		    "sed -i \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile)
-	in () end
-
-
-=======
->>>>>>> 2c0e72e7a... remove ugly workaround for a bug. filed as issue #7
     fun codegen (verbose, outFile, cfg) = let
 	  val outStrm = TextIO.openOut outFile
 	  fun doit () =

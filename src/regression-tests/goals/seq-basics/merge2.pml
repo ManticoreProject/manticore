@@ -49,4 +49,4 @@ structure Main =
 
   end
 
-val _ = Main.main ()
+val _ = (Main.main () ; print "done\n")
