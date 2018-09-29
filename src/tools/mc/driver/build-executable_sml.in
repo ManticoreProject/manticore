@@ -216,14 +216,15 @@ Pass Arguments:  -domtree
     fun noRas() = Controls.get BasicControl.noras
 
     fun pathToBin binaryName = let
-        val dir = "@LLVM_DIR@"
-    in
-        if String.size dir = 0
-        then raise Fail ("This version of Manticore was not configured with LLVM!\n" ^
-                         "See the README.md file for details about how to rebuild Manticore.\n")
-
-        else dir ^ "/bin/" ^ binaryName
-    end
+          val dir = "@LLVM_DIR@"
+          in
+            if dir = ""
+              then raise Fail (
+                "This version of Manticore was not configured with LLVM!\n\
+                \See the README.md file for details about how to rebuild Manticore.\n\
+                \")
+              else dir ^ "/bin/" ^ binaryName
+          end
 
     (**********************
      *  flags and options for opt
@@ -232,67 +233,65 @@ Pass Arguments:  -domtree
 
     (* i dunno *)
     val o_analysis = [
-        "-basicaa",
-        "-aa",
-        "-memdep",
-        "-domtree"
-    ]
+            "-basicaa",
+            "-aa",
+            "-memdep",
+            "-domtree"
+          ]
 
     val o_essential = ["-lower-expect"]
 
-    (* all of the basic cleanup passes LLVM has. things like adce were left off
-       not sure if this is reasonable ordering, just guessed *)
+  (* all of the basic cleanup passes LLVM has. things like adce were left off
+   * not sure if this is reasonable ordering, just guessed
+   *)
     val o_cleanup = [
-        "-simplifycfg",
-        "-instcombine",
-        "-reassociate",
-        "-constprop",
-        "-early-cse",
-        "-gvn",
-        "-dce",
-        "-simplifycfg",
-        "-instcombine",
-        "-simplifycfg"
-    ]
+            "-simplifycfg",
+            "-instcombine",
+            "-reassociate",
+            "-constprop",
+            "-early-cse",
+            "-gvn",
+            "-dce",
+            "-simplifycfg",
+            "-instcombine",
+            "-simplifycfg"
+          ]
 
     val o_normal = o_analysis @ o_cleanup @ o_essential
 
-    (* run some fancier passes that might help further optimize allocation code *)
+  (* run some fancier passes that might help further optimize allocation code *)
     val o_aggressive =
-          o_analysis
-        @ o_cleanup
-        @ o_analysis @ [
-            "-sink",
-            "-mldst-motion",
-            "-slp-vectorizer",
-            "-instcombine",
-            "-simplifycfg"
-        ]
-        @ o_essential
+          o_analysis @
+          o_cleanup @
+          o_analysis @ [
+              "-sink",
+              "-mldst-motion",
+              "-slp-vectorizer",
+              "-instcombine",
+              "-simplifycfg"
+            ] @
+          o_essential
 
     val optLevels = [
-        (0, o_essential),
-        (1, o_normal),
-        (2, o_aggressive),
-        (3, ["-O1"]),
-        (4, ["-O2"]),
-        (5, ["-O3"])
-    ]
-
-
+            (0, o_essential),
+            (1, o_normal),
+            (2, o_aggressive),
+            (3, ["-O1"]),
+            (4, ["-O2"]),
+            (5, ["-O3"])
+          ]
 
     (* opt passes that need to be performed before/after any passes *)
     fun o_wrapPasses verbose passes = let
-        val firstPasses = ["-targetlibinfo", "-tti", "-verify", "-lint"]
-        val statsPasses = ["-stats", "-time-passes"]
-
-        val passes = (case passes
-                      of [] => firstPasses
-                       |  _ => firstPasses @ passes @ ["-verify"]
-                       (* esac *))
-    in
-        if verbose then statsPasses @ passes else passes
-    end
+          val firstPasses = ["-targetlibinfo", "-tti", "-verify", "-lint"]
+          val statsPasses = ["-stats", "-time-passes"]
+          val passes = (case passes
+                 of [] => firstPasses
+                  |  _ => firstPasses @ passes @ ["-verify"]
+                (* end case *))
+          in
+            if verbose then statsPasses @ passes else passes
+          end
 
     fun doOpt verbose inputFile outputFile optPasses = let
         val options = (case Controls.get BasicControl.customOPT
@@ -317,7 +316,7 @@ Pass Arguments:  -domtree
          (1, ["-O3"])
      ]
 
-    (* llc passes that need to be performed before/after any passes *)
+  (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
         val firstPasses = ["-relocation-model=pic"]
         val firstPasses = if not(isDirect())
@@ -351,11 +350,9 @@ Pass Arguments:  -domtree
 
 
     fun build {verbose, asmFile, outFile} = let
-        val verbose = verbose orelse (Controls.get BasicControl.verbose > 0)
-
+          val verbose = verbose orelse (Controls.get BasicControl.verbose > 0)
         (* take off the .ll *)
-        val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 3))
-
+          val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 3))
         (* run opt. we do not need to run opt if the llopt level is set to 0, because
            llc will already run a verification pass on the input. we do it anyways though
            so we can run the linter. *)
@@ -401,9 +398,11 @@ Pass Arguments:  -domtree
                     else llcOutput
 
         (* reuse the MLRISC linking etc *)
-        val result = BuildExecutableMLRISC.build {verbose=verbose, asmFile=llcOutput, outFile=outFile}
-    in
-        result
-    end
+          val result = BuildExecutableMLRISC.build {
+                  verbose=verbose, asmFile=llcOutput, outFile=outFile
+                }
+          in
+            result
+          end
 
-end
+  end
