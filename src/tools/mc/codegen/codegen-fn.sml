@@ -1,5 +1,5 @@
 (* code-gen-fn.sml
- * 
+ *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN =
     val v2s = Var.toString
     val i2s = Int.toString
 
-    fun newLabel s = Label.label s () 
+    fun newLabel s = Label.label s ()
     fun newReg _ = Cells.newReg ()
     fun newFReg _ = Cells.newFreg ()
 
@@ -87,7 +87,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN =
 	  val mlStrm = BE.MLTreeComp.selectInstructions (BE.CFGGen.build ())
 	(* extract operations from the emitter's streams *)
 	  val Stream.STREAM {
-		  beginCluster, getAnnotations, comment, emit, defineLabel, 
+		  beginCluster, getAnnotations, comment, emit, defineLabel,
 		  entryLabel, exitBlock, pseudoOp, endCluster, ...
 		} = mlStrm
 	  val emit = fn stm => emit (annotate (stm, BE.MLTreeUtils.stmToString stm))
@@ -99,7 +99,7 @@ if MChkTy.check stm
 *)
 	  val emitStms = List.app emit
 	  val endCluster = BE.compileCFG o endCluster
-		     
+
 	  val varDefTbl = BE.VarDef.newTbl ()
 	  val getDefOf = BE.VarDef.getDefOf varDefTbl
 	  val setDefOf = BE.VarDef.setDefOf varDefTbl
@@ -130,7 +130,7 @@ if MChkTy.check stm
 	(* tag enums to distinguish them from pointers: enum(e) => 2*e+1 *)
 	  fun encodeEnum e = Word.<<(e, 0w1) + 0w1
 
-	  fun genLit (ty, Literal.Enum c) = 
+	  fun genLit (ty, Literal.Enum c) =
 		MTy.EXP(ty, T.LI(T.I.fromWord (ty, encodeEnum c)))
 	    | genLit (ty, Literal.StateVal n) =
 	      (* we want the two low bits of the state-value representation to be zero *)
@@ -159,7 +159,7 @@ if MChkTy.check stm
 		in
 		  emitStms (annotateStms(stms, "stdApply"));
 		  exitBlock liveOut
-		end	 
+		end
 	    | genTransfer (M.StdThrow args) = let
 		val {stms, liveOut} = BE.Transfer.genStdThrow varDefTbl args
 		in
@@ -181,15 +181,15 @@ if MChkTy.check stm
 		  defineLabel labT;
 		  emitStms (genGoto jT)
 		end
-	    | genTransfer (M.Switch (v, cases, defaultCase)) = let		  
+	    | genTransfer (M.Switch (v, cases, defaultCase)) = let
 	      (* put the switch value into reg *)
 		val reg = newReg()
 		val _ = emit(T.MV (MTy.wordTy, reg, defOf v))
 	      (* compare the value with one of the cases *)
 		fun compareCase i = let
 		    (* encode the case values according to the type of the switch value *)
-		      val c = (case Var.typeOf v                      
-			      of CFGTy.T_Enum _ => 
+		      val c = (case Var.typeOf v
+			      of CFGTy.T_Enum _ =>
 				 (* enums use a special encoding, so we need to use it in cases *)
 				 encodeEnum i
 			       | _ => i
@@ -201,12 +201,12 @@ if MChkTy.check stm
 		      end (* compareCase *)
 	      (* emit branching instructions; also return code that calls the exit functions *)
 		fun genCase ((i, (l, [])), exits) = (
-		    (* if the jump target has no arguments, put it directly into the branch instruction *) 
+		    (* if the jump target has no arguments, put it directly into the branch instruction *)
 		       emit (T.BCC (compareCase(i), BE.LabelCode.getName(l)));
-		       exits)		      
+		       exits)
 		  | genCase ((i, handleCase), exits) = let
 		      val labT = newLabel("S_case")
-		      in		
+		      in
 		      (* branching instructions *)
 			emit (T.BCC (compareCase(i), labT));
 		      (* code for handling the case if it is chosen *)
@@ -217,17 +217,17 @@ if MChkTy.check stm
 	      (* emit the default case *)
 		val _ = Option.app (fn defJmp => emitStms (genGoto(defJmp))) defaultCase
 		fun emitExit (labT, exitStms) = (
-		      defineLabel (labT); 
+		      defineLabel (labT);
 		      emitStms (exitStms))
-		in		  
+		in
 		  List.app emitExit(List.rev(exits))
 		end
 	    | genTransfer (M.HeapCheck {hck, szb, nogc}) = let
 		val {stms=checkStms, allocCheck} = BE.Alloc.genAllocCheck szb
-		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl 
+		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl
 				      {hck=hck, nogc=nogc, checkStms=checkStms, allocCheck=allocCheck}
-		in 
-		(* emit code for the heap-limit check and the transfer into the GC *) 
+		in
+		(* emit code for the heap-limit check and the transfer into the GC *)
 		  emitStms stms;
 		  case return
 		   of SOME(retLbl, retStms, liveOut) => (
@@ -243,10 +243,10 @@ if MChkTy.check stm
 		  val MTy.EXP(_, hostVP) = BE.VProcOps.genHostVP
 		  val nLoc = BE.VProcOps.genVPLoad' (32, Spec.ABI.eventId, hostVP)
 		val {stms=checkStms, allocCheck} = BE.Alloc.genAllocNCheck (nLoc, szb)
-		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl 
+		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl
 				      {hck=hck, nogc=nogc, checkStms=checkStms, allocCheck=allocCheck}
-		in 
-		(* emit code for the heap-limit check and the transfer into the GC *) 
+		in
+		(* emit code for the heap-limit check and the transfer into the GC *)
 		  emitStms [T.MV(MTy.wordTy, vpReg, hostVP)];
 		  emitStms [BE.VProcOps.genVPStore' (32, Spec.ABI.eventId, hostVP, defOf n)];
 		  emitStms stms;
@@ -259,7 +259,7 @@ if MChkTy.check stm
 		    | NONE => ()
 		  (* end case *)
 		end
-	    | genTransfer (M.AllocCCall call) = emitStms (BE.Transfer.genAllocCCall varDefTbl call)  
+	    | genTransfer (M.AllocCCall call) = emitStms (BE.Transfer.genAllocCCall varDefTbl call)
 	(* bind CFG variables to MLRISC trees.  we annotate MLRISC code with the given message. *)
 	  fun bindExp (lhs, rhs, msg) = let
 (* FIXME: we should try to avoid the concat when we are not actually annotating instructions! *)
@@ -271,21 +271,21 @@ if MChkTy.check stm
 		      end
 		in
 		  ListPair.appEq f (lhs, rhs)
-		end                 
+		end
 	(* Construct an MLRISC tree from a CFG expression. *)
 	  fun genExp frame = let
-		fun gen (M.E_Var(lhs, rhs)) = 
+		fun gen (M.E_Var(lhs, rhs)) =
 		      ListPair.app setDefOf (lhs, List.map getDefOf rhs)
-		  | gen (M.E_Const(lhs, lit, _)) = 
+		  | gen (M.E_Const(lhs, lit, _)) =
 		      bindExp ([lhs], [genLit (szOfVar lhs, lit)], [])
-		  | gen (M.E_Label(lhs, l)) = 
+		  | gen (M.E_Label(lhs, l)) =
 		      bindExp ([lhs], [MTy.EXP (MTy.wordTy, (T.LABEL (BE.LabelCode.getName l)))], [])
 		  | gen (M.E_Select(lhs, i, v)) = let
 		      val rhs = BE.Alloc.select {lhsTy=Var.typeOf lhs, mty=Var.typeOf v, i=i, base=defOf v}
 		      in
 			bindExp ([lhs], [rhs], ["let ", v2s lhs, " = ", v2s v, "[", i2s i, "]"])
 		      end
-		  | gen (M.E_Update(i, lhs, rhs)) = 
+		  | gen (M.E_Update(i, lhs, rhs)) =
 		    (case Var.typeOf rhs
 		      of CFGTy.T_Raw RawTypes.T_Float => let
 			  val wordSzB = IntInf.toInt Spec.ABI.wordSzB
@@ -295,7 +295,7 @@ if MChkTy.check stm
 			     emit(annotate(T.FSTORE (32, T.ADD(MTy.wordTy, defOf lhs, offset), fdefOf rhs, ManticoreRegion.memory),
 				 v2s lhs^" := "^v2s rhs))
 			  end
-		       | CFGTy.T_Raw RawTypes.T_Double => 
+		       | CFGTy.T_Raw RawTypes.T_Double =>
 			  raise Fail "todo"
 		       | _ => let
 			  val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
@@ -317,17 +317,17 @@ if MChkTy.check stm
 			      tys = tys,
 			      args = List.map getDefOf vs
 			    }
-		      in 
+		      in
 			emitStms stms;
 			bindExp ([lhs], [ptr], ["alloc ", v2s lhs, " = ", String.concat (List.map v2s vs)])
 		      end
-		  | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
+		  | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let
 		      val {ptr, stms} = BE.Alloc.genGlobalAlloc {
 			      isMut = isMut,
 			      tys = tys,
 			      args = List.map getDefOf vs
 			    }
-		      in 
+		      in
 			emitStms (annotateStms (
 			  stms, String.concat("galloc " :: v2s lhs :: " = " :: List.map v2s vs)));
 			bindExp ([lhs], [ptr], [])
@@ -340,13 +340,13 @@ if MChkTy.check stm
 		      end
 		  | gen (M.E_Prim0 p) = emitStms(annotateStms(genPrim0 p, PrimUtil.nameOf p))
 		  | gen (M.E_Prim(lhs, p)) = emitStms(annotateStms(genPrim (lhs, p), PrimUtil.nameOf p))
-		  | gen (M.E_CCall(lhs, f, args)) = let 
+		  | gen (M.E_CCall(lhs, f, args)) = let
 		      val {stms, result} = BE.Transfer.genCCall varDefTbl {lhs=lhs, f=f, args=args}
 		      in
 			emitStms stms;
 			bindExp (lhs, result, ["ccall ", Var.toString f])
 		      end
-		  | gen (M.E_Cast(lhs, _, v)) = 
+		  | gen (M.E_Cast(lhs, _, v)) =
 		      bindExp ([lhs], [getDefOf v], [])
 		  (* vproc operations *)
 		  | gen (M.E_HostVProc lhs) =
@@ -372,7 +372,7 @@ if MChkTy.check stm
 	   *)
 	    val entryFunc as M.FUNC{lab=entryLab, ...} :: _ = code
 	    val clusters = GenClusters.clusters code
-		     
+
 	  fun genFunc (M.FUNC{lab, entry, start as M.BLK{body=startBody, exit,...}, body}) = let
 		fun emitLabel () = let
 		      val label = BE.LabelCode.getName lab
@@ -383,21 +383,21 @@ if MChkTy.check stm
 			   else ();
 		      (* output the label *)
 			case M.Label.kindOf lab
-			 of M.LK_Func{export=SOME s, ...} => ( 
-			      pseudoOp (P.global (Label.global s));			     
+			 of M.LK_Func{export=SOME s, ...} => (
+			      pseudoOp (P.global (Label.global s));
 			      entryLabel (Label.global s);
 			      defineLabel label)
 			  | M.LK_Func {func=CFG.FUNC{entry, ...}, ...} => entryLabel label
 			  | _ => raise Fail "emitLabel"
 			(* end case *)
-		      end (* emitLabel *)		  
+		      end (* emitLabel *)
 		val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry, start)
                 val bodyStms = List.map (fn (b as M.BLK{lab, body,...}) => BE.Transfer.genBlockEntry varDefTbl (lab, b)) body
                 fun emitBlock (b as M.BLK{lab, body, exit,...}, stms) = let
 		      val funcAnRef = getAnnotations ()
 		      val frame = BE.SpillLoc.getFuncFrame lab
 		      val regs = BE.LabelCode.getParamRegs lab
-		      in	
+		      in
 			if (Controls.get annotateInstrs)
 			  then (
 			    List.app ((fn s => comment ("param: "^s)) o MTy.treeToString o MTy.regToTree) regs;
@@ -416,7 +416,7 @@ if MChkTy.check stm
 		      val funcAnRef = getAnnotations ()
 		      val frame = BE.SpillLoc.getFuncFrame lab
 		      val regs = BE.LabelCode.getParamRegs lab
-		      in	
+		      in
 			if (Controls.get annotateInstrs)
 			  then (
 			    List.app ((fn s => comment ("param: "^s)) o MTy.treeToString o MTy.regToTree) regs;
@@ -438,16 +438,16 @@ if MChkTy.check stm
 	  fun genCluster c = let
 	      val _ = BE.VarDef.clear varDefTbl;
 	      val finishers = List.map genFunc c
-	      in 
-		 beginCluster 0;
-		 pseudoOp P.text;
-		 List.app (fn f => f ()) finishers;
-		 endCluster []
+	      in
+		beginCluster 0;
+		pseudoOp P.text;
+		List.app (fn f => f ()) finishers;
+		endCluster []
 	      end
-	 
+
 	  fun genLiterals () = (
 		beginCluster 0;
-		pseudoOp P.rodata;	      
+		pseudoOp P.rodata;
 	      (* runtime constant magic number for sanity test *)
 		pseudoOp (P.global RuntimeLabels.magic);
 		defineLabel RuntimeLabels.magic;
@@ -464,10 +464,10 @@ if MChkTy.check stm
 		List.app emitLit (!BE.literals);
 		endCluster [])
 	  in
-	    Cells.reset ();	  
+	    Cells.reset ();
 	    List.app genCluster clusters;
-	    genLiterals () 
-	  end (* codeGen *) 
+	    genLiterals ()
+	  end (* codeGen *)
 
     val codeGen : {code: CFG.module, dst: TextIO.outstream} -> unit =
 	  BasicControl.mkTracePassSimple {
