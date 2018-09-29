@@ -1,12 +1,12 @@
 (* header-tbl-print-debug.sml
- * 
+ *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Print Code for the Garbage Collector Scan files
  *)
 
-structure PrintTableDebug = 
+structure PrintTableDebug =
 struct
 
     (* NOTE: this code is still bitrotted! be warned. *)
@@ -15,9 +15,9 @@ struct
        represents the number of non-mixed header kinds that we have
        manually predefined below. *)
     val predefined = HeaderTableStruct.predefined
-    
+
     (* Headerfiles *)
-    fun header (MyoutStrm) = (  
+    fun header (MyoutStrm) = (
         TextIO.output (MyoutStrm, "#include <stdint.h>\n");
         TextIO.output (MyoutStrm, "#include <stdio.h>\n");
         TextIO.output (MyoutStrm, "\n");
@@ -27,7 +27,7 @@ struct
         TextIO.output (MyoutStrm, "\n");
         ()
         )
-    
+
     (*Minor GC Debug Functions *)
     fun minorpre (MyoutStrm) = (
         TextIO.output (MyoutStrm, "void possiblePointer (VProc_t *self, Word_t *p,Word_t *scanP,int tag) {\n");
@@ -41,7 +41,7 @@ struct
         TextIO.output (MyoutStrm, "                 SayDebug(\"[%2d] ** possible free-space pointer %p in mixed object %p+%d\\n\",\n");
         TextIO.output (MyoutStrm, "                            self->id, (void *)v, (void *)p, (int)(scanP-p));\n");
         TextIO.output (MyoutStrm, "                 break;\n");
-        TextIO.output (MyoutStrm, "            case TO_SP_CHUNK:\n");    
+        TextIO.output (MyoutStrm, "            case TO_SP_CHUNK:\n");
         TextIO.output (MyoutStrm, "                 SayDebug(\"[%2d] ** possible to-space pointer %p in mixed object %p+%d\\n\",\n");
         TextIO.output (MyoutStrm, "                            self->id, (void *)v, (void *)p, (int)(scanP-p));\n");
         TextIO.output (MyoutStrm, "                 break;\n");
@@ -54,8 +54,8 @@ struct
         TextIO.output (MyoutStrm, "            default:\n");
         TextIO.output (MyoutStrm, "                 if (IS_VPROC_CHUNK(cq->sts)) {\n");
         TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n");
-        TextIO.output (MyoutStrm, "                     //global or minor; maybe the if clauses are the same??\n"); 
-        TextIO.output (MyoutStrm, "                     if (tag == 1) {   \n");           
+        TextIO.output (MyoutStrm, "                     //global or minor; maybe the if clauses are the same??\n");
+        TextIO.output (MyoutStrm, "                     if (tag == 1) {   \n");
         TextIO.output (MyoutStrm, "                         if (((Addr_t)v & ~VP_HEAP_MASK) != (Addr_t)v)\n");
         TextIO.output (MyoutStrm, "                             SayDebug(\"[%2d] ** possible local pointer %p in mixed object %p+%d\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, (void *)v, (void *)p, (int)(scanP-p));\n");
@@ -75,7 +75,7 @@ struct
         TextIO.output (MyoutStrm, "     }         \n");
         TextIO.output (MyoutStrm, "}    \n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void MinorGCcheckmixedglobal (Word_t *p,Word_t *scanP) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "Value_t v = *(Value_t *)scanP;\n");
@@ -94,7 +94,7 @@ struct
         TextIO.output (MyoutStrm, "         }\n");
         TextIO.output (MyoutStrm, "      }\n");
         TextIO.output (MyoutStrm, "}\n");
-        
+
         TextIO.output (MyoutStrm, "void minorGCVECTORdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    char buf[32];\n");
@@ -105,7 +105,7 @@ struct
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void minorGCRAWdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    assert (isRawHdr(ptr[-1]));\n");
@@ -132,7 +132,7 @@ struct
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void minorGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "  \n");
         TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
@@ -149,12 +149,12 @@ struct
         )
 
 
-    
+
     fun minor (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
+
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -174,22 +174,22 @@ struct
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(String.size a,a,0);
-                
+
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
-    
-    
+
+
     fun minorglobalpre (MyoutStrm) = (
         TextIO.output (MyoutStrm, "void checkMixedPointer (VProc_t *self,Word_t *p,Word_t *scanP) {\n");
         TextIO.output (MyoutStrm, "\n");
@@ -209,7 +209,7 @@ struct
         TextIO.output (MyoutStrm, "     }\n");
         TextIO.output (MyoutStrm, "   }\n");
         TextIO.output (MyoutStrm, "}\n");
-        
+
         TextIO.output (MyoutStrm, "void minorGCRAWdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    assert (isRawHdr(ptr[-1]));\n");
@@ -224,7 +224,7 @@ struct
         TextIO.output (MyoutStrm, "                     if (cq->sts == FROM_SP_CHUNK)\n");
         TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                   self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
-        TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n"); 
+        TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n");
         TextIO.output (MyoutStrm, "                     else if (IS_VPROC_CHUNK(cq->sts))\n");
         TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
@@ -237,7 +237,7 @@ struct
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void minorGCVECTORdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    int len = GetLength(ptr[-1]);\n");
@@ -260,7 +260,7 @@ struct
         TextIO.output (MyoutStrm, "         }\n");
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "}\n");
-        
+
         TextIO.output (MyoutStrm, "void minorGCPROXYdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
@@ -274,13 +274,13 @@ struct
         TextIO.output (MyoutStrm, "}\n");
     ()
     )
-    
-    
+
+
     fun minorglobal (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
+
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -300,80 +300,85 @@ struct
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(String.size a,a,0);
-                
+
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
-    
+
     (*Global GC Debug Functions *)
-    fun globalpre (MyoutStrm) = (
-        TextIO.output (MyoutStrm, "void globalGCRAWdebug (VProc_t *self, Word_t *ptr) {\n");
-        TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "    assert (isRawHdr(ptr[-1]));\n");
-        TextIO.output (MyoutStrm, "    int len = GetLength(ptr[-1]);\n");
-        TextIO.output (MyoutStrm, "    // look for raw values that might be pointers\n");
-        TextIO.output (MyoutStrm, "    for (int i = 0; i < len; i++) {\n");
-        TextIO.output (MyoutStrm, "        Value_t v = (Value_t)ptr[i];\n");
-        TextIO.output (MyoutStrm, "        if (isPtr(v)) {\n");
-        TextIO.output (MyoutStrm, "             if (isHeapPtr(v)) {\n");
-        TextIO.output (MyoutStrm, "                 MemChunk_t *cq = AddrToChunk(ValueToAddr(v));\n");
-        TextIO.output (MyoutStrm, "                 if (cq->sts != TO_SP_CHUNK) {\n");
-        TextIO.output (MyoutStrm, "                     if (cq->sts == FROM_SP_CHUNK)\n");
-        TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
-        TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
-        TextIO.output (MyoutStrm, "                     else if (IS_VPROC_CHUNK(cq->sts))\n");
-        TextIO.output (MyoutStrm, "                          /* the vproc pointer is pretty common, so filter it out */\n");
-        TextIO.output (MyoutStrm, "                          if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v))\n");
-        TextIO.output (MyoutStrm, "                              SayDebug(\"[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
-        TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
-        TextIO.output (MyoutStrm, "                     else if (cq->sts == FREE_CHUNK)\n");
-        TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
-        TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
-        TextIO.output (MyoutStrm, "                 }\n");
-        TextIO.output (MyoutStrm, "             }\n");
-        TextIO.output (MyoutStrm, "         }\n");
-        TextIO.output (MyoutStrm, "    }\n");
-        TextIO.output (MyoutStrm, "}\n");
-        TextIO.output (MyoutStrm, "\n");
-        
-        TextIO.output (MyoutStrm, "void globalGCVECTORdebug (VProc_t *self, Word_t *ptr) {\n");
-        TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "     int len = GetLength(ptr[-1]);\n");
-        TextIO.output (MyoutStrm, "     for (int i = 0;  i < len;  i++, ptr++) {\n");
-        TextIO.output (MyoutStrm, "          CheckLocalPtrGlobal (self, ptr, \"local vector\");\n");
-        TextIO.output (MyoutStrm, "     }\n");
-        TextIO.output (MyoutStrm, "}\n");
-        TextIO.output (MyoutStrm, "\n");
-        
-        TextIO.output (MyoutStrm, "void globalGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n");
-        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-        TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm,"possiblePointer(self,ptr,scanP,0);\n");
-        TextIO.output (MyoutStrm,"scanP++;\n");
-        TextIO.output (MyoutStrm,"CheckLocalPtrGlobal (self, scanP, \"local mixed object\");\n");
-        TextIO.output (MyoutStrm,"scanP++;\n");
-        TextIO.output (MyoutStrm,"possiblePointer(self,ptr,scanP,0);\n");
-        TextIO.output (MyoutStrm,"scanP++;\n");
-        TextIO.output (MyoutStrm, "}\n");
-        TextIO.output (MyoutStrm, "\n");
-        ()
-    )
-    
-    fun global (MyoutStrm) = let
+    fun globalpre outStrm = let
+	  fun pr s = TextIO.output(outStrm, s)
+	  in
+	    pr "void globalGCRAWdebug (VProc_t *self, Word_t *ptr) {\n";
+	    pr "\n";
+	    pr "    assert (isRawHdr(ptr[-1]));\n";
+	    pr "    int len = GetLength(ptr[-1]);\n";
+	    pr "    // look for raw values that might be pointers\n";
+	    pr "    for (int i = 0; i < len; i++) {\n";
+	    pr "        Value_t v = (Value_t)ptr[i];\n";
+	    pr "        if (isPtr(v)) {\n";
+	    pr "             if (isHeapPtr(v)) {\n";
+	    pr "                 MemChunk_t *cq = AddrToChunk(ValueToAddr(v));\n";
+	    pr "                 if (cq->sts != TO_SP_CHUNK) {\n";
+	    pr "                     if (cq->sts == FROM_SP_CHUNK) {\n";
+	    pr "                          SayDebug(\"[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n";
+	    pr "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n";
+	    pr "                     }\n";
+	    pr "                     else if (IS_VPROC_CHUNK(cq->sts)) {\n";
+	    pr "                          /* the vproc pointer is pretty common, so filter it out */\n";
+	    pr "                          if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v)) {\n";
+	    pr "                              SayDebug(\"[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n";
+	    pr "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n";
+	    pr "                          }\n";
+	    pr "                     }\n";
+	    pr "                     else if (cq->sts == FREE_CHUNK) {\n";
+	    pr "                          SayDebug(\"[%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n";
+	    pr "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n";
+	    pr "                     }\n";
+	    pr "                 }\n";
+	    pr "             }\n";
+	    pr "         }\n";
+	    pr "    }\n";
+	    pr "}\n";
+	    pr "\n";
+
+	    pr "void globalGCVECTORdebug (VProc_t *self, Word_t *ptr) {\n";
+	    pr "\n";
+	    pr "     int len = GetLength(ptr[-1]);\n";
+	    pr "     for (int i = 0;  i < len;  i++, ptr++) {\n";
+	    pr "          CheckLocalPtrGlobal (self, ptr, \"local vector\");\n";
+	    pr "     }\n";
+	    pr "}\n";
+	    pr "\n";
+
+	    pr "void globalGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n";
+	    pr "  Word_t *scanP = ptr;\n";
+	    pr "\n";
+	    pr "possiblePointer(self,ptr,scanP,0);\n";
+	    pr "scanP++;\n";
+	    pr "CheckLocalPtrGlobal (self, scanP, \"local mixed object\");\n";
+	    pr "scanP++;\n";
+	    pr "possiblePointer(self,ptr,scanP,0);\n";
+	    pr "scanP++;\n";
+	    pr "}\n";
+	    pr "\n"
+	  end
+
+    fun global MyoutStrm = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
+
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -393,21 +398,21 @@ struct
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(String.size a,a,0);
-                
+
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
-    
+
     (*Global GC Debug Functions *)
     fun globalglobalpre (MyoutStrm) = (
         TextIO.output (MyoutStrm, "void globalGCRAWdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
@@ -424,9 +429,9 @@ struct
         TextIO.output (MyoutStrm, "                     if (cq->sts == FROM_SP_CHUNK)\n");
         TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                   self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
-        TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n"); 
+        TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n");
         TextIO.output (MyoutStrm, "                     else if (IS_VPROC_CHUNK(cq->sts))\n");
-        TextIO.output (MyoutStrm, "                          if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v))\n"); 
+        TextIO.output (MyoutStrm, "                          if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v))\n");
         TextIO.output (MyoutStrm, "                              SayDebug(\"[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
         TextIO.output (MyoutStrm, "                     else if (cq->sts == FREE_CHUNK)\n");
@@ -438,7 +443,7 @@ struct
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void globalGCVECTORdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    int len = GetLength(ptr[-1]);\n");
@@ -475,7 +480,7 @@ struct
         TextIO.output (MyoutStrm, "     }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void globalGCPROXYdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
@@ -490,12 +495,12 @@ struct
         TextIO.output (MyoutStrm, "\n");
         ()
     )
-    
+
     fun globalglobal (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
+
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -515,21 +520,21 @@ struct
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(String.size a,a,0);
-                
+
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
-    
+
     (* GC_Debug Functions *)
     fun gcdebugpre (MyoutStrm) = (
         TextIO.output (MyoutStrm, "void gc_debug (Word_t * nextScan, Addr_t nurseryBase, Addr_t allocSzB) {\n");
@@ -547,7 +552,7 @@ struct
         TextIO.output (MyoutStrm, "     }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void gc_debugVECTOR (Word_t * nextScan, Addr_t nurseryBase, Addr_t allocSzB) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    int len = GetLength(nextScan[-1]);\n");
@@ -566,27 +571,27 @@ struct
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void gc_debugRAW (Word_t * nextScan, Addr_t nurseryBase, Addr_t allocSzB) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    // we can just skip raw objects\n");
         TextIO.output (MyoutStrm, "    assert (isRawHdr(nextScan[-1]));\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        
+
         TextIO.output (MyoutStrm, "void gc_debugPROXY (Word_t * nextScan, Addr_t nurseryBase, Addr_t allocSzB) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm,concat["    gc_debug((nextScan+",Int.toString 1,"), nurseryBase, allocSzB);\n"]);
         TextIO.output (MyoutStrm, "}\n");
-        TextIO.output (MyoutStrm, "\n");   
+        TextIO.output (MyoutStrm, "\n");
         ()
         )
-        
+
         fun gcdebug (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
+
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -601,27 +606,27 @@ struct
                 in
                 TextIO.output (MyoutStrm, concat["void gc_debug",Int.toString b,"mix (Word_t * nextScan, Addr_t nurseryBase, Addr_t allocSzB) {\n"]);
                 TextIO.output (MyoutStrm, "\n");
-                
+
                 lp(String.size a,a,0);
-                
+
                 TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n"); 
-                
+                TextIO.output (MyoutStrm, "\n");
+
                 printmystring t
                 end
             )
-            
+
     in
         printmystring s;
         ()
     end
-    
-    
-    
+
+
+
     fun createtable (MyoutStrm) = (let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         val length = List.length s
-        
+
         fun printtable (listlength,i) = (
             if (listlength = i)
             then ()
@@ -630,44 +635,44 @@ struct
                 printtable(listlength,i+1)
                 )
             )
-            
+
         in
         TextIO.output (MyoutStrm, concat["tableentryDebug tableDebug[",Int.toString (length+predefined),"] = { {minorGCRAWdebug,minorGCRAWdebugGlobal,globalGCRAWdebug,globalGCRAWdebugGlobal,gc_debugRAW},\n"]);
         TextIO.output (MyoutStrm, "{minorGCVECTORdebug,minorGCVECTORdebugGlobal,globalGCVECTORdebug,globalGCVECTORdebugGlobal,gc_debugVECTOR},\n");
         TextIO.output (MyoutStrm, "{minorGCPROXYdebug,minorGCPROXYdebugGlobal,globalGCPROXYdebug,globalGCPROXYdebugGlobal,gc_debugPROXY}\n");
-        
+
         printtable (length+predefined,predefined);
-        
-        TextIO.output (MyoutStrm," };\n"); 
+
+        TextIO.output (MyoutStrm," };\n");
         TextIO.output (MyoutStrm,"\n");
-        
+
         ()
         end
-        )        
-    
+        )
+
     fun print (path) = let
             val Myout = TextIO.openOut path
         in
             header Myout;
-            
+
             minorpre Myout;
             minor Myout;
-            
+
             minorglobalpre Myout;
             minorglobal Myout;
-            
+
             globalpre Myout;
             global Myout;
-            
+
             globalglobalpre Myout;
             globalglobal Myout;
-            
+
             gcdebugpre Myout;
             gcdebug Myout;
-            
+
             createtable Myout;
-            
+
             TextIO.closeOut(Myout)
         end
-    
+
 end
