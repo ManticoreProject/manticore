@@ -66,9 +66,9 @@ typedef enum {
 
 struct struct_stackinfo {
     // these fields are only used by segmented stacks.
-    void* currentSP             ALIGN_8;    
+    void* currentSP             ALIGN_8;
     StackInfo_t* prevSegment    ALIGN_8;
-    
+
     // fields used by all stacks
     StackInfo_t* next   ALIGN_8;  // link to next stack in the free/allocated list
     void* initialSP     ALIGN_8;
@@ -126,10 +126,10 @@ extern void UnmarkStacks(VProc_t *vp);
 extern void ScanStackMinor (
     void* origStkPtr,
     StackInfo_t* stkInfo,
-    Addr_t nurseryBase,  
+    Addr_t nurseryBase,
     Addr_t allocSzB,
     Word_t **nextW);
-    
+
 extern void ScanStackMajor (
     void* origStkPtr,
     StackInfo_t* stkInfo,
@@ -137,12 +137,12 @@ extern void ScanStackMajor (
     Addr_t oldSzB,
     VProc_t *vp,
     bool scanningGlobalToSpace);
-    
+
 extern void ScanStackGlobal (
     void* origStkPtr,
     StackInfo_t* stkInfo,
     VProc_t* vp);
-    
+
 
 
 /* GC debugging support */
