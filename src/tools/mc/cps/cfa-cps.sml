@@ -145,18 +145,18 @@ structure CFACPS : sig
            val () = if isCont
 		 then CV.setKind(f, CPS.VK_Cont lambda)
 		 else CV.setKind(f, CPS.VK_Fun lambda)
-           in 
+           in
              LAMBDAS(VSet.singleton f)
-           end 
+           end
     fun valueFromContType (paramTys) = valueFromFunType' (paramTys, [], true)
     fun valueFromFunType (paramTys, retTys) = valueFromFunType' (paramTys, retTys, false)
 
-  (* create an approximate value from a type.  These values are used 
-   * to initialize the abstract value property for variables.  
+  (* create an approximate value from a type.  These values are used
+   * to initialize the abstract value property for variables.
    *)
     fun valueFromType ty = (case ty
            of CPSTy.T_Any => BOT (* or should this be TOP? *)
-            | CPSTy.T_Enum x => 
+            | CPSTy.T_Enum x =>
 	      if (x = 0w1 andalso !boolFlg) then BOT (* it's a boolean *)
 	      else TOP
             | CPSTy.T_Raw _ => TOP
@@ -193,7 +193,7 @@ structure CFACPS : sig
             | (TOP, _) => true
             | (BOT, BOT) => false
             | (_, BOT) => true
-	    | (BOOL t1, BOOL t2) => 
+	    | (BOOL t1, BOOL t2) =>
 	      if (t1 = t2)
 	      then false
 	      else raise Fail "non-monotonic change"
@@ -282,7 +282,7 @@ structure CFACPS : sig
             | kJoin (_, v, TOP) = (escapingValue v; TOP)
             | kJoin (_, BOT, v) = v
             | kJoin (_, v, BOT) = v
-	    | kJoin (_, v1 as BOOL t1, v2 as BOOL t2) = 
+	    | kJoin (_, v1 as BOOL t1, v2 as BOOL t2) =
 	         if (!boolFlg andalso (t1 = t2))
 		 then v1
 		 else (escapingValue v1; escapingValue v2; TOP)
@@ -378,7 +378,7 @@ structure CFACPS : sig
             | BOT => BOT
             | TOP => (escapingValue z; TOP)
             | v => raise Fail(concat[
-                  "type error: update(", Int.toString i, ", ", CV.toString y, 
+                  "type error: update(", Int.toString i, ", ", CV.toString y,
                   ", ", valueToString z,
                   "); getValue(", CV.toString y, ") = ", valueToString v
                 ])
@@ -419,7 +419,7 @@ structure CFACPS : sig
                 fun doLambda fb = printLambda fb
                 in
                   case e
-                   of CPS.Let (xs, _, e) => 
+                   of CPS.Let (xs, _, e) =>
                         (List.app printValueOf xs; doExp e)
                     | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
                     | CPS.Cont (fb, e) => (doLambda fb; doExp e)
@@ -498,24 +498,24 @@ structure CFACPS : sig
   (* In order to avoid problems when an unreachable function calls a
    * reachable function, we "bump" the abstract value of any variable
    * of function type from LAMBDAS {} to LAMBDAS {proxy}, for a proxy
-   * function.  The proxy function provides a variable identifier to 
+   * function.  The proxy function provides a variable identifier to
    * carry the isEscaping property of the variable.
    *
-   * It is more efficient to only "bump" the abstract value of 
-   * variables that would otherwise be LAMBDAS {}, rather than 
+   * It is more efficient to only "bump" the abstract value of
+   * variables that would otherwise be LAMBDAS {}, rather than
    * initialize all variables of function type to LAMBDAS {proxy},
    * which overwhelms the LAMBDAS sets with proxies (and may also
    * have termination problems due to creating an infinite regress
    * of proxy functions).
    *)
     fun bumpInfo body = let
-          fun bumpValue x = (case (CV.typeOf x, getValue x) 
+          fun bumpValue x = (case (CV.typeOf x, getValue x)
                  of (CPSTy.T_Fun (params,rets), LAMBDAS fs) =>
-                      if VSet.isEmpty fs 
+                      if VSet.isEmpty fs
                          then addInfo (x, valueFromFunType (params, rets))
                          else ()
                   | (CPSTy.T_Cont (params), LAMBDAS fs) =>
-                      if VSet.isEmpty fs 
+                      if VSet.isEmpty fs
                          then addInfo (x, valueFromContType (params))
                          else ()
                   | _ => ()
@@ -524,12 +524,12 @@ structure CFACPS : sig
                 List.app bumpValue params;
                 List.app bumpValue rets;
                 doExp body)
-          and doExp (CPS.Exp(_, e)) = (case e 
+          and doExp (CPS.Exp(_, e)) = (case e
                  of CPS.Let (xs, _, e) => (List.app bumpValue xs; doExp e)
                   | CPS.Fun (fbs, e) => (List.app doLambda fbs; doExp e)
                   | CPS.Cont (fb, e) => (doLambda fb; doExp e)
                   | CPS.If (_, e1, e2) => (doExp e1; doExp e2)
-                  | CPS.Switch (_, cases, dflt) => 
+                  | CPS.Switch (_, cases, dflt) =>
                       (List.app (doExp o #2) cases; Option.app doExp dflt)
                   | CPS.Apply _ => ()
                   | CPS.Throw _ => ()
@@ -548,9 +548,9 @@ structure CFACPS : sig
                         in
                           print (concat["startAddInfo(", CV.toString x, ")\n"]);
                           addInfo (x, v);
-                          if changedValue(getValue x, prevV) 
+                          if changedValue(getValue x, prevV)
                             then print(concat[
-                                "addInfo(", CV.toString x,  ", ", valueToString v, 
+                                "addInfo(", CV.toString x,  ", ", valueToString v,
                                 "): ", valueToString prevV, " ==> ", valueToString(getValue x),
                                 "\n"
                               ])
@@ -572,7 +572,7 @@ structure CFACPS : sig
 			| (CPS.Fun (fbs, e)) => (List.app doLambda fbs; doExp e)
 			| (CPS.Cont (fb, e)) => (doLambda fb; doExp e)
 			| (CPS.If (_, e1, e2)) => (doExp e1; doExp e2)
-			| (CPS.Switch (_, cases, dflt)) => 
+			| (CPS.Switch (_, cases, dflt)) =>
 			    (List.app (doExp o #2) cases; Option.app doExp dflt)
 			| (CPS.Apply (f, args, conts)) => doApply (f, args, conts)
 			| (CPS.Throw (f, args)) => doThrow (f, args)
@@ -581,14 +581,14 @@ structure CFACPS : sig
                 and doRhs (xs, CPS.Var ys) = ListPair.appEq eqInfo' (xs, ys)
                   | doRhs ([x], CPS.Cast (ty, y)) = eqInfo' (x, y)
 		  (*T_Enum(0w1) indicates a bool*)
-                  | doRhs ([x], CPS.Const (Literal.Enum v, CPSTy.T_Enum(0w1))) = 
+                  | doRhs ([x], CPS.Const (Literal.Enum v, CPSTy.T_Enum(0w1))) =
 		    if !boolFlg
 		    then
-			if v = 0w1 
-			then addInfo (x, BOOL(true)) 
+			if v = 0w1
+			then addInfo (x, BOOL(true))
 			else addInfo (x, BOOL(false))
 		    else addInfo (x, TOP)
-		  | doRhs ([x], CPS.Const _) = addInfo (x, TOP) 
+		  | doRhs ([x], CPS.Const _) = addInfo (x, TOP)
                   | doRhs ([x], CPS.Select (i, y)) = (addInfo (x, select (i, y)); addInfo (y, update(i, y, getValue x)))
                   | doRhs ([], CPS.Update(i, y, z)) = (addInfo (z, select (i, y)); addInfo (y, update (i, y, getValue z)))
                   | doRhs ([x], CPS.AddrOf(i, y)) = (addInfo (y, update (i, y, TOP)); addInfo (x, TOP))
@@ -617,7 +617,7 @@ structure CFACPS : sig
                         | TOP => (List.app escape args; List.app escape conts)
                         | _ => raise Fail "type error: doApply"
 		      (* end case *))
-                and doApplyAux (f, args, conts) = (case CV.kindOf f 
+                and doApplyAux (f, args, conts) = (case CV.kindOf f
                        of CPS.VK_Fun (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);
                             ListPair.appEq eqInfo' (rets, conts))
@@ -629,7 +629,7 @@ structure CFACPS : sig
                         | TOP => List.app escape args
                         | _ => raise Fail "type error: doThrow"
 		      (* end case *))
-                and doThrowAux (f, args) = (case CV.kindOf f 
+                and doThrowAux (f, args) = (case CV.kindOf f
                        of CPS.VK_Cont (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);
                             ListPair.appEq eqInfo' (rets, []))
@@ -658,10 +658,10 @@ structure CFACPS : sig
           (* iterate to a fixed point *)
             iterate ();
           (* "bump" the abstract value of variables of function type
-           * from LAMBDAS {} to LAMBDAS {proxy} 
+           * from LAMBDAS {} to LAMBDAS {proxy}
            *)
-            changed := false; 
-            bumpInfo body; 
+            changed := false;
+            bumpInfo body;
             if !changed then iterate () else ();
           (* compute additional information for functions *)
             computeFunInfo body;
@@ -669,7 +669,7 @@ structure CFACPS : sig
             if !resultsFlg then printResults body else ();
             if !debugFlg then
 		(case body
-		  of CPS.FB{body, ...} => 
+		  of CPS.FB{body, ...} =>
 			 print (concat["Number of program points: ", Int.toString (CPSUtil.countPoints body), "\n"])) else ()
           end
 
@@ -689,7 +689,7 @@ structure CFACPS : sig
                 List.app clrValue params;
                 List.app clrValue rets;
                 doExp body)
-          and doExp (CPS.Exp(_, e)) = (case e 
+          and doExp (CPS.Exp(_, e)) = (case e
                  of CPS.Let(xs, _, e) => (List.app clrValue xs; doExp e)
                   | CPS.Fun(fbs, e) => (List.app doLambda fbs; doExp e)
                   | CPS.Cont(fb, e) => (doLambda fb; doExp e)
