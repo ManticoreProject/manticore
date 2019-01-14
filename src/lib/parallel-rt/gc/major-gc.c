@@ -63,8 +63,8 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 
 }
 
-static void ScanGlobalToSpace (
-    VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr, Addr_t oldSzB);
+static void ScanMajorToSpace (
+    VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
 #ifndef NDEBUG
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
 void CheckToSpacesAfterGlobalGC (VProc_t *vp);
@@ -111,9 +111,7 @@ void ScanStackMajor (
     void* origStkPtr,
     StackInfo_t* stkInfo,
     Addr_t heapBase,
-    Addr_t oldSzB,
-    VProc_t *vp,
-    bool scanningGlobalToSpace) {
+    VProc_t *vp) {
 
 // #define DEBUG_STACK_SCAN_MAJOR
 
@@ -142,7 +140,7 @@ void ScanStackMajor (
     // only during a GC cycle is it valid to do this test, because
     // otherwise during a PromoteObj, we never end up clearing this,
     // and will not scan the stack.
-    if (!scanningGlobalToSpace) {
+    if (!(vp->inPromotion)) {
         uint64_t deepest = (uint64_t)stkInfo->deepestScan;
         if(deepest <= (uint64_t)origStkPtr) {
             goto nextIter; // this part of the stack has already been scanned.
@@ -186,36 +184,13 @@ void ScanStackMajor (
             Value_t p = *root;
             Value_t newP;
 
-            if(scanningGlobalToSpace) {
-                if (isPtr(p) && inVPHeap(heapBase, ValueToAddr(p))) {
-                    newP = ForwardObjMajor(vp, p);
-                    *root = newP;
+            if (isPtr(p) && inVPHeap(heapBase, ValueToAddr(p))) {
+                newP = ForwardObjMajor(vp, p);
+                *root = newP;
 #ifdef DEBUG_STACK_SCAN_MAJOR
                 fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, newP);
 #endif
-                }
             }
-            else {
-                if (isPtr(p)) {
-                    if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
-                        newP = ForwardObjMajor(vp, p);
-                        *root = newP;
-#ifdef DEBUG_STACK_SCAN_MAJOR
-                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, newP);
-#endif
-                    }
-                    else if (inVPHeap(heapBase, ValueToAddr(p))) {
-                        // p points to another object in the "young" region,
-                        // so adjust it.
-                        newP = AddrToValue(ValueToAddr(p) - oldSzB);
-                        *root = newP;
-#ifdef DEBUG_STACK_SCAN_MAJOR
-                fprintf(stderr, "[slot %u : %p] adjust %p --> %p\n", i, root, p, newP);
-#endif
-                    }
-                }
-            }
-
 
         } // end for
 
@@ -263,7 +238,7 @@ nextIter:
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
     Addr_t    heapBase = vp->heapBase;
-    Addr_t    oldSzB = vp->oldTop - heapBase;
+    Addr_t    oldSzB = top - heapBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
    * data word of the next object (not the header word)!
    */
@@ -294,22 +269,18 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     UnmarkStacks(vp);
 
     /* scan the current stack. */
+    vp->inPromotion = false;
     StackInfo_t* stkInfo = (StackInfo_t*)(vp->stdCont);
     void* stkPtr = vp->stdEnvPtr;
-    ScanStackMajor(stkPtr, stkInfo, heapBase, oldSzB, vp, false);
+    ScanStackMajor(stkPtr, stkInfo, heapBase, vp);
 #endif
 
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
     Value_t p = *roots[i];
     if (isPtr(p)) {
-        if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
-        *roots[i] = ForwardObjMajor(vp, p);
-        }
-        else if (inVPHeap(heapBase, ValueToAddr(p))) {
-          // p points to another object in the "young" region,
-          // so adjust it.
-        *roots[i] = AddrToValue(ValueToAddr(p) - oldSzB);
+        if (inVPHeap(heapBase, ValueToAddr(p))) {
+            *roots[i] = ForwardObjMajor(vp, p);
         }
     #if defined(LINKSTACK)
         else {
@@ -320,40 +291,21 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
                 // we don't forward or move the frame, but instead simply scan it
                 // NOTE: we throw away the return value because we will not scan
                 // the adjacent frame.
-                majorGCscanLINKFRAMEpointer(ptr, vp, oldSzB, heapBase);
+                majorGCscanLINKFRAMEpointer(ptr, vp, heapBase);
             }
         }
     #endif
       }
     }
 
-  /* we also treat the data between vproc->oldTop and top as roots, since
-   * it is known to be both young and live.  While scanning it, we also
-   * do pointer translation on the internal pointers in preparation for
-   * copying it to the bottom of the heap after GC.
-   */
-    Word_t *nextScan = (Word_t *)(vp->oldTop);
-    while (nextScan < (Word_t *)top) {
-
-        Word_t hdr = *nextScan++;    // get object header
-
-        int id = getID(hdr);
-        if (unlikely(id >= tableMaxID))
-            Die("MajorGC: invalid header ID!");
-
-        // All objects jump to their table entry function.
-        // See major-gc.scan.c
-        nextScan = table[id].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
-
-
-    }
-
   /* scan to-space objects */
-    ScanGlobalToSpace (vp, heapBase, scanChunk, globScan, oldSzB);
+    ScanMajorToSpace (vp, heapBase, scanChunk, globScan);
 
-  /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop;
-    memmove ((void *)heapBase, (void *)(vp->oldTop), youngSzB);
+
+    if (youngSzB != 0)
+      Die("The optimization to avoid promoting young data was removed.");
+
     vp->oldTop = vp->heapBase + youngSzB;
 
 
@@ -430,6 +382,8 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
         assert (AddrToChunk(ValueToAddr(root))->sts == FROM_SP_CHUNK ||
                 IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(root))->sts));
 
+    vp->inPromotion = true;
+
     MemChunk_t    *scanChunk = vp->globAllocChunk;
     Word_t        *scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
 
@@ -440,7 +394,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     root = ForwardObjMajor (vp, root);
 
       /* promote any reachable values */
-    ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr, 0);
+    ScanMajorToSpace (vp, heapBase, scanChunk, scanPtr);
 
 #ifndef NO_GC_STATS
     uint64_t nBytesCopied = 0;
@@ -501,16 +455,13 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 }
 
 /* Scan the objects that have been copied to the global heap */
-static void ScanGlobalToSpace (
+static void ScanMajorToSpace (
     VProc_t *vp,
     Addr_t heapBase,
     MemChunk_t *scanChunk,
-    Word_t *scanPtr,
-    Addr_t oldSzB)
+    Word_t *scanPtr)
 {
     Word_t    *scanTop = UsedTopOfChunk (vp, scanChunk);
-
-    const bool isPromotion = (oldSzB == 0);
 
     do {
 
@@ -522,17 +473,11 @@ static void ScanGlobalToSpace (
 
                 int id = getID(hdr);
                 if (unlikely(id >= tableMaxID))
-                    Die("MajorGC, ScanGlobalToSpace: invalid header ID!");
+                    Die("MajorGC, ScanMajorToSpace: invalid header ID!");
 
                 // All objects jump to their table entry function.
                 // See major-gc-scan.c
-                if (isPromotion) {
-                    // then we're scanning the to-space in the context of a promotion.
-                    scanPtr = table[id].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
-                } else {
-                    // otherwise, we're scanning in the context of a Major GC.
-                    scanPtr = table[id].majorGCscanfunction(scanPtr, vp, oldSzB, heapBase);
-                }
+                scanPtr = table[id].majorGCscanfunction(scanPtr, vp, heapBase);
             }
 
             if (vp->globAllocChunk == scanChunk) {

@@ -72,54 +72,9 @@ struct
 
 
 
+
+
     fun major (MyoutStrm) = let
-        val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
-        fun printmystring [] = ()
-            | printmystring ((a,b)::t) = (let
-
-				val size = String.size a
-                fun lp(0,bites,pos) = ()
-                | lp(strlen,bites,pos) =(
-                    if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
-                    then (
-                        TextIO.output (MyoutStrm,concat["    v = *(Value_t *)(scanP+",Int.toString pos,");\n"]);
-                        TextIO.output (MyoutStrm,"   if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {\n");
-                        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString pos,") = (Word_t)ForwardObjMajor(vp, v);\n"]);
-                        TextIO.output (MyoutStrm,"  }\n");
-                        TextIO.output (MyoutStrm,"  else if (inVPHeap(heapBase, ValueToAddr(v))) {\n");
-                        TextIO.output (MyoutStrm,concat["      *(scanP+",Int.toString pos,") = (Word_t)AddrToValue(ValueToAddr(v) - oldSzB);\n"]);
-                        TextIO.output (MyoutStrm,"   }\n");
-
-                        lp(strlen-1,bites,pos+1)
-                        )
-                    else
-                        lp(strlen-1,bites,pos+1)
-                    )
-                in
-                TextIO.output (MyoutStrm, concat["Word_t * majorGCscan",Int.toString b,"pointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n"]);
-                TextIO.output (MyoutStrm, "  \n");
-                TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-                TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
-                TextIO.output (MyoutStrm, "\n");
-
-                lp(size,a,0);
-
-				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
-                TextIO.output (MyoutStrm, "}\n");
-                TextIO.output (MyoutStrm, "\n");
-
-                printmystring t
-                end
-            )
-
-    in
-        printmystring s;
-        ()
-    end
-
-
-
-    fun globaltospace (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
@@ -140,7 +95,7 @@ struct
                         lp(strlen-1,bites,pos+1)
                     )
                 in
-                TextIO.output (MyoutStrm, concat["Word_t * ScanGlobalToSpace",Int.toString b,"function (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n"]);
+                TextIO.output (MyoutStrm, concat["Word_t * majorGCscan",Int.toString b,"pointer (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = NULL;\n");
@@ -211,7 +166,7 @@ struct
             if (listlength = i)
             then ()
             else (
-                TextIO.output (MyoutStrm, concat[",{minorGCscan",Int.toString i,"pointer,majorGCscan",Int.toString i,"pointer,globalGCscan",Int.toString i,"pointer,ScanGlobalToSpace",Int.toString i,"function}\n"]);
+                TextIO.output (MyoutStrm, concat[",{minorGCscan",Int.toString i,"pointer,majorGCscan",Int.toString i,"pointer,globalGCscan",Int.toString i,"pointer}\n"]);
                 printtable(listlength,i+1)
                 )
             )
@@ -225,12 +180,12 @@ struct
         *)
         TextIO.output (MyoutStrm, concat["const int tableMaxID = ", Int.toString tableLen, ";\n"]);
         TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString tableLen,"] = {\n"]);
-        TextIO.output (MyoutStrm, "{minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n");
-        TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction},\n");
-		TextIO.output (MyoutStrm, "{minorGCscanSTKCONTpointer,majorGCscanSTKCONTpointer,globalGCscanSTKCONTpointer,ScanGlobalToSpaceSTKCONTfunction},\n");
-        TextIO.output (MyoutStrm, "{minorGCscanLINKFRAMEpointer,majorGCscanLINKFRAMEpointer,globalGCscanLINKFRAMEpointer,ScanGlobalToSpaceLINKFRAMEfunction},\n");
-        TextIO.output (MyoutStrm, "{minorGCscanBITPATpointer,majorGCscanBITPATpointer,globalGCscanBITPATpointer,ScanGlobalToSpaceBITPATfunction},\n");
-        TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer,ScanGlobalToSpacePROXYfunction}\n");
+        TextIO.output (MyoutStrm, "{minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer},\n");
+        TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer},\n");
+		TextIO.output (MyoutStrm, "{minorGCscanSTKCONTpointer,majorGCscanSTKCONTpointer,globalGCscanSTKCONTpointer},\n");
+        TextIO.output (MyoutStrm, "{minorGCscanLINKFRAMEpointer,majorGCscanLINKFRAMEpointer,globalGCscanLINKFRAMEpointer},\n");
+        TextIO.output (MyoutStrm, "{minorGCscanBITPATpointer,majorGCscanBITPATpointer,globalGCscanBITPATpointer},\n");
+        TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer}\n");
 
         printtable (tableLen,predefined);
 
@@ -249,8 +204,6 @@ struct
             minor Myout;
 
             major Myout;
-
-            globaltospace Myout;
 
             global Myout;
 

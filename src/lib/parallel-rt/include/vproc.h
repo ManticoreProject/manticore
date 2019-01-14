@@ -98,6 +98,7 @@ struct struct_vproc {
     uint8_t* stackArea_lim;
     uint8_t* ffiStack;      // an optionally-used contiguous stack for C calls.
                             // it is primarily used by mutable, linked-frames.
+    bool inPromotion;
 
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state

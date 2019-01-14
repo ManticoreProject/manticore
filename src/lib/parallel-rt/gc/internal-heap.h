@@ -133,10 +133,8 @@ extern void ScanStackMinor (
 extern void ScanStackMajor (
     void* origStkPtr,
     StackInfo_t* stkInfo,
-    Addr_t heapBase,  
-    Addr_t oldSzB,
-    VProc_t *vp,
-    bool scanningGlobalToSpace);
+    Addr_t heapBase,
+    VProc_t *vp);
 
 extern void ScanStackGlobal (
     void* origStkPtr,

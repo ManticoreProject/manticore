@@ -391,12 +391,12 @@ void MinorGC (VProc_t *vp)
 
     //LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
 
+    /* remember information about the final state of the heap */
+    vp->oldTop = (Addr_t)nextScan;
+
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
         /* time to do a major collection. */
         MajorGC (vp, roots, (Addr_t)nextScan);
-    } else {
-        /* remember information about the final state of the heap */
-        vp->oldTop = (Addr_t)nextScan;
     }
 
 #ifndef NDEBUG
