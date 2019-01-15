@@ -128,7 +128,7 @@ structure Inline : sig
     fun extendWithCasts {env, fromVars, toVars} = let
         (* FIXME -- Do this right! *)
           fun needsCast (fromTy, toTy) = (case fromTy
-                 of CTy.T_Any => not (CPSTyUtil.equal (CTy.T_Any, toTy)) 
+                 of CTy.T_Any => not (CPSTyUtil.equal (CTy.T_Any, toTy))
                   | CTy.T_Tuple(b, ts) => (case toTy
                        of CTy.T_Tuple (b', ts') => ListPair.exists needsCast (ts, ts')
                         | _ => false
@@ -146,7 +146,7 @@ structure Inline : sig
                     then mkCasts (fromVars, toVars, fromVar::fromVars', casts)
                     else let
                       val name = let val x = CV.nameOf fromVar
-                            in 
+                            in
                               concat ["_cast", (if String.isPrefix "_" x then "" else "_"), x]
                             end
                       val c = CV.new (name, toTy)
@@ -169,7 +169,7 @@ structure Inline : sig
   (********** The inlining environment **********)
 
     val scale = 2
-    val initK = 20 
+    val initK = 20
 
   (* two-step decimation function, but we never go below a scale of 1 *)
     (* TODO: won't this only ever be 10 or 5? *)
@@ -208,7 +208,7 @@ structure Inline : sig
      * We may not know this property in the case where we are analyzing
      * the body of a just-inlined function. This restriction means
      * that this is not a "complete" inlining.
-     * 
+     *
      *)
      (*lambda is the function to be inlined, oldVar is the function being applied in the application*)
     fun isSafe (pptInlineLocation, lambda, env, oldVar) = let
@@ -217,16 +217,16 @@ structure Inline : sig
         fun unsafeFV fv = let
             val result = if CV.useCount f = CV.appCntOf f
                          then false
-                         else let 
+                         else let
                             val funLoc = Reflow.bindingLocation f
                             val fvLocs = Reflow.rebindingLocations fv
                             val result = Reflow.pointAnalyzed funLoc
                             val result = result andalso PSet.all Reflow.pointAnalyzed fvLocs
                             val result = result andalso PSet.exists (fn (fvLoc) =>
 					                 (Reflow.pathExists (funLoc, fvLoc)) andalso
-					                 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs		
+					                 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs
                             in result
-                            end	 
+                            end
         in
             if !inlineDebug
             then ((if result
@@ -251,7 +251,7 @@ structure Inline : sig
              not(VSet.exists unsafeFV fvs)))
     end
 
-    and safeDebug(f, fvs, pptInlineLoc, env, unsafeFV) = 
+    and safeDebug(f, fvs, pptInlineLoc, env, unsafeFV) =
         if VSet.numItems fvs = 0
         then print (CV.toString f ^ " is safe to inline\n")
         else if not(Reflow.pointAnalyzed pptInlineLoc)
@@ -260,9 +260,9 @@ structure Inline : sig
                   then print (CV.toString f ^ " is not safe because free varaibles are not a subset of env\n")
                   else if (VSet.exists unsafeFV fvs)
                        then print (CV.toString f ^ " is not safe because it has unsafe free variables\n")
-                       else print (CV.toString f ^ " is higher order with FV and is safe to inline\n")       
+                       else print (CV.toString f ^ " is higher order with FV and is safe to inline\n")
 
-    fun inlineAppInfo (E{k, s, env}, ppt, f, args, rets) = 
+    fun inlineAppInfo (E{k, s, env}, ppt, f, args, rets) =
         case CV.kindOf f of
         C.VK_Fun(fb as C.FB{body, ...}) =>
 	        if VSet.member (s, f)
@@ -276,7 +276,7 @@ structure Inline : sig
                         of [f'] => let
                             val C.VK_Fun (fb as C.FB{body,...}) = CV.kindOf f'
                         in
-                            if VSet.member (s, f') 
+                            if VSet.member (s, f')
                             then print (CV.toString f ^ " was not inlined because its CFA value is a member of env\n")
                             else if CFA.isProxy f'
                                  then print (CV.toString f ^ " was not inlined because its CFA value is a proxy\n")
@@ -286,9 +286,9 @@ structure Inline : sig
                                            then print (CV.toString f ^ " was not inlined because its CFA value's body is too large\n")
                                            else print (CV.toString f ^ " was inlined!\n")
                         end
-                         | fs => print (CV.toString f ^ " was not inlined because its CFA values are: [" ^ 
+                         | fs => print (CV.toString f ^ " was not inlined because its CFA values are: [" ^
                                         String.concatWith ", " (List.map (CV.toString) fs) ^ "]\n"))
-                    | v => print (CV.toString f ^ " was not inlined because its CFA value is: " ^ 
+                    | v => print (CV.toString f ^ " was not inlined because its CFA value is: " ^
                                     CFA.valueToString v ^ "\n"))
 
   (* test to see if a function application ``f(args / rets)'' should be
@@ -320,7 +320,7 @@ structure Inline : sig
                          | _ => NONE)
                     | _ => NONE))
 
-    fun inlineThrowInfo (E{k, s, env}, ppt, f, args) = 
+    fun inlineThrowInfo (E{k, s, env}, ppt, f, args) =
         case CV.kindOf f of
         C.VK_Cont(fb as C.FB{body, ...}) =>
 	        if VSet.member (s, f)
@@ -334,7 +334,7 @@ structure Inline : sig
                         of [f'] => let
                             val C.VK_Cont (fb as C.FB{body,...}) = CV.kindOf f'
                         in
-                            if VSet.member (s, f') 
+                            if VSet.member (s, f')
                             then print (CV.toString f ^ " was not inlined because its CFA value is a member of env\n")
                             else if CFA.isProxy f'
                                  then print (CV.toString f ^ " was not inlined because its CFA value is a proxy\n")
@@ -344,14 +344,14 @@ structure Inline : sig
                                            then print (CV.toString f ^ " was not inlined because its CFA value's body is too large\n")
                                            else print (CV.toString f ^ " was inlined!\n")
                         end
-                         | fs => print (CV.toString f ^ " was not inlined because its CFA values are: [" ^ 
+                         | fs => print (CV.toString f ^ " was not inlined because its CFA values are: [" ^
                                         String.concatWith ", " (List.map (CV.toString) fs) ^ "]\n"))
-                    | v => print (CV.toString f ^ " was not inlined because its CFA value is: " ^ 
+                    | v => print (CV.toString f ^ " was not inlined because its CFA value is: " ^
                                     CFA.valueToString v ^ "\n"))
 
     fun shouldInlineThrow (E{k, s, env}, ppt, f, args) = (if !inlineDebug then inlineThrowInfo(E{k=k,s=s,env=env}, ppt, f, args) else ();
         case CV.kindOf f
-	 of C.VK_Cont(fb as C.FB{body, ...}) => 
+	 of C.VK_Cont(fb as C.FB{body, ...}) =>
 	    if not(VSet.member (s, f)) andalso
                Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args))
 	    then (ST.tick cntFOInline;
@@ -420,7 +420,7 @@ structure Inline : sig
                 case shouldInlineApp (env, ppt, f, args, conts)
                  of SOME (C.FB{f, params, rets, body}) => ((*
                       if InlineRecursive.isRecursive(f, body)
-                      then C.Exp(ppt, C.Apply(f, args, conts)) 
+                      then C.Exp(ppt, C.Apply(f, args, conts))
                       else*)
                      (ST.tick cntBeta;
                      doInline (env, f, conts@args, rets@params, body)))
@@ -447,7 +447,7 @@ structure Inline : sig
 	C.mkLets (casts, doExp (addAndDec (env, f), U.copyExp (argsForParams, body)))
     end
 
-    fun dump m prefix = 
+    fun dump m prefix =
         if !dumpFlg
         then let val file = TextIO.openOut(prefix ^ "InliningOutput.cps")
              in PrintCPS.output(file, m)
