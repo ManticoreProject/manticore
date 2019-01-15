@@ -398,11 +398,11 @@ structure Inline : sig
                   val env = extend(env, f)
 		  val e = doExp (env, e)
 		  fun doFB (C.FB{f, params, rets, body}) = let
-                      val env' = extend' (env, params)
-                      val env'' = extend' (env, rets)
+                      val env = extend' (env, params)
+                      val env = extend' (env, rets)
                   in
                       C.FB{f=f, params=params, rets=rets,
-			   body=doExp(env'', body)}
+			   body=doExp(env, body)}
                   end
 		  val fb = doFB fb
 		  val _ = setBinding(f, C.VK_Cont fb)
