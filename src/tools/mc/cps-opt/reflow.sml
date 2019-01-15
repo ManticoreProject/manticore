@@ -67,32 +67,32 @@ structure Reflow : sig
           CV.newProp (fn v => raise Fail (concat[CV.toString v, ": variable missing rebinding locations"]))
 
     fun setRebindingLocation (v, loc) =
-	case peekRebindingLocations v
-	 of SOME s => setRebindingLocationsInternal (v, PSet.add (s, loc))
-	  | NONE => setRebindingLocationsInternal (v, PSet.singleton (loc))
+    case peekRebindingLocations v
+     of SOME s => setRebindingLocationsInternal (v, PSet.add (s, loc))
+      | NONE => setRebindingLocationsInternal (v, PSet.singleton (loc))
 
     (* property mapping variables to unique binding locations *)
     val {getFn=bindingLocation : CV.var -> ProgPt.ppt, clrFn=clrBindingLocationInternal, setFn=setBindingLocationInternal, ...} =
           CV.newProp (fn v => raise Fail (concat[CV.toString v, ": variable missing binding location"]))
 
     fun setBindingLocation (v, ppt) = (
-	setRebindingLocation (v, ppt);
-	setBindingLocationInternal (v, ppt))
+    setRebindingLocation (v, ppt);
+    setBindingLocationInternal (v, ppt))
     fun clrBindingLocation v = (
-	clrRebindingLocations v;
-	clrBindingLocationInternal v)
+    clrRebindingLocations v;
+    clrBindingLocationInternal v)
 
     (* property mapping function variables to their body location *)
     val {getFn=bodyLocation : CV.var -> ProgPt.ppt, clrFn=clrBodyLocation, setFn=setBodyLocation, ...} =
           CV.newProp (fn _ => ProgPt.new())
 
   (***** Statistics *****)
-    val cntPasses		= ST.newCounter "reflow:num-passes"
+    val cntPasses        = ST.newCounter "reflow:num-passes"
 
   (*
    * Set the binding and body locations.
    * This operation is done in a first pass before the call information is assembled
-   * because these properties must be in place before the call graph can be 
+   * because these properties must be in place before the call graph can be
    * determined.
    *)
     fun pptOfExp (CPS.Exp (ppt, _)) = ppt
@@ -106,15 +106,15 @@ structure Reflow : sig
               List.app bindToBody rets;
               doExp body
           end
-          and doExp (CPS.Exp(ppt, e)) = (case e 
+          and doExp (CPS.Exp(ppt, e)) = (case e
                  of CPS.Let(xs, _, e) => (
                     List.app (fn (v) => setBindingLocation (v, ppt)) xs; doExp e)
                   | CPS.Fun(fbs, e) => (List.app (fn (fb) => doLambda(ppt,fb)) fbs; doExp e)
                   | CPS.Cont(fb, e) => (doLambda (ppt, fb); doExp e)
                   | CPS.If(_, e1, e2) => (doExp e1; doExp e2)
                   | CPS.Switch(_, cases, dflt) => (
-		      List.app (doExp o #2) cases;
-		      Option.app doExp dflt)
+              List.app (doExp o #2) cases;
+              Option.app doExp dflt)
                   | CPS.Apply _ => ()
                   | CPS.Throw _ => ()
                 (* end case *))
@@ -133,49 +133,49 @@ structure Reflow : sig
     fun setTop (m, ppt) = PMap.insert (m, ppt, TOP)
 
     fun addNeighbors (CPS.MODULE{body as CPS.FB{f,...}, ...}) = let
-	(* If this target is an indirect call through a closure, then hook all of the free variables up
-	 * to a fabricated program point in the graph that sits between the invocation point and the
-	 * target function.
-	 *)
-	fun foldChainVars (map, sourcePPT, origVar, targetFuns, fvsOfTargetFuns, ptlist) = (
-	    case (targetFuns, fvsOfTargetFuns)
-	     of ([], _) => (map, ptlist)
-	      | (f::targetFuns', fvs::fvsOfTargetFuns') => (
-		if CV.same (f, origVar) orelse (VSet.isEmpty fvs)
-		then foldChainVars (addInfo (map, sourcePPT, bodyLocation f), sourcePPT,
-				    origVar, targetFuns', fvsOfTargetFuns', ptlist)
-		else (let
-			  val fvPPT = ProgPt.new()
-			  val map' = VSet.foldr (fn (fv, m) => (setRebindingLocation (fv, fvPPT);
-								  addInfo (m, sourcePPT, fvPPT))) map fvs
-			  val map'' = addInfo (map', fvPPT, bodyLocation f)
-		      in
-			  (map'', ptlist)
-		      end))
-	      | _ => raise Fail "Called with unbalanced TARGET and TARGET_FVS lists")
+    (* If this target is an indirect call through a closure, then hook all of the free variables up
+     * to a fabricated program point in the graph that sits between the invocation point and the
+     * target function.
+     *)
+    fun foldChainVars (map, sourcePPT, origVar, targetFuns, fvsOfTargetFuns, ptlist) = (
+        case (targetFuns, fvsOfTargetFuns)
+         of ([], _) => (map, ptlist)
+          | (f::targetFuns', fvs::fvsOfTargetFuns') => (
+        if CV.same (f, origVar) orelse (VSet.isEmpty fvs)
+        then foldChainVars (addInfo (map, sourcePPT, bodyLocation f), sourcePPT,
+                    origVar, targetFuns', fvsOfTargetFuns', ptlist)
+        else (let
+              val fvPPT = ProgPt.new()
+              val map' = VSet.foldr (fn (fv, m) => (setRebindingLocation (fv, fvPPT);
+                                  addInfo (m, sourcePPT, fvPPT))) map fvs
+              val map'' = addInfo (map', fvPPT, bodyLocation f)
+              in
+              (map'', ptlist)
+              end))
+          | _ => raise Fail "Called with unbalanced TARGET and TARGET_FVS lists")
           fun doLambda (ppt, CPS.FB{f, params, rets, body}, (m, ptlist)) =
               doExp (body, (m, ptlist))
-          and doExp (CPS.Exp(ppt, e), (m, ptlist)) = (case e 
-                 of CPS.Let(xs, _, e) => 
+          and doExp (CPS.Exp(ppt, e), (m, ptlist)) = (case e
+                 of CPS.Let(xs, _, e) =>
                     doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist))
                   | CPS.Fun(fbs, e) => let
                         val (m, ptlist) = List.foldr (fn (fb, (m, ptlist)) => doLambda(ppt, fb, (m, ptlist))) (m, ptlist) fbs
-			fun anyknown(fb as CPS.FB{f,...}, truth) = 
-			    (case CFACPS.callersOf f
-			      of CFACPS.Unknown => true
-			       | _ => truth)
-			val notknown = List.foldr anyknown false fbs (*TRUE if any fbs have unknown callersOf, FALSE otherwise *)
+            fun anyknown(fb as CPS.FB{f,...}, truth) =
+                (case CFACPS.callersOf f
+                  of CFACPS.Unknown => true
+                   | _ => truth)
+            val notknown = List.foldr anyknown false fbs (*TRUE if any fbs have unknown callersOf, FALSE otherwise *)
                     in
                         case notknown
-			 of true => doExp (e, (addInfo (m, ppt, pptOfExp e), (pptOfExp e)::ptlist))
-			  | false => doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist))
+             of true => doExp (e, (addInfo (m, ppt, pptOfExp e), (pptOfExp e)::ptlist))
+              | false => doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist))
                     end
                   | CPS.Cont(fb as CPS.FB{f,...}, e) => let
                         val (m, ptlist) = doLambda (ppt, fb, (m, ptlist))
-                    in 
-			(case CFACPS.callersOf f
-			  of CFACPS.Unknown => doExp(e, (addInfo (m, ppt, pptOfExp e), (pptOfExp e)::ptlist))
-			   | _ => doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist)))
+                    in
+            (case CFACPS.callersOf f
+              of CFACPS.Unknown => doExp(e, (addInfo (m, ppt, pptOfExp e), (pptOfExp e)::ptlist))
+               | _ => doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist)))
                     end
                   | CPS.If(_, e1, e2) => let
                         val m = addInfo (m, ppt, pptOfExp e1)
@@ -199,25 +199,25 @@ structure Reflow : sig
                      of CFACPS.TOP => (setTop (m, ppt), ptlist)
                       | CFACPS.LAMBDAS ls => let
                             val ll = VSet.listItems ls
-			    val freeVars = List.map FreeVars.envOfFun ll
+                val freeVars = List.map FreeVars.envOfFun ll
                         in
-			    foldChainVars (m, ppt, f, ll, freeVars, ptlist)
+                foldChainVars (m, ppt, f, ll, freeVars, ptlist)
                         end
                       | CFACPS.BOT => (m, ptlist)
                       | CFACPS.TUPLE _ => raise Fail (concat[CV.toString f, " is in an application position but is a tuple according to CFA."])
-		      | CFACPS.BOOL _ => raise Fail (concat[CV.toString f, " is in an application position but is a boolean according to CFA."]))
+              | CFACPS.BOOL _ => raise Fail (concat[CV.toString f, " is in an application position but is a boolean according to CFA."]))
                   | CPS.Throw (k, _) => (
                     case CFACPS.valueOf k
                      of CFACPS.TOP => (setTop (m, ppt), ptlist)
                       | CFACPS.LAMBDAS ls => let
                             val ll = VSet.listItems ls
-			    val freeVars = List.map FreeVars.envOfFun ll
+                val freeVars = List.map FreeVars.envOfFun ll
                         in
-			    foldChainVars (m, ppt, k, ll, freeVars, ptlist)
+                foldChainVars (m, ppt, k, ll, freeVars, ptlist)
                         end
                       | CFACPS.BOT => (m, ptlist)
                       | CFACPS.TUPLE _ => raise Fail (concat[CV.toString k, " is in an application position but is a tuple according to CFA."])
-		      | CFACPS.BOOL _ => raise Fail (concat[CV.toString f, " is in an application position but is a boolean according to CFA."]))
+              | CFACPS.BOOL _ => raise Fail (concat[CV.toString f, " is in an application position but is a boolean according to CFA."]))
                 (* end case *))
           in
             doLambda (bindingLocation f, body, (PMap.empty, nil))
@@ -263,7 +263,7 @@ structure Reflow : sig
                       | SOME s => (
                           PMap.insert (m, p1, PSet.add (s, p2)))
             in
-		case PSet.isEmpty s
+        case PSet.isEmpty s
                  of true => (m, ppt::leaves)
                   | false => (PSet.foldl (fn (ppt', m) =>
                                              addInfo (m, ppt', ppt)) m s,
@@ -272,13 +272,13 @@ structure Reflow : sig
         in
             PMap.foldli addEntries (PMap.empty, []) map
         end
-            
+
         val (parentMap, leaves) = invert map
 
-	val _ = if !debugFlg
-		then (print (concat["Number of leaves: ", Int.toString (List.length leaves), "\nNumber of parents:",
-		     Int.toString (PMap.numItems parentMap), "\n"]))
-		else ()
+    val _ = if !debugFlg
+        then (print (concat["Number of leaves: ", Int.toString (List.length leaves), "\nNumber of parents:",
+             Int.toString (PMap.numItems parentMap), "\n"]))
+        else ()
 
         val initialGrey = PSet.fromList leaves
 
@@ -313,17 +313,17 @@ structure Reflow : sig
                                        (rmap, grey)
                                    end
                                    val (rmap, grey') = PSet.foldl doEntry (rmap, grey') parents
-                                                                            
+
                                in
                                    compute (rmap, black', grey')
                                end)
               end)
-	val result = compute (PMap.empty, PSet.empty, initialGrey)
+    val result = compute (PMap.empty, PSet.empty, initialGrey)
     in
-	if !debugFlg
-	then (print (concat["Number of keys in reachability graph (should equal the number of parents): ", Int.toString(PMap.numItems(result)), "\n"]))
-	else ();
-	result
+    if !debugFlg
+    then (print (concat["Number of keys in reachability graph (should equal the number of parents): ", Int.toString(PMap.numItems(result)), "\n"]))
+    else ();
+    result
     end
 
     fun compressSCC (p, ptlist) = let
@@ -332,14 +332,14 @@ structure Reflow : sig
          * those program points that define functions whose callersOf are unknown.
          * If the list is still too big, it could also be split by fun/cont types.
          *)
-	fun follow pt =
+    fun follow pt =
             case PMap.find(p, pt)
              of SOME v => (case v
-	                    of TOP => ptlist
-	                     | REACHES l => PSet.listItems l)
+                        of TOP => ptlist
+                         | REACHES l => PSet.listItems l)
               | NONE => [] (* points not appearing have no out edges *)
         val a = Time.now()
-	val components : SCC.component list = SCC.topOrder'{roots = map #1 (PMap.listItemsi p), follow = follow}
+    val components : SCC.component list = SCC.topOrder'{roots = map #1 (PMap.listItemsi p), follow = follow}
         val b = Time.now()
         val _ = if !debugFlg
                 then let val simpleComps = List.filter (fn x => case x of SCC.SIMPLE _ => true |_ => false) components
@@ -351,47 +351,47 @@ structure Reflow : sig
                         ()
                      end
                 else()
-	(* The representatives are:
-	 * for a SCC.SIMPLE component, itself
-	 * for an SCC.RECURSIVE component, the first entry
-	 *)
-	fun addReps (SCC.SIMPLE nd, map) = PMap.insert (map, nd, nd)
-	  | addReps (SCC.RECURSIVE ndList, map) = let
-		val rep = hd (ndList)
-	    in
-		foldl (fn (pt, map') => PMap.insert (map', pt, rep)) map ndList
-	    end
-	val newreps = foldl addReps PMap.empty components
+    (* The representatives are:
+     * for a SCC.SIMPLE component, itself
+     * for an SCC.RECURSIVE component, the first entry
+     *)
+    fun addReps (SCC.SIMPLE nd, map) = PMap.insert (map, nd, nd)
+      | addReps (SCC.RECURSIVE ndList, map) = let
+        val rep = hd (ndList)
+        in
+        foldl (fn (pt, map') => PMap.insert (map', pt, rep)) map ndList
+        end
+    val newreps = foldl addReps PMap.empty components
         val c = Time.now()
 
-	(*
-	 * Computing the compressed graph:
-	 * Need to have one entry in the map per representative, with a list of
-	 * all the points adjacent to it.
-	 * Straightforward for simple. For RECURSIVE, need to add all the adjacent points
-	 * from each of the original points, but filtering out those that are not
-	 * reprentatives.
-	 *
-	 *)
-	val ptset = PSet.fromList ptlist
-	fun reachesFromPoint pt =
-	    case PMap.find (p, pt)
-	     of SOME reaches => (case reaches
-				  of TOP => ptset
-				   | REACHES s => s)
-	      | NONE => PSet.empty
-	fun filterNonReps s =
-	    PSet.filter (fn pt => not(Option.isSome (PMap.find (newreps, pt)))) s
-	fun findAdj (SCC.SIMPLE pt, map) = PMap.insert (map, pt, filterNonReps (reachesFromPoint pt))
-	  | findAdj (SCC.RECURSIVE pts, map) = (
-	    let
-		val adjacents = List.foldl (fn (pt, reaches) => PSet.union(reaches, reachesFromPoint pt)) PSet.empty pts
-	    in
-		PMap.insert (map, hd(pts), filterNonReps adjacents)
-	    end)
-	val compressed = List.foldl findAdj PMap.empty components
+    (*
+     * Computing the compressed graph:
+     * Need to have one entry in the map per representative, with a list of
+     * all the points adjacent to it.
+     * Straightforward for simple. For RECURSIVE, need to add all the adjacent points
+     * from each of the original points, but filtering out those that are not
+     * reprentatives.
+     *
+     *)
+    val ptset = PSet.fromList ptlist
+    fun reachesFromPoint pt =
+        case PMap.find (p, pt)
+         of SOME reaches => (case reaches
+                  of TOP => ptset
+                   | REACHES s => s)
+          | NONE => PSet.empty
+    fun filterNonReps s =
+        PSet.filter (fn pt => not(Option.isSome (PMap.find (newreps, pt)))) s
+    fun findAdj (SCC.SIMPLE pt, map) = PMap.insert (map, pt, filterNonReps (reachesFromPoint pt))
+      | findAdj (SCC.RECURSIVE pts, map) = (
+        let
+        val adjacents = List.foldl (fn (pt, reaches) => PSet.union(reaches, reachesFromPoint pt)) PSet.empty pts
+        in
+        PMap.insert (map, hd(pts), filterNonReps adjacents)
+        end)
+    val compressed = List.foldl findAdj PMap.empty components
         val d = Time.now()
-		
+
         val _ = if !debugFlg
                 then print (concat["Compute SCC.topOrder': ", Time.toString (Time.-(b,a)), "\n",
                                    "Creating representative map: ", Time.toString (Time.-(c,b)), "\n",
@@ -399,24 +399,24 @@ structure Reflow : sig
                 else ()
 
     in
-	(representative := newreps;
-	 if !debugFlg
-	 then (
-	     print (concat["Number of items in rep (should match number of program points + 2): ", Int.toString(PMap.numItems(!representative)), "\n"]);
-	     print (concat["Number of keys in compressed graph (should match SCC components): ", Int.toString(PMap.numItems(compressed)), "\n"]))
-	 else ();
-	 compressed)
+    (representative := newreps;
+     if !debugFlg
+     then (
+         print (concat["Number of items in rep (should match number of program points + 2): ", Int.toString(PMap.numItems(!representative)), "\n"]);
+         print (concat["Number of keys in compressed graph (should match SCC components): ", Int.toString(PMap.numItems(compressed)), "\n"]))
+     else ();
+     compressed)
     end
 
-    fun printMap m = 
+    fun printMap m =
           let fun printVal node = print (ProgPt.toString node ^ "\n")
               val keyVals = PMap.listItemsi m
               in List.app (fn (k, v) => (print (ProgPt.toString k ^ " => "); printVal v)) keyVals
               end
 
     fun analyze (module as CPS.MODULE{body, ...}) = let
-	val _ = FreeVars.clear module
-	val _ = FreeVars.analyzeIgnoringJoin module
+    val _ = FreeVars.clear module
+    val _ = FreeVars.analyzeIgnoringJoin module
         val a = Time.now()
         val _ = setLocations module
         val b = Time.now()
@@ -446,14 +446,14 @@ structure Reflow : sig
 
 
     fun pathExists (p1 : ProgPt.ppt, p2 : ProgPt.ppt) = let
-	val rep1 : ProgPt.ppt = Option.valOf(PMap.find(!representative, p1))
-	val rep2 : ProgPt.ppt = Option.valOf(PMap.find(!representative, p2))
+    val rep1 : ProgPt.ppt = Option.valOf(PMap.find(!representative, p1))
+    val rep2 : ProgPt.ppt = Option.valOf(PMap.find(!representative, p2))
     in
-	if (ProgPt.same (rep1, rep2))
-	then (if !debugFlg then print ("nodes " ^ ProgPt.toString rep1 ^ " and " ^ ProgPt.toString rep2 ^ " are a part of the same SCC (path exists)\n") else (); true)
-	else (case PMap.find (!graph, rep1)
-	       of NONE => false
-		| SOME ps => PSet.member (ps, rep2))
+    if (ProgPt.same (rep1, rep2))
+    then (if !debugFlg then print ("nodes " ^ ProgPt.toString rep1 ^ " and " ^ ProgPt.toString rep2 ^ " are a part of the same SCC (path exists)\n") else (); true)
+    else (case PMap.find (!graph, rep1)
+           of NONE => false
+        | SOME ps => PSet.member (ps, rep2))
     end
 
     fun pointAnalyzed (p) =
@@ -462,9 +462,9 @@ structure Reflow : sig
           | NONE => false
 
     val analyze = BasicControl.mkTracePassSimple {
-	    passName = "reflow",
-	    pass = analyze
-	  }
+        passName = "reflow",
+        pass = analyze
+      }
 
   (* clear reflow annotations from the variables of a module.  Note that
    * we can restrict the traversal to binding instances.
@@ -476,14 +476,14 @@ structure Reflow : sig
                 List.app clrBindingLocation params;
                 List.app clrBindingLocation rets;
                 doExp body)
-          and doExp (CPS.Exp(_, e)) = (case e 
+          and doExp (CPS.Exp(_, e)) = (case e
                  of CPS.Let(xs, _, e) => (List.app clrBindingLocation xs; doExp e)
                   | CPS.Fun(fbs, e) => (List.app doLambda fbs; doExp e)
                   | CPS.Cont(fb, e) => (doLambda fb; doExp e)
                   | CPS.If(_, e1, e2) => (doExp e1; doExp e2)
                   | CPS.Switch(_, cases, dflt) => (
-		      List.app (doExp o #2) cases;
-		      Option.app doExp dflt)
+              List.app (doExp o #2) cases;
+              Option.app doExp dflt)
                   | CPS.Apply _ => ()
                   | CPS.Throw _ => ()
                 (* end case *))
@@ -493,4 +493,3 @@ structure Reflow : sig
           end
 
   end
-

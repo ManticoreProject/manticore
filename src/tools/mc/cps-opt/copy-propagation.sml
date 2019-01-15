@@ -138,9 +138,9 @@ structure CopyPropagation : sig
           | isClosedTerm (C.Fun (lambdas, body), env) = let
               val (b, env) = List.foldr (fn (f,(b,e)) => let val (b',e') = isClosedLambda (f,env)
                                                          in
-                                                             (b andalso b', e') end) (true,env) lambdas                                        
+                                                             (b andalso b', e') end) (true,env) lambdas
           in
-               b andalso isClosedExp(body, env)  
+               b andalso isClosedExp(body, env)
           end
           | isClosedTerm (C.Cont (lambda, body), env) = let
               val (b,env) = isClosedLambda (lambda, env)
@@ -214,7 +214,7 @@ structure CopyPropagation : sig
         else ST.tick cntUnsafe;
 	result
     end
-                               
+
     fun copyPropagate (C.MODULE{name,externs,
                                 body=(mainLambda as C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         val pass = ref 0
@@ -232,7 +232,7 @@ structure CopyPropagation : sig
                          (if VSet.member (env, f')
                           then if !pass = 1
                                then let
-                                       val safe = isSafe (ppt, getFB f', externsEnv) 
+                                       val safe = isSafe (ppt, getFB f', externsEnv)
                                    in
                                        if safe
                                        then (if !propagationDebug
@@ -366,13 +366,16 @@ structure CopyPropagation : sig
 	}
     end
 
-    fun transform m =
+    fun transform m = (
+        enableCopyPropagationReflow := (not (Controls.get BasicControl.direct)
+                                       andalso !enableCopyPropagationReflow );
         if !enableCopyPropagation
-	then (FreeVars.analyzeIgnoringJoin m;
+          then (FreeVars.clear m; FreeVars.analyzeIgnoringJoin m;
               if !enableCopyPropagationReflow
               then ignore (Reflow.analyze m)
               else ();
               copyPropagate m)
-        else m
+          else m
+        )
 
   end

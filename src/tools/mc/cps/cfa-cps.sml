@@ -620,7 +620,8 @@ structure CFACPS : sig
                 and doApplyAux (f, args, conts) = (case CV.kindOf f
                        of CPS.VK_Fun (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);
-                            ListPair.appEq eqInfo' (rets, conts))
+                            ListPair.appEq eqInfo' (rets, conts)
+                            )
                         | _ => raise Fail "type error: doApplyAux"
                       (* end case *))
                 and doThrow (f, args) = (case getValue f

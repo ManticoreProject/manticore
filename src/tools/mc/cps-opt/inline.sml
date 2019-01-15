@@ -37,38 +37,38 @@ structure Inline : sig
     val dumpFlg = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
-	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
-	      envName = NONE
-	    }) [
-	      Controls.control {
-		  ctl = inlineFlg,
-		  name = "enable-inline",
-		  pri = [0, 1],
-		  obscurity = 0,
-		  help = "enable expansive inlining"
-		},
-	      Controls.control {
-		  ctl = inlineHOFlg,
-		  name = "enable-ho-inline",
-		  pri = [0, 1],
-		  obscurity = 0,
-		  help = "enable higher-order extension to expansive inlining"
-		},
-	      Controls.control {
-		  ctl = inlineDebug,
-		  name = "inline-debug",
-		  pri = [0, 1],
-		  obscurity = 0,
-		  help = "debug expansive inlining"
-		},
-		  Controls.control{
-		    ctl = dumpFlg,
-		    name = "dump-inline",
-		    pri = [0, 1],
-		    obscurity = 0,
-		    help = "output file before and after inlining"
-		}
-	    ]
+          ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+          envName = NONE
+        }) [
+          Controls.control {
+          ctl = inlineFlg,
+          name = "enable-inline",
+          pri = [0, 1],
+          obscurity = 0,
+          help = "enable expansive inlining"
+        },
+          Controls.control {
+          ctl = inlineHOFlg,
+          name = "enable-ho-inline",
+          pri = [0, 1],
+          obscurity = 0,
+          help = "enable higher-order extension to expansive inlining"
+        },
+          Controls.control {
+          ctl = inlineDebug,
+          name = "inline-debug",
+          pri = [0, 1],
+          obscurity = 0,
+          help = "debug expansive inlining"
+        },
+          Controls.control{
+            ctl = dumpFlg,
+            name = "dump-inline",
+            pri = [0, 1],
+            obscurity = 0,
+            help = "output file before and after inlining"
+        }
+        ]
 
   (********** Counters for statistics **********)
     val cntBeta                 = ST.newCounter "cps-inline:beta"
@@ -97,9 +97,9 @@ structure Inline : sig
 
   (* Variable renaming *)
     fun rename (env, x, y) = (
-	(* every use of x will be replaced by a use of y *)
-	  combineAppUseCnts(y, x);
-	  VMap.insert(env, x, y))
+    (* every use of x will be replaced by a use of y *)
+      combineAppUseCnts(y, x);
+      VMap.insert(env, x, y))
 
     fun rename' (env, [], []) = env
       | rename' (env, x::xs, y::ys) = rename' (rename(env, x, y), xs, ys)
@@ -107,9 +107,9 @@ structure Inline : sig
 
   (* apply a substitution to a variable *)
     fun subst (env, x) = (case VMap.find(env, x)
-	   of SOME y => y
-	    | NONE => x
-	  (* end case *))
+       of SOME y => y
+        | NONE => x
+      (* end case *))
 
   (* apply a substitution to a list of variables *)
     fun subst' (env, []) = []
@@ -117,9 +117,9 @@ structure Inline : sig
 
   (* decrement a variable's use count after applying a substitution *)
     fun substDec (env, x) = (case VMap.find(env, x)
-	   of SOME y => dec y
-	    | NONE => dec x
-	  (* end case *))
+       of SOME y => dec y
+        | NONE => dec x
+      (* end case *))
 
   (* extend the environment with a mapping from the "toVars" to the "fromVars" (i.e.,
    * instances of a ftoVarromVar will be replaced with the corresponding fromVar),
@@ -163,7 +163,7 @@ structure Inline : sig
                 VMap.insert (env, toVar, fromVar'))
           val env' = ListPair.foldl bind env (fromVars', toVars)
           in
-	    (env', casts)
+        (env', casts)
           end
 
   (********** The inlining environment **********)
@@ -179,26 +179,43 @@ structure Inline : sig
    * used scale the size of the application, while the set s contains those
    * functions that should not be inlined; either because we are inlining
    * them or we are in their body.
-   * We also need to track all of the bound variables to ensure they are
+   * We also need to track all of the bound variables using 'env' to ensure they are
    * available for functions about to be inlined.
+   *
+   * For the purposes of stack-based compilation, we also track local conts to
+   * ensure that lining of a cont from an outer function does not occur.
+   * A continuation c is "local" to a function f if there is no function definition
+   * between the definitions of c and f.
    *)
-    datatype env = E of {k : int, s : VSet.set, env : VSet.set}
+    datatype env = E of { k : int,
+                          s : VSet.set,
+                          env : VSet.set,
+                          localK : VSet.set
+                        }
 
   (* add the function f to the environment *)
-    fun addFun (E{k, s, env}, f) = E{k=k, s=VSet.add(s, f), env=env}
+    fun addFun (E{k, s, env, localK}, f) = E{k=k, s=VSet.add(s, f), env=env, localK=localK}
 
   (* add the function f and decrement the size factor *)
-    fun addAndDec (E{k, s, env}, f) = E{k=inldec k, s=VSet.add(s, f), env=env}
+    fun addAndDec (E{k, s, env, localK}, f) = E{k=inldec k, s=VSet.add(s, f), env=env, localK=localK}
 
     (* Extend the environment with another bound variable *)
-    fun extend (E{k, s, env}, v) = E{k=k, s=s, env=VSet.add(env, v)}
+    fun extend (E{k, s, env, localK}, v) = E{k=k, s=s, env=VSet.add(env, v), localK=localK}
     fun extend' (e, vs) = List.foldl (fn (v, e) => extend (e, v)) e vs
 
+    fun addLocalCont (E{k, s, env, localK}, f) = E{k=k,s=s,env=env, localK = VSet.add(localK, f)}
+    fun clearLocalConts (E{k, s, env, localK=ignored}) = E{k=k,s=s,env=env, localK = VSet.empty}
+
   (* the initial envronment *)
-    fun initEnv () = E{k = initK, s = VSet.empty, env = VSet.empty}
+    fun initEnv () = E{k = initK, s = VSet.empty, env = VSet.empty, localK = VSet.empty}
 
 
   (********** Inlining **********)
+
+    fun isLocalCont (localK, c) =
+        if Controls.get BasicControl.direct
+          then VSet.member(localK, c)
+          else true (* no restriction / limitations *)
 
     (*
      * Inlining is safe when either:
@@ -223,8 +240,8 @@ structure Inline : sig
                             val result = Reflow.pointAnalyzed funLoc
                             val result = result andalso PSet.all Reflow.pointAnalyzed fvLocs
                             val result = result andalso PSet.exists (fn (fvLoc) =>
-					                 (Reflow.pathExists (funLoc, fvLoc)) andalso
-					                 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs
+                                     (Reflow.pathExists (funLoc, fvLoc)) andalso
+                                     (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs
                             in result
                             end
         in
@@ -240,7 +257,7 @@ structure Inline : sig
                                      CV.toString oldVar,"\n"]);
                       VSet.app (fn x => print (concat[" -- ", CV.toString x, "\n"]))
                                (VSet.difference (fvs, env)))
-		else ()
+        else ()
     in
         if not(!inlineHOFlg)
         then VSet.numItems fvs = 0
@@ -262,15 +279,15 @@ structure Inline : sig
                        then print (CV.toString f ^ " is not safe because it has unsafe free variables\n")
                        else print (CV.toString f ^ " is higher order with FV and is safe to inline\n")
 
-    fun inlineAppInfo (E{k, s, env}, ppt, f, args, rets) =
+    fun inlineAppInfo (E{k, s, env, localK}, ppt, f, args, rets) =
         case CV.kindOf f of
         C.VK_Fun(fb as C.FB{body, ...}) =>
-	        if VSet.member (s, f)
-	        then print (CV.toString f ^ " was not inlined because it is a member of env\n")
-	        else if not(Sizes.smallerThan(body, k * Sizes.sizeOfApply(f, args, rets)))
-	             then print (CV.toString f ^ " was not inlined because its body is too large\n")
-	             else ()
-	  | _ => (case CFA.valueOf f
+            if VSet.member (s, f)
+            then print (CV.toString f ^ " was not inlined because it is a member of env\n")
+            else if not(Sizes.smallerThan(body, k * Sizes.sizeOfApply(f, args, rets)))
+                 then print (CV.toString f ^ " was not inlined because its body is too large\n")
+                 else ()
+      | _ => (case CFA.valueOf f
                    of CFA.LAMBDAS (l) => (
                        case CV.Set.listItems l
                         of [f'] => let
@@ -295,15 +312,15 @@ structure Inline : sig
    * inlined.  If so, return SOME(fb), where fb is the lambda
    * bound to f, otherwise return NONE.
    *)
-    fun shouldInlineApp (E{k, s, env}, ppt, f, args, rets) = (if !inlineDebug then inlineAppInfo(E{k=k,s=s,env=env}, ppt, f, args, rets) else ();
+    fun shouldInlineApp (E{k, s, env, localK}, ppt, f, args, rets) = (if !inlineDebug then inlineAppInfo(E{k=k,s=s,env=env,localK=localK}, ppt, f, args, rets) else ();
         case CV.kindOf f
-	 of C.VK_Fun(fb as C.FB{body, ...}) =>
-	    if not(VSet.member (s, f)) andalso
+     of C.VK_Fun(fb as C.FB{body, ...}) =>
+        if not(VSet.member (s, f)) andalso
                Sizes.smallerThan(body, k * Sizes.sizeOfApply(f, args, rets))
-	    then (ST.tick cntFOInline;
+        then (ST.tick cntFOInline;
                   SOME fb)
-	    else NONE
-	  | _ => (case CFA.valueOf f
+        else NONE
+      | _ => (case CFA.valueOf f
                    of CFA.LAMBDAS (l) => (
                        case CV.Set.listItems l
                         of [f'] => let
@@ -320,15 +337,17 @@ structure Inline : sig
                          | _ => NONE)
                     | _ => NONE))
 
-    fun inlineThrowInfo (E{k, s, env}, ppt, f, args) =
+    fun inlineThrowInfo (E{k, s, env, localK}, ppt, f, args) =
         case CV.kindOf f of
         C.VK_Cont(fb as C.FB{body, ...}) =>
-	        if VSet.member (s, f)
-	        then print (CV.toString f ^ " was not inlined because it is a member of env\n")
-	        else if not(Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)))
-	             then print (CV.toString f ^ " was not inlined because its body is too large\n")
-	             else ()
-	  | _ => (case CFA.valueOf f
+            if VSet.member (s, f)
+            then print (CV.toString f ^ " was not inlined because it is a member of env\n")
+            else if not (isLocalCont (localK, f))
+                 then print (CV.toString f ^ " was not inlined because it is not a local cont.\n")
+            else if not(Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)))
+                 then print (CV.toString f ^ " was not inlined because its body is too large\n")
+                 else ()
+      | _ => (case CFA.valueOf f
                    of CFA.LAMBDAS (l) => (
                        case CV.Set.listItems l
                         of [f'] => let
@@ -340,6 +359,8 @@ structure Inline : sig
                                  then print (CV.toString f ^ " was not inlined because its CFA value is a proxy\n")
                                  else if not(isSafe(ppt, fb, env, f))
                                       then print(CV.toString f ^ " was not inlined because it's not safe\n")
+                                      else if not (isLocalCont (localK, f))
+                                           then print (CV.toString f ^ " was not inlined because it is not a local cont.\n")
                                       else if not(Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)))
                                            then print (CV.toString f ^ " was not inlined because its CFA value's body is too large\n")
                                            else print (CV.toString f ^ " was inlined!\n")
@@ -349,17 +370,16 @@ structure Inline : sig
                     | v => print (CV.toString f ^ " was not inlined because its CFA value is: " ^
                                     CFA.valueToString v ^ "\n"))
 
-    fun shouldInlineThrow (E{k, s, env}, ppt, f, args) = (if !inlineDebug then inlineThrowInfo(E{k=k,s=s,env=env}, ppt, f, args) else ();
-        (*if (Controls.get BasicControl.direct) then NONE else (* NOTE(kavon): it's not always safe to inline a throw if using direct-style codegen *)*)
-        if true then NONE else  (* TODO disabled across the board right now *)
+    fun shouldInlineThrow (E{k, s, env, localK}, ppt, f, args) = (if !inlineDebug then inlineThrowInfo(E{k=k,s=s,env=env,localK=localK}, ppt, f, args) else ();
         (case CV.kindOf f
-	 of C.VK_Cont(fb as C.FB{body, ...}) =>
-	    if not(VSet.member (s, f)) andalso
-               Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args))
-	    then (ST.tick cntFOInline;
+     of C.VK_Cont(fb as C.FB{body, ...}) =>
+        if not(VSet.member (s, f)) andalso
+           isLocalCont (localK, f) andalso
+           Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args))
+        then (ST.tick cntFOInline;
                   SOME fb)
-	    else NONE
-	  | _ => (case CFA.valueOf f
+        else NONE
+      | _ => (case CFA.valueOf f
                    of CFA.LAMBDAS (l) => (
                        case CV.Set.listItems l
                         of [f'] => let
@@ -368,6 +388,7 @@ structure Inline : sig
                             if not(VSet.member (s, f')) andalso
                                not(CFA.isProxy f') andalso
                                isSafe (ppt, fb, env, f) andalso
+                               isLocalCont (localK, f) andalso
                                Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args))
                             then (ST.tick cntHOinline;
                                   SOME fb)
@@ -377,48 +398,53 @@ structure Inline : sig
                     | _ => NONE)))
 
     fun doExp (env, exp as C.Exp(ppt, e)) = (case e
-	   of C.Let(lhs, rhs, e) =>
+       of C.Let(lhs, rhs, e) =>
               C.Exp (ppt, C.Let (lhs, rhs, doExp (extend'(env, lhs), e)))
-	    | C.Fun(fbs, e) => let
+        | C.Fun(fbs, e) => let
                 val funs = List.map (fn (C.FB{f,...}) => f) fbs
                 val env = extend'(env, funs)
-		val e = doExp(env, e)
-		fun doFB (C.FB{f, params, rets, body}) = let
+        val e = doExp(env, e)
+        fun doFB (C.FB{f, params, rets, body}) = let
                     val env = extend' (env, params)
                     val env = extend' (env, rets)
                     val env = addFun(env, f) (*Don't inline recursive calls*)
+                    val env = clearLocalConts env
                 in
                     C.FB{f=f, params=params, rets=rets,
-			 body=doExp(env, body)}
+             body=doExp(env, body)}
                 end
-	      (* note that the mkLambda resets the kind info *)
-		val fbs = List.map (fn x => C.mkLambda (x,false)) (List.map doFB fbs)
-		in
+          (* note that the mkLambda resets the kind info *)
+        val fbs = List.map (fn x => C.mkLambda (x,false)) (List.map doFB fbs)
+        in
                     C.Exp (ppt, C.Fun (fbs, e))
-		end
-	    | C.Cont(fb as C.FB{f, params, rets, body}, e) => let
-                  val env = extend(env, f)
-		  val e = doExp (env, e)
-		  fun doFB (C.FB{f, params, rets, body}) = let
-                      val env' = extend' (env, params)
-                      val env'' = extend' (env, rets)
-                  in
-                      C.FB{f=f, params=params, rets=rets,
-			   body=doExp(env'', body)}
-                  end
-		  val fb = doFB fb
-		  val _ = setBinding(f, C.VK_Cont fb)
-		  in
+        end
+        | C.Cont(fb as C.FB{f, params, rets, body}, e) => let
+              val env = extend(env, f)
+              val env = addLocalCont(env, f)
+
+              val e = doExp (env, e)
+
+              fun doFB (C.FB{f, params, rets, body}) = let
+                          val env = extend' (env, params)
+                          val env = extend' (env, rets)
+                      in
+                          C.FB{f=f, params=params, rets=rets,
+                               body=doExp(env, body)}
+                      end
+
+              val fb = doFB fb
+              val _ = setBinding(f, C.VK_Cont fb)
+          in
                       C.Exp (ppt, C.Cont (fb, e))
-		  end
-	    | C.If(cond, e1, e2) => C.Exp (ppt, C.If(cond,
-		doExp(env, e1),
-		doExp(env, e2)))
-	    | C.Switch(x, cases, dflt) =>
+          end
+        | C.If(cond, e1, e2) => C.Exp (ppt, C.If(cond,
+        doExp(env, e1),
+        doExp(env, e2)))
+        | C.Switch(x, cases, dflt) =>
               C.Exp (ppt, C.Switch (x,
-		          List.map (fn (l, e) => (l, doExp(env, e))) cases,
-		          Option.map (fn e => doExp(env, e)) dflt))
-	    | C.Apply(f, args, conts) => (
+                  List.map (fn (l, e) => (l, doExp(env, e))) cases,
+                  Option.map (fn e => doExp(env, e)) dflt))
+        | C.Apply(f, args, conts) => (
                 case shouldInlineApp (env, ppt, f, args, conts)
                  of SOME (C.FB{f, params, rets, body}) => ((*
                       if InlineRecursive.isRecursive(f, body)
@@ -427,26 +453,26 @@ structure Inline : sig
                      (ST.tick cntBeta;
                      doInline (env, f, conts@args, rets@params, body)))
                   | NONE => C.Exp (ppt, C.Apply (f, args, conts)))
-	    | C.Throw(k, args) => (
+        | C.Throw(k, args) => (
                 case shouldInlineThrow (env, ppt, k, args)
                  of SOME (C.FB{f, params, body, ...}) => (
                      ST.tick cntBetaCont;
                      doInline (env, f, args, params, body))
                   | NONE => C.Exp (ppt, C.Throw (k, args)))
-	  (* end case *))
+      (* end case *))
 
     and doInline (env, f, args, params, body) = let
-	(* Extend the substitution to map the parameter to the argument and decrement
-	 * the argument use count.
+    (* Extend the substitution to map the parameter to the argument and decrement
+     * the argument use count.
          *
          * CONSIDER: we inline the old definition of the function, which could possibly
          * have some of its own applications that have now been subject to inlining.
          * Should we instead replace with the new definition? Or perform inlining
          * iteratively, to cleanly handle the recursive function definitions case?
-	 *)
+     *)
         val (argsForParams, casts) = extendWithCasts {env = U.empty, fromVars = args, toVars = params}
     in
-	C.mkLets (casts, doExp (addAndDec (env, f), U.copyExp (argsForParams, body)))
+    C.mkLets (casts, doExp (addAndDec (env, f), U.copyExp (argsForParams, body)))
     end
 
     fun dump m prefix =
@@ -459,13 +485,16 @@ structure Inline : sig
     fun transform (m as C.MODULE{name, externs, body}) =
         if !inlineFlg
         then (let
-                 val _ = if !inlineHOFlg
-                         then Reflow.analyze m
-                         else ()
+                 val _ = ( FreeVars.clear m ;
+                           FreeVars.analyze m ;
+                           if !inlineHOFlg
+                             then Reflow.analyze m
+                             else ()
+                         )
                  val _ = dump m "pre"
-	         val C.FB{f, params, rets, body} = body
-	         val body = doExp(initEnv(), body)
-	         val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body}, false)
+             val C.FB{f, params, rets, body} = body
+             val body = doExp(initEnv(), body)
+             val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body}, false)
                  val m = C.MODULE{name=name, externs=externs, body=fb}
                  val _ = Census.census m
                  val _ = dump m "post"
