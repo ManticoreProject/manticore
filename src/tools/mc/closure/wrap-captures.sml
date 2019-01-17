@@ -354,7 +354,7 @@ structure WrapCaptures : sig
       val curRets = VSet.addList(VSet.empty, curRets)
 
       (* sanity checks about rets *)
-      val allRets = getAllRets env
+      val allRets = VSet.map (subst env) (getAllRets env)
       val withoutCur = VSet.difference(fvs, curRets)
       val nonLocalRets = VSet.intersection(allRets, withoutCur)
       val () = if VSet.isEmpty nonLocalRets
