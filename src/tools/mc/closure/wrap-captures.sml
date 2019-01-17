@@ -334,7 +334,26 @@ structure WrapCaptures : sig
                     end)
              end
 
-         | C.Throw (k, args) => wrap(C.Throw(subst env k, L.map (subst env) args))
+         | C.Throw (k, args) => let
+              val freshArgs = L.map (subst env) args
+            in
+              wrap(case lookupKind (env, k)
+                of NONE => C.Throw(k, freshArgs)
+                 | SOME (RetCont newK) => C.Throw(newK, freshArgs)
+                 | SOME (EscapeCont newK) => let
+                      val [arg] = freshArgs (* expecting only 1 arg to all escape conts. *)
+                      val argTy = CV.typeOf arg
+                      val [paramTy] = MK.argTysOf newK
+                      val needsBox = not (CTU.isKind (CTU.kindOf argTy) CPSTy.K_BOXED)
+                   in
+                    (
+                    print (concat["throw to escape ", CV.toString k, " --> ", CV.toString newK, "\n"]) ;
+                    print (concat[CTU.toString argTy, " --> ", CTU.toString paramTy, ", needsBox = ", Bool.toString needsBox, "\n\n"]) ;
+                    C.Throw(newK, [arg])
+                    )
+                   end
+                )
+            end
 
          | C.Cont (cont as (C.FB{f, params, rets, body}, e)) => wrap (case K.kindOfCont f
              of (K.GotoCont | K.OtherCont) =>
@@ -527,7 +546,7 @@ structure WrapCaptures : sig
 
         fun mkInvokeRet k = let
             (* build the invoke return cont *)
-            val invokeParamTys = L.map (fn _ => CPSTy.T_Any) (MK.argTysOf origRetk)
+            val invokeParamTys = MK.argTysOf origRetk
             val invokeRet = CV.new("invokeRetk", CPSTy.T_Cont invokeParamTys)
             val invokeParams = L.map (fn ty => CV.new("param", ty)) invokeParamTys
         in
