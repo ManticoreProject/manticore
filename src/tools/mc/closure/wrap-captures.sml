@@ -488,17 +488,11 @@ structure WrapCaptures : sig
         fun dispatch cont = (case MK.argTysOf cont
             of [] => raise Fail "no-arg cont?" (* C.mkThrow(cont, []) (* weird but okay i guess *) *)
 
-            (* NOTE: disabled b/c this implementation of the optimization
-                     doesn't work if the ty is a RAW float, as there is
-                     a convention mismatch (indicator would be arg 1)!
-             | [ty] => if CTU.isKind CTy.K_UNIFORM ty
+             | [ty] => if CTU.isKind CPSTy.K_UNIFORM (CTU.kindOf ty)
                         (* we can just do a cast: any => ty *)
                         then MK.cast(valParam, ty, fn arg => C.mkThrow(cont, [arg]))
                         (* it was boxed, so unbox it *)
                         else unpack cont [ty]
-            *)
-
-             | tys => unpack cont tys
              (* esac *))
 
         and unpack cont tys = MK.cast(valParam, CPSTy.T_Tuple(false, tys), fn tup =>
