@@ -197,7 +197,8 @@ structure WrapCaptures : sig
         "----\n", msg, "\n",
         "active retK = ", CV.toString (getRet env), "\n",
         "param retK = ", CV.toString (getParamRet env), "\n",
-        "in manipScope = ", Bool.toString (inManipScope env), "\n"
+        "in manipScope = ", Bool.toString (inManipScope env), "\n",
+        "----\n"
       ])
 
     (***** end of environment utils *****)
@@ -337,22 +338,25 @@ structure WrapCaptures : sig
          | C.Throw (k, args) => let
               val freshArgs = L.map (subst env) args
             in
-              wrap(case lookupKind (env, k)
-                of NONE => C.Throw(k, freshArgs)
-                 | SOME (RetCont newK) => C.Throw(newK, freshArgs)
+              case lookupKind (env, k)
+                of NONE => wrap(C.Throw(k, freshArgs))
+                 | SOME (RetCont newK) => wrap(C.Throw(newK, freshArgs))
                  | SOME (EscapeCont newK) => let
                       val [arg] = freshArgs (* expecting only 1 arg to all escape conts. *)
                       val argTy = CV.typeOf arg
                       val [paramTy] = MK.argTysOf newK
                       val needsBox = not (CTU.isKind (CTU.kindOf argTy) CPSTy.K_BOXED)
                    in
-                    (
+                    if needsBox
+                      then MK.bundle(freshArgs, fn bundledArgs =>
+                              wrap(C.Throw(newK, bundledArgs)))
+                      else wrap(C.Throw(newK, freshArgs))
+                    (* DEBUG
                     print (concat["throw to escape ", CV.toString k, " --> ", CV.toString newK, "\n"]) ;
                     print (concat[CTU.toString argTy, " --> ", CTU.toString paramTy, ", needsBox = ", Bool.toString needsBox, "\n\n"]) ;
                     C.Throw(newK, [arg])
-                    )
+                    *)
                    end
-                )
             end
 
          | C.Cont (cont as (C.FB{f, params, rets, body}, e)) => wrap (case K.kindOfCont f
@@ -394,13 +398,17 @@ structure WrapCaptures : sig
       setjmp/longjmp.  *)
     and landingPadCapture env (C.FB{f, params, rets, body}, e) = let
            val retk = getRet env
+           val paramRet = getParamRet env
            val neverReturns = doesNotReturn env
-                                (* NOTE: excluding param ret might be overly
-                                    strict, since it should get replaced if
-                                    active != param *)
-                                [retk, getParamRet env]
+                                [retk, paramRet]
                                 (FV.freeVarsOfExp e)
 
+           (* DEBUG
+           val msg = concat ["def of ", CV.toString f,
+                  " is followed by exp that ", if neverReturns then "never returns" else "can return",
+                  "\n"]
+           val _ = dumpEnv msg env
+           *)
 
            val (padFB as C.FB{f=retkWrap,...}) = mkLandingPad(retk, f, neverReturns)
 
@@ -410,7 +418,7 @@ structure WrapCaptures : sig
                              | NONE    => env
                              (* end case *))
                val env = insertV(env, f, EscapeCont newF)
-               val env = setParamRet(env, manipKRetParam)
+               (* val env = setParamRet(env, manipKRetParam) *)
                val env = setManipScope(env, true)
            in
                doExp(env, e)
