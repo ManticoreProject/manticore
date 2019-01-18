@@ -5,11 +5,11 @@
  *)
 
 structure PrintCFG : sig
-    
-    (* Max of int means the maximum number of characters to write out the type. 
+
+    (* Max of int means the maximum number of characters to write out the type.
        if the type's string length is longer, it is omitted. *)
     datatype verbosity = Full | Max of int | Silent
-    
+
     type flags = {counts : bool, types : verbosity, preds : bool}
 
     val output : flags -> (TextIO.outstream * CFG.module) -> unit
@@ -19,9 +19,9 @@ structure PrintCFG : sig
     val printFunc : CFG.func -> unit
 
   end = struct
-    
+
     datatype verbosity = Full | Max of int | Silent
-    
+
     type flags = {counts : bool, types : verbosity, preds : bool}
 
     fun output (flags : flags) (outS, CFG.MODULE{name, externs, mantiExterns, code}) = let
@@ -39,19 +39,19 @@ structure PrintCFG : sig
 		in
 		  pr "("; prL l; pr ")"
 		end
-    
+
       fun tyToStr prefix t = (case #types flags
                of Silent => ""
                 | Full => prefix ^ CFGTyUtil.toString t
                 | Max max => let
                   val typeStr = CFGTyUtil.toString t
                 in
-                  if String.size typeStr > max 
+                  if String.size typeStr > max
                   then ""
                   else prefix ^ typeStr
                 end
               (* end case *))
-        
+
 	  fun varBindToString x = let
 		val l = [tyToStr ":" (CFG.Var.typeOf x)]
 		val l = if (#counts flags)
@@ -80,8 +80,8 @@ structure PrintCFG : sig
 		  prl params
 		end
 
-	  fun prPreds lab = 
-	  	if (#preds flags) 
+	  fun prPreds lab =
+	  	if (#preds flags)
 	  	then
 	  		let
 	  			fun runIt [] = ()
@@ -107,26 +107,26 @@ structure PrintCFG : sig
         val (kind, params, maybeRetTy) = (case (CFG.Label.kindOf lab, entry)
 		       of (CFG.LK_Func{export=SOME _, ...}, CFG.StdFunc _) =>
 			    ("export stdfun ", CFG.paramsOfConv(entry, args), NONE)
-                
+
 			| (CFG.LK_Func _, CFG.StdFunc _) =>
-			    ("stdfun ", CFG.paramsOfConv(entry, args), NONE)        
-                        
+			    ("stdfun ", CFG.paramsOfConv(entry, args), NONE)
+
             | (CFG.LK_Func _, CFG.StdDirectFunc {ret=retTys,...}) =>
 			    ("ds-stdfun ", CFG.paramsOfConv(entry, args), SOME retTys)
-                
-			| (CFG.LK_Func _, CFG.StdCont _) => 
+
+			| (CFG.LK_Func _, CFG.StdCont _) =>
                             ("cont ", CFG.paramsOfConv(entry, args), NONE)
-                            
-			| (CFG.LK_Func _, CFG.KnownFunc _) => 
+
+			| (CFG.LK_Func _, CFG.KnownFunc _) =>
                             ("kfun ", CFG.paramsOfConv(entry, args), NONE)
-                            
+
             | (CFG.LK_Func _, CFG.KnownDirectFunc{ret=retTys,...}) =>
                             ("ds-kfun ", CFG.paramsOfConv(entry, args), SOME retTys)
-                            
+
 			| (CFG.LK_Block _, _) => ("block ", args, NONE)
 			| _ => raise Fail "bogus function"
 		      (* end case *))
-        
+
         local
             val toTy = tyToStr ""
             fun pret [] = ()
@@ -134,7 +134,7 @@ structure PrintCFG : sig
               | pret xs = let
                 val xs = List.map toTy xs
                 fun commas [x] = pr x
-                  | commas (x::xs) = 
+                  | commas (x::xs) =
                     (pr x ; pr ", " ; commas xs)
               in
                 commas xs
@@ -142,11 +142,12 @@ structure PrintCFG : sig
         in
             fun prRetTy ts = (pr " -> "; pret ts)
         end
-        
+
 		in
+		  pr "\n\n\n";
 		  indent 1;
 		  pr kind;
-		  prl [labelBindToString lab, " "]; 
+		  prl [labelBindToString lab, " "];
                 prParams params; Option.map prRetTy maybeRetTy; pr " =\n";
 		  List.app (prExp 2) startbody;
 		  prXfer (2, exit);
@@ -217,7 +218,7 @@ structure PrintCFG : sig
 		      prApply("stdThrow", k, clos :: args)
 		  | CFG.Apply{f, clos, args} => prApply("apply", f, clos :: args)
 		  | CFG.Goto jmp => prJump("goto", jmp)
-		  | CFG.HeapCheck{hck, szb, nogc} => let 
+		  | CFG.HeapCheck{hck, szb, nogc} => let
                       val check = (case hck
                           of CFG.HCK_Local => "check"
                            | CFG.HCK_Global => "checkGlobal"
@@ -227,7 +228,7 @@ structure PrintCFG : sig
 		        indent (i+1); pr "then GC()\n";
 		        indent (i+1); prJump("else", nogc))
                       end
-		  | CFG.HeapCheckN{hck, n, szb, nogc} => let 
+		  | CFG.HeapCheckN{hck, n, szb, nogc} => let
                       val check = (case hck
                           of CFG.HCK_Local => "check"
                            | CFG.HCK_Global => "checkGlobal"
@@ -239,21 +240,21 @@ structure PrintCFG : sig
                       end
 		  | CFG.AllocCCall {lhs, f, args, ret=(l,rArgs)} => (
               prCall("ccall-alloc", lhs, f, args);
-              indent (i+1); 
+              indent (i+1);
                   prJump("", (l,lhs@rArgs))  (* the post call jump *)
             )
-		      
+
           | CFG.Call {f, clos, args, next=SOME(lhs, (afterL, liveAfter))} => (
               prCall("call", lhs, f, clos::args);
-              indent (i+1); 
+              indent (i+1);
                 prJump("next", (afterL, liveAfter))
             )
-          
+
           | CFG.Call {f, clos, args, next=NONE} =>
               prCall("tailcall", nil, f, clos::args)
-          
+
           | CFG.Return {args, name} => prReturn("return", args, name)
-           
+
 		  | CFG.If(cond, j1, j2) => (
 		      prl ["if ", CondUtil.fmt varUseToString cond, "\n"];
 		      indent (i+1); prJump("then", j1);
@@ -280,7 +281,7 @@ structure PrintCFG : sig
 		prl [prefix, " ", labelUseToString lab];
 		prList varUseToString args;
 		pr "\n")
-      
+
       and prCall (prefix, nil, f, args) = (
             prl [prefix, " "];
             prl [varUseToString f, " "];
@@ -294,24 +295,24 @@ structure PrintCFG : sig
             prList varUseToString args;
             pr "\n"
         )
-        
+
       and prReturn (prefix, args, name) = (
           prl [prefix, " "];
           prList varUseToString args;
           prl [" from ", labelUseToString name];
           pr "\n"
       )
-      
-        
+
+
 	  fun prExtern cf = prl["  ", CFunctions.cfunToString cf, "\n"]
-      
+
       fun prManiExtern lab = let
             val (CFG.LK_Extern name) = CFG.Label.kindOf lab
-            val ty = CFG.Label.typeOf lab 
+            val ty = CFG.Label.typeOf lab
       in
         prl ["  ", name, " : ", CFGTyUtil.toString ty, "\n"]
       end
-      
+
 (*
 	  fun prExtern (CFunctions.CFun{var, ...}) = prl[
 		  "  extern ", labelUseToString var, " : ",
