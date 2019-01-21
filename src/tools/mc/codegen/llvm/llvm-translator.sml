@@ -759,14 +759,15 @@ fun output (outS, module as C.MODULE { name = module_name,
                             
                     fun xlateArm (word, jump) = let 
                             (* switches on enums require a special encoding *)
-                            val word = (case CV.typeOf cond
+                            val condTy = CV.typeOf cond
+                            val word = (case condTy
                                         of CFGTy.T_Enum _ => encodeEnum word
                                         | _ => word
                                        (* esac *))
                             
                             val (llTarg, _) = markPred env jump
-                            val llConst = LB.intC(LT.enumTy, Word.toLargeInt word)
-                        in 
+                            val llConst = LB.intC(LT.typeOf condTy, Word.toLargeInt word)
+                        in
                             (llConst, llTarg)
                         end
                     
