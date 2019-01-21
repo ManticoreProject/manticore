@@ -5,7 +5,12 @@
  *
  * After cont classification for direct-style conversion, we wrap continuation
  * captures so they may be emitted correctly by the code generator. In particular,
- * we perform the following type of eta-expansion
+ * we perform the following type of expansion in order to turn the definition
+ * of an escape continuation into one where the binding location of all
+ * uses for that continuation is the parameter of a function that is invoked via
+ * callec. Then, the original definition turns into a local continuation of
+ * the enclosing function.
+ *
  *
  *  fun outerF(.. / retK : cont(t', t'', ...)) =
  *    A
@@ -19,30 +24,40 @@
  *    A
  *    cont k (x : t) = B                                    <-- now classified as a join cont!
  *    in
- *      cont landingPad (regularRet : bool, arg : any) =    <-- a ret cont
- *       if regularRet
+ *      cont landingPad (arg : any, indicator : int) =    <-- a ret cont
+ *       if indicator = regularRet
  *         then throw retK (#1(arg), #2(arg), ...)
- *         else throw k arg
+ *       else if indicator = escapeThrow
+ *         then throw k arg
+ *       else if indicator = localThrow1
+ *         then throw localCont arg
+ *       ...
+ *
  *      in
- *        fun manipK (k' : cont(t) / landingPad' : cont(bool, any), deadExh) =
- *          cont manipRetk (a1, a2, ...) =                  <-- a join/ret cont
+ *        fun manipK (k' : cont(t) / landingPad' : cont(any, int), deadExh) =
+ *          cont invokeRetK (a1, a2, ...) =                  <-- a join/ret cont
                 let x = alloc(a1, a2, ...)                  <-- only if more than 1 arg
- *              throw landingPad' (true, x)
+ *              throw landingPad' (x, regularRet)
  *          in
- *            [ C / k -> k', retK -> manipRetk ]
+ *          cont invokeLocalK (...) = ... throw landingPad' (..., localThrow1) in
+ *            [ C / k -> k', retK -> invokeRetK, localK -> invokeLocalK ]
  *        (* end manipK *)
  *        callec ( manipK / landingPad, deadExh)
  *
- *  the callec construct generates code that calls a special shim function.
- *  The shim will allocate the following continuation to represent 'k':
+ *  The callec construct encapsulates the runtime system manipulation of the
+ *  current continuation in accordance to the type of call stack in use.
+ *  Callec will allocate the following continuation to represent 'k':
  *
- *  - [ ASM_Resume | stackPtr (@landingPad) | stackInfo | false ]
- *    When invoked, the closure passes the arg its given
- *    to the stack frame pointed to, passing "false" in addition
- *    to jump to the right block.
+ *  - [ ASM_Resume (1 or 2) | stackPtr (@landingPad) | stackInfo ]
+ *    When invoked, this little continuation simply passes the arg its given
+ *    to the stack frame pointed to, and sets the appropriate arg register
+ *    to indicate where control should resume.
  *
- *  - during translation, within the expression C, any 'throw retK (val)'
- *    is changed to 'throw retK' [true, val]'
+ *  - During translation, within the expression C, any throws must be updated
+ *    match the new calling convention. We introduce local cont bindings at the
+ *    start of the manip function to simplify this process, since we need to add
+ *    an additional fixed argument.
+ *
  *
  *
  *)
@@ -95,18 +110,6 @@
     the calling convention with the landing pad. However, we _cannot_ do the
     same for this escape cont, because then the cont we wrapped around the throw
     would be used as a Goto/Other cont, and we're back where we started!
-
-
-    FIXME: I do not believe this paragraph below is true actually? Any
-           non exn, ret, or join cont must be an escape cont made by us!
-           Only other source would be maybe the RTS/ASM, but we just need to
-           update it.
-
-    If we were to simply change every Throw exp using an escape cont, by bundling up
-    the arguments, we would break code where the cont came from somewhere else
-    (read from memory, passed as a param, etc) and our simple renaming operation
-    with the parameter of manipK would not be sufficient. We would need to throughly
-    change the types of all such unknown cont vars in the program.
  *)
 
 structure WrapCaptures : sig
@@ -129,86 +132,46 @@ structure WrapCaptures : sig
     val cntExpand = ST.newCounter "wrap-captures:expand"
 
     (***** environment utils *****)
-    datatype environment = E of { sub : cont_kind VMap.map, (* cont substitution map *)
-                                  retk : CV.var, (* the current "active" retk that should
-                                                    be used wherever a return would have occured *)
-                                  paramRetk : CV.var, (* the retk currently bound as a param of the encl fun *)
-                                  manipScope : bool, (* indicates whether we'll be enclosed by a manipK fun *)
-                                  allRets : VSet.set (* a set containing all ret conts we've encountered *)
+    datatype environment = E of { sub : cont_kind VMap.map, (* cont substitution map. *)
+                                  allLocals : VSet.set (* set of all locally bound conts in the current fun. *)
                                 }
-        and cont_kind = RetCont of CV.var
-                      | EscapeCont of CV.var
+        and cont_kind = LocalCont of CV.var * int
+                      | EscapeCont of CV.var * int
 
     fun emptyEnv () = E{ sub = VMap.empty,
-                         retk = CV.new("wrongRetk", CPSTy.T_Any),
-                         paramRetk = CV.new("wrongRetk", CPSTy.T_Any),
-                         manipScope = false,
-                         allRets = VSet.empty
+                         allLocals = VSet.empty
                        }
 
-    (* get and set the "active" retk *)
-    fun setRet ((E{sub, retk, paramRetk, manipScope, allRets}), r) =
-        E{sub=sub, paramRetk=paramRetk, manipScope=manipScope,
-          retk = r,
-          allRets = VSet.add(allRets, r) }
-    fun getRet (E{retk,...}) = retk
+    (* utilities for handling local cont set *)
+    fun addLocalCont ((E{sub, allLocals}), k) =
+        E{sub=sub, allLocals = VSet.add(allLocals, k) }
 
-    (* get and set the enclosing function's retk; for the hack in Apply. *)
-    fun setParamRet ((E{sub, retk, paramRetk,manipScope,allRets}), r) =
-        E{sub=sub, retk=retk, manipScope=manipScope,
-          paramRetk = r,
-          allRets = VSet.add(allRets, r) }
-    fun getParamRet (E{paramRetk,...}) = paramRetk
+    fun addLocalConts ((E{sub, allLocals}), ks) =
+        E{sub=sub, allLocals = VSet.addList(allLocals, ks) }
 
-    fun getAllRets (E{allRets,...}) = allRets
+    fun resetLocalConts (E{sub, allLocals = dead}) =
+        E{sub=sub, allLocals = VSet.empty }
 
-    (* finds the latest substitution in the env *)
-    fun lookupKind (E{sub,...}, v) = let
-        fun some tycon v = SOME(tycon v)
-        fun get (tycon, v) = (case VMap.find(sub, v)
-            of SOME(RetCont newV) => get (some RetCont, newV)
-             | SOME(EscapeCont newV) => get (some EscapeCont, newV)
-             | NONE => tycon v
-            (* esac *))
-    in
-        get (fn _ => NONE, v)
-    end
+    fun localConts (E{allLocals,...}) = allLocals
 
-
-    (* finds the latest substitution in the env *)
-    and lookupV(env as E{sub,...}, v) = (case VMap.find(sub, v)
-        of SOME(RetCont newV) => lookupV(env, newV)
-         | SOME(EscapeCont newV) => lookupV(env, newV)
+    (* finds a substitution in the env *)
+    fun lookupKind (E{sub,...}, v) = VMap.find(sub, v)
+    and lookupV (x as (_, v)) = (case lookupKind x
+        of SOME(LocalCont (newV, _)) => newV
+         | SOME(EscapeCont (newV, _)) => newV
          | NONE => v)
 
-    fun inManipScope (E{manipScope,...}) = manipScope
-    fun setManipScope (E{sub, retk, paramRetk, manipScope, allRets}, flag) =
-        E{sub=sub, retk=retk, paramRetk=paramRetk, allRets=allRets,
-          manipScope = flag
-        }
-
-    fun insertV (E{sub,retk,paramRetk,manipScope,allRets}, var, valu) =
-        E{retk=retk, paramRetk=paramRetk, manipScope=manipScope, allRets=allRets,
-          sub = VMap.insert(sub, var, valu) }
+    fun insertV (E{sub, allLocals}, var, valu) =
+        E{ sub = VMap.insert(sub, var, valu), allLocals=allLocals }
 
     fun subst env v = lookupV(env, v)
 
-    fun dumpEnv msg env = print (concat [
-        "----\n", msg, "\n",
-        "active retK = ", CV.toString (getRet env), "\n",
-        "param retK = ", CV.toString (getParamRet env), "\n",
-        "in manipScope = ", Bool.toString (inManipScope env), "\n",
-        "----\n"
-      ])
+    fun dumpEnv msg env = raise Fail "dumpEnv not implemented"
 
     (***** end of environment utils *****)
 
 
-    (* I would use bool but I don't want to mess with the enum stuff. *)
     val indicatorTy = CPSTy.T_Raw(RawTypes.T_Int)
-    val falseVal = Literal.Int 0
-    val trueVal = Literal.Int 1
-
 
     (****** helper funs to build expressions ******)
     structure MK = struct
@@ -262,9 +225,9 @@ structure WrapCaptures : sig
               cast(retk, ty, k))
         end
 
-        fun bindTrue k =
+        fun bindInt (i, k) =
             fresh(indicatorTy, fn lhs =>
-                C.mkLet([lhs], C.Const(trueVal, indicatorTy),
+                C.mkLet([lhs], C.Const(Literal.Int i, indicatorTy),
                     k lhs))
 
         fun argTysOf cont = (case CV.typeOf cont
@@ -273,8 +236,11 @@ structure WrapCaptures : sig
 
     end (* end MK *)
 
+    (****** END OF helper funs to build expressions ******)
 
-    fun doExp (env, C.Exp(ppt, t)) = let
+    fun start moduleBody = doFun (emptyEnv()) moduleBody
+
+    and doExp (env, C.Exp(ppt, t)) = let
         fun wrap term = C.Exp(ppt, term)
     in
     (case t
@@ -287,7 +253,7 @@ structure WrapCaptures : sig
              in
                 C.Switch(var, L.map doArm arms, Option.map doDflt dflt)
              end)
-         | C.Apply (f, args, rets) => let
+         | C.Apply (f, args, rets) => (* let
                 (* an Apply may change from being in tail position
                    to non-tail due to manipKRetk, which are the only types of retk's
                    in the environment in the case of a substution in an Apply. *)
@@ -333,9 +299,9 @@ structure WrapCaptures : sig
                         then (K.setTailApply(applyExp, false) ; applyExp)
                         else applyExp
                     end)
-             end
+             end *) raise Fail "fixup Apply translation"
 
-         | C.Throw (k, args) => let
+         | C.Throw (k, args) => (* let
               val freshArgs = L.map (subst env) args
             in
               case lookupKind (env, k)
@@ -357,21 +323,38 @@ structure WrapCaptures : sig
                     C.Throw(newK, [arg])
                     *)
                    end
-            end
+            end *) raise Fail "fixup Throw translation"
 
-         | C.Cont (cont as (C.FB{f, params, rets, body}, e)) => wrap (case K.kindOfCont f
-             of (K.GotoCont | K.OtherCont) =>
-                 (* see NOTE [single-param cont] *)
-                 if L.length params > 1
-                   then raise Fail ("escape cont "
-                                   ^ (CV.toString f)
-                                   ^ " takes more than 1 parameter!")
-                   else ( ST.tick cntExpand ;
-                          landingPadCapture env cont )
-              | _ => C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)}, doExp(env, e))
-             (* esac *))
+         | C.Cont (cont as (C.FB{f, params, rets, body}, e)) => wrap (
+            case K.kindOfCont f
+               of (K.GotoCont | K.OtherCont) =>
+                   (* see NOTE [single-param cont] *)
+                   if L.length params > 1
+                     then raise Fail ("escape cont "
+                                     ^ (CV.toString f)
+                                     ^ " takes more than 1 parameter!")
+                     else ( ST.tick cntExpand ;
+                            landingPadCapture env cont )
+
+                | _ => let  val env = addLocalCont(env, f)  in
+                          C.Cont(C.FB{f=f,params=params,rets=rets,
+                                body = doExp(env, body)}, doExp(env, e))
+                      end
+              (* end wrap *))
         (* esac *))
     end
+
+    and doFun env (C.FB{f, params, rets, body}) = let
+        val env = resetLocalConts env
+        val env = addLocalConts (env, rets)
+    in
+        C.FB{f=f,params=params,rets=rets, body= doExp(env, body) }
+    end
+
+
+    and landingPadCapture env cont = raise Fail "implement landingpadCapture"
+
+(* NOTE old code
 
     and doesNotReturn env curRets fvs = let
       val curRets = VSet.addList(VSet.empty, curRets)
@@ -437,18 +420,6 @@ structure WrapCaptures : sig
                        MK.dummyExh(fn unitExh =>
                            C.mkCallec(manipK, [retkWrap, unitExh])))))
         end
-
-    and doFun env (C.FB{f, params, rets as (retk::_), body}) = let
-        val env = setRet(env, retk)
-        val env = setParamRet(env, retk)
-        val env = setManipScope(env, false)
-    in
-        C.FB{f=f,params=params,rets=rets, body= doExp(env, body) }
-    end
-
-
-
-    and start moduleBody = doFun (emptyEnv()) moduleBody
 
     (* The tricky part here is that we need to merge the type of the arguments
        to these two continuations so we can longjmp or return to the same block.
@@ -575,6 +546,7 @@ structure WrapCaptures : sig
                     else mkInvokeRet(fn invokeRet => k (contP, SOME invokeRet, retkP))
         }
     end
+*)
 
     (* UnifyNonRetSigs and ClassifyConts must be run before this transform. *)
     fun transform (m as C.MODULE{name, externs, body}) =
