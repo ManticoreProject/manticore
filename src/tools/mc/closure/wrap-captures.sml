@@ -62,43 +62,6 @@
  *
  *)
 
-
- (* TODO FIXME
-
-    Consider the following
-
-    cont joinK () = ...
-    in
-      cont otherK () = ...
-      in
-        expA   <- contains a throw to joinK
-
-    ===>
-
-    cont joinK () = ...    <-- uh oh, now this is a GotoCont!
-    in
-      cont otherK () = ...
-      in
-        cont landingPad () ...
-        in
-          fun manipK( , landingPad' ) =
-            ...
-            throw joinK ()   <-- now a Goto throw.
-
-    the solution to this is to ask for the FVs of expA and check for any Join conts
-    in that set. For each one, assign to it an integer.
-    Then, in the landingPad, have a switch dispatch to these continuations based
-    on that integer, and replace all throws to those joinK's with a throw to the landing pad,
-    as appropriate. You could introduce sentinel conts in manipK that pick the right integer
-    for each one to hide calling convention issues.
-
-    Because this is a rare thing to happen in my benchmarking, i.e., it only showed up
-    when I was trying to compile the round-robin scheduler, which has needless uses of
-    conts to escape loops, I haven't bothered to update the code below for this case.
-    - Kavon (3/19/17)
-
- *)
-
  (* NOTE [single-param cont]
    The reason for single parameter conts is that this continuation has unknown call sites.
     By the nature of how these continuations are captured in direct-style, we
@@ -125,6 +88,7 @@ structure WrapCaptures : sig
     structure VSet = CV.Set
     structure ST = Stats
     structure L = List
+    structure LP = ListPair
     structure K = ClassifyConts
     structure FV = FreeVars
 
@@ -135,8 +99,8 @@ structure WrapCaptures : sig
     datatype environment = E of { sub : cont_kind VMap.map, (* cont substitution map. *)
                                   allLocals : VSet.set (* set of all locally bound conts in the current fun. *)
                                 }
-        and cont_kind = LocalCont of CV.var * int
-                      | EscapeCont of CV.var * int
+        and cont_kind = LocalCont of CV.var
+                      | EscapeCont of CV.var
 
     fun emptyEnv () = E{ sub = VMap.empty,
                          allLocals = VSet.empty
@@ -154,12 +118,24 @@ structure WrapCaptures : sig
 
     fun localConts (E{allLocals,...}) = allLocals
 
-    (* finds a substitution in the env *)
-    fun lookupKind (E{sub,...}, v) = VMap.find(sub, v)
-    and lookupV (x as (_, v)) = (case lookupKind x
-        of SOME(LocalCont (newV, _)) => newV
-         | SOME(EscapeCont (newV, _)) => newV
-         | NONE => v)
+    (* finds the latest substitution in the env *)
+    fun lookupKind (E{sub,...}, v) = let
+        fun some tycon v = SOME(tycon v)
+        fun get (tycon, v) = (case VMap.find(sub, v)
+            of SOME(LocalCont newV) => get (some LocalCont, newV)
+             | SOME(EscapeCont newV) => get (some EscapeCont, newV)
+             | NONE => tycon v
+            (* esac *))
+    in
+        get (fn _ => NONE, v)
+    end
+
+
+    (* finds the latest substitution in the env *)
+    and lookupV(env as E{sub,...}, v) = (case VMap.find(sub, v)
+        of SOME(LocalCont newV) => lookupV(env, newV)
+         | SOME(EscapeCont newV) => lookupV(env, newV)
+    | NONE => v)
 
     fun insertV (E{sub, allLocals}, var, valu) =
         E{ sub = VMap.insert(sub, var, valu), allLocals=allLocals }
@@ -201,14 +177,19 @@ structure WrapCaptures : sig
         end
 
         (* this should match up with 'dispatch' below *)
-        fun bundle ([], k) = k [] (* NOTE kind of unexpected but okay *)
-          (* | bundle ([a], k) = k [a] see NOTE in 'dispatch' *)
-          | bundle (args, k) = let (* we need to bundle them up *)
-                val allocTy = CPSTy.T_Tuple(false, L.map CV.typeOf args)
+        fun bundle (args as [arg], k) =
+            if CTU.isKind CPSTy.K_UNIFORM (CTU.kindOf (CV.typeOf arg))
+              then (* we can just do a cast: ty => any *)
+                   cast (arg, CPSTy.T_Any, fn newArg => k [newArg])
+
+              else let (* we need to box the arg *)
+                val allocTy = CPSTy.T_Tuple(false, [CV.typeOf arg])
                 val lhs = CV.new("bundle", allocTy)
               in
                 C.mkLet([lhs], C.Alloc(allocTy, args), k [lhs])
               end
+
+          | bundle _ = raise Fail "bundle -- unexpected arg list"
 
         fun dummyExh k = let
             val exhTy = CPSTy.T_Cont([CPSTy.T_Any])
@@ -253,60 +234,23 @@ structure WrapCaptures : sig
              in
                 C.Switch(var, L.map doArm arms, Option.map doDflt dflt)
              end)
-         | C.Apply (f, args, rets) => (* let
-                (* an Apply may change from being in tail position
-                   to non-tail due to manipKRetk, which are the only types of retk's
-                   in the environment in the case of a substution in an Apply. *)
+         | C.Apply (f, args, oldRetK :: rest) => let
+              (* an Apply may change from being in tail position
+                 to non-tail due to the landing pad capture. *)
+              val newRetK = lookupV (env, oldRetK)
+              val applyExp = wrap (C.Apply(f, L.map (subst env) args, newRetK :: rest))
+              in
+                if CV.same (newRetK, oldRetK)
+                  then applyExp
+                  else (K.setTailApply(applyExp, false) ; applyExp)
+              end
 
-                val newRetk = ref false
-
-                fun isUnit v = (case CV.kindOf v
-                    of C.VK_Let(C.Cast(_, v)) => isUnit v
-                     | C.VK_Let(C.Const _) => true
-                     | _ => false
-                    (* esac *))
-
-                fun substRets (env, [retk, exnk], k) =
-                        replaceRetk(env, retk, fn newRetk => k [newRetk, exnk])
-                  | substRets (env, [retk], k) =
-                        replaceRetk(env, retk, fn newRetk => k [newRetk])
-
-                and replaceRetk (env, oldRetk, k) = (case lookupKind(env, oldRetk)
-                    of SOME(EscapeCont _) => raise Fail (CV.toString oldRetk ^ " should not appear as a ret!")
-                     | SOME(RetCont newV) => k (newRetk := true ; newV)
-                     | NONE =>
-                        if not (isUnit oldRetk)
-                          then k oldRetk
-                          else let val paramRet = getParamRet env in
-                                 if inManipScope env
-                                     andalso (not (
-                                       CPSTyUtil.match(CV.typeOf oldRetk,
-                                                       CV.typeOf paramRet)))
-                                  (* the type of the unit retk needs to
-                                      change to match the enclosing manipK's
-                                      return continuation type. *)
-                                  then MK.unitRetk(CV.typeOf paramRet,
-                                          fn newUnitRK => k newUnitRK)
-
-                                  else k oldRetk
-                               end
-                     (* esac *))
-             in
-                substRets(env, rets, fn rets => let
-                        val applyExp = wrap (C.Apply(f, L.map (subst env) args, rets))
-                    in
-                        if !newRetk
-                        then (K.setTailApply(applyExp, false) ; applyExp)
-                        else applyExp
-                    end)
-             end *) raise Fail "fixup Apply translation"
-
-         | C.Throw (k, args) => (* let
+         | C.Throw (k, args) => let
               val freshArgs = L.map (subst env) args
             in
               case lookupKind (env, k)
                 of NONE => wrap(C.Throw(k, freshArgs))
-                 | SOME (RetCont newK) => wrap(C.Throw(newK, freshArgs))
+                 | SOME (LocalCont newK) => wrap(C.Throw(newK, freshArgs))
                  | SOME (EscapeCont newK) => let
                       val [arg] = freshArgs (* expecting only 1 arg to all escape conts. *)
                       val argTy = CV.typeOf arg
@@ -323,7 +267,7 @@ structure WrapCaptures : sig
                     C.Throw(newK, [arg])
                     *)
                    end
-            end *) raise Fail "fixup Throw translation"
+            end
 
          | C.Cont (cont as (C.FB{f, params, rets, body}, e)) => wrap (
             case K.kindOfCont f
@@ -344,41 +288,172 @@ structure WrapCaptures : sig
         (* esac *))
     end
 
-    and doFun env (C.FB{f, params, rets, body}) = let
+    and doFun env (C.FB{f, params, rets as (retk::_), body}) = let
         val env = resetLocalConts env
-        val env = addLocalConts (env, rets)
+        val env = addLocalCont (env, retk)
     in
         C.FB{f=f,params=params,rets=rets, body= doExp(env, body) }
     end
 
 
-    and landingPadCapture env cont = raise Fail "implement landingpadCapture"
+    (* Uses a "landing pad" to discern which continuation
+      of this enclosing function that the new callee,
+      a manipK wrapper function, would like to invoke.
+      This is similar to setjmp/longjmp.  *)
+    and landingPadCapture env (C.FB{f, params, rets, body}, e) = let
+
+      val (padFB as C.FB{f=padVar,...}, numbering, neverReturns)
+                = mkLandingPad (env, FV.freeVarsOfExp e, f)
+
+      val (manipFB as C.FB{f=manipK,...}) = mkManipFun (env, numbering, neverReturns, e)
+
+      (* set/update classifications *)
+      val _ = (K.setKind(padVar, K.ReturnCont) ; K.setKind(f, K.JoinCont))
+    in
+      C.Cont(C.FB{f=f,params=params,rets=rets, body = doExp(env, body)},
+          C.mkCont(padFB,
+              C.mkFun([manipFB],
+                  MK.dummyExh(fn unitExh =>
+                      C.mkCallec(manipK, [padVar, unitExh])))))
+    end
+
+    and mkLandingPad (env, fvs, contVar) = let
+      (* determine which local continuations need to be included
+         in the pad's dispatching code and assign a numbering where
+         contVar is always 0 *)
+      val updatedFVs = VSet.map (subst env) fvs
+      val reqLocals = VSet.intersection (updatedFVs, localConts env)
+      val items = contVar :: VSet.listItems reqLocals
+      val enums = L.tabulate(length items, fn i => IntInf.fromInt i)
+      val numbering = LP.zipEq (enums, items)
+
+      (* NOTE this is not an optimization. For an Apply
+         in tail position that does not return normally, but passes
+         along an escape cont, we must ensure that the enclosing
+         manipK function's return cont, aka the landing pad, has
+         a type that is compatible with the originally enclosing
+         parameter return continuation. *)
+      val neverReturns = VSet.isEmpty reqLocals
+
+      (* construct the landing pad *)
+      val padTy = if neverReturns
+                  then CPSTy.T_Cont([CPSTy.T_Any])
+                  else CPSTy.T_Cont([CPSTy.T_Any, indicatorTy])
+
+      val padVar = CV.new("setjmpLandingPad", padTy)
+
+      val flagParam = CV.new("contFlag", indicatorTy)
+
+      (* NOTE: always using a uniform type *)
+      val valParam = CV.new("arg", CPSTy.T_Any)
+
+      fun mkAlt (i, tgtK) = (Word.fromLargeInt i, dispatch tgtK)
+
+      (* this should match up with "bundle" above *)
+      and dispatch tgtK = (case MK.argTysOf tgtK
+          of [ty] => if CTU.isKind CPSTy.K_UNIFORM (CTU.kindOf ty)
+                      (* we can just do a cast: any => ty *)
+                      then MK.cast(valParam, ty, fn arg =>
+                              C.mkThrow(tgtK, [arg]))
+                      (* it was boxed, so unbox it *)
+                      else unboxThrow tgtK [ty]
+           (* esac *))
+
+      and unboxThrow tgtK tys =
+          MK.cast(valParam, CPSTy.T_Tuple(false, tys), fn tup =>
+            MK.selectAll(tys, tup, fn args =>
+              C.mkThrow(tgtK, args)))
+
+
+      in
+        (if neverReturns
+          then C.FB{f = padVar, params = [valParam], rets = [],
+                    body = dispatch contVar
+                   }
+          else C.FB{f = padVar, params = [valParam, flagParam], rets = [],
+                    body = C.mkSwitch(flagParam, map mkAlt numbering, NONE)
+                   },
+         numbering,
+         neverReturns)
+      end
+
+
+    (* the reason manipK takes an exh that will be unused is because it will use
+       the standard calling convention (its caller is actually an unknown fun). *)
+    and mkManipFun (env, (_, escCont) :: others, neverReturns, expr) = let
+        val contAny  = CPSTy.T_Cont([CPSTy.T_Any])
+
+        val padTy = if neverReturns
+                    then CPSTy.T_Cont([CPSTy.T_Any])
+                    else CPSTy.T_Cont([CPSTy.T_Any, indicatorTy])
+
+        (* create the parameter-passed cont var *)
+        val contP = CV.copy escCont
+        val _ = CV.setType (contP, contAny)
+        val env = insertV(env, escCont, EscapeCont contP)
+
+        val padK = CV.new("landingPadK", padTy)
+        val exnP = CV.new("deadExnK", contAny)
+
+        val num = Int.toString(ST.count cntExpand) (* aids debugging *)
+        val fname = CV.new("manipK" ^ num, CPSTy.T_Fun([CV.typeOf contP], [padTy, contAny]))
+
+        (* set kind. also need to set contexts since this is a ParamCont *)
+        val _ = (K.setContextOfThrow(padK, VSet.singleton fname) ;
+                 K.setContextOfThrow(contP, VSet.singleton fname))
+
+        (* create stubs for the other conts so they pass the right flag. *)
+        fun mkStubs (env, others, k) = let
+            fun lp (env, []) = k env
+              | lp (env, x::xs) =
+                  mkStub(env, x, fn newEnv => lp (newEnv, xs))
+
+            in
+              lp (env, others)
+            end
+
+        (* creates stub continuations that know which index to use when
+            returning to the caller so it ends up at the right continuation.
+            Also sets up the environment for processing the body of the manip fun. *)
+        and mkStub (env, (idx, tgtK), k) = let
+            (* build the cont *)
+            val paramTys = MK.argTysOf tgtK
+            val newK = CV.new("gotoCaller", CPSTy.T_Cont paramTys)
+            val params = map (fn ty => CV.new("param", ty)) paramTys
+
+            (* setup new environment, with newK as a local cont within
+               the manip function's body, and tgtK substituted for it. *)
+            val env = insertV (env, tgtK, LocalCont newK)
+            val env = addLocalCont (env, newK)
+        in
+        (  K.setKind(newK, K.JoinCont) ;
+            C.mkCont(C.FB {
+                f = newK,
+                params = params,
+                rets = [],
+                body = MK.bundle(params, fn newArgs =>
+                         MK.atLeastOneArg(newArgs, fn paddedArgs =>
+                           MK.bindInt(idx, fn flag =>
+                             C.mkThrow(padK, paddedArgs @ [flag]))))},
+                k (insertV (env, tgtK, LocalCont newK))
+          ))
+        end
+
+    in
+        C.FB {
+            f = fname,
+            params = [contP],
+            rets = [padK, exnP],
+            body = mkStubs (resetLocalConts env,  (* NOTE want a clean slate for expr *)
+                            others,
+                            fn newEnv => doExp(newEnv, expr))
+        }
+    end
+
 
 (* NOTE old code
 
-    and doesNotReturn env curRets fvs = let
-      val curRets = VSet.addList(VSet.empty, curRets)
 
-      (* sanity checks about rets *)
-      val allRets = VSet.map (subst env) (getAllRets env)
-      val withoutCur = VSet.difference(fvs, curRets)
-      val nonLocalRets = VSet.intersection(allRets, withoutCur)
-      val () = if VSet.isEmpty nonLocalRets
-                then ()
-                else let val offender::_ = VSet.listItems nonLocalRets in
-                raise Fail (concat [
-                    "the return cont ", CV.toString offender,
-                    " is thrown to from an enclosing function!"
-                  ]) end
-    in
-      VSet.isEmpty (VSet.intersection(fvs, curRets))
-    end
-
-    (* uses a "landing pad" to discern whether the callee
-      has invoked the continuation or wants to return
-      from the enclosing function. both cases have their
-      live values saved on the stack. This is similar to
-      setjmp/longjmp.  *)
     and landingPadCapture env (C.FB{f, params, rets, body}, e) = let
            val retk = getRet env
            val paramRet = getParamRet env
