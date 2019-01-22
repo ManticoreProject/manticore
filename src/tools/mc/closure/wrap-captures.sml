@@ -176,20 +176,28 @@ structure WrapCaptures : sig
             get(0, tys, [])
         end
 
-        (* this should match up with 'dispatch' below *)
-        fun bundle (args as [arg], k) =
-            if CTU.isKind CPSTy.K_UNIFORM (CTU.kindOf (CV.typeOf arg))
-              then (* we can just do a cast: ty => any *)
-                   cast (arg, CPSTy.T_Any, fn newArg => k [newArg])
+        fun allocAll (vals, k) = let (* we need to box the arg *)
+          val allocTy = CPSTy.T_Tuple(false, map CV.typeOf vals)
+          val lhs = CV.new("box", allocTy)
+        in
+          C.mkLet([lhs], C.Alloc(allocTy, vals), k [lhs])
+        end
 
-              else let (* we need to box the arg *)
-                val allocTy = CPSTy.T_Tuple(false, [CV.typeOf arg])
-                val lhs = CV.new("bundle", allocTy)
-              in
-                C.mkLet([lhs], C.Alloc(allocTy, args), k [lhs])
-              end
+        (* this should match up with 'unbundle' below .
+           by bundle, we mean to bundle for passing through the
+           landing pad. *)
+        fun bundle (args, k) = (case args
+          of [] => atLeastOneArg ([], k) (* we pass a dummy val. *)
 
-          | bundle _ = raise Fail "bundle -- unexpected arg list"
+           | [arg] => if CTU.isKind CPSTy.K_UNIFORM (CTU.kindOf (CV.typeOf arg))
+                      (* we will not box it, just cast ty => any *)
+                      then cast(arg, CPSTy.T_Any, fn newArg => k [newArg])
+                      (* we must box it *)
+                      else allocAll ([arg], k)
+
+              (* All arity > 1 conts are boxed. *)
+           | args => allocAll (args, k)
+          (* end case *))
 
         fun dummyExh k = let
             val exhTy = CPSTy.T_Cont([CPSTy.T_Any])
@@ -251,22 +259,12 @@ structure WrapCaptures : sig
               case lookupKind (env, k)
                 of NONE => wrap(C.Throw(k, freshArgs))
                  | SOME (LocalCont newK) => wrap(C.Throw(newK, freshArgs))
-                 | SOME (EscapeCont newK) => let
-                      val [arg] = freshArgs (* expecting only 1 arg to all escape conts. *)
-                      val argTy = CV.typeOf arg
-                      val [paramTy] = MK.argTysOf newK
-                      val needsBox = not (CTU.isKind (CTU.kindOf argTy) CPSTy.K_BOXED)
-                   in
-                    if needsBox
-                      then MK.bundle(freshArgs, fn bundledArgs =>
-                              wrap(C.Throw(newK, bundledArgs)))
-                      else wrap(C.Throw(newK, freshArgs))
-                    (* DEBUG
-                    print (concat["throw to escape ", CV.toString k, " --> ", CV.toString newK, "\n"]) ;
-                    print (concat[CTU.toString argTy, " --> ", CTU.toString paramTy, ", needsBox = ", Bool.toString needsBox, "\n\n"]) ;
-                    C.Throw(newK, [arg])
-                    *)
-                   end
+                 | SOME (EscapeCont newK) =>
+                      (* because we cannot have a stub to handle the calling
+                         convention for us on throws to parameter-bound escape
+                         conts, we need to do it at each throw. *)
+                      MK.bundle(freshArgs, fn freshArgs =>
+                        wrap(C.Throw(newK, freshArgs)))
             end
 
          | C.Cont (cont as (C.FB{f, params, rets, body}, e)) => wrap (
@@ -347,16 +345,21 @@ structure WrapCaptures : sig
       (* NOTE: always using a uniform type *)
       val valParam = CV.new("arg", CPSTy.T_Any)
 
-      fun mkAlt (i, tgtK) = (Word.fromLargeInt i, dispatch tgtK)
+      fun mkAlt (i, tgtK) = (Word.fromLargeInt i, unbundle tgtK)
 
-      (* this should match up with "bundle" above *)
-      and dispatch tgtK = (case MK.argTysOf tgtK
-          of [ty] => if CTU.isKind CPSTy.K_UNIFORM (CTU.kindOf ty)
-                      (* we can just do a cast: any => ty *)
+      (* this calling convention must match up with "bundle" above *)
+      and unbundle tgtK = (case MK.argTysOf tgtK
+          of [] => C.mkThrow(tgtK, []) (* original cont takes no args *)
+
+                      (* deal with our use of a box for 1 arg conts *)
+           | [ty] => if CTU.isKind CPSTy.K_UNIFORM (CTU.kindOf ty)
+                      (* we did not box it, just cast any => ty *)
                       then MK.cast(valParam, ty, fn arg =>
                               C.mkThrow(tgtK, [arg]))
-                      (* it was boxed, so unbox it *)
+                      (* we boxed it, so unbox it *)
                       else unboxThrow tgtK [ty]
+              (* All arity > 1 conts were boxed. *)
+           | tys => unboxThrow tgtK tys
            (* esac *))
 
       and unboxThrow tgtK tys =
@@ -368,7 +371,7 @@ structure WrapCaptures : sig
       in
         (if neverReturns
           then C.FB{f = padVar, params = [valParam], rets = [],
-                    body = dispatch contVar
+                    body = unbundle contVar
                    }
           else C.FB{f = padVar, params = [valParam, flagParam], rets = [],
                     body = C.mkSwitch(flagParam, map mkAlt numbering, NONE)
@@ -432,9 +435,8 @@ structure WrapCaptures : sig
                 params = params,
                 rets = [],
                 body = MK.bundle(params, fn newArgs =>
-                         MK.atLeastOneArg(newArgs, fn paddedArgs =>
                            MK.bindInt(idx, fn flag =>
-                             C.mkThrow(padK, paddedArgs @ [flag]))))},
+                             C.mkThrow(padK, newArgs @ [flag])))},
                 k (insertV (env, tgtK, LocalCont newK))
           ))
         end
