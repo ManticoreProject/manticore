@@ -351,11 +351,8 @@ doShutdown:
                   /* pass the signal to scheduling code in the BOM runtime */
 
             closObj = ValueToClosure(vp->schedCont);
-            // yes, the two lines below look fishy.
-            // FunClosure_t uses {cp, ep}, but
-            // the codegen uses {ep, cp}
-            envP = closObj->cp;
-            codeP = ValueToAddr(closObj->ep);
+            envP = closObj->ep;
+            codeP = ValueToAddr(closObj->cp);
             arg = resumeK;
             exnCont = M_UNIT;
             vp->atomic = M_TRUE;
