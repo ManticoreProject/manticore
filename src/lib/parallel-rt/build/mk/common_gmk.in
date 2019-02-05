@@ -88,6 +88,7 @@ GC_SRCS = 	minor-gc.c \
 		alloc.c \
 		statepoints.c \
 		stacks.c \
+		large-object.c \
 		work-stealing-deque.c
 
 VPROC_SRCS =	vproc.c
@@ -107,7 +108,7 @@ ifeq ($(ENABLE_LOGGING),true)
   CPPFLAGS += -DENABLE_LOGGING
   MISC_SRCS += log.c \
   	       event-log.c
-  
+
 endif
 
 ifeq ($(ENABLE_DEBUG),true)
@@ -178,7 +179,7 @@ gen-runtime-constants:	gen-runtime-constants.c manticore-rt.h vproc.h vproc-offs
 	$(CC) $(CPPFLAGS) $(CFLAGS) -lm -o gen-runtime-constants $< ../../config/crc.c
 
 gen-log-events:		  gen-log-events.c
-			  $(CC) $(CPPFLAGS) $(CFLAGS) -o gen-log-events $< 
+			  $(CC) $(CPPFLAGS) $(CFLAGS) -o gen-log-events $<
 
 
 #################### Cleanup ####################
