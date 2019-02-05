@@ -30,7 +30,7 @@ struct WorkGroupList_s {
 };
 typedef struct WorkGroupList_s WorkGroupList_t;
 
-static WorkGroupList_t **PerVProcLists;          
+static WorkGroupList_t **PerVProcLists;
 
 /* \brief call this function once during runtime initialization to initialize
  *     gc state */
@@ -81,7 +81,7 @@ static uint32_t FloorLg (uint32_t n) {
 
 /*! \brief compute ceiling(log_2(v))
  */
-static uint32_t CeilingLg (uint32_t v) 
+static uint32_t CeilingLg (uint32_t v)
 {
     uint32_t lg = FloorLg(v);
     return lg + (v - (1<<lg) > 0);
@@ -90,21 +90,11 @@ static uint32_t CeilingLg (uint32_t v)
 static Deque_t *DequeAlloc (VProc_t *self, int32_t size)
 {
     uint32_t dequeSzB = sizeof(Deque_t) + sizeof(Value_t) * ((uint32_t)size - 1);
-  /* since each processor frequently reads and writes to its deque, we want to prevent false sharing 
+  /* since each processor frequently reads and writes to its deque, we want to prevent false sharing
    * between deque memory by aligning each deque's memory chunk.
    */
-#if defined(HAVE_POSIX_MEMALIGN)
-    Deque_t *deque = 0;
     uint32_t dequeAlignSzB = 1 << CeilingLg (dequeSzB);  // next power of two greater than the deque size
-    int ignored = posix_memalign ((void **)&deque, dequeAlignSzB, dequeSzB);
-#elif defined(HAVE_MEMALIGN)
-    uint32_t dequeAlignSzB = 1 << CeilingLg (dequeSzB);  // next power of two greater than the deque size
-    Deque_t *deque = (Deque_t*) memalign (dequeAlignSzB, dequeSzB);
-#elif defined(HAVE_VALLOC)
-    Deque_t *deque = (Deque_t*) valloc (dequeSzB);
-#else
-    Deque_t *deque = (Deque_t*) malloc (dequeSzB);
-#endif
+    Deque_t *deque = (Deque_t*) aligned_alloc(dequeAlignSzB, dequeSzB);
 
     deque->new = 0;
     deque->old = 0;
@@ -171,7 +161,7 @@ static int DequeNumElts (Deque_t *deque)
 static DequeList_t *PruneDequeList (DequeList_t *deques)
 {
     DequeList_t *new = NULL;
-    
+
     for (DequeList_t *next = deques; next != NULL; next = next->next) {
 	if (DequeNumElts (next->deque) == 0 && next->deque->nClaimed == 0)
 	    FREE(next->deque);
@@ -198,7 +188,7 @@ static void Prune (VProc_t *self)
 	wgList->resumeDeques = PruneDequeList (wgList->resumeDeques);
 }
 
-/* \brief number of roots needed for deques on the given vproc 
+/* \brief number of roots needed for deques on the given vproc
  * \param self the host vproc
  * \return number of roots
 */
@@ -232,7 +222,7 @@ static int MoveLeft (int i, int sz)
 #if ROOT_SET_OPTIMIZATION
 
 /* The root-set-partitioning optimization partitions the root set into the subset
- * needed by minor collections only and the subset needed by global collections. 
+ * needed by minor collections only and the subset needed by global collections.
  *
  * FIXME: this code is broken
  */
@@ -260,7 +250,7 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 			*rootPtr++ = &(deque->elts[j]);
 		    } else {
 			/* the jth element points to the global heap, so we do not need to add it
-			 * to the root set. elements to the right of the jth position must also 
+			 * to the root set. elements to the right of the jth position must also
 			 * point to the global heap, so it is safe to return the current root set. this
 			 * property always holds for two reasons:
 			 *   1. new elements can only be inserted at the new (rightmost) end of the deque
@@ -269,14 +259,14 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 #ifndef NDEBUG
 			// check that none of the elements to the left of the jth element point to the local heap
 			for (int i = j; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
-			    int j = MoveLeft (i, deque->maxSz);	   
+			    int j = MoveLeft (i, deque->maxSz);
 			    if (deque->elts[j] != M_NIL)
 				assert (!ELT_POINTS_TO_LOCAL_HEAP(deque, j));
 			}
 #endif
 			return rootPtr;
 		    }
-	    }	    
+	    }
 	}
     }
     return rootPtr;
@@ -295,7 +285,7 @@ void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rp)
 	    bool inGlobalHeap = false;    // true, if all elements remaining must be in the global heap
 	    // iterate through the deque in the direction going from the new to the old end
 	    for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
-		int j = MoveLeft (i, deque->maxSz); 
+		int j = MoveLeft (i, deque->maxSz);
 		// i points one element to right of the element we want to scan
 		if (deque->elts[j] != M_NIL)
 		    if (inGlobalHeap) {
@@ -307,20 +297,20 @@ void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rp)
 		    } else {
 			// the jth element should point to the local heap
 		    }
-	    }	    
+	    }
 	}
     }
     *rp++ = 0;
 }
 
-#else /* no root-set optimization: instead we just add the entire deque to each local 
+#else /* no root-set optimization: instead we just add the entire deque to each local
        * collection */
 
 static Value_t **AddDequeElts (Deque_t *deque, Value_t **rootPtr)
 {
     // iterate through the deque in the direction going from the new to the old end
     for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
-	int j = MoveLeft (i, deque->maxSz); 
+	int j = MoveLeft (i, deque->maxSz);
 	// i points one element to right of the element we want to scan
 	if (deque->elts[j] != M_NIL)
 	    *rootPtr++ = &(deque->elts[j]);
