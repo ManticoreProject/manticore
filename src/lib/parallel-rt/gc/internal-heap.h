@@ -76,8 +76,8 @@ struct struct_stackinfo {
     StackInfo_t* prev   ALIGN_8;  // link to previous stack in the list
     void* deepestScan   ALIGN_8;  // unscanned <=> deepestScan == ptr to its own StackInfo_t
     Age_t age           ALIGN_8;
-    void* mmapBase      ALIGN_8;
-    size_t mmapSize     ALIGN_8;
+    size_t guardSz      ALIGN_8;
+    size_t totalSz      ALIGN_8;
 };
 
 

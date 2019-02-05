@@ -205,7 +205,7 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
             && (allocd->deepestScan == allocd) // unmarked
            ) {
 
-            freedBytes += allocd->mmapSize;
+            freedBytes += allocd->totalSz;
 
             // save links
             StackInfo_t* allocdNext = allocd->next;

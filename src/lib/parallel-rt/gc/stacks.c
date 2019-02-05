@@ -16,6 +16,7 @@
 #include "internal-heap.h"
 #include "value.h"
 #include "string.h"
+#include "large-object.h"
 #include <stdio.h>
 
 extern int ASM_DS_Return;
@@ -24,6 +25,8 @@ extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_SegUnderflow;
 
 size_t dfltStackSz;
+
+StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool isSegment);
 
 void InvalidReturnAddr() {
     Die("an unexpected return has occurred!");
@@ -37,11 +40,12 @@ void EndOfStack() {
 StackInfo_t* GetStack(VProc_t *vp) {
     StackInfo_t* info;
     if (vp->freeStacks == NULL) {
-#ifdef SEGSTACK
-        info = AllocStackSegment(dfltStackSz, NULL, NULL);
-#else
-        info = AllocStack(dfltStackSz, NULL, NULL);
-#endif
+        size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
+        bool isSegment = false;
+  #ifdef SEGSTACK
+        isSegment = true;
+  #endif
+        info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
     } else {
         // pop an existing stack
         info = vp->freeStacks;
@@ -102,6 +106,145 @@ StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
     // return values
     *initialSP = stkPtr;
     return info;
+}
+
+void* GetStkLimit(StackInfo_t* info) {
+    return info->stkLimit;
+}
+
+void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
+    uint64_t N = numBytes / dfltStackSz;
+    // make sure we allocate at least one.
+    N = (N == 0 ? 1 : N);
+
+    StackInfo_t* info;
+    size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
+    bool isSegment = false;
+#ifdef SEGSTACK
+    isSegment = true;
+#endif
+
+    for(uint64_t i = 0; i < N; i++) {
+        info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
+
+        // push
+        info->next = vp->freeStacks;
+        vp->freeStacks = info;
+    }
+}
+
+// Allocates a region of memory suitable for use as a stack segment.
+//
+// Returns the pointer to the descriptor information of the stack.
+//
+// The stack pointer initialSP returned is guarenteed to be such that p+8 is
+// 16-byte aligned, per the SysV ABI. That pointer is ready to be used as a
+// stack pointer after writing a ret addr.
+// Here's a picture:
+//
+//                 16-byte aligned --| |-- dummy watermark
+//                                   v v
+// | guard |  STACK_REGION  |bbbbbbbb| mark | ~0 | ... StackInfo_t ... |  high addresses >
+//                          ^               ^
+//                   info->initialSP     invalid frame size
+//
+//  where STACK_REGION looks like this:
+//
+//                  info->stkLimit
+//                        v
+//  | C stack area | slop | usable stack space |
+//                                 ^
+//                             numBytes
+//
+// Note that the guard page is omitted if guardSz is 0.
+//
+// In addition, if isSegment is false, then the slop & C Stack Area
+// have size 0. Otherwise their sizes are fixed (see implementation).
+//
+StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool isSegment) {
+    StackInfo_t* info;
+    // NOTE automatic resizing using MAP_GROWSDOWN has
+    // been deprecated: https://lwn.net/Articles/294001/
+
+    size_t slopSz = isSegment ? 128 : 0;
+    size_t ccallSz = isSegment && guardSz > 0 ? guardSz * 2 : 0;
+    size_t bonusSz = 8 * sizeof(uint64_t); // extra space for realigning, etc.
+
+    size_t totalRegion = ccallSz + slopSz + numBytes + bonusSz;
+    size_t stackLen = guardSz + totalRegion;
+    size_t totalSz = stackLen + sizeof(StackInfo_t);
+
+    totalSz = guardSz ? ROUNDUP(totalSz, guardSz) : totalSz;
+
+    uint8_t* mem = NULL;
+
+    if (guardSz) {
+        // we protect the low end of the block to
+        // detect stack overflow.
+
+        mem = lo_alloc_aligned(vp, totalSz, guardSz);
+
+        if (mprotect(mem, guardSz, PROT_NONE)) {
+            Die("AllocStackMem: failed to initialize guard area");
+            return NULL;
+          }
+    } else {
+        mem = lo_alloc(vp, totalSz);
+    }
+
+    assert(mem != NULL);
+
+    uint64_t val = (uint64_t) mem;
+
+    // initialize the stack's info descriptor
+    info = (StackInfo_t*)(val + stackLen);
+    info->deepestScan = info;
+    info->age = AGE_Minor;
+    info->next = NULL;
+    info->prev = NULL;
+    info->prevSegment = NULL;
+    info->currentSP = NULL;
+    info->guardSz = guardSz;
+    info->totalSz = totalSz;
+
+    // setup stack pointer
+    val = val + stackLen - 16;        // switch sides, leaving some headroom.
+    val = ROUNDDOWN(val, 16ULL);    // realign downwards.
+
+    uint8_t* valP = (uint8_t*)val;
+
+    // push an invalid frame size
+    valP -= sizeof(uint64_t);
+    *((uint64_t*)valP) = ~0ULL;
+
+    // push a dummy watermark
+    valP -= sizeof(uint64_t);
+    *((uint64_t*)valP) = AGE_Global;
+
+    // leave space for a return addr
+    valP -= sizeof(uint64_t);
+
+    uint8_t* sp = (uint8_t*)valP;
+    uint8_t* spLim = (uint8_t*)(valP - numBytes);
+
+    info->initialSP = sp;
+    info->stkLimit = spLim;
+
+    return info;
+}
+
+void FreeStackMem(VProc_t *vp, StackInfo_t* info) {
+    if (info->guardSz) {
+      Die ("TODO: unprotect the guard area");
+    }
+
+    lo_free(vp, info);
+}
+
+// returns a stack pointer SP such that SP+8 is 16-byte aligned.
+uint8_t* AllocFFIStack(VProc_t *vp, size_t numBytes) {
+    StackInfo_t* ffiInfo = AllocStackMem(vp, numBytes, GUARD_PAGE_BYTES, false);
+    return ffiInfo->initialSP;
 }
 
 __attribute__ ((hot)) StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
@@ -213,31 +356,4 @@ __attribute__ ((hot)) StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t *res
 
     // return the new SP in the new segment
     return (StackInfo_t*) newStkPtr;
-}
-
-void* GetStkLimit(StackInfo_t* info) {
-    return info->stkLimit;
-}
-
-void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
-  /* TODO: update this!
-
-    uint64_t N = numBytes / dfltStackSz;
-    // make sure we allocate at least one.
-    N = (N == 0 ? 1 : N);
-
-    StackInfo_t* info;
-    uint8_t** top = &(vp->stackArea_top);
-    uint8_t* lim = vp->stackArea_lim;
-    for(uint64_t i = 0; i < N; i++) {
-#ifdef SEGSTACK
-        info = AllocStackSegment(dfltStackSz, top, lim);
-#else
-        info = AllocStack(dfltStackSz, top, lim);
-#endif
-        // push
-        info->next = vp->freeStacks;
-        vp->freeStacks = info;
-    }
-    */
 }

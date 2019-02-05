@@ -84,6 +84,11 @@ extern uint32_t NumGlobalGCs;
 // a 0-1 flag telling us whether the program was compiled with the cshim option.
 extern int32_t FFIStackFlag;
 
+// Allocate an FFI stack and return it's stack pointer, SP.
+// SP is such that SP+8 is 16-byte aligned.
+// NOTE: this memory can't be freed, and shouldn't need to be.
+uint8_t* AllocFFIStack(VProc_t *vp, size_t size);
+
 #ifndef NO_GC_STATS
 extern void ReportGCStats ();
 #endif

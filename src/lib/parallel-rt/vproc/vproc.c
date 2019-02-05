@@ -290,8 +290,8 @@ void *NewVProc (void *arg)
     vproc->currentFLS = M_NIL;
     vproc->allocdStacks = NULL;
     vproc->freeStacks = NULL;
-    vproc->ffiStack = FFIStackFlag ? AllocFFIStack(4 * ONE_MEG) : NULL;
     vproc->inPromotion = false;
+    vproc->ffiStack = FFIStackFlag ? AllocFFIStack(vproc, 4 * ONE_MEG) : NULL;
 
     MutexInit (&(vproc->lock));
     CondInit (&(vproc->wait));

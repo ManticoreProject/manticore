@@ -35,24 +35,6 @@ extern void* SimpleAlloc(size_t szb);
  */
 extern void FreeMemory (void *base, int szB);
 
-
-// the functions below involving stacks do not require that the HeapLock is held.
-
-// allocates a region of memory suitable for
-// use as a stack, returning its descriptor. 
-// Returns 0 if failed.
-extern StackInfo_t* AllocStack(size_t numBytes, uint8_t** top, uint8_t* lim);
-
-// allocates a region of memory suitable for
-// use as a stack segment, returning its descriptor. 
-// Returns 0 if failed.
-extern StackInfo_t* AllocStackSegment(size_t numBytes, uint8_t** top, uint8_t* lim);
-
-extern uint8_t* AllocFFIStack(size_t numBytes);
-
-// frees a stack allocated by AllocStack.
-// extern void FreeStack(StackInfo_t* info);
-
 extern long GUARD_PAGE_BYTES;
 
 #endif /* !_OS_MEMORY_H_ */
