@@ -80,9 +80,6 @@ struct struct_stackinfo {
     size_t mmapSize     ALIGN_8;
 };
 
-// a 0-1 flag telling us whether the program was compiled with the cshim option.
-extern int32_t FFIStackFlag;
-
 
 
 /********** Global heap **********/

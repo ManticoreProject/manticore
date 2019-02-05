@@ -37,13 +37,10 @@ void EndOfStack() {
 StackInfo_t* GetStack(VProc_t *vp) {
     StackInfo_t* info;
     if (vp->freeStacks == NULL) {
-        // get a fresh stack
-        uint8_t** top = &(vp->stackArea_top);
-        uint8_t* lim = vp->stackArea_lim;
 #ifdef SEGSTACK
-        info = AllocStackSegment(dfltStackSz, top, lim);
+        info = AllocStackSegment(dfltStackSz, NULL, NULL);
 #else
-        info = AllocStack(dfltStackSz, top, lim);
+        info = AllocStack(dfltStackSz, NULL, NULL);
 #endif
     } else {
         // pop an existing stack
@@ -223,6 +220,8 @@ void* GetStkLimit(StackInfo_t* info) {
 }
 
 void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
+  /* TODO: update this!
+
     uint64_t N = numBytes / dfltStackSz;
     // make sure we allocate at least one.
     N = (N == 0 ? 1 : N);
@@ -240,4 +239,5 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
         info->next = vp->freeStacks;
         vp->freeStacks = info;
     }
+    */
 }

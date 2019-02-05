@@ -299,9 +299,7 @@ void *NewVProc (void *arg)
     vproc->currentFLS = M_NIL;
     vproc->allocdStacks = NULL;
     vproc->freeStacks = NULL;
-    vproc->stackArea_top = NULL;
-    vproc->stackArea_lim = NULL;
-    vproc->ffiStack = AllocFFIStack(ONE_MEG);
+    vproc->ffiStack = FFIStackFlag ? AllocFFIStack(4 * ONE_MEG) : NULL;
     vproc->inPromotion = false;
 
     MutexInit (&(vproc->lock));
@@ -337,15 +335,8 @@ void *NewVProc (void *arg)
 #endif
 
 #ifdef DIRECT_STYLE
-    // initialize the stack area with one gig of space for bump alloc
-    const size_t ONE_GIG = ONE_K * ONE_K * ONE_K;
-    uint8_t* mem = SimpleAlloc(ONE_GIG);
-
-    vproc->stackArea_top = mem;
-    vproc->stackArea_lim = mem + (ONE_GIG - 8);
-
-    // warm up the free list with 128MB worth of stack
-    WarmUpFreeList(vproc, 128 * ONE_MEG);
+    // warm up the free list with 1MB worth of extra stack
+    WarmUpFreeList(vproc, ONE_MEG);
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */

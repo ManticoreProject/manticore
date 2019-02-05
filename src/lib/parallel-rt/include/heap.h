@@ -51,7 +51,7 @@ STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
 STATIC_INLINE void ZeroLimitPtr (VProc_t *vp)
 {
     Value_t* ptr = (Value_t*)&(vp->limitPtr);
-    
+
     __asm__ __volatile__ (
     "xorq %%rax, %%rax\n"	        /* rax = 0ULL */
 	"xchgq %%rax, %0\n"  	        /* xchgq result,ptr */
@@ -59,7 +59,7 @@ STATIC_INLINE void ZeroLimitPtr (VProc_t *vp)
     :
 	: "rax"
     );
-    
+
 }
 
 /* return true of the given address is within the given vproc heap */
@@ -79,7 +79,10 @@ extern void InitVProcHeap (VProc_t *vp);
 extern void AllocToSpaceChunk (VProc_t *vp);
 extern Addr_t AllocVProcMemory (int id, Location_t loc);
 
-extern uint32_t	NumGlobalGCs;
+extern uint32_t NumGlobalGCs;
+
+// a 0-1 flag telling us whether the program was compiled with the cshim option.
+extern int32_t FFIStackFlag;
 
 #ifndef NO_GC_STATS
 extern void ReportGCStats ();
