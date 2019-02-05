@@ -46,9 +46,9 @@ stacks=(
   "-linkstack"
 
   # now we test with the cshim
-  # "-Ccshim=true"
-  # "-Ccshim=true -contigstack"
-  # "-Ccshim=true -segstack"
+  "-Ccshim=true"
+  "-Ccshim=true -contigstack"
+  "-Ccshim=true -segstack"
 
   # now we test noras
   # "-noras"
