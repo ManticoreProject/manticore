@@ -137,8 +137,8 @@ void ScanStackMajor (
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
 
-    // only during a GC cycle is it valid to do this test, because
-    // otherwise during a PromoteObj, we never end up clearing this,
+    // only during a GC cycle is it valid to do this test of the deepestScan,
+    // because otherwise during a PromoteObj, we never end up clearing this,
     // and will not scan the stack.
     if (!(vp->inPromotion)) {
         uint64_t deepest = (uint64_t)stkInfo->deepestScan;
@@ -265,8 +265,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 
 #ifdef DIRECT_STYLE
-    /* unmark all stacks from the minor collection earlier */
-    UnmarkStacks(vp);
 
     /* scan the current stack. */
     vp->inPromotion = false;

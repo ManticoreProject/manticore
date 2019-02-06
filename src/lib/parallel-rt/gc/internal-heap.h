@@ -121,7 +121,6 @@ extern void InitGlobalGC ();
 extern void StartGlobalGC (VProc_t *self, Value_t **roots);
 extern MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal);
 extern size_t FreeStacks(VProc_t *vp, Age_t epoch);
-extern void UnmarkStacks(VProc_t *vp);
 
 extern void ScanStackMinor (
     void* origStkPtr,

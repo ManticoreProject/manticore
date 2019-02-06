@@ -358,11 +358,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     /* finish the GC setup for this vproc */
 	self->globAllocChunk = (MemChunk_t *)0;
 
-#ifdef DIRECT_STYLE
-    /* unmark all stacks from the major collection earlier */
-    UnmarkStacks(self);
-#endif
-
     /* synchronize on every vproc finishing setup (so we know all
        from spaces are appropraitely tagged). */
     BarrierWait (&GCBarrier0);

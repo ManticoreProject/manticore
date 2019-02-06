@@ -189,6 +189,8 @@ nextIter:
  * We perform a pass over the allocated list of stacks,
  * freeing any unmarked stacks who are young enough.
  *
+ * Otherwise, marked stacks are unmarked.
+ *
  * The value returned indicates how many bytes were reclaimed.
  *
  * This function is also used by later GCs.
@@ -201,9 +203,11 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
 
         StackInfo_t* nextIter = allocd->next;
 
-        if ((allocd->age <= epoch)  // young enough
-            && (allocd->deepestScan == allocd) // unmarked
-           ) {
+        bool marked = (allocd->deepestScan != allocd);
+        bool safe = allocd->age <= epoch; // young enough
+
+        if (!marked && safe) {
+            // we can free it
 
             freedBytes += allocd->totalSz;
 
@@ -231,20 +235,16 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
                 vp->allocdStacks = allocdNext;
             }
         }
+
+        if (marked) {
+          // clear the marking.
+          allocd->deepestScan = allocd;
+        }
+
         // advance position
         allocd = nextIter;
     }
     return freedBytes;
-}
-
-/* unmarks all stacks in the alloc'd list (for the ones who survived). */
-void UnmarkStacks(VProc_t *vp) {
-    StackInfo_t* cur = vp->allocdStacks;
-    while (cur != NULL) {
-        cur->deepestScan = cur;
-        cur = cur->next;
-    }
-    return;
 }
 
 /* MinorGC:
@@ -403,12 +403,6 @@ void MinorGC (VProc_t *vp)
     if (HeapCheck >= GC_DEBUG_MINOR) {
         CheckMinorGC (vp, roots);
     }
-#endif
-
-
-#ifdef DIRECT_STYLE
-    /* unmark all surviving stacks */
-    UnmarkStacks(vp);
 #endif
 
     /* reset the allocation pointer */
