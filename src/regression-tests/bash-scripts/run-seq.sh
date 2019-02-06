@@ -6,7 +6,7 @@
 
 ABSPATH="$(cd "${0%/*}" 2>/dev/null; echo "$PWD"/"${0##*/}")"
 DIR=`dirname "$ABSPATH"`/..
-# set the BACKEND flag 
+# set the BACKEND flag
 PMLC="sml @SMLcmdname=pmlc @SMLload=$DIR/../../src/tools/mc/pmlc"
 PMLCFLAGS="-sequential -Cmatch.check=true $BACKEND"
 #PMLCFLAGS="-sequential -Cmatch.check=true -Ccps.enable-ho-inline=true -Cstats.report=true -Ccps.copy-propagation-reflow=true"
@@ -26,7 +26,7 @@ rm -rf $LOG
 echo "pmlc is $PMLC" | tee -a $REPORT_FILE
 echo "compilation flags: $PMLCFLAGS" | tee -a $REPORT_FILE
 
-for g in basics seq-* 
+for g in basics seq-*
 do
 ( cd $g;
    for f in *.pml *.mlb

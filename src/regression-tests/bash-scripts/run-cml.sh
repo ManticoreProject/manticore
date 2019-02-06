@@ -27,7 +27,7 @@ echo "binary flags: $AOUTFLAGS" | tee -a $REPORT_FILE
 
 ( cd $DIR/goals;
 
-for g in par-basics par-cml;
+for g in basics par-cml;
 do
 ( cd $g;
    for f in *.pml

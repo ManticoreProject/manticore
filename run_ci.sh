@@ -78,7 +78,7 @@ for stack in "${stacks[@]}"; do
         config="$llvm $stack"
         echo -e "\n\n\t----- testing configuration: $config -----\n\n"
         runTest "$config" run-seq.sh
-        runTest "$config" run-cml.sh "-p 1"
+        runTest "$config" run-cml.sh
         echo -e "\n\n\t----- done -----\n\n"
     done
 done

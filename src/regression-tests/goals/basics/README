@@ -1,0 +1,4 @@
+
+This directory contains tests of basic functionality of the compiler.
+Thus, it does not contain any PML-specific constructs like pval or parallel
+tuples.

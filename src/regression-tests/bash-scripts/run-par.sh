@@ -26,7 +26,7 @@ echo "compilation flags: $PMLCFLAGS" | tee -a $REPORT_FILE
 
 ( cd $DIR/goals;
 
-for g in par-*
+for g in basics par-*
 do
 ( cd $g;
    for f in *.pml
