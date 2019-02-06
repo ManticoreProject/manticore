@@ -1,5 +1,5 @@
 (* runtime-labels.sml
- * 
+ *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
@@ -20,6 +20,8 @@ structure RuntimeLabels =
     val magic = global "mantMagic"
   (* label of flag that tells the runtime if the generated code is sequential *)
     val sequential = global "SequentialFlag"
+  (* flag that tells the runtime whether FFI calls occur on another stack *)
+    val ffistack = global "FFIStackFlag"
   (* runtime code to invoke the GC *)
     val initGC = global "ASM_InvokeGC"
   (* runtime code to promote objects *)

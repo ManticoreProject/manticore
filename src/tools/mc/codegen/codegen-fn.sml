@@ -456,6 +456,10 @@ if MChkTy.check stm
 		pseudoOp (P.global RuntimeLabels.sequential);
 		defineLabel RuntimeLabels.sequential;
 		pseudoOp (P.int (P.I32, [if Controls.get BasicControl.sequential then 1 else 0]));
+	      (* ffi stack flag. *)
+		pseudoOp (P.global RuntimeLabels.ffistack);
+		defineLabel RuntimeLabels.ffistack;
+		pseudoOp (P.int (P.I32, [0])); (* NOTE: not currently supported in the MLRISC backend. *)
 	      (* literals *)
 		FloatLit.appi (fn ((sz, f), l) => emitLit (l, P.float(sz, [f]))) floatTbl;
 		StringLit.appi (fn (s, l) => emitLit (l, P.asciz s)) strTbl;
