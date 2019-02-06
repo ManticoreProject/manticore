@@ -54,11 +54,17 @@ typedef struct {
     MemChunk_t *freeChunks;  //!< free chunks allocated on this node
 } NodeHeap_t;
 
-typedef enum {
-    AGE_Minor = 0x0, // ASM & LLVM rely on this being zero !!
-    AGE_Major = 0x1,
-    AGE_Global = 0x2
-} Age_t;
+
+// NOTE: we are not using an enum here because it's unclear where in the stack
+// info struct the age would be if it's not 8 bytes wide.
+// We need hand-written ASM that correctly accesses this field.
+typedef uint64_t Age_t;
+
+// ASM & LLVM rely on these values not changing!!
+#define AGE_Minor 0
+#define AGE_Major 1
+#define AGE_Global 2
+
 
 // we have some hand-written ASM that accesses this struct
 // assuming all fields are 8 bytes wide.

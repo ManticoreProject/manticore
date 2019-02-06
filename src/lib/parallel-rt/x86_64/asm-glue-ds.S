@@ -17,13 +17,13 @@
 #define TMP_REG1            %rcx
 
 // stack descriptor offsets
-#define CUR_SP      0
-#define PREV_SEG    8
-#define LIST_NEXT   16
-#define INIT_SP     24
-#define STK_LIM     32
-#define LIST_PREV   40
-#define AGE         56
+#define CUR_SP      0*8
+#define PREV_SEG    1*8
+#define LIST_NEXT   2*8
+#define INIT_SP     3*8
+#define STK_LIM     4*8
+#define LIST_PREV   5*8
+#define AGE         7*8
 
     .text
 
@@ -178,6 +178,13 @@ _GSYM(ASM_DS_SegUnderflow):
     // grab current segment
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
 
+    // check if this segment was promoted. If so,
+    // it may be part of some other VProc's allocated
+    // list, and it's unsafe to claim it as ours here.
+    movq   AGE(TMP_REG1), TMP_REG0
+    cmpq   $2, TMP_REG0     // compare with AGE_Global
+    je     doneFreeing
+
 #ifndef LAZY_UNDERFLOW
     /////////
     // remove current segment from allocated list,
@@ -223,6 +230,7 @@ prevTestJoin:
     // done with freeing the current segment
     /////////////
 #endif
+doneFreeing:
 
     // grab the previous segment descriptor
     // from the current segment
