@@ -19,119 +19,7 @@
 #include "large-object.h"
 #include <stdio.h>
 
-extern int ASM_DS_Return;
-extern int ASM_DS_StartStack;
-extern int ASM_DS_EscapeThrow;
-extern int ASM_DS_SegUnderflow;
-
 size_t dfltStackSz;
-
-StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool isSegment);
-
-void InvalidReturnAddr() {
-    Die("an unexpected return has occurred!");
-}
-
-void EndOfStack() {
-    Die("stack underflow has occurred!");
-}
-
-// Retrieves an unused stack for the given vproc.
-StackInfo_t* GetStack(VProc_t *vp) {
-    StackInfo_t* info;
-    if (vp->freeStacks == NULL) {
-        size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
-        bool isSegment = false;
-  #ifdef SEGSTACK
-        isSegment = true;
-  #endif
-        info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
-    } else {
-        // pop an existing stack
-        info = vp->freeStacks;
-        vp->freeStacks = info->next;
-    }
-
-    // push on alloc'd list
-    StackInfo_t* cur = vp->allocdStacks;
-    if (cur != NULL) {
-        cur->prev = info;
-    }
-    info->next = cur;
-    info->prev = NULL;
-
-    vp->allocdStacks = info;
-
-    return info;
-}
-
-// NOTE: exposed to BOM code.
-Value_t NewStack (VProc_t *vp, Value_t funClos) {
-    StackInfo_t* info = GetStack(vp);
-
-    uint64_t* sp = (uint64_t*)(info->initialSP);
-
-    /* we initialize one frame:
-        low                                            high
-                                                                       16-byte
-                     v                        v                           v
-        [ &ApplyClos | watermark | frame size | funClos ][ invalidRetAddr ]
-        ^                                                ^
-  returned stkPtr                                    initial sp
-
-    */
-    sp[0] = (uint64_t)&EndOfStack; // funClos should not try to return!
-    sp[-1] = (uint64_t)funClos;
-    sp[-2] = 24; // 24 bytes, including watermark and frame size
-    sp[-3] = 0;  // watermark.
-    sp[-4] = (uint64_t)&ASM_DS_StartStack;
-    sp = sp - 4;
-
-    // now we need to allocate the stack cont object
-    Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
-                                        PtrToValue(sp), // stack ptr
-                                        PtrToValue(info)); // stack info
-
-    return resumeK;
-}
-
-StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
-    StackInfo_t* info = GetStack(vp);
-
-    // initialize stack for a return from manticore's main fun.
-    void* stkPtr = info->initialSP;
-    uint64_t* ptrToRetAddr = (uint64_t*)stkPtr;
-    *ptrToRetAddr = (uint64_t)&ASM_DS_Return;
-
-    // return values
-    *initialSP = stkPtr;
-    return info;
-}
-
-void* GetStkLimit(StackInfo_t* info) {
-    return info->stkLimit;
-}
-
-void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
-    uint64_t N = numBytes / dfltStackSz;
-    // make sure we allocate at least one.
-    N = (N == 0 ? 1 : N);
-
-    StackInfo_t* info;
-    size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
-    bool isSegment = false;
-#ifdef SEGSTACK
-    isSegment = true;
-#endif
-
-    for(uint64_t i = 0; i < N; i++) {
-        info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
-
-        // push
-        info->next = vp->freeStacks;
-        vp->freeStacks = info;
-    }
-}
 
 // Allocates a region of memory suitable for use as a stack segment.
 //
@@ -233,18 +121,132 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     return info;
 }
 
+// returns a stack pointer SP such that SP+8 is 16-byte aligned.
+uint8_t* AllocFFIStack(VProc_t *vp, size_t numBytes) {
+    StackInfo_t* ffiInfo = AllocStackMem(vp, numBytes, GUARD_PAGE_BYTES, false);
+    return ffiInfo->initialSP;
+}
+
+void InvalidReturnAddr() {
+    Die("an unexpected return has occurred!");
+}
+
+void EndOfStack() {
+    Die("stack underflow has occurred!");
+}
+
+
+
+#ifdef DIRECT_STYLE
+
+extern int ASM_DS_Return;
+extern int ASM_DS_StartStack;
+extern int ASM_DS_EscapeThrow;
+extern int ASM_DS_SegUnderflow;
+
+// Retrieves an unused stack for the given vproc.
+StackInfo_t* GetStack(VProc_t *vp) {
+    StackInfo_t* info;
+    if (vp->freeStacks == NULL) {
+        size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
+        bool isSegment = false;
+  #ifdef SEGSTACK
+        isSegment = true;
+  #endif
+        info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
+    } else {
+        // pop an existing stack
+        info = vp->freeStacks;
+        vp->freeStacks = info->next;
+    }
+
+    // push on alloc'd list
+    StackInfo_t* cur = vp->allocdStacks;
+    if (cur != NULL) {
+        cur->prev = info;
+    }
+    info->next = cur;
+    info->prev = NULL;
+
+    vp->allocdStacks = info;
+
+    return info;
+}
+
+// NOTE: exposed to BOM code.
+Value_t NewStack (VProc_t *vp, Value_t funClos) {
+    StackInfo_t* info = GetStack(vp);
+
+    uint64_t* sp = (uint64_t*)(info->initialSP);
+
+    /* we initialize one frame:
+        low                                            high
+                                                                       16-byte
+                     v                        v                           v
+        [ &ApplyClos | watermark | frame size | funClos ][ invalidRetAddr ]
+        ^                                                ^
+  returned stkPtr                                    initial sp
+
+    */
+    sp[0] = (uint64_t)&EndOfStack; // funClos should not try to return!
+    sp[-1] = (uint64_t)funClos;
+    sp[-2] = 24; // 24 bytes, including watermark and frame size
+    sp[-3] = 0;  // watermark.
+    sp[-4] = (uint64_t)&ASM_DS_StartStack;
+    sp = sp - 4;
+
+    // now we need to allocate the stack cont object
+    Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
+                                        PtrToValue(sp), // stack ptr
+                                        PtrToValue(info)); // stack info
+
+    return resumeK;
+}
+
+StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
+    StackInfo_t* info = GetStack(vp);
+
+    // initialize stack for a return from manticore's main fun.
+    void* stkPtr = info->initialSP;
+    uint64_t* ptrToRetAddr = (uint64_t*)stkPtr;
+    *ptrToRetAddr = (uint64_t)&ASM_DS_Return;
+
+    // return values
+    *initialSP = stkPtr;
+    return info;
+}
+
+void* GetStkLimit(StackInfo_t* info) {
+    return info->stkLimit;
+}
+
+void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
+    uint64_t N = numBytes / dfltStackSz;
+    // make sure we allocate at least one.
+    N = (N == 0 ? 1 : N);
+
+    StackInfo_t* info;
+    size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
+    bool isSegment = false;
+#ifdef SEGSTACK
+    isSegment = true;
+#endif
+
+    for(uint64_t i = 0; i < N; i++) {
+        info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
+
+        // push
+        info->next = vp->freeStacks;
+        vp->freeStacks = info;
+    }
+}
+
 void FreeStackMem(VProc_t *vp, StackInfo_t* info) {
     if (info->guardSz) {
       Die ("TODO: unprotect the guard area");
     }
 
     lo_free(vp, info);
-}
-
-// returns a stack pointer SP such that SP+8 is 16-byte aligned.
-uint8_t* AllocFFIStack(VProc_t *vp, size_t numBytes) {
-    StackInfo_t* ffiInfo = AllocStackMem(vp, numBytes, GUARD_PAGE_BYTES, false);
-    return ffiInfo->initialSP;
 }
 
 __attribute__ ((hot)) StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
@@ -357,3 +359,5 @@ __attribute__ ((hot)) StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t *res
     // return the new SP in the new segment
     return (StackInfo_t*) newStkPtr;
 }
+
+#endif // DIRECT_STYLE
