@@ -46,15 +46,19 @@ size_t dfltStackSz;
 //
 // Note that the guard page is omitted if guardSz is 0.
 //
-// In addition, if isSegment is false, then the slop & C Stack Area
-// have size 0. Otherwise their sizes are fixed (see implementation).
+// In addition, if isSegment is false, then the C Stack Area
+// has size 0. Otherwise their sizes are fixed (see implementation).
 //
 StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool isSegment) {
     StackInfo_t* info;
     // NOTE automatic resizing using MAP_GROWSDOWN has
     // been deprecated: https://lwn.net/Articles/294001/
 
-    size_t slopSz = isSegment ? 128 : 0;
+    // This value was chosen because our RTS expects some additional space for
+    // reentering the runtime system, etc. According to the LLVM codegen,
+    // only 128 bytes of space exists.
+    size_t slopSz = isSegment ? 768 : 0;
+
     size_t ccallSz = isSegment && guardSz > 0 ? guardSz * 2 : 0;
     size_t bonusSz = 8 * sizeof(uint64_t); // extra space for realigning, etc.
 
