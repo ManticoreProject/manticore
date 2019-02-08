@@ -23,7 +23,11 @@
 #define INIT_SP     3*8
 #define STK_LIM     4*8
 #define LIST_PREV   5*8
+#define DEEP_SCAN   6*8
 #define AGE         7*8
+#define OWNER       8*8
+
+
 
     .text
 
@@ -117,7 +121,7 @@ _GSYM(__manti_growstack):
 #endif
 ////// FALL THROUGH //////
 
-_GSYM(__manti_growstack_noimplicitcopy):
+_GSYM(__manti_growstack_impl):
 
     leaq    8(%rsp), TMP_REG0   // save the current top of segment
     // save manticore registers
@@ -178,12 +182,13 @@ _GSYM(ASM_DS_SegUnderflow):
     // grab current segment
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
 
-    // check if this segment was promoted. If so,
-    // it may be part of some other VProc's allocated
-    // list, and it's unsafe to claim it as ours here.
-    movq   AGE(TMP_REG1), TMP_REG0
-    cmpq   $2, TMP_REG0     // compare with AGE_Global
-    je     doneFreeing
+    // Check if this segment can be reclaimed by the current
+    // vproc. If we're not the one who allocated it,
+    // it is part of some other VProc's allocated
+    // list, and it's unsafe to free it as ours without synchronization.
+    movq   OWNER(TMP_REG1), TMP_REG0
+    cmpq   VPROC_PTR_REG, TMP_REG0      // is this segment in our alloc queue?
+    jne    doneFreeing                  // if not, we can't free it now.
 
 #ifndef LAZY_UNDERFLOW
     /////////
@@ -286,7 +291,7 @@ callec_body:
     movq    %rsp, OLD_SP                      // stash the sp
     // switch to a new segment without copying
     movq    $0, TMP_REG1              // 0 in TMP_REG1 indicates no copying
-    callq   _GSYM(__manti_growstack_noimplicitcopy)
+    callq   _GSYM(__manti_growstack_impl)
     // at this point forward we're operating in a new stack segment.
 #endif
 

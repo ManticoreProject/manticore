@@ -51,26 +51,28 @@ size_t dfltStackSz;
 //
 StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool isSegment) {
     StackInfo_t* info;
+    bool haveGuardPage = guardSz > 0;
     // NOTE automatic resizing using MAP_GROWSDOWN has
     // been deprecated: https://lwn.net/Articles/294001/
 
     // This value was chosen because our RTS expects some additional space for
     // reentering the runtime system, etc. According to the LLVM codegen,
     // only 128 bytes of space exists.
-    size_t slopSz = isSegment ? 768 : 0;
+    // TODO: don't dump all regs on overflow so we can reduce this extra space.
+    size_t slopSz = isSegment ? 128 + 640 /* = 768 */ : 0;
 
-    size_t ccallSz = isSegment && guardSz > 0 ? guardSz * 2 : 0;
+    size_t ccallSz = isSegment && haveGuardPage ? 8192 : 0; // 8KB ought to be enough for anybody (tm)
     size_t bonusSz = 8 * sizeof(uint64_t); // extra space for realigning, etc.
 
     size_t totalRegion = ccallSz + slopSz + numBytes + bonusSz;
     size_t stackLen = guardSz + totalRegion;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
 
-    totalSz = guardSz ? ROUNDUP(totalSz, guardSz) : totalSz;
+    totalSz = haveGuardPage ? ROUNDUP(totalSz, guardSz) : totalSz;
 
     uint8_t* mem = NULL;
 
-    if (guardSz) {
+    if (haveGuardPage) {
         // we protect the low end of the block to
         // detect stack overflow.
 
@@ -96,6 +98,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     info->prev = NULL;
     info->prevSegment = NULL;
     info->currentSP = NULL;
+    info->owner = vp;
     info->guardSz = guardSz;
     info->totalSz = totalSz;
 
