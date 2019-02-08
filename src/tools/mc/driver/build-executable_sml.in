@@ -38,6 +38,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
 
     val cFlags = cat ("@CFLAGS@"
                     ++ "@CFLAG_M64@"
+                    ++ " -Wno-unused-command-line-argument "
                     ++ [])
 
     fun ldFlags libName = let
