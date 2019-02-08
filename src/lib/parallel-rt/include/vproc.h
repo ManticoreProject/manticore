@@ -149,7 +149,7 @@ extern void VProcInit (bool isSequential, Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
 extern void VProcPreempt (VProc_t *self, VProc_t *vp);
-extern void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
+extern void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k);
 extern void VProcSleep (VProc_t *vp);
 extern void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
 extern Value_t VProcNanosleep (VProc_t *vp, Time_t nsec);

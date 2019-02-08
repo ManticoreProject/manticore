@@ -76,7 +76,7 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
         // pointer.
         Word_t *nextW = (Word_t *)vp->globNextW;
         int len = GetLength(oldHdr);
-        if (nextW+len >= (Word_t *)(vp->globLimit)) {
+        if (nextW+len+1 >= (Word_t *)(vp->globLimit)) {
             AllocToSpaceChunk (vp);
             nextW = (Word_t *)vp->globNextW;
         }

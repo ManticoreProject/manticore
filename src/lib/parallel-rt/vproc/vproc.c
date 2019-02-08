@@ -458,17 +458,17 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 {
     Value_t landingPadOrig, landingPadNew, x;
 
-    Value_t dummyBool = GlobalAllocNonUniform (self, 1, INT(3));
+    Value_t dummyBool = GlobalAllocNonUniform (self, 1, INT(M_TRUE));
     Value_t dummyFLS = GlobalAllocNonUniform (self, 5, INT(-1), PTR(M_NONE), INT(0), PTR(M_NIL), PTR(dummyBool));
 
     do {
-	landingPadOrig = vp->landingPad;
-	landingPadNew = GlobalAllocUniform (self, 3, dummyFLS, k, landingPadOrig);
-	x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
+        landingPadOrig = vp->landingPad;
+        landingPadNew = GlobalAllocUniform (self, 3, dummyFLS, k, landingPadOrig);
+        x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
     } while (x != landingPadOrig);
 
     if (vp->sleeping == M_TRUE)
-	VProcWake(vp);
+        VProcWake(vp);
 
 }
 
@@ -643,7 +643,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
 #endif
 
   /* should never get here! */
-    assert (0);
+    Die("impossible");
 }
 
 static int GetNumCPUs ()

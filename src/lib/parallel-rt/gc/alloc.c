@@ -46,7 +46,11 @@ void EnsureGlobalSpace(VProc_t *vp, int nElems) {
  */
 void EnsureNurserySpace(VProc_t *vp, int nElems) {
     /* 4KB is the slop size */
-    assert((vp->allocPtr + WORD_SZB * (nElems+1) < (vp->limitPtr + 4096)) || (vp->limitPtr == 0));
+    if ((vp->allocPtr + WORD_SZB * (nElems+1) < (vp->limitPtr + 4096))
+        || (vp->limitPtr == 0)) {
+          return;
+        }
+    Die("RTS has no space in heap to allocate locally.");
 }
 
 /*! \brief allocate a tuple of uniform values in the nursery
@@ -55,10 +59,11 @@ void EnsureNurserySpace(VProc_t *vp, int nElems) {
  */
 Value_t AllocUniform (VProc_t *vp, int nElems, ...)
 {
-    Word_t  *obj = (Word_t *)(vp->allocPtr);
     va_list ap;
 
     EnsureNurserySpace (vp, nElems);
+
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
 
     va_start(ap, nElems);
     obj[-1] = VEC_HDR(nElems);
@@ -81,11 +86,11 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
  */
 Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
 {
+    EnsureNurserySpace (vp, nElems);
+
     Word_t  *obj = (Word_t *)(vp->allocPtr);
     va_list ap;
     int bits = 0;
-
-    EnsureNurserySpace (vp, nElems);
 
     va_start(ap, nElems);
     for (int i = 0;  i < nElems;  i++) {
@@ -131,10 +136,11 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
  */
 Value_t AllocRaw (VProc_t *vp, uint32_t len)
 {
-    Word_t  *obj = (Word_t *)(vp->allocPtr);
     int nWords = BYTES_TO_WORDS(len);
 
     EnsureNurserySpace (vp, nWords);
+
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
 
     obj[-1] = RAW_HDR(nWords);
     vp->allocPtr += WORD_SZB * (nWords+1);
@@ -148,11 +154,11 @@ Value_t AllocRaw (VProc_t *vp, uint32_t len)
  */
 Value_t AllocStkCont (VProc_t *vp, Addr_t codeP, Value_t stkPtr, Value_t stkInfo)
 {
-    Word_t  *obj = (Word_t *)(vp->allocPtr);
-
     const int nWords = 3;
 
     EnsureNurserySpace (vp, nWords);
+
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
 
     obj[-1] = STACK_HDR(nWords);
     obj[0] = codeP;
@@ -217,10 +223,11 @@ Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
 Value_t AllocVector (VProc_t *vp, Value_t values)
 {
     Value_t retval;
-    Word_t  *obj = (Word_t *)(vp->allocPtr);
     int i = 0;
 
     EnsureNurserySpace(vp, i);
+
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
 
     while (values != M_NIL) {
         ListCons_t *valueList = (ListCons_t*)ValueToPtr(values);
@@ -356,11 +363,12 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
  */
 Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 {
-    Word_t *obj = (Word_t *)(vp->globNextW);
     va_list ap;
     int bits = 0;
 
     EnsureGlobalSpace (vp, nElems);
+
+    Word_t *obj = (Word_t *)(vp->globNextW);
 
     va_start(ap, nElems);
     for (int i = 0;  i < nElems;  i++) {
