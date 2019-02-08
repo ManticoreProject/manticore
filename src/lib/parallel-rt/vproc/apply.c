@@ -283,7 +283,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
  * and then another very similar closure is retrieved
  * from the queue and invoked.
  */
-VProc_t* RequestService(VProc_t *vp, RequestCode_t req) {
+void RequestService(VProc_t *vp, RequestCode_t req) {
     LogStopThread(vp, 0, req);
 
     /*
@@ -446,6 +446,7 @@ doShutdown:
             break;
 
     }
+    Die("unreachable");
 }
 
 

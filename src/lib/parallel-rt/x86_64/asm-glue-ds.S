@@ -109,6 +109,12 @@ _GSYM(ASM_DS_EscapeThrow):
     -----------  <- RSP
 */
 
+.p2align 4, 0xCC
+.globl	_GSYM(__manti_growstack_callec)
+_GSYM(__manti_growstack_callec):
+    movq    $0, TMP_REG1      // never copy frames to new segment for callec.
+    jmp     manti_growstack_impl
+
 // This version is for segmented stacks a la Bruggeman et al.
 .p2align 4, 0xCC
 .globl	_GSYM(__manti_growstack)
@@ -121,9 +127,15 @@ _GSYM(__manti_growstack):
 #endif
 ////// FALL THROUGH //////
 
-_GSYM(__manti_growstack_impl):
+manti_growstack_impl:
 
-    leaq    8(%rsp), TMP_REG0   // save the current top of segment
+    // switch to FFI stack
+    movq    %rsp, TMP_REG0   // we use this copied value later too.
+    movq    FFI_STK(VPROC_PTR_REG), %rsp
+
+    // save old stack pointer on FFI stack
+    pushq   TMP_REG0        // this fixes the alignment for us.
+
     // save manticore registers
     pushq   ALLOC_PTR_REG
     pushq   VPROC_PTR_REG
@@ -145,9 +157,9 @@ _GSYM(__manti_growstack_impl):
     // the rest of the manticore registers are
     // saved by the C callee
     // setup args
-    movq    VPROC_PTR_REG, %rdi     // vproc is arg 1
-    movq    TMP_REG0, %rsi              // current top is arg 2
-    movq    TMP_REG1, %rdx              // whether to copy is arg 3
+    movq    VPROC_PTR_REG, %rdi            // vproc is arg 1
+    leaq    8(TMP_REG0), %rsi              // current top is arg 2
+    movq    TMP_REG1, %rdx                 // whether to copy is arg 3
     callq   _GSYM(StkSegmentOverflow)
 
     movq    %rax, TMP_REG0  // move new SP out of the way
@@ -168,11 +180,13 @@ _GSYM(__manti_growstack_impl):
     popq   VPROC_PTR_REG
     popq   ALLOC_PTR_REG
 
-    // swap out the stack pointer
-    movq    %rsp, TMP_REG1
-    movq    TMP_REG0, %rsp    // establish new stack pointer
-    movq    (TMP_REG1), TMP_REG1 // load return addr
-    jmpq    *TMP_REG1        // resume
+    // obtain the old stack ptr
+    popq   TMP_REG1
+
+    // switch to new stack & resume execution.
+    movq    TMP_REG0, %rsp                   // establish new stack ptr
+    movq    (TMP_REG1), TMP_REG0             // load return addr from old stack
+    jmpq    *TMP_REG0                        // resume
 
 
 // This version is for segmented stacks a la Bruggeman et al.
@@ -290,8 +304,8 @@ callec_body:
 #ifdef SEGSTACK
     movq    %rsp, OLD_SP                      // stash the sp
     // switch to a new segment without copying
-    movq    $0, TMP_REG1              // 0 in TMP_REG1 indicates no copying
-    callq   _GSYM(__manti_growstack_impl)
+    // This call will clobber TMP_REG1
+    callq   _GSYM(__manti_growstack_callec)
     // at this point forward we're operating in a new stack segment.
 #endif
 
@@ -368,13 +382,6 @@ asm_get_service:
 // 1. these std-ds calling convention registers:
 //      alloc, vproc, exh, stdArg
 // 2. TMP_REG1 -- request code
-    // save the current stack cont to TMP_REG0
-    // leaq    -8(%rsp), TMP_REG0
-
-    // initialize metadata
-    // subq    $16, %rsp
-    // movq    $STACK_HDR_STKDATA, (%rsp)
-    // movq    $1, 8(%rsp)     // 1 == LOCKED
 
       /* save Manticore state */
     movq    ALLOC_PTR_REG, ALLOC_PTR(VPROC_PTR_REG)
@@ -384,6 +391,9 @@ asm_get_service:
     /* in essence, the environment (with all roots)
        is the stack. the stack's descriptor should
        already be in STD_CONT. */
+
+    // this service request will occur on the FFI stack
+    movq    FFI_STK(VPROC_PTR_REG), %rsp
 
     /* move vproc and request code to the right registers */
     movq    VPROC_PTR_REG, %rdi // rdi = arg 1

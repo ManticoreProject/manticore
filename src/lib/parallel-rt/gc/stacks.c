@@ -55,11 +55,9 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     // NOTE automatic resizing using MAP_GROWSDOWN has
     // been deprecated: https://lwn.net/Articles/294001/
 
-    // This value was chosen because our RTS expects some additional space for
-    // reentering the runtime system, etc. According to the LLVM codegen,
-    // only 128 bytes of space exists.
-    // TODO: don't dump all regs on overflow so we can reduce this extra space.
-    size_t slopSz = isSegment ? 128 + 640 /* = 768 */ : 0;
+    // According to the LLVM codegen, only 128 bytes of space exists.
+    // We add a bit more for safety.
+    size_t slopSz = isSegment ? 128 + 16 : 0;
 
     size_t ccallSz = isSegment && haveGuardPage ? 8192 : 0; // 8KB ought to be enough for anybody (tm)
     size_t bonusSz = 8 * sizeof(uint64_t); // extra space for realigning, etc.
@@ -86,7 +84,10 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
         mem = lo_alloc(vp, totalSz);
     }
 
-    assert(mem != NULL);
+    if (mem == NULL) {
+      Die("AllocStackMem: unable to allocate memory.");
+      return NULL;
+    }
 
     uint64_t val = (uint64_t) mem;
 
@@ -110,7 +111,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
 
     // push an invalid frame size
     valP -= sizeof(uint64_t);
-    *((uint64_t*)valP) = ~0ULL;
+    *((uint64_t*)valP) = ~0ULL; // this value is checked for by segment overflow
 
     // push a dummy watermark
     valP -= sizeof(uint64_t);
@@ -256,7 +257,7 @@ void FreeStackMem(VProc_t *vp, StackInfo_t* info) {
     lo_free(vp, info);
 }
 
-__attribute__ ((hot)) StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
+__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
     StackInfo_t* fresh = GetStack(vp);
     StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
@@ -364,7 +365,7 @@ __attribute__ ((hot)) StackInfo_t* StkSegmentOverflow (VProc_t* vp, uint8_t *res
     vp->stdEnvPtr = fresh->stkLimit;
 
     // return the new SP in the new segment
-    return (StackInfo_t*) newStkPtr;
+    return newStkPtr;
 }
 
 #endif // DIRECT_STYLE
