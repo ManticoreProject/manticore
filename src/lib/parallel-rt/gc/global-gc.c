@@ -541,6 +541,7 @@ static void ScanVProcHeap (VProc_t *vp)
     Word_t *scanPtr = (Word_t *)vp->heapBase;
 
     while (scanPtr < top) {
+        Die ("early-tenuring optimization should have been disabled.");
 
         Word_t hdr = *scanPtr++;    // get object header
 

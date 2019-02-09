@@ -20,6 +20,7 @@ void* lo_alloc(VProc_t *vp, size_t numBytes) {
 }
 
 void* lo_alloc_aligned(VProc_t *vp, size_t numBytes, size_t alignment) {
+  assert(numBytes % alignment == 0); // must be a multiple.
   return aligned_alloc(alignment, numBytes);
 }
 

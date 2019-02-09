@@ -18,7 +18,8 @@ void* lo_alloc(VProc_t *vp, size_t numBytes);
 
 /**
  * Allocates memory in the context of the given vproc, returning
- * an _aligned_ pointer to the allocated region.
+ * an _aligned_ pointer to the allocated region. The numBytes must
+ * be a multiple of the alignment.
  */
 void* lo_alloc_aligned(VProc_t *vp, size_t numBytes, size_t alignment);
 
