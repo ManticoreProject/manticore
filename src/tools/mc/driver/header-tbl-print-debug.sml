@@ -430,11 +430,11 @@ struct
         TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                   self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
         TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n");
-        TextIO.output (MyoutStrm, "                     else if (IS_VPROC_CHUNK(cq->sts))\n");
+        TextIO.output (MyoutStrm, "                     else if (IS_VPROC_CHUNK(cq->sts)) {\n");
         TextIO.output (MyoutStrm, "                          if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v))\n");
         TextIO.output (MyoutStrm, "                              SayDebug(\"[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
-        TextIO.output (MyoutStrm, "                     else if (cq->sts == FREE_CHUNK)\n");
+        TextIO.output (MyoutStrm, "                     } else if (cq->sts == FREE_CHUNK)\n");
         TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
         TextIO.output (MyoutStrm, "                 }\n");
