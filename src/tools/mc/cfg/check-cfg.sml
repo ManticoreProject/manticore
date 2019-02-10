@@ -281,7 +281,11 @@ structure CheckCFG : sig
 					if isMut then "alloc !(" else "alloc (",
 					vl2s' ys, ")\n"
 				      ]
-				    else ()
+				    else if List.length tys = 0 orelse List.length ys = 0
+                  then error ["encountered an empty alloc: ", v2s' x, " = ",
+                              if isMut then "alloc !(" else "alloc (",
+                              vl2s' ys, ")\n"]
+                  else ()
 			      | _ => error[
 				    "type mismatch in Alloc: ", v2s x, " = ",
 				    if isMut then "alloc !(" else "alloc (",
