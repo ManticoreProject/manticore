@@ -284,34 +284,42 @@ in
 
   (* returns ptr to new allocation and the properly offset alloc ptr.
       callers should expect to cast the returned pointer to the correct type! *)
-  fun doAlloc b allocPtr llVars headerTag = let
-    val gep = LB.gep_ib b
-    val cast = LB.cast b
-    val mk = LB.mk b AS.empty
+  fun doAlloc b allocPtr [] _ =
+    (* An empty alloc can happen because the live root set in a GC is empty.
+       We follow what MLRISC does here and return the nil value, which is = 1 *)
+    (* FIXME: this only happens because the closure-conversion doesn't deal with empty closures correctly. -- alloc64-fn.sml *)
+      {newAllocPtr=allocPtr, tupleAddr =
+                  LB.cast b Op.IntToPtr (LB.fromC(LB.intC(LT.i64, 1)), LT.uniformTy)
+                  }
 
-    fun asPtrTo ty addr = let
-            val addrTy = LB.toTy addr
-            val desiredTy = LT.mkPtr ty
+    | doAlloc b allocPtr llVars headerTag = let
+        val gep = LB.gep_ib b
+        val cast = LB.cast b
+        val mk = LB.mk b AS.empty
+
+        fun asPtrTo ty addr = let
+                val addrTy = LB.toTy addr
+                val desiredTy = LT.mkPtr ty
+            in
+                if LT.same(addrTy, desiredTy)
+                then addr
+                else cast Op.BitCast (addr, desiredTy)
+            end
+
+        val llTys = L.map (fn x => LB.toTy x) llVars
+        val {tupleCalc, tupleAddr, newAllocPtr, headerAddr} = bumpAllocPtr b allocPtr llTys
+
+        val _ = mk Op.Store #[asPtrTo LT.gcHeaderTy headerAddr, headerTag]
+
+        val _ = L.foldl (fn (var, idx) => let
+                                val varTy = LB.toTy var
+                                val slotAddr = tupleCalc idx
+                                val _ = mk Op.Store #[asPtrTo varTy slotAddr, var]
+                            in idx + 1 end)
+                        0 llVars
         in
-            if LT.same(addrTy, desiredTy)
-            then addr
-            else cast Op.BitCast (addr, desiredTy)
+            {newAllocPtr=newAllocPtr, tupleAddr=tupleAddr}
         end
-
-    val llTys = L.map (fn x => LB.toTy x) llVars
-    val {tupleCalc, tupleAddr, newAllocPtr, headerAddr} = bumpAllocPtr b allocPtr llTys
-
-    val _ = mk Op.Store #[asPtrTo LT.gcHeaderTy headerAddr, headerTag]
-
-    val _ = L.foldl (fn (var, idx) => let
-                            val varTy = LB.toTy var
-                            val slotAddr = tupleCalc idx
-                            val _ = mk Op.Store #[asPtrTo varTy slotAddr, var]
-                        in idx + 1 end)
-                    0 llVars
-    in
-        {newAllocPtr=newAllocPtr, tupleAddr=tupleAddr}
-    end
 
 
   fun saveAllocPtr bb {vproc, off} allocPtr = let
