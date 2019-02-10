@@ -1111,7 +1111,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
         val _ = if L.length tys = 0 then raise Fail "empty alloc!" else ()
 
-        val headerTag = Util.headerTag (L.map CV.typeOf vars)
+        val headerTag = Util.headerTag tys
         val {newAllocPtr, tupleAddr=allocatedTuple} =
             Util.doAlloc b (Util.lookupMV(env, MV.MV_Alloc)) llVars headerTag
 
