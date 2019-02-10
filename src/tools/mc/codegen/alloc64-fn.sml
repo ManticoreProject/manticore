@@ -1,5 +1,5 @@
 (* alloc-fn.sml
- * 
+ *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
@@ -11,7 +11,7 @@ functor Alloc64Fn (
     structure Regs : MANTICORE_REGS
     structure Spec : TARGET_SPEC
     structure Types : ARCH_TYPES
-    structure MLTreeComp : MLTREECOMP 
+    structure MLTreeComp : MLTREECOMP
     structure VProcOps : VPROC_OPS
 	where MTy = MTy
   ) : ALLOC = struct
@@ -23,7 +23,7 @@ functor Alloc64Fn (
     structure Ty = CFGTy
     structure W = Word64
     structure Cells = MLTreeComp.I.C
-    
+
     val wordSzB = IntInf.toInt Spec.ABI.wordSzB
     val wordAlignB = IntInf.toInt Spec.ABI.wordAlignB
 
@@ -38,8 +38,8 @@ functor Alloc64Fn (
 		  "offset ", Int.toString(List.length tys), " of type ",
 		  CFGTyUtil.toString (M.T_Tuple (false, tys))
 		])
-	  in 
-	    offset (tys, 0, 0) 
+	  in
+	    offset (tys, 0, 0)
 	  end
 
   (* compute the address of the ith element off of a 'base' address *)
@@ -64,7 +64,7 @@ functor Alloc64Fn (
 		(* end case *))
 	  val addr = T.ADD(MTy.wordTy, base, wordLit offset)
 	  val ty = Types.szOf lhsTy
-	  in 
+	  in
 	    case MTy.cfgTyToMLRisc lhsTyI
 	     of MTy.K_FLOAT => MTy.FEXP (ty, T.FLOAD (ty, addr, ManticoreRegion.memory))
 	      | MTy.K_INT => MTy.EXP (ty, T.LOAD (ty, addr, ManticoreRegion.memory))
@@ -87,15 +87,15 @@ functor Alloc64Fn (
 	  end (* initObj *)
 
     fun allocMixedObj offAp args = let
-	  val {i=nWords, stms, totalSize, ptrMask} = 
+	  val {i=nWords, stms, totalSize, ptrMask} =
 		List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
 	(* create the mixed-object header word *)
       val id = HeaderTableStruct.HeaderTable.addHdr (HeaderTableStruct.header,ptrMask)
       val hdrWord = W.toLargeInt (
-		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16),
 		  W.<< (W.fromInt id, 0w1)), 0w1) )
       val _ = if Controls.get CodegenControls.debug then print (concat[" mixed hdr: ", Int.toString id, "\n"]) else ()
-	  in	  
+	  in
 	    if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
 	      then raise Fail "object size too large"
 	      else (totalSize, hdrWord, stms)
@@ -106,7 +106,7 @@ functor Alloc64Fn (
 	        List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
 	  val id = 1
 	  val hdrWord = W.toLargeInt (
-		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16),
 		  W.<< (W.fromInt id, 0w1)), 0w1) )
           val _ = if Controls.get CodegenControls.debug then print (" vector\n") else ()
 	  in
@@ -118,7 +118,7 @@ functor Alloc64Fn (
 	        List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
 	  val id = 0
 	  val hdrWord = W.toLargeInt (
-		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16),
 		  W.<< (W.fromInt id, 0w1)), 0w1) )
           val _ = if Controls.get CodegenControls.debug then print (" raw\n") else ()
 	  in
@@ -144,27 +144,27 @@ functor Alloc64Fn (
 	     T.MV (MTy.wordTy, i, wordLit 0) ::
 	     T.DEFINE lpLab ::
 	     T.BCC (T.CMP (MTy.wordTy, T.EQ, T.REG (MTy.wordTy, lsPtr), nilLs), exitLab) ::
-	     MTy.store (offAp (T.MULU (MTy.wordTy, wordSzBExp, T.REG (MTy.wordTy, i))), 
-			MTy.EXP (MTy.wordTy, T.LOAD (MTy.wordTy, T.REG (MTy.wordTy, lsPtr), 
+	     MTy.store (offAp (T.MULU (MTy.wordTy, wordSzBExp, T.REG (MTy.wordTy, i))),
+			MTy.EXP (MTy.wordTy, T.LOAD (MTy.wordTy, T.REG (MTy.wordTy, lsPtr),
 						     ManticoreRegion.memory)),
 		       ManticoreRegion.memory) ::
-	     T.MV (MTy.wordTy, lsPtr, T.LOAD (MTy.wordTy, 
-					  T.ADD (MTy.wordTy, wordSzBExp, 
-						 T.REG (MTy.wordTy, lsPtr)), 
+	     T.MV (MTy.wordTy, lsPtr, T.LOAD (MTy.wordTy,
+					  T.ADD (MTy.wordTy, wordSzBExp,
+						 T.REG (MTy.wordTy, lsPtr)),
 					  ManticoreRegion.memory)) ::
 	     T.JMP (T.LABEL lpLab, [lpLab]) ::
 	     T.DEFINE exitLab ::
 	     (* store the header word *)
-	     MTy.store (offAp (wordLit (~wordSzB)), 
-			MTy.EXP (MTy.wordTy, T.ADD (MTy.wordTy, 
-				    wordLit 4, 
-				    T.SLL (MTy.wordTy, T.REG (MTy.wordTy, i), wordLit 3))), 
+	     MTy.store (offAp (wordLit (~wordSzB)),
+			MTy.EXP (MTy.wordTy, T.ADD (MTy.wordTy,
+				    wordLit 4,
+				    T.SLL (MTy.wordTy, T.REG (MTy.wordTy, i), wordLit 3))),
 			ManticoreRegion.memory) ::
 	     (* record the pointer to the new vector *)
 	     T.MV (MTy.wordTy, ptr, T.REG(MTy.wordTy, Regs.apReg)) ::
 	     (* increment the allocation pointer *)
-	     T.MV (MTy.wordTy, 
-		   Regs.apReg, 
+	     T.MV (MTy.wordTy,
+		   Regs.apReg,
 		   offAp (T.MULU (MTy.wordTy, wordSzBExp, T.ADD (MTy.wordTy, T.REG (MTy.wordTy, i), wordLit 1)))) ::
 	     nil,
 	     ptr=ptr}
@@ -176,7 +176,7 @@ functor Alloc64Fn (
     fun alloc (offAp : T.rexp -> T.rexp) args = let
 	  fun lp (hasPtr, hasRaw, (x, _)::xs) = if isHeapPointer x
 		  then lp(true, hasRaw, xs)
-		else if CFGTyUtil.hasUniformRep x 
+		else if CFGTyUtil.hasUniformRep x
   	          then lp (hasPtr, hasRaw, xs)
 		  else lp (hasPtr, true, xs)
 	    | lp (true, false, []) = allocVectorObj offAp args
@@ -208,17 +208,17 @@ functor Alloc64Fn (
       if Controls.get BasicControl.debug
       then
           [T.MV(MTy.wordTy, vpReg, hostVP),
-           T.BCC(T.CMP (MTy.wordTy, T.Basis.EQ, 
+           T.BCC(T.CMP (MTy.wordTy, T.Basis.EQ,
 		        limitPtr,
 		        T.LI 0), passLab),
            T.MV(MTy.wordTy, slopReg, wordLit (Word.toInt heapSlopSzB)),
-	   T.BCC(T.CMP (MTy.wordTy, T.Basis.GE, 
+	   T.BCC(T.CMP (MTy.wordTy, T.Basis.GE,
 		        T.SUB (MTy.wordTy, T.ADD(MTy.wordTy, limitPtr, T.REG(MTy.wordTy, slopReg)),
                                T.REG (MTy.wordTy, Regs.apReg)),
 		        T.LI 0), passLab),
 	   T.DEFINE crashLab,
            T.MV(MTy.wordTy, boomReg, wordLit 0),
-           T.STORE (MTy.wordTy, T.REG(MTy.wordTy, boomReg), wordLit 0, ManticoreRegion.memory), 
+           T.STORE (MTy.wordTy, T.REG(MTy.wordTy, boomReg), wordLit 0, ManticoreRegion.memory),
 	   T.DEFINE passLab
           ]
       else []
@@ -230,7 +230,7 @@ functor Alloc64Fn (
 (* FIXME: this only happens because the closure-conversion doesn't deal with empty closures correctly *)
 	  { ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
       | genAlloc {isMut, tys, args} = let
-	  val args = ListPair.zipEq (tys, args)	  
+	  val args = ListPair.zipEq (tys, args)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
 	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) :: stms
@@ -245,6 +245,8 @@ functor Alloc64Fn (
 	  end (* genAlloc *)
 
   (* allocate arguments in the global heap *)
+    fun genGlobalAlloc _ = raise Fail "Unexpected global allocation."
+(*
     fun genGlobalAlloc {tys=[], ...} = raise Fail "GAlloc[]"
       | genGlobalAlloc {isMut, tys, args} = let
 	  val args = ListPair.zipEq (tys, args)
@@ -263,19 +265,19 @@ functor Alloc64Fn (
 	  fun offAp i = T.ADD (MTy.wordTy, globalAp, i)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
-	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) 
+	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory)
 		:: stms
 	(* bump up the allocation pointer *)
-	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
+	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg,
 			T.ADD (64, globalApAddr, wordLit (totalSize+wordSzB)))
 	  in
 	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
 	  end
-
+*)
   (* This expression evaluates to true when the heap has enough space for szB
    * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
    * So, most allocations need only perform the following check.
-   * 
+   *
    * if (limitPtr - apReg <= 0)
    *    then continue;
    *    else doGC ();
@@ -289,10 +291,10 @@ functor Alloc64Fn (
 	 stms=[T.MV(MTy.wordTy, vpReg, hostVP)],
 	 allocCheck=
 	   if szB <= heapSlopSzB
-		          then T.CMP (MTy.wordTy, T.Basis.LE, 
+		          then T.CMP (MTy.wordTy, T.Basis.LE,
 				      T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
 				      T.LI 0)
-		       else T.CMP (MTy.wordTy, T.Basis.LE, 
+		       else T.CMP (MTy.wordTy, T.Basis.LE,
 				   T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
 				   T.LI (Word.toLargeInt szB))
 	}
@@ -301,7 +303,7 @@ functor Alloc64Fn (
   (* This expression evaluates to true when the heap has enough space for szB
    * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
    * So, most allocations need only perform the following check.
-   * 
+   *
    * if (limitPtr - apReg <= 0)
    *    then continue;
    *    else doGC ();
@@ -314,7 +316,7 @@ functor Alloc64Fn (
         {
 	 stms=[T.MV(MTy.wordTy, vpReg, hostVP)],
 	 allocCheck=
-	 T.CMP (MTy.wordTy, T.Basis.LE, 
+	 T.CMP (MTy.wordTy, T.Basis.LE,
 		T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
 		T.MULU (64, wordLit (Word.toInt szb), T.ADD (64, wordLit 4, T.ZX (64, 32, n))))
 	}

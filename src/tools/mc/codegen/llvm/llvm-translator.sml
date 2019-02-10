@@ -1106,10 +1106,10 @@ fun output (outS, module as C.MODULE { name = module_name,
           ))
 
 
-      and genAlloc(env, (lhsVar, ty, vars)) = let
+      and genAlloc(env, (lhsVar, ty as CT.T_Tuple(_, tys), vars)) = let
         val llVars = L.map (fn x => Util.lookupV(env, x)) vars
 
-        val _ = if L.length llVars = 0 then raise Fail "empty alloc!" else ()
+        val _ = if L.length tys = 0 then raise Fail "empty alloc!" else ()
 
         val headerTag = Util.headerTag (L.map CV.typeOf vars)
         val {newAllocPtr, tupleAddr=allocatedTuple} =
