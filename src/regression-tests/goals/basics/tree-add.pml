@@ -7,7 +7,7 @@ fun mkTree totalD = let
   end
 
 fun treeAdd t = (case t
-		  of LF n => 1
+		  of LF n => n
 		   | ND(d, t1, t2) => treeAdd t1 + treeAdd t2
 		(* end case *))
 
