@@ -1130,7 +1130,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
 
         val _ = if L.length tys = 0 then raise Fail "empty alloc!" else ()
 
-        val headerTag = LPU.headerTag (L.map CV.typeOf vars)
+        val headerTag = Util.headerTag tys
         val {newAllocPtr, tupleAddr=allocatedTuple} =
             LPU.doAlloc b (lookupMV(env, MV_Alloc)) llVars headerTag
 
