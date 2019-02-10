@@ -356,7 +356,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     MutexUnlock(&NodeHeaps[node].lock);
 
     /* finish the GC setup for this vproc */
-    self->globAllocChunk = (MemChunk_t *)0;
+    self->globAllocChunk = NULL;
 
     /* synchronize on every vproc finishing setup (so we know all
        from spaces are appropraitely tagged). */
@@ -420,8 +420,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
             NodeHeaps[i].unscannedTo = NodeHeaps[i].scannedTo;
             NodeHeaps[i].scannedTo = NULL;
             MemChunk_t *cp = NodeHeaps[i].fromSpace;
-            NodeHeaps[i].fromSpace = (MemChunk_t *)0;
-            while (cp != (MemChunk_t *)0) {
+            while (cp != NULL) {
                 cp->sts = FREE_CHUNK;
                 cp->usedTop = cp->baseAddr;
 #ifndef NDEBUG
@@ -877,9 +876,9 @@ void CheckToSpacesAfterGlobalGC (VProc_t *self)
                     continue;
                 }
 
-        tableDebug[getID(hdr)].globalGCdebugGlobal(self,scanptr);
+                tableDebug[getID(hdr)].globalGCdebugGlobal(self,scanptr);
 
-        p += GetLength(hdr);
+                p += GetLength(hdr);
             }
             cp = cp->next;
         }

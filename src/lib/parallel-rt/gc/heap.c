@@ -170,7 +170,7 @@ void HeapInit (Options_t *opts)
     ToSpaceSz = 0;
     ToSpaceLimit = BaseHeapSzB; // we don't know the number of vprocs yet!
     TotalVM = 0;
-    FromSpaceChunks = (MemChunk_t *)0;
+    FromSpaceChunks = NULL;
 
     NodeHeaps = NEWVEC(NodeHeap_t, NumHWNodes);
     for (int i = 0;  i < NumHWNodes;  i++) {
@@ -278,13 +278,13 @@ void AllocToSpaceChunk (VProc_t *vp)
     MutexLock (&HeapLock);
     MutexLock (&NodeHeaps[node].lock);
 
-	if (NodeHeaps[node].freeChunks == (MemChunk_t *)0) {
+	if (NodeHeaps[node].freeChunks == NULL) {
 	  /* no free chunks on this node, so allocate storage from OS */
 	    int nPages = HEAP_CHUNK_SZB >> PAGE_BITS;
         void *allocBase;
 	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB, nPages, &allocBase);
 	    chunk = NEW(MemChunk_t);
-	    if ((memObj == (void *)0) || (chunk == (MemChunk_t *)0)) {
+	    if (memObj == NULL || chunk == NULL) {
 		Die ("unable to allocate memory for global heap\n");
 	    }
         chunk->allocBase = allocBase;
@@ -316,8 +316,8 @@ void AllocToSpaceChunk (VProc_t *vp)
 #endif
 
     /* add to the tail of the vproc's list of to-space chunks */
-    chunk->next = (MemChunk_t *)0;
-    if (vp->globAllocChunk == (MemChunk_t *)0) {
+    chunk->next = NULL;
+    if (vp->globAllocChunk == NULL) {
         vp->globAllocChunk = chunk;
     }
     else {
