@@ -11,7 +11,7 @@ fun treeAdd t = (case t
 		   | ND(d, t1, t2) => treeAdd t1 + treeAdd t2
 		(* end case *))
 
-val n = 24
+val n = 26
 
 (* test global GC by allocating a large binary tree. we estimate the number of bytes to represent the tree.
  * - node: 36 bytes
