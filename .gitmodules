@@ -1,12 +1,12 @@
 [submodule "llvm/src"]
 	path = llvm/src
-	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/llvm.git
-	branch = dev-tot
+	url = https://github.com/ManticoreProject/llvm.git
+	branch = manti-stacks
 [submodule "src/benchmarks"]
 	path = src/benchmarks
-	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/benchmarks.git
+	url = https://github.com/ManticoreProject/benchmark.git
 	branch = master
 [submodule "src/lib/basis"]
 	path = src/lib/basis
-	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/basis.git
+	url = https://github.com/ManticoreProject/basis.git
 	branch = mini-basis
