@@ -499,7 +499,15 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
 {
     vp->globalGCPending = true;
     assert(vp->currentFLS != M_NIL);
-    VProcSendSignal(self, vp, vp->currentFLS, vp->dummyK);
+
+#ifdef DIRECT_STYLE
+    Value_t dummyK = NewStack(self, vp->dummyK);
+    dummyK = PromoteObj(self, dummyK);
+#else
+    Value_t dummyK = vp->dummyK;
+#endif
+
+    VProcSendSignal(self, vp, vp->currentFLS, dummyK);
     VProcPreempt (self, vp);
 }
 
@@ -635,10 +643,12 @@ static void IdleVProc (VProc_t *vp, void *arg)
 #else
 
     /* Activate scheduling code on the vproc. */
+    Value_t dummyK = NewStack(vp, vp->dummyK);
+
     FunClosure_t* closObj = ValueToClosure(vp->schedCont);
     Value_t envP = closObj->ep;
     Addr_t codeP = ValueToAddr(closObj->cp);
-    RunManticore (vp, codeP, vp->dummyK, envP);
+    RunManticore (vp, codeP, dummyK, envP);
 
 #endif
 

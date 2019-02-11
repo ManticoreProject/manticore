@@ -397,7 +397,12 @@ doShutdown:
                 for (int i = 0; i < NumVProcs; i++) {
                   /* force each vproc to check for shutdown */
                     VProc_t *wvp = VProcs[i];
-                    VProcSendSignal(vp, wvp, wvp->currentFLS, wvp->dummyK);
+
+                    // Allocate in my heap and then promote
+                    Value_t dummyK = NewStack(vp, wvp->dummyK);
+                    dummyK = PromoteObj(vp, dummyK);
+
+                    VProcSendSignal(vp, wvp, wvp->currentFLS, dummyK);
                     VProcPreempt (vp, wvp);
                 }
 
