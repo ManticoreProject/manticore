@@ -11,6 +11,7 @@ Library
   functor CFGOptFn
 
   structure Predecessors
+  structure AbsorbHeapChecks
 
 is
 
@@ -39,3 +40,4 @@ is
   predecessors.sml
   print-dot.sml
   simplify-graph.sml
+  absorb-heap-checks.sml

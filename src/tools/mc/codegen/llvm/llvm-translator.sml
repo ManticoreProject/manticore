@@ -1400,11 +1400,18 @@ fun output (outS, module as C.MODULE { name = module_name,
                     else if Controls.get BasicControl.linkstack
                         then let
                             val hpLimOffset = IntegerLit.toString Spec.ABI.limitPtr
+                            val prologueHeapBytes =
+                                  (case AbsorbHeapChecks.prologueAlloc lab
+                                    of NONE => "-1"
+                                     | SOME sz => Word.fmt StringCvt.DEC sz
+                                  (* end case *))
+
                         in
-                            "\"manti-linkstack\" = \""
-                                ^ hpLimOffset ^ ","
-                                ^ generateGCInfo startConv
-                                ^ "\""
+                            concat ["\"manti-linkstack\" = \"",
+                                    hpLimOffset, ",",
+                                    prologueHeapBytes, ",",
+                                    generateGCInfo startConv,
+                                    "\""]
                         end
 
                     else "\"manti-contig\""

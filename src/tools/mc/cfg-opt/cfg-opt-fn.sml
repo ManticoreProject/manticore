@@ -70,6 +70,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val allocCCalls = transform {passName = "alloc-c-calls", pass = AllocCCalls.transform}
     val allocVecChecks = transform {passName = "alloc-vec-checks", pass = AddAllocVecChecks.transform}
     val simplifyGraph = transform {passName = "simplifygraph", pass = SimplifyGraph.transform}
+    val absorbChecks = transform {passName = "absorb-heap-checks", pass = AbsorbHeapChecks.transform}
 
     fun optimize module = let
       val _ = CheckCFG.check ("closure", module)
@@ -91,6 +92,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val module = allocChecks module
           val _ = cfaClear module
           val module = allocVecChecks module
+          val module = absorbChecks module
       val module = contract module
       val module = simplifyGraph module
       val module = contract module
