@@ -84,7 +84,7 @@ struct struct_stackinfo {
     Age_t age           ALIGN_8;
     VProc_t* owner      ALIGN_8;
     size_t guardSz      ALIGN_8;
-    size_t totalSz      ALIGN_8;
+    size_t usableSpace  ALIGN_8;
 };
 
 

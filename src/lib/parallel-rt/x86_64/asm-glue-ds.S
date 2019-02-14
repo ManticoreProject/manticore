@@ -133,9 +133,6 @@ manti_growstack_impl:
     movq    %rsp, TMP_REG0   // we use this copied value later too.
     movq    FFI_STK(VPROC_PTR_REG), %rsp
 
-    // save old stack pointer on FFI stack
-    pushq   TMP_REG0        // this fixes the alignment for us.
-
     // save manticore registers
     pushq   ALLOC_PTR_REG
     pushq   VPROC_PTR_REG
@@ -143,6 +140,10 @@ manti_growstack_impl:
     pushq   STD_EXH_REG
     pushq   STD_ARG_REG
     pushq   %r10            // arg 2
+
+    // save old stack's return address
+    movq   (TMP_REG0), %r10
+    pushq  %r10               // this fixes the alignment for us.
 
     // RSP should be 16-byte aligned at this point.
     // now save XMM registers, which are 128 bit / 16 bytes wide
@@ -173,6 +174,10 @@ manti_growstack_impl:
     movaps -5*16(%rsp), %xmm6
     movaps -6*16(%rsp), %xmm7
 
+    // obtain the return address
+    popq   TMP_REG1
+
+    // restore other manticore regs
     popq    %r10
     popq   STD_ARG_REG
     popq   STD_EXH_REG
@@ -180,22 +185,15 @@ manti_growstack_impl:
     popq   VPROC_PTR_REG
     popq   ALLOC_PTR_REG
 
-    // obtain the old stack ptr
-    popq   TMP_REG1
-
     // switch to new stack & resume execution.
     movq    TMP_REG0, %rsp                   // establish new stack ptr
-    movq    (TMP_REG1), TMP_REG0             // load return addr from old stack
-    jmpq    *TMP_REG0                        // resume
+    jmpq    *TMP_REG1                        // resume
 
 #endif // segmented or resize stack
 
 
 
-#ifdef SEGSTACK
-// only segmented stacks can underflow
-
-// This version is for segmented stacks a la Bruggeman et al.
+// This version is primarily for segmented stacks a la Bruggeman et al.
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_DS_SegUnderflow)
 _GSYM(ASM_DS_SegUnderflow):
@@ -269,8 +267,6 @@ doneFreeing:
     movq    STK_LIM(TMP_REG1), TMP_REG1
     movq    TMP_REG1, STD_EP(VPROC_PTR_REG)
     retq
-
-#endif // SEGSTACK
 
 
 /*

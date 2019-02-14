@@ -101,7 +101,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     info->currentSP = NULL;
     info->owner = vp;
     info->guardSz = guardSz;
-    info->totalSz = totalSz;
+    info->usableSpace = numBytes;
 
     // setup stack pointer
     val = val + stackLen - 16;        // switch sides, leaving some headroom.
@@ -140,7 +140,7 @@ void InvalidReturnAddr() {
 }
 
 void EndOfStack() {
-    Die("stack underflow has occurred!");
+    Die("unexpected stack underflow has occurred!");
 }
 
 
@@ -152,20 +152,40 @@ extern int ASM_DS_StartStack;
 extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_SegUnderflow;
 
+// Checks for and retrieves a stack from the VProc's local free-stack cache.
+// Returns NULL is there are no available stacks that meet the required size.
+#if defined(RESIZESTACK)
+ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
+  return NULL;
+}
+
+#else
+
+ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
+  // Free-list contains stacks all of the same usable size.
+  StackInfo_t* info = NULL;
+  if (vp->freeStacks != NULL) {
+    // pop an existing stack
+    info = vp->freeStacks;
+    vp->freeStacks = info->next;
+    assert(info->usableSpace == requiredSpace && "expected uniform sizes!");
+  }
+  return info;
+}
+#endif
+
 // Retrieves an unused stack for the given vproc.
 StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
-    StackInfo_t* info;
-    if (vp->freeStacks == NULL) {
+    StackInfo_t* info = CheckFreeStacks(vp, usableSpace);
+
+    if (info == NULL) {
+        // Allocate new memory for this stack.
         size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
         bool isSegment = false;
   #if defined(SEGSTACK) || defined(RESIZESTACK)
         isSegment = true;
   #endif
         info = AllocStackMem(vp, usableSpace, guardSz, isSegment);
-    } else {
-        // pop an existing stack
-        info = vp->freeStacks;
-        vp->freeStacks = info->next;
     }
 
     // push on alloc'd list
@@ -366,9 +386,49 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
 
 #elif defined(RESIZESTACK)
 
-// TODO
-__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkTop);
+// on overflow we resize the stack and discard the old one.
+// In the case of callec, we link a new segment instead.
+__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkTop, uint64_t notCallec) {
+  StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
-#endif
+  size_t newSize = notCallec ? old->usableSpace * 2 : dfltStackSz;
+  StackInfo_t* fresh = GetStack(vp, newSize);
+
+  ////////
+  // setup the new stack segment
+
+  uint8_t* newStkPtr = fresh->initialSP;
+
+  if (notCallec) {
+    // then we need to copy everything over.
+    uint64_t EndOfStackAction = * ((uint64_t*)old->initialSP);
+    *((uint64_t*)newStkPtr) = EndOfStackAction;
+
+    newStkPtr = MoveFrames(old_origStkTop, old, fresh, ~0ULL, -1);
+
+    // copy over some other fields.
+    fresh->age = old->age;
+
+    FreeStackMem(vp, old);
+
+  } else {
+    // NOTE: because we don't have a mechanism to recognize
+    // pointers to frames within a segment (to update them when
+    // moving the frame), we link a new segment on the end for callec.
+    
+    // initialize backwards link and its underflow handler.
+    *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
+    fresh->prevSegment = old;
+  }
+
+  // install the fresh segment as the current stack descriptor
+  vp->stdCont = PtrToValue(fresh);
+  vp->stdEnvPtr = fresh->stkLimit;
+
+  // return the new SP in the new segment
+  return newStkPtr;
+}
+
+#endif // Segment Overflow versions
 
 #endif // DIRECT_STYLE
