@@ -101,8 +101,9 @@ runTest -mlrisc run-cml.sh
 echo -e "\n\n\t----- done -----\n\n"
 
 # Exit with error if any tests failed
-if [ "$(wc -l < $CI_REPORT)" -ne 0 ] ; then
-    echo -e "\n\nA failure was detected in the following configurations:"
+numFailed="$(wc -l < $CI_REPORT)"
+if [ "$numFailed" -ne 0 ] ; then
+    echo -e "\n\nA failure was detected in $numFailed configurations:"
     cat $CI_REPORT
     exit 1
 fi
