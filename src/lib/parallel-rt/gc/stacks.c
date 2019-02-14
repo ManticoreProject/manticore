@@ -102,6 +102,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     info->owner = vp;
     info->guardSz = guardSz;
     info->usableSpace = numBytes;
+    info->memAlloc = mem;
 
     // setup stack pointer
     val = val + stackLen - 16;        // switch sides, leaving some headroom.
@@ -270,11 +271,16 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
 }
 
 void FreeStackMem(VProc_t *vp, StackInfo_t* info) {
-    if (info->guardSz) {
-      Die ("TODO: unprotect the guard area");
+    size_t guardSz = info->guardSz;
+    uint8_t* mem = info->memAlloc;
+
+    if (guardSz) {
+      // clear protections on the guard page.
+      if (mprotect(mem, guardSz, PROT_READ | PROT_WRITE | PROT_EXEC))
+        Die("FreeStackMem failed to clear the guard page.");
     }
 
-    lo_free(vp, info);
+    lo_free(vp, mem);
 }
 
 /**
@@ -404,10 +410,13 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
     uint64_t EndOfStackAction = * ((uint64_t*)old->initialSP);
     *((uint64_t*)newStkPtr) = EndOfStackAction;
 
+    // TODO: we don't need to walk the stack, since we know where the base is
+    // to copy it all.
     newStkPtr = MoveFrames(old_origStkTop, old, fresh, ~0ULL, -1);
 
-    // copy over some other fields.
+    // initialize other fields.
     fresh->age = old->age;
+    fresh->prevSegment = old->prevSegment;
 
     FreeStackMem(vp, old);
 
@@ -415,7 +424,7 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
     // NOTE: because we don't have a mechanism to recognize
     // pointers to frames within a segment (to update them when
     // moving the frame), we link a new segment on the end for callec.
-    
+
     // initialize backwards link and its underflow handler.
     *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
     fresh->prevSegment = old;
