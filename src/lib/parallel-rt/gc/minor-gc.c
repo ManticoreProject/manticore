@@ -77,7 +77,7 @@ void ScanStackMinor (
   const Age_t promoteGen = AGE_Major;
   enum LimitState state = LS_NoMark;
 
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
   stkInfo->currentSP = origStkPtr;
 
   while (stkInfo != NULL) {
@@ -164,7 +164,7 @@ void ScanStackMinor (
     }
 
 nextIter:
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
     stkInfo = stkInfo->prevSegment;
 
     #ifdef DEBUG_STACK_SCAN_MINOR
@@ -209,7 +209,7 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
         if (!marked && safe) {
             // we can free it
 
-            freedBytes += allocd->totalSz;
+            freedBytes += allocd->usableSpace + allocd->guardSz;
 
             // save links
             StackInfo_t* allocdNext = allocd->next;

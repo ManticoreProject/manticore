@@ -126,7 +126,7 @@ void ScanStackMajor (
     Age_t promoteGen = AGE_Global;
     enum LimitState state = LS_NoMark;
 
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
   stkInfo->currentSP = origStkPtr;
 
   while (stkInfo != NULL) {
@@ -207,7 +207,7 @@ void ScanStackMajor (
     stkInfo->age = promoteGen;
 
 nextIter:
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
     stkInfo = stkInfo->prevSegment;
 
     #ifdef DEBUG_STACK_SCAN_MAJOR

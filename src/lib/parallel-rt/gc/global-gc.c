@@ -117,7 +117,7 @@ void ScanStackGlobal (
 
     uint64_t framesSeen = 0;
 
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
   stkInfo->currentSP = origStkPtr;
 
   while (stkInfo != NULL) {
@@ -185,7 +185,7 @@ void ScanStackGlobal (
     stkInfo->age = AGE_Global;
 
 nextIter:
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
     stkInfo = stkInfo->prevSegment;
 
     #ifdef DEBUG_STACK_SCAN_GLOBAL

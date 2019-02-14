@@ -157,6 +157,7 @@ extern int ASM_DS_SegUnderflow;
 // Returns NULL is there are no available stacks that meet the required size.
 #if defined(RESIZESTACK)
 ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
+  // TODO
   return NULL;
 }
 
@@ -389,6 +390,9 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
     // return the new SP in the new segment
     return newStkPtr;
 }
+
+
+
 
 #elif defined(RESIZESTACK)
 
