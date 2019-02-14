@@ -16,10 +16,10 @@ structure BasicControl :  sig
 
   (* base name for pass output files; set based on compilation unit. *)
     val keepPassBaseName : string option Controls.control
-    
+
   (* custom arguments to LLVM's opt *)
     val customOPT : string list Controls.control
-    
+
   (* custom arguments to LLVM's llc *)
     val customLLC : string list Controls.control
 
@@ -31,37 +31,37 @@ structure BasicControl :  sig
 
   (* use the LLVM backend *)
     val llvm : bool Controls.control
-    
+
   (* use the direct-style codegen with contiguous stacks *)
     val direct : bool Controls.control
-    
+
   (* same as "direct", but use segmented stacks instead *)
     val segstack : bool Controls.control
-    
+
   (* same as "direct", but use a linked-frame stack instead *)
     val linkstack : bool Controls.control
-    
+
   (* switch to a seperate stack for all C calls. *)
     val cshim : bool Controls.control
-    
+
   (* generate code for the native CPU. *)
     val native : bool Controls.control
 
   (* no return-address stack; emit pop/push jmps instead *)
     val noras : bool Controls.control
-    
+
     val lazyunderflow : bool Controls.control
     val nocopyoverflow : bool Controls.control
-    
+
   (* optimization level used by LLVM backend *)
     val llopt : int Controls.control
 
   (* select the top-level thread scheduler *)
     val scheduler : string Controls.control
-    
+
   (* disable parray basis *)
     val noparray : bool Controls.control
-    
+
   (* keep GC header table, etc. *)
     val keepTemps : bool Controls.control
 
@@ -153,7 +153,7 @@ structure BasicControl :  sig
 	    help = "",
 	    default = NONE
 	  }
-      
+
     val customOPT : string list Controls.control = Controls.genControl {
 	    name = "customOPT",
 	    pri = [0, 0],
@@ -161,7 +161,7 @@ structure BasicControl :  sig
 	    help = "comma-separated argument(s) to pass to LLVM's `opt` instead of pre-defined ones",
 	    default = []
 	  }
-      
+
     val customLLC : string list Controls.control = Controls.genControl {
 	    name = "customLLC",
 	    pri = [0, 0],
@@ -210,7 +210,7 @@ structure BasicControl :  sig
 	    help = "compile sequential programs",
 	    default = false
 	  }
-      
+
   (* direct-style *)
     val direct : bool Controls.control = Controls.genControl {
         name = "direct",
@@ -219,7 +219,7 @@ structure BasicControl :  sig
         help = "use direct-style code generation (with contiguous stacks)",
         default = false
       }
-      
+
   (* segmented stacks *)
     val segstack : bool Controls.control = Controls.genControl {
         name = "segstack",
@@ -228,7 +228,7 @@ structure BasicControl :  sig
         help = "use segmented stacks (uses direct-style conversion)",
         default = false
       }
-      
+
   (* mutable, linked-frame stack *)
     val linkstack : bool Controls.control = Controls.genControl {
         name = "linkstack",
@@ -237,7 +237,7 @@ structure BasicControl :  sig
         help = "use mutable, linked-frame stacks (uses direct-style conversion)",
         default = false
       }
-      
+
   (* use seperate stack for C calls *)
     val cshim : bool Controls.control = Controls.genControl {
         name = "cshim",
@@ -246,7 +246,7 @@ structure BasicControl :  sig
         help = "use a seperate stack for C calls.",
         default = false
       }
-      
+
   (* native instruction selection *)
     val native : bool Controls.control = Controls.genControl {
         name = "native",
@@ -264,7 +264,7 @@ structure BasicControl :  sig
         help = "emit pop/push jmp instead of call/ret for stack management",
         default = false
       }
-      
+
     val lazyunderflow : bool Controls.control = Controls.genControl {
         name = "lazyunderflow",
         pri = [0, 1, 1], (* TODO: What do these values mean? *)
@@ -272,7 +272,7 @@ structure BasicControl :  sig
         help = "segstack -- do not automatically free on underflow",
         default = false
       }
-    
+
     val nocopyoverflow : bool Controls.control = Controls.genControl {
         name = "nocopyoverflow",
         pri = [0, 1, 1], (* TODO: What do these values mean? *)
@@ -280,7 +280,7 @@ structure BasicControl :  sig
         help = "segstack -- do not copy on overflow",
         default = false
       }
-    
+
 
   (* llvm backend *)
     val llvm : bool Controls.control = Controls.genControl {
@@ -290,7 +290,7 @@ structure BasicControl :  sig
         help = "use the LLVM backend for code generation",
         default = true
       }
-      
+
     val llopt : int Controls.control = Controls.genControl {
             name = "llopt",
             pri = [0, 1, 1], (* TODO: What do these values mean? *)
@@ -298,7 +298,7 @@ structure BasicControl :  sig
             help = "choose optimization level (0 to 5) used by LLVM backend",
             default = 0
           }
-          
+
   (* disable parray basis *)
     val noparray : bool Controls.control = Controls.genControl {
 	    name = "noparray",
@@ -307,7 +307,7 @@ structure BasicControl :  sig
 	    help = "disable parray basis inclusion",
 	    default = false
 	  }
-      
+
 (* keep header table, etc. *)
   val keepTemps : bool Controls.control = Controls.genControl {
       name = "keepTemps",
