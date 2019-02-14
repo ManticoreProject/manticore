@@ -78,8 +78,10 @@ typedef uint8_t Byte_t;
 /* function inlining */
 #if defined(NO_INLINE)
 #  define STATIC_INLINE		static
+#  define ALWAYS_INLINE
 #else
 #  define STATIC_INLINE		static inline
+#  define ALWAYS_INLINE inline __attribute__((always_inline))
 #endif
 
 #ifdef SIXTYFOUR_BIT_WORDS

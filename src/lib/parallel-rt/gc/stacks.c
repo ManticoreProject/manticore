@@ -153,7 +153,7 @@ extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_SegUnderflow;
 
 // Retrieves an unused stack for the given vproc.
-StackInfo_t* GetStack(VProc_t *vp) {
+StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
     StackInfo_t* info;
     if (vp->freeStacks == NULL) {
         size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
@@ -161,7 +161,7 @@ StackInfo_t* GetStack(VProc_t *vp) {
   #if defined(SEGSTACK) || defined(RESIZESTACK)
         isSegment = true;
   #endif
-        info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
+        info = AllocStackMem(vp, usableSpace, guardSz, isSegment);
     } else {
         // pop an existing stack
         info = vp->freeStacks;
@@ -183,7 +183,7 @@ StackInfo_t* GetStack(VProc_t *vp) {
 
 // NOTE: exposed to BOM code.
 Value_t NewStack (VProc_t *vp, Value_t funClos) {
-    StackInfo_t* info = GetStack(vp);
+    StackInfo_t* info = GetStack(vp, dfltStackSz);
 
     uint64_t* sp = (uint64_t*)(info->initialSP);
 
@@ -212,7 +212,7 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
 }
 
 StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
-    StackInfo_t* info = GetStack(vp);
+    StackInfo_t* info = GetStack(vp, dfltStackSz);
 
     // initialize stack for a return from manticore's main fun.
     void* stkPtr = info->initialSP;
@@ -257,66 +257,56 @@ void FreeStackMem(VProc_t *vp, StackInfo_t* info) {
     lo_free(vp, info);
 }
 
-#if defined(SEGSTACK)
+/**
+ * Move stack frames from one stack to another. Returns the new top of
+ * stack for the segment we moved frames to. The old stack's top is
+ * saved in its StackInfo.
+ *
+ * NOTES:
+ * 1. *(fresh->initialSP) is not overwritten, leaving that spot for an underflow
+ *    handler address to be placed there.
+ *
+ * 2. MAX_FRAMES < 0 implies that there is no maxiumum number of frames.
+ */
+ALWAYS_INLINE uint8_t* MoveFrames(uint8_t *restrict old_origStkTop, StackInfo_t* old, StackInfo_t* fresh, const uint64_t MAX_BYTES, const int MAX_FRAMES) {
+    uint8_t* old_stkPtr = old_origStkTop;
 
-__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
-    StackInfo_t* fresh = GetStack(vp);
-    StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
+    uint64_t bytesSeen = 0;
 
-    uint8_t* old_stkPtr = old_origStkPtr;
+    const uint64_t szOffset = 2 * sizeof(uint64_t);
 
-    if (shouldCopy) {
+    for(int i = 0; (MAX_FRAMES < 0 || i < MAX_FRAMES); i++) {
+        // grab the size field
+        uint64_t* p = (uint64_t*)(old_stkPtr + szOffset);
+        uint64_t sz = *p;
 
-        uint64_t bytesSeen = 0;
+        // hit the end of the segment?
+        if(sz == ~0ULL)
+            break;
 
-        // NOTE what if the default segment size < size of the frame that
-        // caused the overflow? Should we take the size as an argument to
-        // this function and allocate a segment that is larger if nessecary?
-        // This will complicate the free list as segments will have various
-        // sizes. I think in practice this is unnessecary since a realistic segment
-        // size will always be much larger than any one frame in the program.
+        uint64_t frameBytes = sz + sizeof(uint64_t);
+        bytesSeen += frameBytes;
 
-        const uint64_t maxBytes = dfltStackSz / 8;
-        const int maxFrames = 4; // TODO make this a parameter of the compiler
-        const uint64_t szOffset = 2 * sizeof(uint64_t);
+        // do not include this frame.
+        // it would put us over the max.
+        if (bytesSeen >= MAX_BYTES)
+            break;
 
-        for(int i = 0; i < maxFrames; i++) {
-            // grab the size field
-            uint64_t* p = (uint64_t*)(old_stkPtr + szOffset);
-            uint64_t sz = *p;
-
-            // hit the end of the segment?
-            if(sz == ~0ULL) {
-                // copying the whole segment to the new one defeats the
-                // purpose of this optimization, so
-                // we will simply provide an empty segment.
-                old_stkPtr = old_origStkPtr;
-                break;
-            }
-
-            uint64_t frameBytes = sz + sizeof(uint64_t);
-            bytesSeen += frameBytes;
-
-            if (bytesSeen >= maxBytes) {
-                // do not include this frame.
-                // it would put us over the max.
-                break;
-            }
-
-            // include this frame
-            old_stkPtr += frameBytes;
-        }
+        // include this frame
+        old_stkPtr += frameBytes;
     }
 
-    uint64_t bytesToCopy = old_stkPtr - old_origStkPtr;
+    uint64_t bytesToCopy = old_stkPtr - old_origStkTop;
 
     // fprintf(stderr, "copying %llu bytes\n", bytesToCopy);
 
     // stkPtr now points to the ret addr of the new top of old segment
 
-    /* Goal:
-
+    /* Figure to help you understand what's going on
     high addresses                               low addresses
+
+                <--- memcpy direction
+                                 top of stack --->
 
                                         ptrB          ptrA
                                          v             v
@@ -327,40 +317,44 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
                                          ptrC
 
         where:
-        ptrA = old_origStkPtr
+        ptrA = old_origStkTop
         ptrB = ptrA + bytesToCopy
 
         old->currentSP = ptrB
         returned SP = ptrC
-
-
     */
 
-    uint8_t* newStkPtr = fresh->initialSP;
-
-    // install underflow handler
-    *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
+    uint8_t* new_StkTop = fresh->initialSP;
 
     if (bytesToCopy) {
         // pull pointer down
-        newStkPtr -= bytesToCopy;
+        new_StkTop -= bytesToCopy;
 
-        // copy frames to fresh segment. realignment should be unnessecary
-        // and we know its a multiple of 8 because of alignment
-        // bytesToCopy /= 8;
-        // uint64_t* to = newStkPtr;
-        // uint64_t* from = old_origStkPtr;
-        // for(uint64_t i = 0; i < bytesToCopy; i++) {
-        //     to[i] = from[i];
-        // }
-
-        // memcpy is faster than the loop above
-        memcpy(newStkPtr, old_origStkPtr, bytesToCopy);
+        memcpy(new_StkTop, old_origStkTop, bytesToCopy);
     }
 
-    // initialize backwards link and save old segment's new top
-    fresh->prevSegment = old;
+    // save old segment's new top
     old->currentSP = old_stkPtr;
+
+    return new_StkTop;
+}
+
+
+#if defined(SEGSTACK)
+
+__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkTop, uint64_t shouldCopy) {
+    StackInfo_t* fresh = GetStack(vp, dfltStackSz);
+    StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
+
+    // install underflow handler
+    uint8_t* newStkPtr = fresh->initialSP;
+    *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
+
+    if (shouldCopy)
+      newStkPtr = MoveFrames(old_origStkTop, old, fresh, dfltStackSz / 8, 4);
+
+    // initialize backwards link
+    fresh->prevSegment = old;
 
     // install the fresh segment as the current stack descriptor
     vp->stdCont = PtrToValue(fresh);
@@ -373,7 +367,7 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
 #elif defined(RESIZESTACK)
 
 // TODO
-__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr);
+__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkTop);
 
 #endif
 
