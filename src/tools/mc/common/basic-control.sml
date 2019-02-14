@@ -38,6 +38,9 @@ structure BasicControl :  sig
   (* same as "direct", but use segmented stacks instead *)
     val segstack : bool Controls.control
 
+  (* same as "direct", but use resizing stacks instead *)
+    val resizestack : bool Controls.control
+
   (* same as "direct", but use a linked-frame stack instead *)
     val linkstack : bool Controls.control
 
@@ -229,6 +232,15 @@ structure BasicControl :  sig
         default = false
       }
 
+  (* resizing stacks *)
+    val resizestack : bool Controls.control = Controls.genControl {
+        name = "resizestack",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "use resizing stacks (variant of segmented stacks)",
+        default = false
+      }
+
   (* mutable, linked-frame stack *)
     val linkstack : bool Controls.control = Controls.genControl {
         name = "linkstack",
@@ -381,6 +393,10 @@ structure BasicControl :  sig
         };
       ControlRegistry.register topRegistry {
           ctl = Controls.stringControl ControlUtil.Cvt.bool segstack,
+          envName = NONE
+        };
+      ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool resizestack,
           envName = NONE
         };
       ControlRegistry.register topRegistry {

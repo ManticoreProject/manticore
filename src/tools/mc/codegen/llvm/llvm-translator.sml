@@ -1394,7 +1394,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         "0x" ^ (IntInf.fmt StringCvt.HEX asInt)
     end
 
-    val stackKind = if Controls.get BasicControl.segstack
+    val stackKind = if Controls.get BasicControl.segstack orelse Controls.get BasicControl.resizestack
                     (* we have re-purposed the stdEnvPtr field to hold the stack limit *)
                         then "\"manti-segstack\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""
                     else if Controls.get BasicControl.linkstack

@@ -77,6 +77,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
         val perf = Controls.get BasicControl.perf
         val direct = Controls.get BasicControl.direct
         val segstack = Controls.get BasicControl.segstack
+        val resizestack = Controls.get BasicControl.resizestack
         val lazyunderflow = Controls.get BasicControl.lazyunderflow
         val nocopyoverflow = Controls.get BasicControl.nocopyoverflow
         val linkstack = Controls.get BasicControl.linkstack
@@ -133,10 +134,11 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
 
           | (gcStats, _, debug, _, true) => let (* handle various kinds of stacks *)
                 val name =
-                    (case (segstack, linkstack)
-                        of (false, false) => "mcrt-direct"
-                         | (false, true) => "mcrt-linkstack"
-                         | (true, false) =>
+                    (case (segstack, linkstack, resizestack)
+                        of (false, false, false) => "mcrt-direct"
+                         | (false, true, false) => "mcrt-linkstack"
+                         | (false, false, true) => "mcrt-resizestack"
+                         | (true, false, false) =>
                             (case (lazyunderflow, nocopyoverflow)
                               of (false, false) => "mcrt-segstack"
                                | (true, false) => "mcrt-segstack-lazyunderflow"

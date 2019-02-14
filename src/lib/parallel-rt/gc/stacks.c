@@ -158,7 +158,7 @@ StackInfo_t* GetStack(VProc_t *vp) {
     if (vp->freeStacks == NULL) {
         size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
         bool isSegment = false;
-  #ifdef SEGSTACK
+  #if defined(SEGSTACK) || defined(RESIZESTACK)
         isSegment = true;
   #endif
         info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
@@ -236,7 +236,7 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
     StackInfo_t* info;
     size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
     bool isSegment = false;
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
     isSegment = true;
 #endif
 
@@ -256,6 +256,8 @@ void FreeStackMem(VProc_t *vp, StackInfo_t* info) {
 
     lo_free(vp, info);
 }
+
+#if defined(SEGSTACK)
 
 __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
     StackInfo_t* fresh = GetStack(vp);
@@ -367,5 +369,12 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
     // return the new SP in the new segment
     return newStkPtr;
 }
+
+#elif defined(RESIZESTACK)
+
+// TODO
+__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr);
+
+#endif
 
 #endif // DIRECT_STYLE

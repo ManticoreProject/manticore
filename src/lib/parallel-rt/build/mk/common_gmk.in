@@ -43,6 +43,11 @@ ifeq (,$(findstring segstack,$(BUILD_OPTIONS)))
 else
   ENABLE_SEGSTACK=true
 endif
+ifeq (,$(findstring resizestack,$(BUILD_OPTIONS)))
+  ENABLE_RESIZESTACK=false
+else
+  ENABLE_RESIZESTACK=true
+endif
 ifeq (,$(findstring linkstack,$(BUILD_OPTIONS)))
   ENABLE_LINKSTACK=false
 else
@@ -135,6 +140,10 @@ endif
 
 ifeq ($(ENABLE_SEGSTACK),true)
   CPPFLAGS += -DSEGSTACK
+endif
+
+ifeq ($(ENABLE_RESIZESTACK),true)
+  CPPFLAGS += -DRESIZESTACK
 endif
 
 ifeq ($(ENABLE_LINKSTACK),true)

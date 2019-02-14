@@ -252,6 +252,7 @@ functor MainFn (
 	  \    -contigstack     use contiguous stacks\n\
 	  \    -linkstack       use mutable, linked-frame stacks\n\
 	  \    -segstack        use segmented stacks\n\
+	  \    -resizestack     use resizing stacks\n\
 	  \    -lazyunderflow   segstack -- do not free on underflow\n\
 	  \    -nocopyoverflow  segstack -- do not copy on overflow\n\
 	  \    -noras           emit pop/push jmp instead of call/ret for stacks\n\
@@ -353,6 +354,7 @@ functor MainFn (
 		| "-mlrisc" => unset BasicControl.llvm
 		| "-contigstack" => set BasicControl.direct
 		| "-segstack" => ( Controls.set(BasicControl.direct, true) ; set BasicControl.segstack )
+		| "-resizestack" => ( Controls.set(BasicControl.direct, true) ; set BasicControl.resizestack )
 		| "-linkstack" => ( Controls.set(BasicControl.direct, true) ;
                             Controls.set(BasicControl.cshim, true) ;
                             set BasicControl.linkstack )

@@ -86,7 +86,7 @@ _GSYM(ASM_DS_EscapeThrow):
     // set stack descriptor
     movq    16(STD_EP_REG), TMP_REG0
     movq    TMP_REG0, STD_CONT(VPROC_PTR_REG)
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
     // set the stack limit
     movq    STK_LIM(TMP_REG0), TMP_REG0
     movq    TMP_REG0, STD_EP(VPROC_PTR_REG)
@@ -301,7 +301,7 @@ callec_body:
 
     movq    STD_CONT(VPROC_PTR_REG), STACK_DISC     // grab the stack descriptor
 
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
     movq    %rsp, OLD_SP                      // stash the sp
     // switch to a new segment without copying
     // This call will clobber TMP_REG1
@@ -315,7 +315,7 @@ callec_body:
     movq    $STACK_HDR(3), -8(ALLOC_PTR_REG)       // init header
     movq    RESUME_ADDR, (ALLOC_PTR_REG)           // init code ptr
 
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
     movq    OLD_SP, 8(ALLOC_PTR_REG)          // init captured stack ptr
 #else
     movq    %rsp, 8(ALLOC_PTR_REG)              // capture current stack ptr

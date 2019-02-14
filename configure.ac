@@ -573,6 +573,9 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-direct, [direct])
     MK_BUILD_DIR(mcrt-direct-stats, [stats direct])
 
+    MK_BUILD_DIR(mcrt-resizestack, [direct resizestack])
+    MK_BUILD_DIR(mcrt-resizestack-stats, [stats direct resizestack])
+
     MK_BUILD_DIR(mcrt-segstack, [direct segstack])
     MK_BUILD_DIR(mcrt-segstack-lazyunderflow, [direct segstack lazyunderflow])
     MK_BUILD_DIR(mcrt-segstack-nocopyoverflow, [direct segstack nocopyoverflow])
@@ -590,6 +593,7 @@ if test $CROSS_COMPILING = 0 ; then
 
     dnl debug builds of stack-based strategies
     MK_BUILD_DIR(mcrt-direct-debug, [debug direct])
+    MK_BUILD_DIR(mcrt-resizestack-debug, [debug direct resizestack])
     MK_BUILD_DIR(mcrt-segstack-debug, [debug direct segstack])
     MK_BUILD_DIR(mcrt-linkstack-debug, [debug linkstack])
 

@@ -259,7 +259,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   // write 'info' to vp->stdCont to establish that it is the current stack.
   vp->stdCont = (Value_t) info;
 
-#ifdef SEGSTACK
+#if defined(SEGSTACK) || defined(RESIZESTACK)
   // set stack limit
   vp->stdEnvPtr = GetStkLimit(info);
 #endif
@@ -311,7 +311,7 @@ doShutdown:
 
         stkPtr = vp->stdEnvPtr;
 
-        #ifdef SEGSTACK
+        #if defined(SEGSTACK) || defined(RESIZESTACK)
           // set stack limit
           vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
         #endif
@@ -361,7 +361,7 @@ doShutdown:
 
             stkPtr = vp->stdEnvPtr;
 
-            #ifdef SEGSTACK
+            #if defined(SEGSTACK) || defined(RESIZESTACK)
               // set stack limit
               vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
             #endif
@@ -377,7 +377,7 @@ doShutdown:
                 exnCont = M_UNIT;
                 arg = M_UNIT;
 
-                #ifdef SEGSTACK
+                #if defined(SEGSTACK) || defined(RESIZESTACK)
                   // set stack limit
                   vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
                 #endif
@@ -430,7 +430,7 @@ doShutdown:
 
              stkPtr = vp->stdEnvPtr;
 
-             #ifdef SEGSTACK
+             #if defined(SEGSTACK) || defined(RESIZESTACK)
                // set stack limit
                vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
              #endif

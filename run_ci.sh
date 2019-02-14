@@ -43,12 +43,14 @@ stacks=(
   ""
   "-contigstack"
   "-segstack"
+  # "-resizestack"
   "-linkstack"
 
   # now we test with the cshim
   "-Ccshim=true"
   "-Ccshim=true -contigstack"
   "-Ccshim=true -segstack"
+  # "-Ccshim=true -resizestack"
 
   # now we test noras
   # "-noras"
@@ -77,7 +79,9 @@ for stack in "${stacks[@]}"; do
     for llvm in  "${llvmOptions[@]}"; do
         config="$llvm $stack"
         echo -e "\n\n\t----- testing configuration: $config -----\n\n"
+        echo -e "\t--SEQUENTIAL --"
         runTest "$config" run-seq.sh
+        echo -e "\n\t-- CML --"
         runTest "$config" run-cml.sh
         echo -e "\n\n\t----- done -----\n\n"
     done
