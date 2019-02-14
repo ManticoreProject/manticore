@@ -37,7 +37,7 @@ do
        echo "checking $g/$f" >> $LOG
        $PMLC $PMLCFLAGS $f 2>> $LOG 1>> $LOG
        if [ "$?" -eq "0" ] ; then
-	 ./a.out > $fname.test
+	 ./a.out $AOUTFLAGS > $fname.test
 	 diffs=$(diff $fname.test $fname.ok)
 	 status=$(diff $fname.test $fname.ok | wc -l)
 	 if [ $status -eq "0" ] ; then

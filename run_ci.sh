@@ -24,12 +24,6 @@ make local-install
 
 ########## start of testing stuff ##########
 
-# we want to try all configurations and _then_
-# report failure if any one of them fails,
-# so we use || here to collect failure results.
-
-failed=0
-
 llvmOptions=(
   "-O0"
   # "-O1"
@@ -67,9 +61,9 @@ touch $CI_REPORT
 # $2 = script, e.g., run-seq.sh
 # $3 = aout flags
 runTest () {
-    AOUTFLAGS="$3" BACKEND="$1" $TIMEOUT 20m ./src/regression-tests/bash-scripts/$2
+    AOUTFLAGS="$3" BACKEND="$1" $TIMEOUT 20m "./src/regression-tests/bash-scripts/$2"
     if [ "$?" -ne 0 ]; then
-        echo "$1, $2" >> $CI_REPORT
+        echo "$1, $2, $3" >> $CI_REPORT
     fi
 }
 
@@ -87,13 +81,27 @@ for stack in "${stacks[@]}"; do
     done
 done
 
+
+echo -e "\n\n\t----- testing with small stack segments -----\n\n"
+
+echo -e "\t--SEQUENTIAL --"
+runTest "-Ccshim=true -segstack" run-seq.sh "-stacksz 1024"
+
+echo -e "\n\t-- CML --"
+runTest "-Ccshim=true -segstack" run-cml.sh "-stacksz 1024"
+
+echo -e "\n\n\t----- done -----\n\n"
+
+
 echo -e "\n\n\t----- testing with MLRISC -----\n\n"
+echo -e "\t--SEQUENTIAL --"
 runTest -mlrisc run-seq.sh
+echo -e "\n\t-- CML --"
 runTest -mlrisc run-cml.sh
 echo -e "\n\n\t----- done -----\n\n"
 
 # Exit with error if any tests failed
-if [ `wc -l < $CI_REPORT` -ne 0 ] ; then
+if [ "$(wc -l < $CI_REPORT)" -ne 0 ] ; then
     echo -e "\n\nA failure was detected in the following configurations:"
     cat $CI_REPORT
     exit 1
