@@ -95,7 +95,7 @@ _GSYM(ASM_DS_EscapeThrow):
     ret
 
 
-
+#if defined(SEGSTACK) || defined(RESIZESTACK)
 /*
 
     caller2 addr
@@ -188,6 +188,12 @@ manti_growstack_impl:
     movq    (TMP_REG1), TMP_REG0             // load return addr from old stack
     jmpq    *TMP_REG0                        // resume
 
+#endif // segmented or resize stack
+
+
+
+#ifdef SEGSTACK
+// only segmented stacks can underflow
 
 // This version is for segmented stacks a la Bruggeman et al.
 .p2align 4, 0xCC
@@ -264,6 +270,7 @@ doneFreeing:
     movq    TMP_REG1, STD_EP(VPROC_PTR_REG)
     retq
 
+#endif // SEGSTACK
 
 
 /*
