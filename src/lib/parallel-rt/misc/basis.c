@@ -624,7 +624,7 @@ Value_t M_TextIOInputLine (void *instream)
     char buf[bufsz];
     char *ret;
 
-    ret = fgets (buf, bufsz+1, instream);
+    ret = fgets (buf, bufsz, instream);
     if (ret == 0) {
 	return M_NONE;
     }

@@ -69,7 +69,7 @@ STATIC_INLINE int LogicalId (Location_t loc)
 {
 /* FIXME: this works for Linux, but what about Mac OS X? */
     int id = LocationNode(loc);
-    id = id * NumCoresPerNode + (loc >> LOC_THREAD_BITS) & ((1 << LOC_CORE_BITS) - 1);
+    id = id * NumCoresPerNode + ((loc >> LOC_THREAD_BITS) & ((1 << LOC_CORE_BITS) - 1));
     id = id * NumThdsPerCore + (loc & ((1 << LOC_THREAD_BITS) - 1));
     return id;
 }

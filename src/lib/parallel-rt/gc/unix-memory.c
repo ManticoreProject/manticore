@@ -68,7 +68,7 @@ void* SimpleAlloc(size_t szb) {
  */
 void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedBase)
 {
-    void	*memObj, *base, *orig, *unmap;
+    void	*memObj, *base, *unmap;
     size_t	szb;
 
   /* first, we try to allocate a chunk that is one block bigger than
@@ -91,7 +91,6 @@ void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedB
 	}
     } while (memObj == MAP_FAILED);
 
-    orig = memObj;
   /* now compute the lowest aligned address in the allocated block. */
     base = (void *)(((Addr_t)memObj & ~(blkSzB-1)) + blkSzB);
 
