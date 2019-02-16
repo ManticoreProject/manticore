@@ -113,10 +113,8 @@ void HeapInit (Options_t *opts)
     if (MaxNurserySzB < MIN_NURSERY_SZB)
       MaxNurserySzB = MIN_NURSERY_SZB;
 
-#if defined(SEGSTACK)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 16 * ONE_K);
-#elif defined(RESIZESTACK)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 4 * ONE_K);
+#if defined(SEGSTACK) || defined(RESIZESTACK)
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 8 * ONE_K);
 #elif defined(DIRECT_STYLE)
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 100 * ONE_MEG);
 #endif

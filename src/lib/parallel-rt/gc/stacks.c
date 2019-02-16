@@ -104,6 +104,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     info->prevSegment = NULL;
     info->currentSP = NULL;
     info->owner = vp;
+    info->canCopy = 1; // default is to allow copying.
     info->guardSz = guardSz;
     info->usableSpace = numBytes;
     info->memAlloc = mem;
@@ -313,7 +314,7 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
 
 // In this SEGMENTED STACKS version, we copy a bounded number of frames,
 // or none at all.
-__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
+uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
     StackInfo_t* fresh = GetStack(vp, dfltStackSz);
     StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
@@ -424,10 +425,10 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
 
 // on overflow we RESIZE the stack and discard the old one.
 // In the case of callec, we link a new segment instead.
-__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t notCallec) {
+uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
   StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
-  size_t newSize = notCallec ? old->usableSpace * 2 : dfltStackSz;
+  size_t newSize = shouldCopy ? old->usableSpace * 2 : dfltStackSz;
 
   assert(newSize >= dfltStackSz);
   StackInfo_t* fresh = GetStack(vp, newSize);
@@ -438,10 +439,8 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
 
   uint8_t* newStkPtr = fresh->initialSP;
 
-  if (notCallec) {
-    // printf("resizing to %llu\n", newSize);
-
-    // then we need to copy everything over.
+  if (shouldCopy) {
+    // copy everything over and discard old segment.
     uint8_t* oldBase = old->initialSP;
     uint64_t numBytes = oldBase - old_origStkPtr;
 
@@ -454,13 +453,12 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
     // initialize other fields.
     fresh->age = old->age;
     fresh->prevSegment = old->prevSegment;
+    fresh->canCopy = old->canCopy;
 
     FreeOneStack(vp, old);
 
   } else {
-    // NOTE: because we don't have a mechanism to recognize
-    // pointers to frames within a segment (to update them when
-    // moving the frame), we link a new segment on the end for callec.
+    // link a new segment
 
     // initialize backwards link and its underflow handler.
     *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
