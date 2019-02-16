@@ -304,7 +304,7 @@ callec_body:
 
     movq    STD_CONT(VPROC_PTR_REG), STACK_DISC     // grab the stack descriptor
 
-#if defined(SEGSTACK) || defined(RESIZESTACK)
+#if (defined(SEGSTACK) && !defined(NOCOPY_OVERFLOW)) || defined(RESIZESTACK)
     movq    %rsp, OLD_SP                      // stash the sp
     // switch to a new segment without copying
     // This call will clobber TMP_REG1
@@ -318,7 +318,7 @@ callec_body:
     movq    $STACK_HDR(3), -8(ALLOC_PTR_REG)       // init header
     movq    RESUME_ADDR, (ALLOC_PTR_REG)           // init code ptr
 
-#if defined(SEGSTACK) || defined(RESIZESTACK)
+#if (defined(SEGSTACK) && !defined(NOCOPY_OVERFLOW)) || defined(RESIZESTACK)
     movq    OLD_SP, 8(ALLOC_PTR_REG)          // init captured stack ptr
 #else
     movq    %rsp, 8(ALLOC_PTR_REG)              // capture current stack ptr
