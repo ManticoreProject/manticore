@@ -83,6 +83,7 @@ struct struct_stackinfo {
     void* deepestScan   ALIGN_8;  // unscanned <=> deepestScan == ptr to its own StackInfo_t
     Age_t age           ALIGN_8;
     VProc_t* owner      ALIGN_8;
+    uint64_t canCopy    ALIGN_8; // if true, indicates that it's safe to copy frames out of this segment
     size_t guardSz      ALIGN_8;
     size_t usableSpace  ALIGN_8;
     uint8_t* memAlloc   ALIGN_8;

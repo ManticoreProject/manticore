@@ -215,6 +215,8 @@ void ReleaseStacks(VProc_t *vp, const size_t maxCache) {
 
 // Adds a stack to the VProc's stack cache,
 // removing it from the allocated list.
+// Updates here must also be reflected in asm-glue-ds, since
+// ASM_DS_SegUnderflow will also free a stack!
 void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
   // save links
   StackInfo_t* allocdNext = allocd->next;
@@ -227,6 +229,7 @@ void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
   allocd->age = AGE_Minor; // demote
   allocd->next = vp->freeStacks;
   allocd->prev = NULL;
+  allocd->canCopy = 1;
   vp->freeStacks = allocd;
 
   // update links in next/prev

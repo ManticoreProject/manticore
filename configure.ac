@@ -574,7 +574,10 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-direct-stats, [stats direct])
 
     MK_BUILD_DIR(mcrt-resizestack, [direct resizestack])
+    MK_BUILD_DIR(mcrt-resizestack-nocopyoverflow, [direct resizestack nocopyoverflow])
+
     MK_BUILD_DIR(mcrt-resizestack-stats, [stats direct resizestack])
+    MK_BUILD_DIR(mcrt-resizestack-nocopyoverflow-stats, [stats direct resizestack nocopyoverflow])
 
     MK_BUILD_DIR(mcrt-segstack, [direct segstack])
     MK_BUILD_DIR(mcrt-segstack-lazyunderflow, [direct segstack lazyunderflow])

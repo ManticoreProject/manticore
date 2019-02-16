@@ -26,6 +26,7 @@
 #define DEEP_SCAN   6*8
 #define AGE         7*8
 #define OWNER       8*8
+#define CAN_COPY    9*8
 
 
 
@@ -110,7 +111,7 @@ _GSYM(ASM_DS_EscapeThrow):
 */
 
 .p2align 4, 0xCC
-.globl	_GSYM(__manti_growstack_callec)
+.globl _GSYM(__manti_growstack_callec)
 _GSYM(__manti_growstack_callec):
     movq    $0, TMP_REG1      // never copy frames to new segment for callec.
     jmp     manti_growstack_impl
@@ -121,9 +122,10 @@ _GSYM(__manti_growstack_callec):
 _GSYM(__manti_growstack):
     // NOTE we actually start off with RSP 16-byte aligned!
 #ifdef NOCOPY_OVERFLOW
-    movq    $0, TMP_REG1
+    movq    STD_CONT(VPROC_PTR_REG), TMP_REG0     // grab the stack descriptor
+    movq    CAN_COPY(TMP_REG0), TMP_REG1          // conditionally copy
 #else
-    movq    $1, TMP_REG1      // 0 indicates no copying.
+    movq    $1, TMP_REG1      // 1 indicates copying.
 #endif
 ////// FALL THROUGH //////
 
@@ -245,6 +247,7 @@ prevTestJoin:
     // now, we demote the segment we removed
     movq    $0, AGE(TMP_REG1)         // info->age = AGE_Minor
     movq    $0, LIST_PREV(TMP_REG1)   // info->prev = NULL
+    movq    $1, CAN_COPY(TMP_REG1)    // info->canCopy = 1
     // push it on the free list
     movq    FREE_STKS(VPROC_PTR_REG), TMP_REG0
     movq    TMP_REG0, LIST_NEXT(TMP_REG1)
@@ -287,7 +290,7 @@ doneFreeing:
 .globl	_GSYM(ASM_Callec2)
 /* uses the direct-style manticore calling convention */
 
-// using the 2nd through 4th arg registers to hold important values
+// using the 3rd through 4th arg registers to hold important values
 // that must be preserved, since we know Callec only takes 1 argument.
 #define OLD_SP       %r10
 #define RESUME_ADDR  %r12
@@ -304,7 +307,11 @@ callec_body:
 
     movq    STD_CONT(VPROC_PTR_REG), STACK_DISC     // grab the stack descriptor
 
-#if (defined(SEGSTACK) && !defined(NOCOPY_OVERFLOW)) || defined(RESIZESTACK)
+#if defined(NOCOPY_OVERFLOW)
+    // no need for a new segment. we disable future copying instead.
+    movq    $0, CAN_COPY(STACK_DISC)    // info->canCopy = 0   disable frame copying.
+
+#elif defined(SEGSTACK) || defined(RESIZESTACK)
     movq    %rsp, OLD_SP                      // stash the sp
     // switch to a new segment without copying
     // This call will clobber TMP_REG1
@@ -318,7 +325,7 @@ callec_body:
     movq    $STACK_HDR(3), -8(ALLOC_PTR_REG)       // init header
     movq    RESUME_ADDR, (ALLOC_PTR_REG)           // init code ptr
 
-#if (defined(SEGSTACK) && !defined(NOCOPY_OVERFLOW)) || defined(RESIZESTACK)
+#if !defined(NOCOPY_OVERFLOW) && (defined(SEGSTACK) || defined(RESIZESTACK))
     movq    OLD_SP, 8(ALLOC_PTR_REG)          // init captured stack ptr
 #else
     movq    %rsp, 8(ALLOC_PTR_REG)              // capture current stack ptr

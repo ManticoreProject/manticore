@@ -36,6 +36,9 @@ llvmOptions=(
 segmentLike=(
   "-segstack"
   "-resizestack"
+
+  "-segstack -nocopyoverflow"
+  "-resizestack -nocopyoverflow"
 )
 
 stacks=(
@@ -85,6 +88,8 @@ for stack in "${stacks[@]}"; do
     done
 done
 
+##########
+# stress the overflow / underflow handling
 
 for stack in "${segmentLike[@]}"; do
   echo -e "\n\n\t----- testing $stack with small segments -----\n\n"

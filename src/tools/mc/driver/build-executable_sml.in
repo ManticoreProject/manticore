@@ -137,7 +137,9 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
                     (case (segstack, linkstack, resizestack)
                         of (false, false, false) => "mcrt-direct"
                          | (false, true, false) => "mcrt-linkstack"
-                         | (false, false, true) => "mcrt-resizestack"
+                         | (false, false, true) => if nocopyoverflow
+                                                    then "mcrt-resizestack-nocopyoverflow"
+                                                    else "mcrt-resizestack"
                          | (true, false, false) =>
                             (case (lazyunderflow, nocopyoverflow)
                               of (false, false) => "mcrt-segstack"
