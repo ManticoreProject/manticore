@@ -44,7 +44,7 @@ stacks=(
   "-Ccshim=true"
   "-Ccshim=true -contigstack"
   "-Ccshim=true -segstack"
-  # "-Ccshim=true -resizestack"
+  "-Ccshim=true -resizestack"
 
   # now we test noras
   # "-noras"
