@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # must be run in the root of the repository.
+# if the 1st arg to the script is "local" then we skip llvm fresh build.
 
 TIMEOUT=timeout
 
@@ -12,7 +13,9 @@ uname -a
 
 echo -e "\n\n\t----- building llvm -----\n\n"
 
-./llvm/fresh-build.sh
+if [ "$1" -ne "local" ]; then
+  ./llvm/fresh-build.sh
+fi
 
 echo -e "\n\n\t----- building manticore -----\n\n"
 
