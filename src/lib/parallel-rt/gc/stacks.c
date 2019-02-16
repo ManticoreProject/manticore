@@ -19,8 +19,6 @@
 #include "large-object.h"
 #include <stdio.h>
 
-size_t dfltStackSz;
-
 // Allocates a region of memory suitable for use as a stack segment.
 //
 // Returns the pointer to the descriptor information of the stack.
@@ -284,91 +282,12 @@ void FreeStackMem(VProc_t *vp, StackInfo_t* info) {
     lo_free(vp, mem);
 }
 
-/**
- * Move stack frames from one stack to another. Returns the new top of
- * stack for the segment we moved frames to. The old stack's top is
- * saved in its StackInfo.
- *
- * NOTES:
- * 1. *(fresh->initialSP) is not overwritten, leaving that spot for an underflow
- *    handler address to be placed there.
- *
- * 2. MAX_FRAMES < 0 implies that there is no maxiumum number of frames.
- */
-ALWAYS_INLINE uint8_t* MoveFrames(uint8_t *restrict old_origStkTop, StackInfo_t* old, StackInfo_t* fresh, const uint64_t MAX_BYTES, const int MAX_FRAMES) {
-    uint8_t* old_stkPtr = old_origStkTop;
-
-    uint64_t bytesSeen = 0;
-
-    const uint64_t szOffset = 2 * sizeof(uint64_t);
-
-    for(int i = 0; (MAX_FRAMES < 0 || i < MAX_FRAMES); i++) {
-        // grab the size field
-        uint64_t* p = (uint64_t*)(old_stkPtr + szOffset);
-        uint64_t sz = *p;
-
-        // hit the end of the segment?
-        if(sz == ~0ULL)
-            break;
-
-        uint64_t frameBytes = sz + sizeof(uint64_t);
-        bytesSeen += frameBytes;
-
-        // do not include this frame.
-        // it would put us over the max.
-        if (bytesSeen >= MAX_BYTES)
-            break;
-
-        // include this frame
-        old_stkPtr += frameBytes;
-    }
-
-    uint64_t bytesToCopy = old_stkPtr - old_origStkTop;
-
-    // fprintf(stderr, "copying %llu bytes\n", bytesToCopy);
-
-    // stkPtr now points to the ret addr of the new top of old segment
-
-    /* Figure to help you understand what's going on
-    high addresses                               low addresses
-
-                <--- memcpy direction
-                                 top of stack --->
-
-                                        ptrB          ptrA
-                                         v             v
-        [ &UnderflowHandler ][ remainder | copiedData ]     <- old segment
-
-        [ &UnderflowHandler ][ copiedData ]       <- fresh segment
-                                          ^
-                                         ptrC
-
-        where:
-        ptrA = old_origStkTop
-        ptrB = ptrA + bytesToCopy
-
-        old->currentSP = ptrB
-        returned SP = ptrC
-    */
-
-    uint8_t* new_StkTop = fresh->initialSP;
-
-    if (bytesToCopy) {
-        // pull pointer down
-        new_StkTop -= bytesToCopy;
-
-        memcpy(new_StkTop, old_origStkTop, bytesToCopy);
-    }
-
-    // save old segment's new top
-    old->currentSP = old_stkPtr;
-
-    return new_StkTop;
-}
 
 
 #if defined(SEGSTACK)
 
+// In this SEGMENTED STACKS version, we copy a bounded number of frames,
+// or none at all.
 __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
     StackInfo_t* fresh = GetStack(vp, dfltStackSz);
     StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
@@ -478,13 +397,16 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
 
 #elif defined(RESIZESTACK)
 
-// on overflow we resize the stack and discard the old one.
+// on overflow we RESIZE the stack and discard the old one.
 // In the case of callec, we link a new segment instead.
-__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkTop, uint64_t notCallec) {
+__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t notCallec) {
   StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
   size_t newSize = notCallec ? old->usableSpace * 2 : dfltStackSz;
+
+  assert(newSize >= dfltStackSz);
   StackInfo_t* fresh = GetStack(vp, newSize);
+
 
   ////////
   // setup the new stack segment
@@ -492,13 +414,17 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
   uint8_t* newStkPtr = fresh->initialSP;
 
   if (notCallec) {
-    // then we need to copy everything over.
-    uint64_t EndOfStackAction = * ((uint64_t*)old->initialSP);
-    *((uint64_t*)newStkPtr) = EndOfStackAction;
+    // printf("resizing to %llu\n", newSize);
 
-    // TODO: we don't need to walk the stack, since we know where the base is
-    // to copy it all.
-    newStkPtr = MoveFrames(old_origStkTop, old, fresh, ~0ULL, -1);
+    // then we need to copy everything over.
+    uint8_t* oldBase = old->initialSP;
+    uint64_t numBytes = oldBase - old_origStkPtr;
+
+    // pull down the stack ptr to same point as old stack's top
+    newStkPtr -= numBytes;
+
+    // +8 to include the retAddr
+    memcpy(newStkPtr, old_origStkPtr, numBytes + 8);
 
     // initialize other fields.
     fresh->age = old->age;
@@ -514,6 +440,7 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
     // initialize backwards link and its underflow handler.
     *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
     fresh->prevSegment = old;
+    old->currentSP = old_origStkPtr;
   }
 
   // install the fresh segment as the current stack descriptor

@@ -54,6 +54,7 @@ uint32_t	NumGlobalGCs = 0;
 statepoint_table_t* SPTbl = NULL;  // the statepoint table
 extern int ASM_DS_StartStack;
 extern int ASM_LinkedStack_PrologueGC_Ret;
+size_t dfltStackSz;
 void InitStackMaps ();
 
 
@@ -112,8 +113,10 @@ void HeapInit (Options_t *opts)
     if (MaxNurserySzB < MIN_NURSERY_SZB)
       MaxNurserySzB = MIN_NURSERY_SZB;
 
-#if defined(SEGSTACK) || defined(RESIZESTACK)
+#if defined(SEGSTACK)
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 16 * ONE_K);
+#elif defined(RESIZESTACK)
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 4 * ONE_K);
 #elif defined(DIRECT_STYLE)
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 100 * ONE_MEG);
 #endif
