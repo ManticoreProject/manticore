@@ -317,11 +317,9 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     StackInfo_t* fresh = GetStack(vp, dfltStackSz);
     StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
-    uint8_t* old_stkPtr = old_origStkPtr;
+    uint64_t bytesSeen = 0;
 
     if (shouldCopy) {
-
-        uint64_t bytesSeen = 0;
 
         // NOTE what if the default segment size < size of the frame that
         // caused the overflow? Should we take the size as an argument to
@@ -336,7 +334,7 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
 
         for(int i = 0; i < maxFrames; i++) {
             // grab the size field
-            uint64_t* p = (uint64_t*)(old_stkPtr + szOffset);
+            uint64_t* p = (uint64_t*)(old_origStkPtr + bytesSeen + szOffset);
             uint64_t sz = *p;
 
             // hit the end of the segment?
@@ -344,25 +342,22 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
                 // copying the whole segment to the new one defeats the
                 // purpose of this optimization, so
                 // we will simply provide an empty segment.
-                old_stkPtr = old_origStkPtr;
+                bytesSeen = 0;
                 break;
             }
 
             uint64_t frameBytes = sz + sizeof(uint64_t);
-            bytesSeen += frameBytes;
 
-            if (bytesSeen >= maxBytes) {
+            if (bytesSeen + frameBytes >= maxBytes) {
                 // do not include this frame.
                 // it would put us over the max.
                 break;
             }
 
             // include this frame
-            old_stkPtr += frameBytes;
+            bytesSeen += frameBytes;
         }
     }
-
-    uint64_t bytesToCopy = old_stkPtr - old_origStkPtr;
 
     // fprintf(stderr, "copying %llu bytes\n", bytesToCopy);
 
@@ -388,22 +383,14 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     // install underflow handler
     *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
 
-    if (bytesToCopy) {
+    if (bytesSeen) {
         // pull pointer down
-        newStkPtr -= bytesToCopy;
+        newStkPtr -= bytesSeen;
 
-        // copy frames to fresh segment. realignment should be unnessecary
-        // and we know its a multiple of 8 because of alignment
-        // bytesToCopy /= 8;
-        // uint64_t* to = newStkPtr;
-        // uint64_t* from = old_origStkPtr;
-        // for(uint64_t i = 0; i < bytesToCopy; i++) {
-        //     to[i] = from[i];
-        // }
-
-        // memcpy is faster than the loop above
-        memcpy(newStkPtr, old_origStkPtr, bytesToCopy);
+        memcpy(newStkPtr, old_origStkPtr, bytesSeen);
     }
+
+    uint8_t* old_stkPtr = old_origStkPtr + bytesSeen;
 
     // initialize backwards link and save old segment's new top
     fresh->prevSegment = old;
