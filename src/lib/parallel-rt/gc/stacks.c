@@ -313,7 +313,7 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
 
 // In this SEGMENTED STACKS version, we copy a bounded number of frames,
 // or none at all.
-__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t shouldCopy) {
+uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
     StackInfo_t* fresh = GetStack(vp, dfltStackSz);
     StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
@@ -424,7 +424,7 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
 
 // on overflow we RESIZE the stack and discard the old one.
 // In the case of callec, we link a new segment instead.
-__attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restrict old_origStkPtr, uint64_t notCallec) {
+uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t notCallec) {
   StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
   size_t newSize = notCallec ? old->usableSpace * 2 : dfltStackSz;
