@@ -185,6 +185,34 @@ nextIter:
     return;
 }
 
+// Deallocates excess stacks in the cache, with the goal of
+// maintaining at least maxCache bytes of usable space, but
+// not more than 1 segment's worth of extra space beyond that amount.
+void ReleaseStacks(VProc_t *vp, const size_t maxCache) {
+  size_t usableTot = 0;
+  StackInfo_t* cur = vp->freeStacks;
+  StackInfo_t* prev = NULL;
+
+  // skip through the first bunch up to limit
+  while (cur != NULL && usableTot < maxCache) {
+      usableTot += cur->usableSpace;
+      prev = cur;
+      cur = cur->next;
+  }
+
+  // truncate the free-list.
+  if (prev != NULL)
+    prev->next = NULL;
+
+  // release the list from cur onwards.
+  while (cur != NULL) {
+    StackInfo_t* next = cur->next;
+    DeallocateStackMem(vp, cur);
+    cur = next;
+  }
+}
+
+
 // Adds a stack to the VProc's stack cache,
 // removing it from the allocated list.
 void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
@@ -410,6 +438,12 @@ void MinorGC (VProc_t *vp)
     if (HeapCheck >= GC_DEBUG_MINOR) {
         CheckMinorGC (vp, roots);
     }
+#endif
+
+
+#if defined(SEGSTACK) || defined(RESIZESTACK)
+    /* Now that GC is over, thin-out the free stack cache */
+    ReleaseStacks(vp, ONE_MEG);
 #endif
 
     /* reset the allocation pointer */
