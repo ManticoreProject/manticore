@@ -185,6 +185,35 @@ nextIter:
     return;
 }
 
+// Adds a stack to the VProc's stack cache,
+// removing it from the allocated list.
+void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
+  // save links
+  StackInfo_t* allocdNext = allocd->next;
+  StackInfo_t* allocdPrev = allocd->prev;
+
+  // demote and put allocd on free list
+  // note that we don't bother with prev links
+  // on the free list since we never unlink
+  // in the middle.
+  allocd->age = AGE_Minor; // demote
+  allocd->next = vp->freeStacks;
+  allocd->prev = NULL;
+  vp->freeStacks = allocd;
+
+  // update links in next/prev
+  if (allocdNext != NULL)
+      allocdNext->prev = allocdPrev;
+
+
+  if (allocdPrev != NULL) {
+      allocdPrev->next = allocdNext;
+  } else {
+      vp->allocdStacks = allocdNext;
+  }
+
+}
+
 /*
  * We perform a pass over the allocated list of stacks,
  * freeing any unmarked stacks who are young enough.
@@ -211,29 +240,7 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
 
             freedBytes += allocd->usableSpace + allocd->guardSz;
 
-            // save links
-            StackInfo_t* allocdNext = allocd->next;
-            StackInfo_t* allocdPrev = allocd->prev;
-
-            // demote and put allocd on free list
-            // note that we don't bother with prev links
-            // on the free list since we never unlink
-            // in the middle.
-            allocd->age = AGE_Minor; // demote
-            allocd->next = vp->freeStacks;
-            allocd->prev = NULL;
-            vp->freeStacks = allocd;
-
-            // update links in next/prev
-            if (allocdNext != NULL)
-                allocdNext->prev = allocdPrev;
-
-
-            if (allocdPrev != NULL) {
-                allocdPrev->next = allocdNext;
-            } else {
-                vp->allocdStacks = allocdNext;
-            }
+            FreeOneStack(vp, allocd);
         }
 
         if (marked) {

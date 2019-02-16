@@ -128,6 +128,19 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     return info;
 }
 
+void DeallocateStackMem(VProc_t *vp, StackInfo_t* info) {
+    size_t guardSz = info->guardSz;
+    uint8_t* mem = info->memAlloc;
+
+    if (guardSz) {
+      // clear protections on the guard page.
+      if (mprotect(mem, guardSz, PROT_READ | PROT_WRITE | PROT_EXEC))
+        Die("DeallocateStackMem failed to clear the guard page.");
+    }
+
+    lo_free(vp, mem);
+}
+
 // returns a stack pointer SP such that SP+8 is 16-byte aligned.
 uint8_t* AllocFFIStack(VProc_t *vp, size_t numBytes) {
     StackInfo_t* ffiInfo = AllocStackMem(vp, numBytes, GUARD_PAGE_BYTES, false);
@@ -267,19 +280,6 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
         info->next = vp->freeStacks;
         vp->freeStacks = info;
     }
-}
-
-void FreeStackMem(VProc_t *vp, StackInfo_t* info) {
-    size_t guardSz = info->guardSz;
-    uint8_t* mem = info->memAlloc;
-
-    if (guardSz) {
-      // clear protections on the guard page.
-      if (mprotect(mem, guardSz, PROT_READ | PROT_WRITE | PROT_EXEC))
-        Die("FreeStackMem failed to clear the guard page.");
-    }
-
-    lo_free(vp, mem);
 }
 
 
@@ -430,7 +430,7 @@ __attribute__ ((hot)) uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t *restric
     fresh->age = old->age;
     fresh->prevSegment = old->prevSegment;
 
-    FreeStackMem(vp, old);
+    FreeOneStack(vp, old);
 
   } else {
     // NOTE: because we don't have a mechanism to recognize
