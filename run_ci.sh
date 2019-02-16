@@ -33,18 +33,22 @@ llvmOptions=(
   # "-O5"
 )
 
+segmentLike=(
+  "-segstack"
+  "-resizestack"
+)
+
 stacks=(
   ""
   "-contigstack"
   "-segstack"
-  # "-resizestack"
+  "-resizestack"
   "-linkstack"
 
-  # now we test with the cshim
+  # now we test with / without the cshim
   "-Ccshim=true"
-  "-Ccshim=true -contigstack"
-  "-Ccshim=true -segstack"
-  "-Ccshim=true -resizestack"
+  "-contigstack -Ccshim=true"
+  "-segstack -Ccshim=false"
 
   # now we test noras
   # "-noras"
@@ -82,15 +86,17 @@ for stack in "${stacks[@]}"; do
 done
 
 
-echo -e "\n\n\t----- testing with small stack segments -----\n\n"
+for stack in "${segmentLike[@]}"; do
+  echo -e "\n\n\t----- testing $stack with small segments -----\n\n"
 
-echo -e "\t--SEQUENTIAL --"
-runTest "-Ccshim=true -segstack" run-seq.sh "-stacksz 1024"
+  echo -e "\t--SEQUENTIAL --"
+  runTest "$stack" run-seq.sh "-stacksz 1024"
 
-echo -e "\n\t-- CML --"
-runTest "-Ccshim=true -segstack" run-cml.sh "-stacksz 1024"
+  echo -e "\n\t-- CML --"
+  runTest "$stack" run-cml.sh "-stacksz 1024"
 
-echo -e "\n\n\t----- done -----\n\n"
+  echo -e "\n\n\t----- done -----\n\n"
+done
 
 
 echo -e "\n\n\t----- testing with MLRISC -----\n\n"

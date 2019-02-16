@@ -353,8 +353,12 @@ functor MainFn (
 		| "-sequential" => set BasicControl.sequential
 		| "-mlrisc" => unset BasicControl.llvm
 		| "-contigstack" => set BasicControl.direct
-		| "-segstack" => ( Controls.set(BasicControl.direct, true) ; set BasicControl.segstack )
-		| "-resizestack" => ( Controls.set(BasicControl.direct, true) ; set BasicControl.resizestack )
+		| "-segstack" => ( Controls.set(BasicControl.direct, true) ;
+                       Controls.set(BasicControl.cshim, true) ;
+                       set BasicControl.segstack )
+		| "-resizestack" => ( Controls.set(BasicControl.direct, true) ;
+                          Controls.set(BasicControl.cshim, true) ;
+                          set BasicControl.resizestack )
 		| "-linkstack" => ( Controls.set(BasicControl.direct, true) ;
                             Controls.set(BasicControl.cshim, true) ;
                             set BasicControl.linkstack )

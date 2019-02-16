@@ -74,17 +74,23 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
 
         mem = lo_alloc_aligned(vp, totalSz, guardSz);
 
+        if (mem == NULL) {
+            Die("AllocStackMem: unable to allocate aligned memory.");
+            return NULL;
+          }
+
         if (mprotect(mem, guardSz, PROT_NONE)) {
-            Die("AllocStackMem: failed to initialize guard area");
+            perror("AllocStackMem errono msg");
+            Die("mprotect");
             return NULL;
           }
     } else {
         mem = lo_alloc(vp, totalSz);
-    }
 
-    if (mem == NULL) {
-      Die("AllocStackMem: unable to allocate memory.");
-      return NULL;
+        if (mem == NULL) {
+            Die("AllocStackMem: unable to allocate memory.");
+            return NULL;
+          }
     }
 
     uint64_t val = (uint64_t) mem;
@@ -168,9 +174,28 @@ extern int ASM_DS_SegUnderflow;
 // Returns NULL is there are no available stacks that meet the required size.
 #if defined(RESIZESTACK)
 ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
-  // TODO
+  // Use a basic first-fit strategy (without splitting).
+  StackInfo_t* prev = NULL;
+  StackInfo_t* cur = vp->freeStacks;
+
+  while (cur != NULL) {
+    if (cur->usableSpace >= requiredSpace) {
+      // unlink cur from the free-list.
+      if (prev != NULL)
+        prev->next = cur->next;
+      else
+        vp->freeStacks = NULL;
+
+      return cur;
+    }
+    // check next
+    prev = cur;
+    cur = cur->next;
+  }
+
   return NULL;
 }
+
 
 #else
 

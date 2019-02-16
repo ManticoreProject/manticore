@@ -332,7 +332,7 @@ void *NewVProc (void *arg)
     TIMER_Init (&(vproc->promoteTimer));
 #endif
 
-#ifdef DIRECT_STYLE
+#if defined(DIRECT_STYLE) && !defined(RESIZESTACK)
     // warm up the free list with 1MB worth of extra stack
     WarmUpFreeList(vproc, ONE_MEG);
 #endif
