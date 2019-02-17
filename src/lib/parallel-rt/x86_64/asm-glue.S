@@ -233,6 +233,26 @@ _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 //          ptr to frame
 
 
+/////////////////////////////////////////////
+// Callec is implemented in the following way:
+//
+//    [ cont frame "K" we captured ]
+//           ^     ^
+//           |     |
+//           |     ---------------------------+
+//           |                                |
+//    [ fp = |, code = *, fork frame ]      [ |, code = *, cont obj ]
+//       ^
+//       |
+//    [ frame for clos passed to callec]
+//
+//  The idea here is that we create two objects that point to the cont K captured.
+//  Because of promotion between GC cycles, the K may be relocated,
+//  leaving either the fork-frame or cont-obj with a stale pointer to K.
+//  However, when invoking either one of these items, we first check if K
+//  had a forwarding pointer. If so, we get the new pointer to K and go there.
+
+
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_Callec1)
 .globl	_GSYM(ASM_Callec2)
@@ -260,26 +280,26 @@ callec_impl:
     movq  $(BITPAT_HDR(0b10, 2)), TMP_REG1
     movq  TMP_REG1, -8(LAUNCHER)
     movq  RETADDR, (LAUNCHER) // set CodeP
+    movq  %rbp, 8(LAUNCHER)
 
     // bump to get spot for fork.
     addq  $(3*8), ALLOC_PTR_REG
 
     movq  ALLOC_PTR_REG, FORK
-    movq  FORK, 8(LAUNCHER)
 
     // Initialize the 'fork' frame, which is like a remembered-set table entry.
     // that can be returned to like a normal frame.
-    // [HDR | FP | RA | WM | Launcher ]
-    movq  $(LINKFRAME_HDR(4)), -8(FORK)
+    // [HDR | FP | RA | WM ]
+    movq  $(LINKFRAME_HDR(3)), -8(FORK)
     // FP <- rbp will be set by callee
     leaq  _GSYM(ASM_ForkFrame)(%rip), TMP_REG1
     movq  TMP_REG1, 8(FORK)   // return address
     movq  $0, 16(FORK)   // AGE_Minor
-    movq  LAUNCHER, 24(FORK)
+
     leaq  8(FORK), %rsp   // SP points at RA of Fork
 
     // bump again for size of the launcher
-    addq  $(5*8), ALLOC_PTR_REG
+    addq  $(4*8), ALLOC_PTR_REG
 
     /***** invoke the function we were given *****/
     movq    (STD_ARG_REG), STD_EP_REG       // load environment pointer
@@ -295,10 +315,28 @@ callec_impl:
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_ForkFrame)
 _GSYM(ASM_ForkFrame):
-    // just perform a standard return, since rbp contains the captured frame.
+    // the cont frame is in rbp. rax and r10 are live.
+    #define KONT      %rbp
+    #define TMP_REG2  %r14
+
+    // check if the cont frame was promoted between GC cycles.
+    movq  -8(KONT), TMP_REG1
+    movq  TMP_REG1, TMP_REG2   // make a copy of hdr
+    andq  $FWDPTR_TAG_MASK, TMP_REG1
+    cmpq  $FWDPTR_TAG, TMP_REG1
+    je   cvtFwdPtr
+invokeFrame:
     movq  %rbp, %rsp
     popq  %rbp
     retq
+cvtFwdPtr:
+    // then cont was promoted, get the new location
+    shrq  $FWDPTR_TAG_BITS, TMP_REG2
+    movq  TMP_REG2, %rbp
+    jmp   invokeFrame
+
+    #undef KONT
+    #undef TMP_REG2
 
 
 .p2align 4, 0xCC
@@ -310,10 +348,11 @@ _GSYM(ASM_ContLauncher2):
     // **** fall-through ****
 .p2align 4, 0x90              // must pad with NOPs!
 _GSYM(ASM_ContLauncher1):
-    // grab the pointer to fork frame and return to it.
-    movq  8(STD_EP_REG), %rsp
-    popq  %rbp
-    retq
+    // grab the pointer to the cont frame
+    movq  8(STD_EP_REG), %rbp
+    jmp   _GSYM(ASM_ForkFrame)
+
+
 
 
 

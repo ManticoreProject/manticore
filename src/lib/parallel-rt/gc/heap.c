@@ -54,6 +54,7 @@ uint32_t	NumGlobalGCs = 0;
 statepoint_table_t* SPTbl = NULL;  // the statepoint table
 extern int ASM_DS_StartStack;
 extern int ASM_LinkedStack_PrologueGC_Ret;
+extern int ASM_ForkFrame;
 size_t dfltStackSz;
 void InitStackMaps ();
 
@@ -229,6 +230,19 @@ void InitStackMaps () {
           currentSlot->offset = ptrBase + (i * sizeof(uint64_t));
           currentSlot++;
       }
+
+      insert_key(SPTbl, retAddr, frame);
+
+
+      // for: ASM_ForkFrame  (see asm-glue.S:ASM_ForkFrame)
+
+      retAddr = (uint64_t)(&ASM_ForkFrame);
+      numPtrs = 0;
+
+      frame = malloc(sizeof(frame_info_t) + (numPtrs * sizeof(pointer_slot_t)));
+      frame->retAddr = retAddr;
+      frame->frameSize = sizeof(uint64_t); // just the watermark
+      frame->numSlots = numPtrs;
 
       insert_key(SPTbl, retAddr, frame);
 
