@@ -233,6 +233,8 @@ _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 //          ptr to frame
 
 
+#if defined(LINKSTACK)
+
 /////////////////////////////////////////////
 // Callec is implemented in the following way:
 //
@@ -310,6 +312,8 @@ callec_impl:
     #undef LAUNCHER
     #undef FORK
     #undef RETADDR
+
+#endif // LINKSTACK
 
 
 .p2align 4, 0xCC
