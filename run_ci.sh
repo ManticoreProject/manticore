@@ -13,7 +13,7 @@ uname -a
 
 echo -e "\n\n\t----- building llvm -----\n\n"
 
-if [ "$1" -ne "local" ]; then
+if [ "$1" != "local" ]; then
   ./llvm/fresh-build.sh
 fi
 
