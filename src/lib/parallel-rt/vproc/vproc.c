@@ -291,13 +291,14 @@ void *NewVProc (void *arg)
     vproc->allocdStacks = NULL;
     vproc->freeStacks = NULL;
     vproc->inPromotion = false;
+    vproc->ffiStack = 0;
 
     const size_t FFI_SIZE = 4 * ONE_MEG;
 #ifdef DIRECT_STYLE
     // Segstack overflow handling, and service requests, use this.
     vproc->ffiStack = AllocFFIStack(vproc, FFI_SIZE);
-#else
-    vproc->ffiStack = FFIStackFlag ? AllocFFIStack(vproc, FFI_SIZE) : NULL;
+
+    // for CPS and linkstack, the RTS stack is used as the FFI stack.
 #endif
 
     MutexInit (&(vproc->lock));

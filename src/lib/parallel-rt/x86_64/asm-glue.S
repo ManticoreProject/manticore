@@ -20,7 +20,7 @@
 //  the base pointer _is_ caller saved, and is nessecary to be setup
 //  as shown below because MLRISC backend assigns spill slots by offsetting
 //  from the base pointer, whereas the LLVM backend soley uses the stack ptr.
-//  
+//
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // |   return address for RTS  | <- 16-byte align (RSP starts here)
 // | - - - - - - - - - - - - - |
@@ -33,14 +33,14 @@
 // |      Spill Area           |
 // |                           |
 // |                           |  <- 8-byte align (RSP is here after ASM_Apply)
-// | - - - - - - - - - - - - - |  
+// | - - - - - - - - - - - - - |
 // |   future callq PC slot    |  <- 16-byte align once C calls are made
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //  Here's the layout we need upon entering Manticore functions when using DS.
 //  We basically just dump all of the registers and write the return address,
 //  allowing the functions to setup the frame themselves.
-//  
+//
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // |                           |
 // |      Callee Save Area     |
@@ -68,90 +68,90 @@
  *	    Value_t rk,		-- function return continuation; in %r8
  *	    Value_t ek)		-- function exception continuation; in %r9
  */
-	.text
-	.p2align 4, 0xCC
-	.globl	_GSYM(ASM_Apply)
+    .text
+    .p2align 4, 0xCC
+    .globl	_GSYM(ASM_Apply)
 _GSYM(ASM_Apply):
-	/* incoming RSP is 16-byte aligned according to SysV ABI */
-	/* save C callee-save registers to frame */
-	movq    %rbp, -RBP_OFF(%rsp)
-	movq	%rbx, -RBX_OFF(%rsp)
-	movq	%r12, -R12_OFF(%rsp)
-	movq	%r13, -R13_OFF(%rsp)
-	movq	%r14, -R14_OFF(%rsp)
-	movq	%r15, -R15_OFF(%rsp)
+    /* incoming RSP is 16-byte aligned according to SysV ABI */
+    /* save C callee-save registers to frame */
+    movq    %rbp, -RBP_OFF(%rsp)
+    movq	%rbx, -RBX_OFF(%rsp)
+    movq	%r12, -R12_OFF(%rsp)
+    movq	%r13, -R13_OFF(%rsp)
+    movq	%r14, -R14_OFF(%rsp)
+    movq	%r15, -R15_OFF(%rsp)
 
-	/* setup frame for spills */
-	leaq    -CALLEE_END(%rsp), %rbp		// this is setup in case we're using MLRISC
-	subq    $FRAME_SZB, %rsp
-	
-	/* setup standard arguments to the Manticore function */
-	movq	%rdi,VPROC_PTR_REG	/* set vproc pointer */
-	movq	%rsi,%r12		/* save code pointer in %r12 */
-	movq	%rdx,STD_ARG_REG	/* standard argument */
-	movq	%rcx,STD_EP_REG		/* environment pointer */
-	movq	%r9,STD_EXH_REG		/* exception continuation */
+    /* setup frame for spills */
+    leaq    -CALLEE_END(%rsp), %rbp		// this is setup in case we're using MLRISC
+    subq    $FRAME_SZB, %rsp
+
+    /* setup standard arguments to the Manticore function */
+    movq	%rdi,VPROC_PTR_REG	/* set vproc pointer */
+    movq	%rsi,%r12		/* save code pointer in %r12 */
+    movq	%rdx,STD_ARG_REG	/* standard argument */
+    movq	%rcx,STD_EP_REG		/* environment pointer */
+    movq	%r9,STD_EXH_REG		/* exception continuation */
 #if !defined(LINKSTACK)
-	movq	%r8,STD_CONT_REG	/* return continuation */	
+    movq	%r8,STD_CONT_REG	/* return continuation */
 #else
-	// r8 is a pointer to a linked-frame stack, so we setup rsp and rbp correctly.
-	
-	// the RTS stack at this point is 16-byte aligned, but our C shim expects rsp+8
-	// to have such an alignment.
-	pushq	%rax
-	movq	%rsp, FFI_STK(VPROC_PTR_REG)	// save RTS stack
-	// this is just like the epilog, minus the return,
-	// since we're calling a function right now instead.
-	// that function will return to whatever address RSP is pointing to.
-	movq	%r8, %rsp
-	popq	%rbp
+    // r8 is a pointer to a linked-frame stack, so we setup rsp and rbp correctly.
+
+    // the RTS stack at this point is 16-byte aligned, but our C shim expects rsp+8
+    // to have such an alignment.
+    pushq	%rax
+    movq	%rsp, FFI_STK(VPROC_PTR_REG)	// save RTS stack
+    // this is just like the epilog, minus the return,
+    // since we're calling a function right now instead.
+    // that function will return to whatever address RSP is pointing to.
+    movq	%r8, %rsp
+    popq	%rbp
 #endif
-	/* load Manticore state */
-	movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG	/* load allocation pointer */
-	jmp	*%r12
+    /* load Manticore state */
+    movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG	/* load allocation pointer */
+    jmp	*%r12
 
 
 /* code address for uncaught exception continuation */
-	.p2align 4, 0xCC
-	.globl	_GSYM(ASM_UncaughtExn)
+    .p2align 4, 0xCC
+    .globl	_GSYM(ASM_UncaughtExn)
 _GSYM(ASM_UncaughtExn):
-	movq	$REQ_UncaughtExn, TMP_REG1
-	jmp	switch_to_c
+    movq	$REQ_UncaughtExn, TMP_REG1
+    jmp	switch_to_c
 
 /* code address for return continuation */
-	.p2align 4, 0xCC
-	.globl	_GSYM(ASM_Return)
+    .p2align 4, 0xCC
+    .globl	_GSYM(ASM_Return)
 _GSYM(ASM_Return):
-	movq	$REQ_Return, TMP_REG1
-	jmp	switch_to_c
+    movq	$REQ_Return, TMP_REG1
+    jmp	switch_to_c
 
 /* code address for putting the host vproc to sleep */
-	.p2align 4, 0xCC
-	.globl	_GSYM(ASM_VProcSleep)
+    .p2align 4, 0xCC
+    .globl	_GSYM(ASM_VProcSleep)
 _GSYM(ASM_VProcSleep):
-	movq	$REQ_Sleep, TMP_REG1
-	jmp	switch_to_c
+    movq	$REQ_Sleep, TMP_REG1
+    jmp	switch_to_c
 
 #ifndef NDEBUG
 /* r14 points at the current element of the spill area
  *  r15 points at the last element of the spill area
  */
-	.p2align 4, 0xCC
-	.globl	_GSYM(ASM_InvalidateSpillArea)
+    .p2align 4, 0xCC
+    .globl	_GSYM(ASM_InvalidateSpillArea)
 _GSYM(ASM_InvalidateSpillArea):
 invalidate_spill_area:
-	cmpq	%r14,%r15
-	je	continue_to_c
-	subq	$8,%r14
-	movq	$0xdeadb,(%r14)
-	jmp	invalidate_spill_area
+    cmpq	%r14,%r15
+    je	continue_to_c
+    subq	$8,%r14
+    movq	$0xdeadb,(%r14)
+    jmp	invalidate_spill_area
 #endif
-	
+
 
 // This is the PROLOGUE's Linked GC "invoke", where the root set was
 // saved in a tuple allocated on the heap.
 // INPUTS:
-//     r11 - vproc 
+//     r11 - vproc
 //     rsi - alloc pointer
 //     rbp - call-site's link pointer, a complete continuation.
 //     rbx - the root set pointer
@@ -162,7 +162,7 @@ invalidate_spill_area:
 //     rsi - alloc pointer, bumped a bit.
 //     rbp - (unchanged from INPUT)
 //     rsp - pointer into the tuple object, ready to push RBP to the frame.
-//     
+//
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_LinkedStack_PrologueGC)
 _GSYM(ASM_LinkedStack_PrologueGC):
@@ -171,26 +171,26 @@ _GSYM(ASM_LinkedStack_PrologueGC):
 // [ FRAME TAG | _A_ | return addr | watermark | root ptr | manticore ret addr ]
 //             ^                   ^
 //         frame ptr           contents start
-// 
+//
 // Note that _A_ is not initialized here, but it will contain the call-site's link
 // pointer, which is an ordinary heap object.
 
-	popq	%r13			// pop the manticore return addr, which was pushed on the heap
-	leaq	8(ALLOC_PTR_REG), %rsp  // RSP should be at a position s.t. a call just occurred
-	
-	movq	$(LINKFRAME_HDR(5)), -8(ALLOC_PTR_REG)
-	
-	leaq	_GSYM(ASM_LinkedStack_PrologueGC_Ret)(%rip), %r12
-	movq	%r12, 8(ALLOC_PTR_REG)		// frame's return address
-	movq	$0, 16(ALLOC_PTR_REG)		// watermark
-    
-	movq	%rbx, 24(ALLOC_PTR_REG)		// root ptr
-	movq	%r13, 32(ALLOC_PTR_REG)		// write manticore ret addr
-	
-	addq	$48, ALLOC_PTR_REG			// bump alloc ptr
-	jmp		_GSYM(ASM_LinkedStack_InvokeGC)
-	
-	
+    popq	%r13			// pop the manticore return addr, which was pushed on the heap
+    leaq	8(ALLOC_PTR_REG), %rsp  // RSP should be at a position s.t. a call just occurred
+
+    movq	$(LINKFRAME_HDR(5)), -8(ALLOC_PTR_REG)
+
+    leaq	_GSYM(ASM_LinkedStack_PrologueGC_Ret)(%rip), %r12
+    movq	%r12, 8(ALLOC_PTR_REG)		// frame's return address
+    movq	$0, 16(ALLOC_PTR_REG)		// watermark
+
+    movq	%rbx, 24(ALLOC_PTR_REG)		// root ptr
+    movq	%r13, 32(ALLOC_PTR_REG)		// write manticore ret addr
+
+    addq	$48, ALLOC_PTR_REG			// bump alloc ptr
+    jmp		_GSYM(ASM_LinkedStack_InvokeGC)
+
+
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_LinkedStack_PrologueGC_Ret)
 _GSYM(ASM_LinkedStack_PrologueGC_Ret):
@@ -205,16 +205,16 @@ _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 // rsi - alloc ptr
 // rbx - root pointer
 // rbp - link pointer
-	movq   16(%rsp), TMP_REG1
-	movq   8(%rsp), %rbx
-	jmp    *TMP_REG1
+    movq   16(%rsp), TMP_REG1
+    movq   8(%rsp), %rbx
+    jmp    *TMP_REG1
 
 
 // Information for: ASM_LinkedStack_InvokeGC
 //
 // This is a STANDARD Linked GC "invoke", where the root set was
 // saved in the stack frame. Thus, the only live registers at entry are:
-//     r11 - vproc 
+//     r11 - vproc
 //     rsi - alloc pointer
 //     rsp - current, unfinished frame
 //     rbp - call-site's link pointer
@@ -240,15 +240,15 @@ _GSYM(ASM_LinkedStack_InvokeGC): // linkstack also uses this version!
 /* this version is for MLRISC backend */
     movq	$REQ_GC, TMP_REG1
     jmp     switch_to_c
-    
-    
-    
+
+
+
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_InvokeGC_LLVM)
 _GSYM(ASM_InvokeGC_LLVM):
 // this version is for CPS-style LLVM. we need to save the
 // ret addr and pop the frame when we invoke GC
-	movq	$REQ_GC, TMP_REG1
+    movq	$REQ_GC, TMP_REG1
     popq    STD_CONT_REG
 // ------- FALL-THROUGH ----------
 switch_to_c:
@@ -257,56 +257,56 @@ switch_to_c:
 // consistency check for the garbage collector: overwrite all the entries in the spill area,
 // all none of these entries should be live at this point.
 //
-	movq	%rsp,%r14
-	movq	%rsp,%r15
-	addq	$FRAME_SZB, %r14
-	subq	$CALLEE_END, %r14
-	jmp 	invalidate_spill_area
+    movq	%rsp,%r14
+    movq	%rsp,%r15
+    addq	$FRAME_SZB, %r14
+    subq	$CALLEE_END, %r14
+    jmp 	invalidate_spill_area
 #endif
 
-continue_to_c:	
+continue_to_c:
 
 #ifdef LINKSTACK
-	pushq	%rbp					// finish the frame
-	movq	%rsp, STD_CONT_REG		// setup the return cont
-	movq	FFI_STK(VPROC_PTR_REG), %rsp		// switch to the RTS stack
-	popq	%r15			// undo alignment adjustment
+    pushq	%rbp					// finish the frame
+    movq	%rsp, STD_CONT_REG		// setup the return cont
+    movq	FFI_STK(VPROC_PTR_REG), %rsp		// switch to the RTS stack
+    popq	%r15			// undo alignment adjustment
 #endif
 
       /* save Manticore state */
-	movq	STD_ARG_REG,STD_ARG(VPROC_PTR_REG)
-	movq	STD_EP_REG,STD_EP(VPROC_PTR_REG)
-	movq	STD_CONT_REG,STD_CONT(VPROC_PTR_REG)
-	movq	STD_EXH_REG,STD_EXH(VPROC_PTR_REG)
-	movq	ALLOC_PTR_REG,ALLOC_PTR(VPROC_PTR_REG)
-    
+    movq	STD_ARG_REG,STD_ARG(VPROC_PTR_REG)
+    movq	STD_EP_REG,STD_EP(VPROC_PTR_REG)
+    movq	STD_CONT_REG,STD_CONT(VPROC_PTR_REG)
+    movq	STD_EXH_REG,STD_EXH(VPROC_PTR_REG)
+    movq	ALLOC_PTR_REG,ALLOC_PTR(VPROC_PTR_REG)
+
     addq   $FRAME_SZB, %rsp       /* unbump stack pointer */
-    
+
     /* restore C callee-save registers.  */
     movq	-RBP_OFF(%rsp),%rbp
-	movq	-RBX_OFF(%rsp),%rbx
-	movq	-R12_OFF(%rsp),%r12
-	movq	-R13_OFF(%rsp),%r13
-	movq	-R14_OFF(%rsp),%r14
-	movq	-R15_OFF(%rsp),%r15
+    movq	-RBX_OFF(%rsp),%rbx
+    movq	-R12_OFF(%rsp),%r12
+    movq	-R13_OFF(%rsp),%r13
+    movq	-R14_OFF(%rsp),%r14
+    movq	-R15_OFF(%rsp),%r15
       /* return request code */
-	movq	TMP_REG1,%rax
-	ret
+    movq	TMP_REG1,%rax
+    ret
 
 
-	.p2align 4, 0xCC
-	.globl	_GSYM(ASM_Error)
+    .p2align 4, 0xCC
+    .globl	_GSYM(ASM_Error)
 _GSYM(ASM_Error):
-	// if control-flow ends up here for linked-stacks, an unexpected
-	// return occurred. See apply.c for possibilities.
-	ud2
-	
-	.p2align 4, 0xCC
-	.globl	_GSYM(ASM_ExecuteStack)
+    // if control-flow ends up here for linked-stacks, an unexpected
+    // return occurred. See apply.c for possibilities.
+    ud2
+
+    .p2align 4, 0xCC
+    .globl	_GSYM(ASM_ExecuteStack)
 _GSYM(ASM_ExecuteStack):
-	// this label is used as the codeP in apply.c when we want to resume
-	// the retCont in ASM_Apply. It will jump here and then go.
-	retq
+    // this label is used as the codeP in apply.c when we want to resume
+    // the retCont in ASM_Apply. It will jump here and then go.
+    retq
 
 
 #ifdef ENABLE_LOGGING
@@ -314,60 +314,60 @@ _GSYM(ASM_ExecuteStack):
  *
  * Fill in the time stamp using a system-dependent call.
  */
-	.p2align 4, 0xCC
-	.globl	_GSYM(ASM_GetTimeStamp)
+    .p2align 4, 0xCC
+    .globl	_GSYM(ASM_GetTimeStamp)
 _GSYM(ASM_GetTimeStamp):
-	pushq	%rbp
-	movq	%rsp, %rbp
+    pushq	%rbp
+    movq	%rsp, %rbp
 
 #if defined(HAVE_MACH_ABSOLUTE_TIME)
     /* ts->ts_mach = mach_absolute_time(); */
-	pushq	%rbx
-	subq	$8, %rsp
-	movq	%rdi, %rbx
-	call	_GSYM(mach_absolute_time)
-	movq	%rax, (%rbx)
-	addq	$8, %rsp
-	popq	%rbx
+    pushq	%rbx
+    subq	$8, %rsp
+    movq	%rdi, %rbx
+    call	_GSYM(mach_absolute_time)
+    movq	%rax, (%rbx)
+    addq	$8, %rsp
+    popq	%rbx
 #elif defined(HAVE_CLOCK_GETTIME)
     /* struct timespec t;
      * clock_gettime (CLOCK_REALTIME, &t);
      * ts->sec = t.tv_sec;
      * ts->frac = t.tv_nsec;
      */
-	pushq	%rbx
-	movq	%rdi, %rbx
-	xorl	%edi, %edi
-	subq	$16, %rsp
-	movq	%rsp, %rsi
-	call	_GSYM(clock_gettime)
-	movq	(%rsp), %rax
-	movl	%eax, (%rbx)
-	movq	8(%rsp), %rax
-	movl	%eax, 4(%rbx)
-	addq	$16, %rsp
-	popq	%rbx
+    pushq	%rbx
+    movq	%rdi, %rbx
+    xorl	%edi, %edi
+    subq	$16, %rsp
+    movq	%rsp, %rsi
+    call	_GSYM(clock_gettime)
+    movq	(%rsp), %rax
+    movl	%eax, (%rbx)
+    movq	8(%rsp), %rax
+    movl	%eax, 4(%rbx)
+    addq	$16, %rsp
+    popq	%rbx
 #else
     /* struct timeval t;
      * gettimeofday (&t, 0);
      * ts->sec = t.tv_sec;
      * ts->frac = t.tv_usec;
      */
-	pushq	%rbx
-	movq	%rdi, %rbx
-	leaq	-32(%rbp), %rdi
-	subq	$24, %rsp
-	xorl	%esi, %esi
-	call	_GSYM(gettimeofday)
-	movq	-32(%rbp), %rax
-	movl	%eax, (%rbx)
-	movl	-24(%rbp), %eax
-	movl	%eax, 4(%rbx)
-	addq	$24, %rsp
-	popq	%rbx
+    pushq	%rbx
+    movq	%rdi, %rbx
+    leaq	-32(%rbp), %rdi
+    subq	$24, %rsp
+    xorl	%esi, %esi
+    call	_GSYM(gettimeofday)
+    movq	-32(%rbp), %rax
+    movl	%eax, (%rbx)
+    movl	-24(%rbp), %eax
+    movl	%eax, 4(%rbx)
+    addq	$24, %rsp
+    popq	%rbx
 #endif
 
-	leave
-	ret
+    leave
+    ret
 
 #endif /* ENABLE_LOGGING */
