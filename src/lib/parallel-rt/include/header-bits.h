@@ -117,7 +117,7 @@
 // Linked-frame object
 #define LINKFRAME_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((LINKFRAME_TAG_VAL) << TABLE_TAG_BITS) | TABLE_TAG)
 
-#define BITPAT_HDR(pat, len) ((((Word_t)pat) << (TABLE_LEN_LEN+TABLE_LEN_ID+TABLE_TAG_BITS)) | (((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | (BITPAT_TAG_VAL << TABLE_TAG_BITS) | TABLE_TAG)
+#define BITPAT_HDR(pat, len) (((pat) << (TABLE_LEN_LEN+TABLE_LEN_ID+TABLE_TAG_BITS)) | ((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | (BITPAT_TAG_VAL << TABLE_TAG_BITS) | TABLE_TAG)
 
 // Proxy continuation object
 #define PROXY_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((PROXY_TAG_VAL) << TABLE_TAG_BITS) | TABLE_TAG)

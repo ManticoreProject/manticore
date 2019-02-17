@@ -232,6 +232,91 @@ _GSYM(ASM_LinkedStack_PrologueGC_Ret):
 //             ^
 //          ptr to frame
 
+
+.p2align 4, 0xCC
+.globl	_GSYM(ASM_Callec1)
+.globl	_GSYM(ASM_Callec2)
+_GSYM(ASM_Callec2):
+    // not live since callec takes 1 arg.
+    #define LAUNCHER %r12
+    #define FORK %r13
+    #define RETADDR %r14
+
+    leaq  _GSYM(ASM_ContLauncher2)(%rip), RETADDR
+    jmp  callec_impl
+
+.p2align 4, 0xCC
+_GSYM(ASM_Callec1):
+    leaq  _GSYM(ASM_ContLauncher1)(%rip), RETADDR
+
+callec_impl:
+    // finish the frame we want to capture.
+    push  %rbp
+    movq  %rsp, %rbp    // cont is rbp
+
+    // Allocate the launcher
+    // [HDR | CodeP | ForkP ]
+    movq  ALLOC_PTR_REG, LAUNCHER
+    movq  $(BITPAT_HDR(0b10, 2)), TMP_REG1
+    movq  TMP_REG1, -8(LAUNCHER)
+    movq  RETADDR, (LAUNCHER) // set CodeP
+
+    // bump to get spot for fork.
+    addq  $(3*8), ALLOC_PTR_REG
+
+    movq  ALLOC_PTR_REG, FORK
+    movq  FORK, 8(LAUNCHER)
+
+    // Initialize the 'fork' frame, which is like a remembered-set table entry.
+    // that can be returned to like a normal frame.
+    // [HDR | FP | RA | WM | Launcher ]
+    movq  $(LINKFRAME_HDR(4)), -8(FORK)
+    // FP <- rbp will be set by callee
+    leaq  _GSYM(ASM_ForkFrame)(%rip), TMP_REG1
+    movq  TMP_REG1, 8(FORK)   // return address
+    movq  $0, 16(FORK)   // AGE_Minor
+    movq  LAUNCHER, 24(FORK)
+    leaq  8(FORK), %rsp   // SP points at RA of Fork
+
+    // bump again for size of the launcher
+    addq  $(5*8), ALLOC_PTR_REG
+
+    /***** invoke the function we were given *****/
+    movq    (STD_ARG_REG), STD_EP_REG       // load environment pointer
+    movq    8(STD_ARG_REG), TMP_REG1        // load code pointer
+    movq    LAUNCHER, STD_ARG_REG           // pass the cont object
+    jmp     *TMP_REG1                       // do the call, leaving stack pointer as-is
+
+    #undef LAUNCHER
+    #undef FORK
+    #undef RETADDR
+
+
+.p2align 4, 0xCC
+.globl	_GSYM(ASM_ForkFrame)
+_GSYM(ASM_ForkFrame):
+    // just perform a standard return, since rbp contains the captured frame.
+    movq  %rbp, %rsp
+    popq  %rbp
+    retq
+
+
+.p2align 4, 0xCC
+.globl	_GSYM(ASM_ContLauncher1)
+.globl	_GSYM(ASM_ContLauncher2)
+_GSYM(ASM_ContLauncher2):
+    // setup args
+    movq    $0, %r10         // set 2nd arg reg to 0 indicating an escape throw
+    // **** fall-through ****
+.p2align 4, 0x90              // must pad with NOPs!
+_GSYM(ASM_ContLauncher1):
+    // grab the pointer to fork frame and return to it.
+    movq  8(STD_EP_REG), %rsp
+    popq  %rbp
+    retq
+
+
+
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_InvokeGC)
 .globl	_GSYM(ASM_LinkedStack_InvokeGC)
