@@ -63,12 +63,12 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
      */
 #ifdef LINKSTACK
     Value_t retCont = CreateBaseFrame(vp, (Word_t)&ASM_Return);
-    Value_t exnCont = CreateBaseFrame(vp, (Word_t)&ASM_UncaughtExn);
     FunClosure_t* closObj;
 #else
     Value_t retCont = WrapWord(vp, (Word_t)&ASM_Return);
-    Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
 #endif
+
+    Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
 
     while (1) {
 #ifndef NDEBUG
