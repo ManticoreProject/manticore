@@ -55,6 +55,7 @@ extern Value_t AllocString (VProc_t *vp, const char *s);
 extern Value_t AllocRaw (VProc_t *vp, uint32_t sz);
 extern Value_t AllocStkCont (VProc_t *vp, Addr_t codeP, Value_t stkPtr, Value_t stkInfo);
 extern Value_t CreateBaseFrame(VProc_t *vp, Word_t i);
+extern Value_t CreateLinkStackCont (VProc_t *vp, Value_t codeP, Value_t frameP);
 
 STATIC_INLINE Value_t ManticoreBool (bool b)  { return b ? M_TRUE : M_FALSE; }
 

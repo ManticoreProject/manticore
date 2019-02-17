@@ -20,6 +20,7 @@ extern int ASM_UncaughtExn;
 extern int ASM_Resume;
 extern int ASM_Error;       // for linked-frames.
 extern int ASM_ExecuteStack; // for linked-frames.
+extern int ASM_ContLauncher1; // for linked-frames.
 
 /* \brief run a Manticore function f applied to arg.
  * \param vp the host vproc
@@ -125,10 +126,21 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
           /* is there a pending signal that we can deliver? */
             if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
+
 #ifdef LINKSTACK
-                Die("signal recieved, need to execute the scheduler.");
-#endif
-            // TODO(kavon): replace this alloc with a specialized version for this retk.
+                Value_t resumeK = CreateLinkStackCont (vp,
+                                           PtrToValue(&ASM_ContLauncher1),
+                                           PtrToValue(vp->stdCont));
+
+                closObj = ValueToClosure(vp->schedCont);
+
+                envP = closObj->ep;
+                codeP = ValueToAddr(closObj->cp);
+                retCont = CreateBaseFrame(vp, (Word_t)&ASM_Error);
+
+#else
+
+                // CPS
                 Value_t resumeK = AllocNonUniform (vp, 3,
                                            INT(PtrToValue(&ASM_Resume)),
                                            INT(PtrToValue(vp->stdCont)),
@@ -136,8 +148,10 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
               /* pass the signal to scheduling code in the BOM runtime */
                 envP = vp->schedCont;
                 codeP = ValueToAddr(ValueToCont(envP)->cp);
-                arg = resumeK;
                 retCont = M_UNIT;
+#endif
+
+                arg = resumeK;
                 exnCont = M_UNIT;
                 vp->atomic = M_TRUE;
                 vp->sigPending = M_FALSE;

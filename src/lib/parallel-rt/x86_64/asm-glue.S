@@ -91,8 +91,11 @@ _GSYM(ASM_Apply):
     movq	%rdx,STD_ARG_REG	/* standard argument */
     movq	%rcx,STD_EP_REG		/* environment pointer */
     movq	%r9,STD_EXH_REG		/* exception continuation */
+
 #if !defined(LINKSTACK)
+
     movq	%r8,STD_CONT_REG	/* return continuation */
+
 #else
     // r8 is a pointer to a linked-frame stack, so we setup rsp and rbp correctly.
 
@@ -106,6 +109,7 @@ _GSYM(ASM_Apply):
     movq	%r8, %rsp
     popq	%rbp
 #endif
+
     /* load Manticore state */
     movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG	/* load allocation pointer */
     jmp	*%r12
@@ -277,7 +281,7 @@ callec_impl:
     movq  %rsp, %rbp    // cont is rbp
 
     // Allocate the launcher
-    // [HDR | CodeP | ForkP ]
+    // [HDR | CodeP | Cont Frame ]
     movq  ALLOC_PTR_REG, LAUNCHER
     movq  $(BITPAT_HDR(0b10, 2)), TMP_REG1
     movq  TMP_REG1, -8(LAUNCHER)
@@ -289,9 +293,9 @@ callec_impl:
 
     movq  ALLOC_PTR_REG, FORK
 
-    // Initialize the 'fork' frame, which is like a remembered-set table entry.
+    // Initialize the 'fork' frame, which acts as a read-barrier
     // that can be returned to like a normal frame.
-    // [HDR | FP | RA | WM ]
+    // [HDR | FP, the Cont Frame | RA | WM ]
     movq  $(LINKFRAME_HDR(3)), -8(FORK)
     // FP <- rbp will be set by callee
     leaq  _GSYM(ASM_ForkFrame)(%rip), TMP_REG1
@@ -399,6 +403,10 @@ continue_to_c:
     movq	%rsp, STD_CONT_REG		// setup the return cont
     movq	FFI_STK(VPROC_PTR_REG), %rsp		// switch to the RTS stack
     popq	%r15			// undo alignment adjustment
+
+    // for safety, kill known dead regs
+    movq  $M_UNIT, STD_ARG_REG
+    movq  $M_UNIT, STD_EP_REG
 #endif
 
       /* save Manticore state */

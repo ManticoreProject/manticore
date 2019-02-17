@@ -294,18 +294,15 @@ void *NewVProc (void *arg)
     vproc->ffiStack = 0;
 
     const size_t FFI_SIZE = 4 * ONE_MEG;
-#ifdef DIRECT_STYLE
+#if defined(DIRECT_STYLE)
     // Segstack overflow handling, and service requests, use this.
     vproc->ffiStack = AllocFFIStack(vproc, FFI_SIZE);
 
-#else
+#elif !defined(LINKSTACK)
 
-    // for CPS and linkstack, the RTS stack is used as the FFI stack.
-    // Though the RTS stack only is placed after an ASM_Apply
-    // occurs on the vproc, so we allocate it (and possibly leak it)
-    // anyways.
     vproc->ffiStack = FFIStackFlag ? AllocFFIStack(vproc, FFI_SIZE) : 0;
-#endif
+
+#endif // for linkstack, the RTS stack is used as the FFI stack.
 
     MutexInit (&(vproc->lock));
     CondInit (&(vproc->wait));

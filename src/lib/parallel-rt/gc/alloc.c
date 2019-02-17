@@ -305,6 +305,19 @@ Value_t CreateBaseFrame (VProc_t *vp, Word_t i) {
     return PtrToValue(obj);
 }
 
+Value_t CreateLinkStackCont (VProc_t *vp, Value_t codeP, Value_t frameP) {
+    uint64_t sz = 2;
+    EnsureNurserySpace(vp, sz+1);
+
+    Word_t  *obj = (Word_t *)(vp->allocPtr);
+    obj[-1] = BITPAT_HDR((Word_t)0b10, sz);
+    obj[0] = (Word_t) codeP;      // code pointer to invoke the frame
+    obj[1] = (Word_t) frameP;     // stack frame
+
+    vp->allocPtr += WORD_SZB * (sz+1);
+    return PtrToValue(obj);
+}
+
 /*! \brief allocate an ML string from a C string in the nursery.
  */
 Value_t AllocString (VProc_t *vp, const char *s)
