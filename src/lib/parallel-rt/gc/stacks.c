@@ -220,12 +220,35 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
     if (info == NULL) {
         // Allocate new memory for this stack.
         size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
+
         bool isSegment = false;
   #if defined(SEGSTACK) || defined(RESIZESTACK)
         isSegment = true;
   #endif
+
         info = AllocStackMem(vp, usableSpace, guardSz, isSegment);
-    }
+
+  #if defined(SEGSTACK) || defined(RESIZESTACK)
+        uint64_t sinceGC = vp->allocdSinceGC;
+
+        if (sinceGC != ~0) {
+          #ifdef SEGSTACK
+            sinceGC += usableSpace; // in terms of bytes
+          #else
+            sinceGC += 1; // in terms of # segments
+          #endif
+
+            if (sinceGC > MAX_ALLOC_SINCE_GC) {
+              // trigger a GC cycle on next heap check to reclaim some stacks
+              vp->allocdSinceGC = ~0;
+              ZeroLimitPtr(vp);
+            } else {
+              vp->allocdSinceGC = sinceGC;
+            }
+        }
+#endif // trigger GC
+
+} // end of alloc new memory
 
     // push on alloc'd list
     StackInfo_t* cur = vp->allocdStacks;

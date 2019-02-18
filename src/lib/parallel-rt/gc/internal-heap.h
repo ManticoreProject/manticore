@@ -65,6 +65,21 @@ typedef uint64_t Age_t;
 #define AGE_Major 1
 #define AGE_Global 2
 
+#if defined(SEGSTACK)
+
+  // both in terms of bytes
+  #define MAX_STACK_CACHE_SZ   (2 * (dfltStackSz / ONE_K) * ONE_MEG)
+  #define MAX_ALLOC_SINCE_GC   (4 * ONE_MEG)
+
+#elif defined(RESIZESTACK)
+
+  // in terms of number of bytes
+  #define MAX_STACK_CACHE_SZ   (dfltStackSz * 128)
+
+  // in terms of number of segments
+  #define MAX_ALLOC_SINCE_GC   (16384)
+
+#endif
 
 // we have some hand-written ASM that accesses this struct
 // assuming all fields are 8 bytes wide.

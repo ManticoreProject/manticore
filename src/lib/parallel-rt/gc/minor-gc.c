@@ -188,21 +188,40 @@ nextIter:
 // Deallocates excess stacks in the cache, with the goal of
 // maintaining at least maxCache bytes of usable space, but
 // not more than 1 segment's worth of extra space beyond that amount.
-void ReleaseStacks(VProc_t *vp, const size_t maxCache) {
+//
+// If any stack segment's usableSpace > maxSegSz, then it is freed
+// no matter what.
+void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
   size_t usableTot = 0;
   StackInfo_t* cur = vp->freeStacks;
   StackInfo_t* prev = NULL;
 
-  // skip through the first bunch up to limit
+  // skip through the first bunch up to total limit, freeing a segment only if
+  // its usableSpace is too large
   while (cur != NULL && usableTot < maxCache) {
-      usableTot += cur->usableSpace;
-      prev = cur;
-      cur = cur->next;
+      size_t usableSpace = cur->usableSpace;
+      if (usableSpace > maxSegSz) {
+        // drop it
+        StackInfo_t* next = cur->next;
+        DeallocateStackMem(vp, cur);
+        cur = next;
+      } else {
+        // keep it.
+        usableTot += usableSpace;
+
+        if (prev != NULL)
+          prev->next = cur;
+
+        prev = cur;
+        cur = cur->next;
+      }
   }
 
   // truncate the free-list.
   if (prev != NULL)
     prev->next = NULL;
+  else
+    vp->freeStacks = NULL;
 
   // release the list from cur onwards.
   while (cur != NULL) {
@@ -446,7 +465,10 @@ void MinorGC (VProc_t *vp)
 
 #if defined(SEGSTACK) || defined(RESIZESTACK)
     /* Now that GC is over, thin-out the free stack cache */
-    ReleaseStacks(vp, ONE_MEG);
+    ReleaseStacks(vp, MAX_STACK_CACHE_SZ, dfltStackSz);
+
+    // reset the count
+    vp->allocdSinceGC = 0;
 #endif
 
     /* reset the allocation pointer */

@@ -344,7 +344,9 @@ doShutdown:
         /* check to see if we actually need to do a GC, since this request
          * might be from a pending signal.
          */
-          if ((LimitPtr(vp) <= vp->allocPtr) || vp->globalGCPending) {
+          if ((LimitPtr(vp) <= vp->allocPtr)
+              || vp->globalGCPending
+              || vp->allocdSinceGC == ~0) {
               /* request a minor GC */
                 MinorGC (vp);
           }

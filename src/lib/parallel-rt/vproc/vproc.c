@@ -288,10 +288,11 @@ void *NewVProc (void *arg)
     vproc->limitPtr = LimitPtr(vproc);
     SetAllocPtr (vproc);
     vproc->currentFLS = M_NIL;
+    vproc->allocdSinceGC = 0;
     vproc->allocdStacks = NULL;
     vproc->freeStacks = NULL;
     vproc->inPromotion = false;
-    vproc->ffiStack = 0;
+    vproc->ffiStack = NULL;
 
     const size_t FFI_SIZE = 4 * ONE_MEG;
 #if defined(DIRECT_STYLE)
