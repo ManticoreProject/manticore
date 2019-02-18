@@ -287,7 +287,7 @@ Pass Arguments:  -domtree
 
     (* opt passes that need to be performed before/after any passes *)
     fun o_wrapPasses verbose passes = let
-          val firstPasses = ["-targetlibinfo", "-tti", "-verify", "-lint"]
+          val firstPasses = ["-targetlibinfo", "-tti", "-verify" (* , "-lint" *) ]
           val statsPasses = ["-stats", "-time-passes"]
           val passes = (case passes
                  of [] => firstPasses
