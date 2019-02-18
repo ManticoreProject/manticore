@@ -419,7 +419,6 @@ continue_to_c:
     popq	%r15			// undo alignment adjustment
 
     // for safety, kill known dead regs
-    movq  $M_UNIT, STD_ARG_REG
     movq  $M_UNIT, STD_EP_REG
 #endif
 

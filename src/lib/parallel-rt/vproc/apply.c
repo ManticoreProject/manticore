@@ -188,11 +188,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
             break;
           case REQ_UncaughtExn:        /* raising an exception */
             Die ("uncaught exception\n");
+
           case REQ_Sleep:        /* make the VProc idle */
             {
-#ifdef LINKSTACK
-                Die("vproc requested sleep.");
-#endif
              Value_t status = M_TRUE;
              Time_t timeToSleep = *((Time_t*)(vp->stdArg));
              if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */
@@ -204,7 +202,13 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
              envP = vp->wakeupCont;
              codeP = ValueToAddr (ValueToCont(envP)->cp);
              arg = AllocNonUniform (vp, 1, PTR(status));
+
+#ifdef LINKSTACK
+             retCont = CreateBaseFrame(vp, (Word_t)&ASM_Error);
+#else
              retCont = M_UNIT;
+#endif
+
              exnCont = M_UNIT;
              vp->wakeupCont = M_NIL;
             }
