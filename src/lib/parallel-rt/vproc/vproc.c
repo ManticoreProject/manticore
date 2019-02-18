@@ -504,7 +504,7 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
     vp->globalGCPending = true;
     assert(vp->currentFLS != M_NIL);
 
-#ifdef DIRECT_STYLE
+#if defined(DIRECT_STYLE) || defined(LINKSTACK)
     Value_t dummyK = NewStack(self, vp->dummyK);
     dummyK = PromoteObj(self, dummyK);
 #else
@@ -637,14 +637,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
 
     VProcSleep(vp);
 
-#ifndef DIRECT_STYLE
-
-  /* Activate scheduling code on the vproc. */
-    Value_t envP = vp->schedCont;
-    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
-    RunManticore (vp, codeP, vp->dummyK, envP);
-
-#else
+#if defined(DIRECT_STYLE) || defined(LINKSTACK)
 
     /* Activate scheduling code on the vproc. */
     Value_t dummyK = NewStack(vp, vp->dummyK);
@@ -653,6 +646,13 @@ static void IdleVProc (VProc_t *vp, void *arg)
     Value_t envP = closObj->ep;
     Addr_t codeP = ValueToAddr(closObj->cp);
     RunManticore (vp, codeP, dummyK, envP);
+
+#else
+
+  /* Activate scheduling code on the vproc. */
+    Value_t envP = vp->schedCont;
+    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
+    RunManticore (vp, codeP, vp->dummyK, envP);
 
 #endif
 
