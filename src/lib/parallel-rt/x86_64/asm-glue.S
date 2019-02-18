@@ -360,6 +360,20 @@ _GSYM(ASM_ContLauncher1):
     movq  8(STD_EP_REG), %rbp
     jmp   _GSYM(ASM_ForkFrame)
 
+// special launcher for NewStack
+.p2align 4, 0xCC
+.globl  _GSYM(ASM_ContLauncher_Closure)
+_GSYM(ASM_ContLauncher_Closure):
+    // should be no need for a read barrier here.
+    movq  8(STD_EP_REG), %rsp   // reinstate the base-frame stack ptr
+    popq  %rbp                  // reinstate frame pointer and adjust SP
+
+    // invoke the function closure
+    movq  16(STD_EP_REG), TMP_REG1  // load clos
+    movq  (TMP_REG1), STD_EP_REG    // set EP
+    movq  8(TMP_REG1), TMP_REG1     // set CP
+    movq  $M_UNIT, STD_ARG_REG      // pass unit
+    jmpq  *TMP_REG1
 
 
 

@@ -46,11 +46,8 @@ void EnsureGlobalSpace(VProc_t *vp, int nElems) {
  */
 void EnsureNurserySpace(VProc_t *vp, int nElems) {
     /* 4KB is the slop size */
-    if ((vp->allocPtr + WORD_SZB * (nElems+1) < (vp->limitPtr + 4096))
-        || (vp->limitPtr == 0)) {
-          return;
-        }
-    Die("RTS has no space in heap to allocate locally.");
+    assert((vp->allocPtr + WORD_SZB * (nElems+1) < (vp->limitPtr + 4096))
+           || (vp->limitPtr == 0));
 }
 
 /*! \brief allocate a tuple of uniform values in the nursery
@@ -290,6 +287,8 @@ Value_t WrapWord (VProc_t *vp, Word_t i)
  * a mutable, linked-frame stack. Returning
  * to this frame will cause control to jump to
  * the address i.
+ *
+ * Returns a pointer to a completed link-frame.
  */
 Value_t CreateBaseFrame (VProc_t *vp, Word_t i) {
     uint64_t sz = 3;
@@ -317,6 +316,34 @@ Value_t CreateLinkStackCont (VProc_t *vp, Value_t codeP, Value_t frameP) {
     vp->allocPtr += WORD_SZB * (sz+1);
     return PtrToValue(obj);
 }
+
+#ifdef LINKSTACK
+
+extern int ASM_Error;
+extern int ASM_ContLauncher_Closure;
+
+// NOTE: exposed to BOM code.
+Value_t NewStack (VProc_t *vp, Value_t funClos) {
+
+  Value_t baseFrame = CreateBaseFrame(vp, (Word_t)&ASM_Error);
+
+  ///////////
+  // allocate a special launcher-cont with space for the function closure.
+  uint64_t sz = 3;
+  EnsureNurserySpace(vp, sz+1);
+
+  Word_t  *obj = (Word_t *)(vp->allocPtr);
+  obj[-1] = BITPAT_HDR((Word_t)0b110, sz);
+  obj[0] = (Word_t) (&ASM_ContLauncher_Closure);   // code ptr
+  obj[1] = (Word_t) baseFrame;                     // stack frame
+  obj[2] = (Word_t) funClos;                       // fn to invoke
+
+  vp->allocPtr += WORD_SZB * (sz+1);
+  return PtrToValue(obj);
+}
+
+#endif
+
 
 /*! \brief allocate an ML string from a C string in the nursery.
  */
