@@ -57,7 +57,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     // We add a bit more for safety.
     size_t slopSz = isSegment ? 128 + 16 : 0;
 
-    size_t ccallSz = isSegment && haveGuardPage ? 8192 : 0; // 8KB ought to be enough for anybody (tm)
+    size_t ccallSz = isSegment && haveGuardPage ? (8 * ONE_K) : 0; // 8KB ought to be enough for anybody (tm)
     size_t bonusSz = 2 * sizeof(uint64_t); // extra space for realigning, etc.
 
     size_t totalRegion = ccallSz + slopSz + numBytes + bonusSz;
@@ -222,13 +222,12 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
 
     if (info == NULL) {
         // Allocate new memory for this stack.
-        size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
-
         bool isSegment = false;
   #if defined(SEGSTACK) || defined(RESIZESTACK)
         isSegment = true;
   #endif
 
+        size_t guardSz = FFIStackFlag && isSegment ? 0 : GUARD_PAGE_BYTES;
         info = AllocStackMem(vp, usableSpace, guardSz, isSegment);
 
   #if defined(SEGSTACK) || defined(RESIZESTACK)
@@ -319,12 +318,11 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
     N = (N == 0 ? 1 : N);
 
     StackInfo_t* info;
-    size_t guardSz = FFIStackFlag ? 0 : GUARD_PAGE_BYTES;
     bool isSegment = false;
 #if defined(SEGSTACK) || defined(RESIZESTACK)
     isSegment = true;
 #endif
-
+    size_t guardSz = FFIStackFlag && isSegment ? 0 : GUARD_PAGE_BYTES;
     for(uint64_t i = 0; i < N; i++) {
         info = AllocStackMem(vp, dfltStackSz, guardSz, isSegment);
 
