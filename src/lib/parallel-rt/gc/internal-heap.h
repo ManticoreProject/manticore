@@ -68,16 +68,19 @@ typedef uint64_t Age_t;
 #if defined(SEGSTACK)
 
   // both in terms of bytes
-  #define MAX_STACK_CACHE_SZ   (2 * (dfltStackSz / ONE_K) * ONE_MEG)
-  #define MAX_ALLOC_SINCE_GC   (4 * ONE_MEG)
+  #define MAX_STACK_CACHE_SZ      (2 * (dfltStackSz / ONE_K) * ONE_MEG)
+  #define MAX_ALLOC_SINCE_GC      (4 * ONE_MEG)
+  #define MAX_SEG_SIZE_IN_CACHE   dfltStackSz
 
 #elif defined(RESIZESTACK)
 
   // in terms of number of bytes
-  #define MAX_STACK_CACHE_SZ   (dfltStackSz * 128)
+  #define MAX_STACK_CACHE_SZ      (dfltStackSz * 128)
+  #define MAX_SEG_SIZE_IN_CACHE   dfltStackSz
 
-  // in terms of number of segments
-  #define MAX_ALLOC_SINCE_GC   (16384)
+  // in terms of number of segments, since size varies
+  #define MAX_ALLOC_SINCE_GC   ((4 * ONE_MEG) / dfltStackSz)
+  #define FIRST_FIT_MAX_CHK    (1)
 
 #endif
 

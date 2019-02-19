@@ -58,7 +58,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     size_t slopSz = isSegment ? 128 + 16 : 0;
 
     size_t ccallSz = isSegment && haveGuardPage ? 8192 : 0; // 8KB ought to be enough for anybody (tm)
-    size_t bonusSz = 8 * sizeof(uint64_t); // extra space for realigning, etc.
+    size_t bonusSz = 2 * sizeof(uint64_t); // extra space for realigning, etc.
 
     size_t totalRegion = ccallSz + slopSz + numBytes + bonusSz;
     size_t stackLen = guardSz + totalRegion;
@@ -176,10 +176,12 @@ extern int ASM_DS_SegUnderflow;
 #if defined(RESIZESTACK)
 ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
   // Use a basic first-fit strategy (without splitting).
+  // We giveup after a certian number since the free list may be long
+  size_t checked = 0;
   StackInfo_t* prev = NULL;
   StackInfo_t* cur = vp->freeStacks;
 
-  while (cur != NULL) {
+  while (cur != NULL && checked < FIRST_FIT_MAX_CHK) {
     if (cur->usableSpace >= requiredSpace) {
       // unlink cur from the free-list.
       if (prev != NULL)
@@ -192,6 +194,7 @@ ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
     // check next
     prev = cur;
     cur = cur->next;
+    checked++;
   }
 
   return NULL;
@@ -465,7 +468,8 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     fresh->prevSegment = old->prevSegment;
     fresh->canCopy = old->canCopy;
 
-    FreeOneStack(vp, old);
+    if (old->owner == vp)
+      FreeOneStack(vp, old);  // add back to cache, it's hot
 
   } else {
     // link a new segment

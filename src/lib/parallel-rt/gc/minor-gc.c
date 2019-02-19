@@ -465,7 +465,7 @@ void MinorGC (VProc_t *vp)
 
 #if defined(SEGSTACK) || defined(RESIZESTACK)
     /* Now that GC is over, thin-out the free stack cache */
-    ReleaseStacks(vp, MAX_STACK_CACHE_SZ, dfltStackSz);
+    ReleaseStacks(vp, MAX_STACK_CACHE_SZ, MAX_SEG_SIZE_IN_CACHE);
 
     // reset the count
     vp->allocdSinceGC = 0;
