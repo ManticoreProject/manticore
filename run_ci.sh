@@ -28,7 +28,7 @@ make local-install
 ########## start of testing stuff ##########
 
 llvmOptions=(
-  "-O0"
+  # "-O0"
   # "-O1"
   # "-O2"
   "-O3"
