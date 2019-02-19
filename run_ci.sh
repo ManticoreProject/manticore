@@ -19,10 +19,12 @@ fi
 
 echo -e "\n\n\t----- building manticore -----\n\n"
 
-autoheader -Iconfig
-autoconf -Iconfig
-./configure --with-llvm=./llvm/build
-make local-install
+if [ "$1" != "local" ]; then
+  autoheader -Iconfig
+  autoconf -Iconfig
+  ./configure --with-llvm=./llvm/build
+  make local-install
+fi
 
 
 ########## start of testing stuff ##########
