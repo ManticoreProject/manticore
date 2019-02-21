@@ -182,7 +182,14 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
             for (int i = 0; i < NumVProcs; i++) {
               /* force each vproc to check for shutdown */
                 VProc_t *wvp = VProcs[i];
-                VProcSendSignal(vp, wvp, wvp->currentFLS, wvp->dummyK);
+            #ifdef LINKSTACK
+                // Allocate in my heap and then promote
+                Value_t dummyK = NewStack(vp, wvp->dummyK);
+                dummyK = PromoteObj(vp, dummyK);
+            #else
+                Value_t dummyK = wvp->dummyK;
+            #endif
+                VProcSendSignal(vp, wvp, wvp->currentFLS, dummyK);
                 VProcPreempt (vp, wvp);
             }
             break;
