@@ -372,7 +372,6 @@ _GSYM(ASM_ContLauncher_Closure):
     movq  16(STD_EP_REG), TMP_REG1  // load clos
     movq  (TMP_REG1), STD_EP_REG    // set EP
     movq  8(TMP_REG1), TMP_REG1     // set CP
-    movq  $M_UNIT, STD_ARG_REG      // pass unit
     jmpq  *TMP_REG1
 
 
