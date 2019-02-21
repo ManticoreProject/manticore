@@ -1394,9 +1394,13 @@ fun output (outS, module as C.MODULE { name = module_name,
         "0x" ^ (IntInf.fmt StringCvt.HEX asInt)
     end
 
-    val stackKind = if Controls.get BasicControl.segstack orelse Controls.get BasicControl.resizestack
+    val isSegStack = Controls.get BasicControl.segstack
+    val isResizeStack = Controls.get BasicControl.resizestack
+    fun mkBasicAttr name = concat ["\"", name, "\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""]
+
+    val stackKind = if isSegStack orelse isResizeStack
                     (* we have re-purposed the stdEnvPtr field to hold the stack limit *)
-                        then "\"manti-segstack\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""
+                        then mkBasicAttr (if isSegStack then "manti-segstack" else "manti-resizestack")
                     else if Controls.get BasicControl.linkstack
                         then let
                             val hpLimOffset = IntegerLit.toString Spec.ABI.limitPtr
