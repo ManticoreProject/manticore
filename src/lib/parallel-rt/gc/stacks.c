@@ -154,13 +154,7 @@ uint8_t* AllocFFIStack(VProc_t *vp, size_t numBytes) {
     return ffiInfo->initialSP;
 }
 
-void InvalidReturnAddr() {
-    Die("an unexpected return has occurred!");
-}
 
-void EndOfStack() {
-    Die("unexpected stack underflow has occurred!");
-}
 
 
 

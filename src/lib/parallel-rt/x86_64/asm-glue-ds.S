@@ -348,6 +348,18 @@ callec_body:
 #undef STACK_DISC
 
     .p2align 4, 0xCC
+    .globl	_GSYM(InvalidReturnAddr)
+_GSYM(InvalidReturnAddr):
+// if control-flow ends up here, an unexpected return occurred.
+    ud2
+
+    .p2align 4, 0xCC
+    .globl	_GSYM(EndOfStack)
+_GSYM(EndOfStack):
+// if control-flow ends up here, unexpected stack underflow has occurred.
+    ud2
+
+    .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_Return)
 _GSYM(ASM_DS_Return):
     // the Manticore main function returns here.
