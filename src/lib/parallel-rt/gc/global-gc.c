@@ -460,7 +460,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
 #ifdef DIRECT_STYLE
     /* another part of phase 4 is for each vproc to reclaim unmarked stacks */
-    size_t freedBytes = FreeStacks(self, AGE_Global);
+    FreeStacks(self, AGE_Global);
 #endif
 
   /* synchronize on from-space being reclaimed */

@@ -306,12 +306,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
     vp->oldTop = vp->heapBase + youngSzB;
 
-
-#ifdef DIRECT_STYLE
-    size_t freedBytes = FreeStacks(vp, AGE_Major);
-    /* NOTE our caller will unmark stacks when we return. */
-#endif
-
 #ifndef NO_GC_STATS
   // compute the number of bytes copied into the global heap
     uint32_t nBytesCopied = 0;
@@ -330,6 +324,11 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     }
 #endif /* !NDEBUG */
 #endif /* !NO_GC_STATS */
+
+#ifdef DIRECT_STYLE
+    // try to reclaim stacks
+    FreeStacks(vp, AGE_Major);
+#endif
 
     PushToSpaceChunks (vp, scanChunk, false);
 

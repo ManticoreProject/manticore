@@ -268,6 +268,9 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
 
 // NOTE: exposed to BOM code.
 Value_t NewStack (VProc_t *vp, Value_t funClos) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
     StackInfo_t* info = GetStack(vp, dfltStackSz);
 
     uint64_t* sp = (uint64_t*)(info->initialSP);
@@ -293,10 +296,16 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
                                         PtrToValue(sp), // stack ptr
                                         PtrToValue(info)); // stack info
 
+    #ifndef NO_GC_STATS
+        TIMER_Stop(&(vp->largeObjStats.timer));
+    #endif
     return resumeK;
 }
 
 StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
     StackInfo_t* info = GetStack(vp, dfltStackSz);
 
     // initialize stack for a return from manticore's main fun.
@@ -306,6 +315,9 @@ StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
 
     // return values
     *initialSP = stkPtr;
+  #ifndef NO_GC_STATS
+      TIMER_Stop(&(vp->largeObjStats.timer));
+  #endif
     return info;
 }
 
@@ -340,6 +352,10 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
 // In this SEGMENTED STACKS version, we copy a bounded number of frames,
 // or none at all.
 uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
+
     StackInfo_t* fresh = GetStack(vp, dfltStackSz);
     StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
@@ -426,6 +442,10 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     vp->stdCont = PtrToValue(fresh);
     vp->stdEnvPtr = fresh->stkLimit;
 
+    #ifndef NO_GC_STATS
+        TIMER_Stop(&(vp->largeObjStats.timer));
+    #endif
+
     // return the new SP in the new segment
     return newStkPtr;
 }
@@ -438,6 +458,10 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
 // on overflow we RESIZE the stack and discard the old one.
 // In the case of callec, we link a new segment instead.
 uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
+
   StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
   size_t newSize = shouldCopy ? old->usableSpace * 2 : dfltStackSz;
@@ -482,6 +506,10 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
   // install the fresh segment as the current stack descriptor
   vp->stdCont = PtrToValue(fresh);
   vp->stdEnvPtr = fresh->stkLimit;
+
+  #ifndef NO_GC_STATS
+      TIMER_Stop(&(vp->largeObjStats.timer));
+  #endif
 
   // return the new SP in the new segment
   return newStkPtr;

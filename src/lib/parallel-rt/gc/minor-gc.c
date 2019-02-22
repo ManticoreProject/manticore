@@ -192,6 +192,10 @@ nextIter:
 // If any stack segment's usableSpace > maxSegSz, then it is freed
 // no matter what.
 void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
+
   size_t usableTot = 0;
   StackInfo_t* cur = vp->freeStacks;
   StackInfo_t* prev = NULL;
@@ -229,6 +233,10 @@ void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
     DeallocateStackMem(vp, cur);
     cur = next;
   }
+
+  #ifndef NO_GC_STATS
+      TIMER_Stop(&(vp->largeObjStats.timer));
+  #endif
 }
 
 
@@ -274,9 +282,12 @@ void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
  *
  * This function is also used by later GCs.
  */
-size_t FreeStacks(VProc_t *vp, Age_t epoch) {
+void FreeStacks(VProc_t *vp, Age_t epoch) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
+  
     StackInfo_t* allocd = vp->allocdStacks;
-    size_t freedBytes = 0;
 
     while (allocd != NULL) {
 
@@ -287,9 +298,6 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
 
         if (!marked && safe) {
             // we can free it
-
-            freedBytes += allocd->usableSpace + allocd->guardSz;
-
             FreeOneStack(vp, allocd);
         }
 
@@ -301,7 +309,9 @@ size_t FreeStacks(VProc_t *vp, Age_t epoch) {
         // advance position
         allocd = nextIter;
     }
-    return freedBytes;
+    #ifndef NO_GC_STATS
+        TIMER_Stop(&(vp->largeObjStats.timer));
+    #endif
 }
 
 /* MinorGC:
@@ -418,12 +428,6 @@ void MinorGC (VProc_t *vp)
 
     }
 
-#ifdef DIRECT_STYLE
-    /* try to free unreachable stacks */
-    size_t freedBytes = FreeStacks(vp, AGE_Minor);
-    // fprintf(stderr, "freed %llu bytes of stack\n", freedBytes);
-#endif
-
     assert ((Addr_t)nextScan >= vp->heapBase);
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - vp->heapBase);
 
@@ -445,6 +449,11 @@ void MinorGC (VProc_t *vp)
                 (int)avail);
     }
 #endif /* !NDEBUG */
+
+    #ifdef DIRECT_STYLE
+        /* try to free unreachable stacks */
+        FreeStacks(vp, AGE_Minor);
+    #endif
 
     //LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
 
