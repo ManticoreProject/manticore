@@ -2296,10 +2296,10 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 val (env, args) = newLocals (env, args)
                 val (env, rets) = newLocals (env, rets)
                 val clos = envPtrOf env
-                val conv = CFG.KnownFunc{
+                val conv = CFG.KnownConv{
                         clos = clos
                       }
-                val convTy = CFGTy.T_KnownFunc {
+                val convTy = CFGTy.T_KnownConv {
                         clos = CFG.Var.typeOf clos,
                         args = List.map CFG.Var.typeOf (args @ rets)
                       }
@@ -2421,7 +2421,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 		  val (mkContTy, mkEntry, mkEntryTy) =
 			if CFA.isEscaping k
 			  then (CFGTyUtil.stdContTy, CFG.StdCont, CFGTy.T_StdCont)
-			  else (CFGTyUtil.kwnContTy, CFG.KnownFunc, CFGTy.T_KnownFunc)
+			  else (CFGTyUtil.kwnContTy, CFG.KnownConv, CFGTy.T_KnownFunc)
 		  val (binds, clos, lambdaEnv, params') =
 			mkContClosure (env, params, FV.envOfFun k, mkContTy)
 		  val clos' = envPtrOf lambdaEnv

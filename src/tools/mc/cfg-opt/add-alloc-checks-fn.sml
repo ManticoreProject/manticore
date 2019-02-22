@@ -34,7 +34,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 
     fun notExtern (CFG.LK_Extern _) = false
       | notExtern _ = true
-      
+
     val noExterns = notExtern o CFG.Label.kindOf
 
   (* construct the flow graph for a module *)
@@ -78,7 +78,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
   (* the amount of storage allocated by an expression *)
     fun gExpAlloc (CFG.E_GAlloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
       | gExpAlloc _ = 0w0
-      
+
     fun xferAlloc (CFG.Call{f,...}) = let
             (* this is only here because the only external label expected
                is ASM_Callec, which is hand-written assembly whose allocation
@@ -136,7 +136,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			      (if Controls.get CFGOptControls.debug
 			          then print (CFG.Label.toString lab ^ " allocs " ^ Word.toString alloc ^ "\n")
 			          else () ;
-			      setAlloc (lab, alloc) ; 
+			      setAlloc (lab, alloc) ;
 			      alloc)
 			    end
 			| SOME alloc => alloc
@@ -145,7 +145,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		val _ = List.app funcAlloc code
 	      (* add allocation checks as needed *)
 		fun rewrite (f as CFG.FUNC{lab, entry, start as CFG.BLK{args, body, exit, ...}, body=bodyBlocks}, fs) = let
-		      fun needsCheck lab = (FB.Set.member(fbSet, lab) 
+		      fun needsCheck lab = (FB.Set.member(fbSet, lab)
                                     orelse CFA.isEscaping lab
                                     orelse CFA.hasUnknownReturn lab
                                     )
@@ -168,11 +168,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				  in
 				    (clos' :: args', args', clos :: args, CFG.StdCont{clos=clos'})
 				  end
-			      | CFG.KnownFunc{clos} => let
+			      | CFG.KnownConv{clos} => let
 				  val clos' = CFG.Var.copy clos
 				  val args' = List.map CFG.Var.copy args
 				  in
-				    (clos' :: args', args', clos :: args, CFG.KnownFunc{clos=clos'})
+				    (clos' :: args', args', clos :: args, CFG.KnownConv{clos=clos'})
 				  end
                   | CFG.StdDirectFunc{clos, exh, ret=retTy} => let
                     val clos' = CFG.Var.copy clos
@@ -184,14 +184,14 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
                       clos :: args @ [exh],
                       CFG.StdDirectFunc{clos=clos', exh=exh', ret=retTy}
                   ) end
-                  | CFG.KnownDirectFunc{clos, ret=retTy} => let
+                  | CFG.KnownDirectConv{clos, ret=retTy} => let
                     val clos' = CFG.Var.copy clos
                     val args' = List.map CFG.Var.copy args
                   in (
                       clos' :: args',
                       args',
                       clos :: args,
-                      CFG.KnownDirectFunc{clos=clos', ret=retTy}
+                      CFG.KnownDirectConv{clos=clos', ret=retTy}
                   ) end
 			   (* end case *))
 		      fun convertBlock (block as CFG.BLK{body, args, exit, lab}, freeVars, renamedArgs, allArgs) = let
@@ -218,11 +218,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		      val body = List.foldl (fn (b as CFG.BLK{lab, args, ...}, rr) =>
 						if needsCheck lab
 						then let
-                        
+
                             val _ = if Controls.get CFGOptControls.debug
           			                then print (CFG.Label.toString lab ^ " got a check.\n")
           			                else ()
-                              
+
 							val args' = List.map CFG.Var.copy args
 							val (a,b) = convertBlock (b, args', args', args)
 						    in

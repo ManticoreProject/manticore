@@ -61,7 +61,7 @@ structure SpecializeCalls : sig
 		in
 		  case entry
 		   of CFG.StdFunc _ => computeEqCls()
-		    | CFG.KnownFunc _ => computeEqCls()
+		    | CFG.KnownConv _ => computeEqCls()
 		    | _ => ()
 		  (* end case *)
 		end

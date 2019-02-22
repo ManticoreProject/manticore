@@ -36,9 +36,9 @@ structure Census : sig
   (* update the census counts for the variables bound in an entry convention *)
     fun doEntry (C.StdFunc{clos, ret, exh}) = (clr clos; clr ret; clr exh)
       | doEntry (C.StdCont{clos}) = (clr clos)
-      | doEntry (C.KnownFunc{clos}) = (clr clos)
+      | doEntry (C.KnownConv{clos}) = (clr clos)
       | doEntry (C.StdDirectFunc{clos, exh, ret=notAVar}) = (clr clos; clr exh)
-      | doEntry (C.KnownDirectFunc{clos, ret=notAVar}) = (clr clos)
+      | doEntry (C.KnownDirectConv{clos, ret=notAVar}) = (clr clos)
 
   (* update the census counts for the variables in an expression *)
     fun doExp (C.E_Var(xs, ys)) = (clr' xs; inc' ys)
@@ -61,7 +61,7 @@ structure Census : sig
 
   (* update the census counts for the variables used in a jump *)
     fun doJump (lab, args) = (incLab lab; inc' args)
-    
+
     fun doNext (SOME(retBinds, jmp)) = (clr' retBinds ; doJump jmp)
       | doNext NONE = ()
 

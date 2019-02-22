@@ -8,8 +8,8 @@
  *  + StdCont/StdThrow -- require a single, uniform argument.
  *     - zero arguments are replaced by a unit argument
  *     - a single raw argument is replaced by a wrapped argument
- *     - multiple arguments are replaced by a tupled argument 
- *  + KnownFunc --
+ *     - multiple arguments are replaced by a tupled argument
+ *  + KnownConv --
  *     - fewer than or equal to Target.maxGPRArgs (non-floating-point raw) arguments
  *       and fewer than or equal to Target.maxFPRArgs floating-point raw arguments
  *        - all floating-point raw arguments are passed in fp registers
@@ -48,8 +48,8 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                fun returnFPR () = return (0, 1)
             in
                case arg of
-                  CFGTy.T_Raw rt => 
-                     (case rt of 
+                  CFGTy.T_Raw rt =>
+                     (case rt of
                          RawTypes.T_Byte => returnGPR ()
                        | RawTypes.T_Short => returnGPR ()
                        | RawTypes.T_Int => returnGPR ()
@@ -62,7 +62,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
          fun regsTyNonUniformArgs (args : CFGTy.ty list) : {gprs: int, fprs: int} =
             List.foldl
             (fn (arg,{gprs, fprs}) =>
-             let val {gprs = gprs', fprs = fprs'} = regsTyNonUniformArg arg 
+             let val {gprs = gprs', fprs = fprs'} = regsTyNonUniformArg arg
              in {gprs = gprs + gprs', fprs = fprs + fprs'} end)
             {gprs = 0, fprs = 0}
             args
@@ -77,12 +77,12 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
              | args => CFGTy.T_Tuple (false, List.map transTy args)
          and transTyNonUniformArg (arg : CFGTy.ty) : CFGTy.ty =
             case arg of
-               CFGTy.T_Raw rt => 
+               CFGTy.T_Raw rt =>
                   let
                      fun wrap () = wrapRaw rt
                      fun keep () = CFGTy.T_Raw rt
                   in
-                     case rt of 
+                     case rt of
                         RawTypes.T_Byte => keep ()
                       | RawTypes.T_Short => keep ()
                       | RawTypes.T_Int => keep ()
@@ -103,11 +103,11 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   if gprs > maxGPRArgs orelse fprs > maxFPRArgs
                      then (maxGPRArgs - 1)
                   else maxGPRArgs
-                          
+
                fun loop (args, gprs, fprs, spills) =
                   case args of
-                     [] => 
-                        (case spills of 
+                     [] =>
+                        (case spills of
                             [] => []
                           | _ => [transTyStdArgs (List.rev spills)])
                    | arg::args =>
@@ -119,7 +119,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                               then loop (args, gprs, fprs, arg::spills)
                            else let
                                    val arg = transTyNonUniformArg arg
-                                   val args = 
+                                   val args =
                                       loop (args, gprs - gprs', fprs - fprs', spills)
                                 in
                                    arg :: args
@@ -144,21 +144,21 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                                   ret = transTy ret, exh = transTy exh}
              | CFGTy.T_StdCont {clos, args} =>
                   CFGTy.T_StdCont {clos = transTy clos, args = [transTyStdArgs args]}
-             | CFGTy.T_KnownFunc {clos, args} => 
+             | CFGTy.T_KnownFunc {clos, args} =>
                   CFGTy.T_KnownFunc {clos = transTy clos, args = transTyKFncArgs args}
              | CFGTy.T_Block {args} => CFGTy.T_Block {args = List.map transTy args}
              | CFGTy.T_StdDirFun {clos, args, ret, exh} =>
                     CFGTy.T_StdDirFun {clos = transTy clos,
-                                       args = [transTyStdArgs args], 
-                                       ret = List.map transTy ret, 
-                                       exh = transTy exh}        
-             | CFGTy.T_KnownDirFunc {clos, args, ret} => 
-                    CFGTy.T_KnownDirFunc {clos = transTy clos, 
+                                       args = [transTyStdArgs args],
+                                       ret = List.map transTy ret,
+                                       exh = transTy exh}
+             | CFGTy.T_KnownDirFunc {clos, args, ret} =>
+                    CFGTy.T_KnownDirFunc {clos = transTy clos,
                                           args = transTyKFncArgs args,
                                           ret = List.map transTy ret}
 
          local
-            val {getFn, peekFn, setFn, clrFn, ...} = 
+            val {getFn, peekFn, setFn, clrFn, ...} =
                Var.newProp (fn v => let
                                        val oldTy = Var.typeOf v
                                        val newTy = transTy oldTy
@@ -173,7 +173,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
             val updVarType = ignore o getFn
          end
          local
-            val {getFn, peekFn, setFn, clrFn, ...} = 
+            val {getFn, peekFn, setFn, clrFn, ...} =
                Label.newProp (fn l => let
                                          val oldTy = Label.typeOf l
                                          val newTy = transTy oldTy
@@ -190,17 +190,17 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
 
          fun transFormalUniformArg (arg : CFG.var) : (CFG.var * CFG.exp list) =
             case getVarOldType arg of
-               CFGTy.T_Raw rt => 
+               CFGTy.T_Raw rt =>
                   let
                      val newArgTy = wrapRaw rt
                      val newArg = CFG.Var.new ("argFormalWrap", newArgTy)
-                  in 
+                  in
                      (newArg, [CFG.mkUnwrap(arg,newArg)])
-                  end 
+                  end
              | _ => (arg, [])
          fun transFormalStdArgs (args : CFG.var list) : (CFG.var * CFG.exp list) =
             case args of
-               [] => 
+               [] =>
                   let
                      val newArgTy = CFGTy.unitTy
                      val newArg = CFG.Var.new ("argFormalUnit", newArgTy)
@@ -208,13 +208,13 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                      (newArg, [])
                   end
              | [arg] => transFormalUniformArg arg
-             | args => 
+             | args =>
                   let
                      val newArgTy = CFGTy.T_Tuple (false, List.map getVarNewType args)
                      val newArg = CFG.Var.new ("argFormalTuple", newArgTy)
                      val (_, sels) =
                         List.foldl
-                        (fn (arg, (i, sels)) => 
+                        (fn (arg, (i, sels)) =>
                          (i + 1, (CFG.mkSelect (arg, i, newArg)) :: sels))
                         (0, [])
                         args
@@ -223,15 +223,15 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   end
          fun transFormalNonUniformArg (arg : CFG.var) : (CFG.var * CFG.exp list) =
             case getVarOldType arg of
-               CFGTy.T_Raw rt => 
+               CFGTy.T_Raw rt =>
                   let
                      fun wrap () =
                         let
                            val newArgTy = wrapRaw rt
                            val newArg = CFG.Var.new ("argFormalWrap", newArgTy)
-                        in 
+                        in
                            (newArg, [CFG.mkUnwrap(arg,newArg)])
-                        end 
+                        end
                      fun keep () = (arg, [])
                   in
                      case rt of
@@ -255,10 +255,10 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                   if gprs > maxGPRArgs orelse fprs > maxFPRArgs
                      then (maxGPRArgs - 1)
                   else maxGPRArgs
-                          
+
                fun loop (args, gprs, fprs, spills) =
                   case args of
-                     [] => 
+                     [] =>
                         (case spills of
                             [] => ([],[])
                           | _ =>
@@ -276,7 +276,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                               then loop (args, gprs, fprs, arg::spills)
                            else let
                                    val (arg,bindsArg) = transFormalNonUniformArg arg
-                                   val (args,bindsArgs) = 
+                                   val (args,bindsArgs) =
                                       loop (args, gprs - gprs', fprs - fprs', spills)
                                 in
                                    (arg :: args, bindsArg @ bindsArgs)
@@ -286,45 +286,35 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                loop (args, useGPRArgs, useFPRArgs, [])
             end
          fun transConvention (c : CFG.convention, args) : (CFG.convention * CFG.exp list * CFG.var list) =
-            (List.app updVarType (CFG.paramsOfConv (c, args));
-             case c of
-                CFG.StdFunc {clos, ret, exh} =>
-                   let
-                      val (arg, binds) = transFormalStdArgs args
-                   in
-                      (CFG.StdFunc {clos = clos, ret = ret, exh = exh}, 
-                       binds, [arg])
-                   end
-              | CFG.StdCont {clos} =>
-                   let
-                      val (arg, binds) = transFormalStdArgs args
-                   in
-                      (CFG.StdCont {clos = clos}, 
-                       binds, [arg])
-                   end
-              | CFG.KnownFunc {clos} =>
-                   let
-                      val (args, binds) = transFormalKFncArgs args
-                   in
-                      (CFG.KnownFunc {clos = clos}, 
-                       binds, args)
-                   end
-              | CFG.StdDirectFunc {clos, exh, ret} => 
-                    let
-                       val (arg, binds) = transFormalStdArgs args
-                    in
-                       (CFG.StdDirectFunc {clos = clos, ret = ret, exh = exh}, 
-                        binds, [arg])
-                    end
-              | CFG.KnownDirectFunc {clos, ret} => 
-                    let
-                       val (args, binds) = transFormalKFncArgs args
-                    in
-                       (CFG.KnownDirectFunc {clos = clos, ret = ret}, 
-                        binds, args)
-                    end
-              )
-              
+	      (List.app updVarType (CFG.paramsOfConv (c, args));
+	       case c
+		of CFG.StdFunc {clos, ret, exh} => let
+		     val (arg, binds) = transFormalStdArgs args
+		     in
+		       (CFG.StdFunc{clos = clos, ret = ret, exh = exh}, binds, [arg])
+		     end
+		 | CFG.StdCont{clos} => let
+		     val (arg, binds) = transFormalStdArgs args
+		     in
+		       (CFG.StdCont{clos = clos}, binds, [arg])
+		     end
+		 | CFG.KnownConv{clos} => let
+		     val (args, binds) = transFormalKFncArgs args
+		     in
+		       (CFG.KnownConv{clos = clos}, binds, args)
+		     end
+		 | CFG.StdDirectFunc{clos, exh, ret} => let
+		      val (arg, binds) = transFormalStdArgs args
+		      in
+			(CFG.StdDirectFunc{clos = clos, ret = ret, exh = exh}, binds, [arg])
+		      end
+		 | CFG.KnownDirectConv{clos, ret} => let
+		      val (args, binds) = transFormalKFncArgs args
+		      in
+			(CFG.KnownDirectConv{clos = clos, ret = ret}, binds, args)
+		      end
+		(* end case *))
+
          fun transExp (exp : CFG.exp) : CFG.exp =
             (List.app updVarType (CFG.lhsOfExp exp);
              case exp of
@@ -335,9 +325,9 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                CFGTy.T_Raw rt => let
 		  val newArgTy = wrapRaw rt
 		  val newArg = CFG.Var.new ("argActualWrap", newArgTy)
-                  in 
+                  in
                      ([CFG.mkWrap(newArg, arg)], newArg)
-                  end 
+                  end
              | _ => ([], arg)
          fun transActualStdArgs (args : CFG.var list) : (CFG.exp list * CFG.var) = (
             case args
@@ -357,15 +347,15 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
 	    (* end case *))
          fun transActualNonUniformArg (arg : CFG.var) : (CFG.exp list * CFG.var) =
             case getVarOldType arg of
-               CFGTy.T_Raw rt => 
+               CFGTy.T_Raw rt =>
                   let
                      fun wrap () =
                         let
                            val newArgTy = wrapRaw rt
                            val newArg = CFG.Var.new ("argActualWrap", newArgTy)
-                        in 
+                        in
                            ([CFG.mkWrap(newArg, arg)], newArg)
-                        end 
+                        end
                      fun keep () = ([], arg)
                   in
                      case rt of
@@ -392,10 +382,10 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
 
                fun loop (args, gprs, fprs, spills) =
                   case args of
-                     [] => 
+                     [] =>
                         (case spills of
                             [] => ([],[])
-                          | _ => 
+                          | _ =>
                                let
                                   val (binds, arg) = transActualStdArgs (List.rev spills)
                                in
@@ -410,7 +400,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                               then loop (args, gprs, fprs, arg::spills)
                            else let
                                    val (bindsArg,arg) = transActualNonUniformArg arg
-                                   val (bindsArgs,args) = 
+                                   val (bindsArgs,args) =
                                       loop (args, gprs - gprs', fprs - fprs', spills)
                                 in
                                    (bindsArg @ bindsArgs, arg :: args)
@@ -421,14 +411,14 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
             end
          fun transTransfer (t : CFG.transfer) : (CFG.exp list * CFG.transfer) =
              case t of
-               CFG.StdApply {f, clos, args, ret, exh} => 
+               CFG.StdApply {f, clos, args, ret, exh} =>
                    let
                       val (binds, arg) = transActualStdArgs args
                    in
-                     (binds, CFG.StdApply {f = f, clos = clos, args = [arg], 
+                     (binds, CFG.StdApply {f = f, clos = clos, args = [arg],
                                            ret = ret, exh = exh})
                    end
-             | CFG.StdThrow {k, clos, args} => 
+             | CFG.StdThrow {k, clos, args} =>
                    let
                       val (binds, arg) = transActualStdArgs args
                    in
@@ -440,15 +430,15 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                    in
                      (binds, CFG.Apply {f = f, clos = clos, args = args})
                    end
-             | CFG.Call {f, clos, args, next} => 
+             | CFG.Call {f, clos, args, next} =>
                     let
-                       val (binds, args) = 
+                       val (binds, args) =
                             (case CFG.Var.typeOf f
                                 of CFGTy.T_KnownDirFunc _ => transActualKFncArgs args
                                  | CFGTy.T_StdDirFun _ => let
                                     val len = List.length args
                                     val exh = List.drop(args, len-1)
-                                    
+
                                     val actualArgs = List.take(args, len-1)
                                     val (binds, actualArgs) = transActualStdArgs actualArgs
                                     in
@@ -479,7 +469,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                         | _ => raise Fail "bogus label kind"
                       (* end case *))
                 val start = transBlock (start, entryBinds, args')
-                val body = List.map (fn b => transBlock (b, [], [])) body 
+                val body = List.map (fn b => transBlock (b, [], [])) body
                 in
                    CFG.mkFunc (lab, entry, start, body, export)
                 end
@@ -487,5 +477,5 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
           in
             module
           end
-      
+
   end

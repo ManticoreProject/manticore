@@ -31,11 +31,11 @@ structure CFACFG : sig
 
   (* return true if the given label escapes *)
     val isEscaping : CFG.label -> bool
-    
+
   (* return true if the given label is returned to by an unknown caller *)
     val hasUnknownReturn : CFG.label -> bool
 
-  (* return the set of labels that a control transfer targets; 
+  (* return the set of labels that a control transfer targets;
    * NONE is used to represent unknown control flow.
    *)
     val labelsOf : CFG.transfer -> CFG.Label.Set.set option
@@ -135,25 +135,25 @@ structure CFACFG : sig
     val {getFn=getValue, clrFn=clrValue, peekFn=peekValue, setFn=setValue} =
           CFG.Var.newProp (fn x => valueFromType (CFG.Var.typeOf x))
     val valueOf = getValue
-  
+
    datatype return_info
     = UnknownCaller
     | KnownCaller
     | NotReturnedTo
-  
+
   (* property for block labels to track info about direct-style returns *)
     val {getFn=getReturnedTo, setFn=setReturnedTo, clrFn=clrReturnedTo, ...} =
           CFG.Label.newProp (fn _ => NotReturnedTo)
-    
-    fun hasUnknownReturn lab = (case getReturnedTo lab 
-                                    of UnknownCaller => true 
+
+    fun hasUnknownReturn lab = (case getReturnedTo lab
+                                    of UnknownCaller => true
                                      | KnownCaller => true (* <- TODO would normally be false - kavon *)
                                      | _ => false)
-  
+
     (* property for function labels to identify all blocks the function can return to *)
       val {getFn=getReturnSites, clrFn=clrReturnSites, setFn=setReturnSites, ...} =
             CFG.Label.newProp (fn _ => Unknown)
-            
+
   (* return true if the given label escapes *)
     fun isEscaping lab = (case callSitesOf lab of Unknown => true | _ => false)
 
@@ -298,7 +298,7 @@ structure CFACFG : sig
             | BOT => BOT
             | TOP => (escapingValue z; TOP)
             | v => raise Fail(concat[
-                  "type error: update(", Int.toString i, ", ", CFG.Var.toString y, 
+                  "type error: update(", Int.toString i, ", ", CFG.Var.toString y,
                   ", ", valueToString z,
                   "); getValue(", CFG.Var.toString y, ") = ", valueToString v
                 ])
@@ -339,7 +339,7 @@ structure CFACFG : sig
                         | _ => ()
                       (* end case *))
                 fun addJump (lab, _) = add lab
-                
+
                 fun doNext f (_, (retLab, _)) = (case getValue f
                       of LABELS callees => (
                           LSet.app (addReturn retLab) callees ;
@@ -347,18 +347,18 @@ structure CFACFG : sig
                           )
                        | _ => markReturnKind(retLab, UnknownCaller)
                        (* esac *))
-                and addReturn retLab callee = 
+                and addReturn retLab callee =
                         setReturnSites(callee, Known(case getReturnSites callee
                                    of Unknown => LSet.singleton retLab
                                     | Known s => LSet.add(s, retLab)))
-                
+
                 (* we join the new info with the current info *)
                 and markReturnKind (retLab, newInfo) = (case (getReturnedTo retLab, newInfo)
                     of (UnknownCaller, _) => ()
                      | (_, UnknownCaller) => setReturnedTo(retLab, UnknownCaller)
                      | (_, KnownCaller) => setReturnedTo(retLab, KnownCaller)
                     (* end case *))
-                
+
                 in
                   case exit
                    of CFG.StdApply{f, ...} => addSet f
@@ -380,7 +380,7 @@ structure CFACFG : sig
                 end
           fun compute (CFG.FUNC{start, body, ...}) = (
               computeBlock start;
-              List.app computeBlock body)              
+              List.app computeBlock body)
           in
             List.app compute code
           end
@@ -392,9 +392,9 @@ structure CFACFG : sig
                         val prevV = getValue x
                         in
                           addInfo (x, v);
-                          if changedValue(getValue x, prevV) 
+                          if changedValue(getValue x, prevV)
                             then print(concat[
-                                "addInfo(", CFG.Var.toString x,  ", ", valueToString v, 
+                                "addInfo(", CFG.Var.toString x,  ", ", valueToString v,
                                 "): ", valueToString prevV, " ==> ", valueToString(getValue x),
                                 "\n"
                               ])
@@ -402,22 +402,22 @@ structure CFACFG : sig
                         end)
                       else addInfo
                 val addInfo' = fn (x, y) => addInfo (x, getValue y)
-                
+
                 fun isExternLabel lab = (case CFG.Label.kindOf lab
                     of CFG.LK_Extern _ => true
                      | _ => false
                      (* end case *))
-                     
+
               (* record that a given variable escapes *)
                 fun escape x = escapingValue (getValue x)
                 fun doExp (CFG.E_Var(xs, ys)) = ListPair.appEq addInfo' (xs, ys)
                   | doExp (CFG.E_Cast(x, _, y)) = addInfo(x, getValue y)
                   | doExp (CFG.E_Const (x, _, _)) = addInfo(x, TOP)
-                  | doExp (CFG.E_Label(x, lab)) = 
+                  | doExp (CFG.E_Label(x, lab)) =
                         if isExternLabel lab
                         then addInfo(x, TOP)    (* unknown label *)
                         else addInfo(x, LABELS(LSet.singleton lab))
-                        
+
                   | doExp (CFG.E_Select(x, i, y)) = addInfo(x, select(i, y))
                   | doExp (CFG.E_Update(i, y, z)) = (escape z; addInfo(y, update(i, y, getValue z)))
                   | doExp (CFG.E_AddrOf(x, i, y)) = (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
@@ -425,11 +425,11 @@ structure CFACFG : sig
                   | doExp (CFG.E_GAlloc(x, _, xs)) = addInfo(x, TUPLE(List.map getValue xs))
                   | doExp (CFG.E_Promote(x, y)) = addInfo(x, getValue y)
                   | doExp (CFG.E_Prim0 prim) =
-		      if PrimUtil.isPure prim 
+		      if PrimUtil.isPure prim
                          then ()
                          else List.app escape (PrimUtil.varsOf prim)
                   | doExp (CFG.E_Prim(x, prim)) = (
-		      if PrimUtil.isPure prim 
+		      if PrimUtil.isPure prim
                          then ()
                          else List.app escape (PrimUtil.varsOf prim);
                       addInfo(x, TOP))
@@ -439,19 +439,19 @@ structure CFACFG : sig
                   | doExp (CFG.E_VPStore(_, _, z)) = escape z
                   | doExp (CFG.E_VPAddr(x, _, _)) = addInfo(x, TOP)
                 fun doXfer (CFG.StdApply{f, clos, args, ret, exh}) =
-                      doApply (f, 
-                               ("StdApply{f = " ^ (CFG.Var.toString f) ^ ", ...}", 
+                      doApply (f,
+                               ("StdApply{f = " ^ (CFG.Var.toString f) ^ ", ...}",
                                 fn CFG.StdFunc _ => true | _ => false),
                                clos :: args @ [ret, exh])
-                  | doXfer (CFG.StdThrow{k, clos, args}) = 
-                      doApply (k, 
-                               ("StdCont{k = " ^ (CFG.Var.toString k) ^ ", ...}", 
+                  | doXfer (CFG.StdThrow{k, clos, args}) =
+                      doApply (k,
+                               ("StdCont{k = " ^ (CFG.Var.toString k) ^ ", ...}",
                                 fn CFG.StdCont _ => true | _ => false),
                                clos :: args)
-                  | doXfer (CFG.Apply{f, clos, args}) = 
-                      doApply (f, 
+                  | doXfer (CFG.Apply{f, clos, args}) =
+                      doApply (f,
                                ("Apply {f = " ^ (CFG.Var.toString f) ^ ", ...}",
-                                fn CFG.KnownFunc _ => true | _ => false),
+                                fn CFG.KnownConv _ => true | _ => false),
                                clos :: args)
                   | doXfer (CFG.Goto jmp) = doJump jmp
                   | doXfer (CFG.If(_, jmp1, jmp2)) = (doJump jmp1; doJump jmp2)
@@ -463,40 +463,40 @@ structure CFACFG : sig
                   | doXfer (CFG.AllocCCall{ret, args, ...}) = (
                       List.app escape args;
                       doJump ret)
-                      
-                      (* TODO NOTE 
+
+                      (* TODO NOTE
                         We might need to change a lot of code here to track information
-                        about what values might be returned to a direct-style Call. 
-                        
-                        Luckily, almost no CFG optimizations are currently using this information. 
-                        
-                        The difficulty is that we no longer have a label associated 
+                        about what values might be returned to a direct-style Call.
+
+                        Luckily, almost no CFG optimizations are currently using this information.
+
+                        The difficulty is that we no longer have a label associated
                         with each return continuation. Thus, with the current data structures
-                        used in this code, we cannot associate the parameters 
-                        (aka the LHS of a CFG.Call) of return continuations with sets 
+                        used in this code, we cannot associate the parameters
+                        (aka the LHS of a CFG.Call) of return continuations with sets
                         of values they may take on.
-                        
+
                         (kavon, 1/2/17)
                       *)
                   | doXfer (CFG.Return {args, name}) = List.app escape args (* see above comment *)
-                  
+
                   | doXfer (CFG.Call{f, clos, args, next}) = let
                         val (name, chk) = (case CFG.Var.typeOf f
-                                       of CFGTy.T_KnownDirFunc _ =>
-                                            ("Call (KnownDirFunc) ", fn CFG.KnownDirectFunc _ => true | _ => false)
-                                        | CFGTy.T_StdDirFun _ =>
-                                            ("Call (StdDirFun)", fn CFG.StdDirectFunc _ => true | _ => false)
-                                        (* esac *))
+			       of CFGTy.T_KnownDirFunc _ =>
+				    ("Call (KnownDirFunc) ", fn CFG.KnownDirectConv _ => true | _ => false)
+				| CFGTy.T_StdDirFun _ =>
+				    ("Call (StdDirFun)", fn CFG.StdDirectFunc _ => true | _ => false)
+				(* esac *))
                       in
                         doApply (f,
                                  (name ^ " {f = " ^ (CFG.Var.toString f) ^ ", ...}", chk),
                                  clos :: args);
                         Option.app (fn (_, jmp) => doJump jmp) next
                       end
-                        
-                  
-                  
-                and doApply (f, chk, args) = (case getValue f 
+
+
+
+                and doApply (f, chk, args) = (case getValue f
                        of LABELS targets => LSet.app (fn lab => doLabel (lab, chk, args)) targets
                         | BOT => ()
                         | TOP => List.app escape args
@@ -518,8 +518,8 @@ structure CFACFG : sig
                       (* end case *))
                 and doBlock (start as CFG.BLK{lab, args=params, ...}, dbg, args) = let
                       fun debugMsg () = print (concat[
-                              "typeError: doBlock(", CFG.Label.toString lab, 
-                              ", ", dbg, 
+                              "typeError: doBlock(", CFG.Label.toString lab,
+                              ", ", dbg,
                               ", [",
                               String.concatWith "," (List.map CFG.Var.toString args),
                               "]); params = ",
@@ -533,8 +533,8 @@ structure CFACFG : sig
                       end
                 and doFunc (f as CFG.FUNC{lab, entry, start as CFG.BLK{body,args=params, ...}, ...}, chk, args) = let
                       fun debugMsg () = print (concat[
-                              "typeError: doFunc(", CFG.Label.toString lab, 
-                              ", ", #1 chk, 
+                              "typeError: doFunc(", CFG.Label.toString lab,
+                              ", ", #1 chk,
                               ", [",
                               String.concatWith "," (List.map CFG.Var.toString args),
                               "]); CFG.paramsOfConv(entry) = ",
@@ -564,7 +564,7 @@ structure CFACFG : sig
                   setSites (lab, Unknown);
                   setValue (clos, TOP); List.app (fn x => setValue (x, TOP)) args;
                   setValue (ret, TOP); setValue (exh, TOP))
-                  
+
               | CFG.FUNC{lab, entry=CFG.StdDirectFunc{clos, ret=notAVar, exh}, start as CFG.BLK{args,...}, ...} :: _ => (
                    setSites (lab, Unknown);
                    setValue (clos, TOP); List.app (fn x => setValue (x, TOP)) args;
@@ -591,7 +591,7 @@ structure CFACFG : sig
                         "labelsOf: getValue(", CFG.Var.toString f, ") = ", valueToString v
                       ])
                 (* end case *))
-                
+
             fun returnSites name = (case getReturnSites name
                 of Unknown => NONE
                  | Known s => SOME s
