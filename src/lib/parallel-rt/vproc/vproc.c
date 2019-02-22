@@ -321,6 +321,7 @@ void *NewVProc (void *arg)
     vproc->nPromotes = 0;
     vproc->nMinorGCs = 0;
     vproc->nMajorGCs = 0;
+    vproc->nLargeObjs = 0;
     vproc->minorStats.nBytesAlloc = 0;
     vproc->minorStats.nBytesCollected = 0;
     vproc->minorStats.nBytesCopied = 0;

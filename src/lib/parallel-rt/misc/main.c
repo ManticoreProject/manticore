@@ -45,9 +45,9 @@ const char *usage =
 options:\n\
   -d             Enable debugging output\n\
   -q n           Default time quantum (in milliseconds)\n\
-  -perf typ      Generate a performance log of the specified type\n\
-  -gcstats typ   Generate garbage collection statics in specified type\n\
-  -gcstatsfile f Write gcstats output to a non-default file name\n\
+  -perf=[typ]      Generate a performance log of the specified type\n\
+  -gcstats=[typ]   Generate garbage collection statics in specified type\n\
+  -gcstatsfile=[f] Write gcstats output to a non-default file name\n\
   -config file   Use an alternative runtime-system configuration file\n\
   -p n[,procs]   Use n vprocs, with optional processor layout\n\
   -dense         Allocate vprocs on the same package first\n\
