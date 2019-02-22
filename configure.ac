@@ -231,7 +231,7 @@ dnl
 dnl check for jemalloc and use it if it's available
 dnl
 AC_CHECK_LIB([jemalloc], [malloc_usable_size], LDFLAGS="$LDFLAGS -ljemalloc", \
-        AC_MSG_ERROR([jemalloc library not found! ensure dev pkg is also installed.]))
+        AC_MSG_WARN([jemalloc library not found! ensure dev pkg is also installed.]))
 
 dnl check for /proc/cpuinfo
 dnl
