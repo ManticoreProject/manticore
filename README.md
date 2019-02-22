@@ -25,8 +25,8 @@ You must have a *custom* version of LLVM installed prior to configuring and
 building Manticore in order to have the LLVM backend available.
 The following commands will obtain the right LLVM sources and place it in `./llvm/src`
 
-    git submodule init llvm/src
-    git submodule update llvm/src
+    git submodule init
+    git submodule update
 
 Next, we're going to build LLVM, which has its own set of [prerequisites](http://llvm.org/docs/GettingStarted.html#software) that
 any Unix machine setup for C++ development should already have. To configure LLVM, run the following commands
