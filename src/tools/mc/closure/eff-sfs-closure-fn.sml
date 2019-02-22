@@ -2299,7 +2299,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 val conv = CFG.KnownConv{
                         clos = clos
                       }
-                val convTy = CFGTy.T_KnownConv {
+                val convTy = CFGTy.T_KnownFunc {
                         clos = CFG.Var.typeOf clos,
                         args = List.map CFG.Var.typeOf (args @ rets)
                       }

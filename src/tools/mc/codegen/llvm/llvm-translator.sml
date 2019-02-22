@@ -795,7 +795,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                | C.Apply {f, clos, args}
                     => mantiFnCall(f,
                         LC.determineCC({
-                            conv = C.KnownFunc{clos=clos},
+                            conv = C.KnownConv{clos=clos},
                             args = args}))
 
                | (C.HeapCheck {hck = C.HCK_Global, ...} | C.HeapCheckN {hck = C.HCK_Global, ...})
@@ -841,7 +841,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                 *)
                | C.Call {f, clos, args, next} => let
                     val cc = (case CV.typeOf f
-                                of CT.T_KnownDirFunc{ret,...} => {conv = C.KnownDirectFunc{clos=clos, ret=ret}, args=args}
+                                of CT.T_KnownDirFunc{ret,...} => {conv = C.KnownDirectConv{clos=clos, ret=ret}, args=args}
                                  | CT.T_StdDirFun{ret,...} => let
                                     (* probably should have made the exh the first arg -shrug- *)
                                     val stor = ref NONE
@@ -1294,12 +1294,12 @@ fun output (outS, module as C.MODULE { name = module_name,
 (****** Functions ******)
 
   fun mkFunc (func as C.FUNC{entry,...}, initEnv) = (case entry
-      of C.KnownDirectFunc {ret,...} => mkDSFunc(func, ret, initEnv)
+      of C.KnownDirectConv {ret,...} => mkDSFunc(func, ret, initEnv)
        | C.StdDirectFunc {ret,...} => mkDSFunc(func, ret, initEnv)
 
        | C.StdFunc _ => mkCPSFunc(func, initEnv)
        | C.StdCont _ => mkCPSFunc(func, initEnv)
-       | C.KnownFunc _ => mkCPSFunc(func, initEnv)
+       | C.KnownConv _ => mkCPSFunc(func, initEnv)
       (* end case *))
 
   and mkDecl (Util.Used {llvmParam,...}) = mkDecl' llvmParam
