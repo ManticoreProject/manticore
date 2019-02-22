@@ -333,6 +333,10 @@ void *NewVProc (void *arg)
     vproc->globalStats.nBytesCollected = 0;
     vproc->globalStats.nBytesCopied = 0;
     TIMER_Init (&(vproc->globalStats.timer));
+    vproc->largeObjStats.nBytesAlloc = 0;
+    vproc->largeObjStats.nBytesCollected = 0;
+    vproc->largeObjStats.nBytesCopied = 0;
+    TIMER_Init (&(vproc->largeObjStats.timer));
     vproc->nBytesPromoted = 0;
     TIMER_Init (&(vproc->promoteTimer));
 #endif

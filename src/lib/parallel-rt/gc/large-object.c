@@ -16,11 +16,18 @@
 // This may change in the future, so we require the VProc to be provided.
 
 void* lo_alloc(VProc_t *vp, size_t numBytes) {
+  #ifndef NO_GC_STATS
+    vp->largeObjStats.nBytesAlloc += numBytes;
+  #endif
+
   return malloc(numBytes);
 }
 
 void* lo_alloc_aligned(VProc_t *vp, size_t numBytes, size_t alignment) {
   assert(numBytes % alignment == 0); // must be a multiple.
+  #ifndef NO_GC_STATS
+    vp->largeObjStats.nBytesAlloc += numBytes;
+  #endif
   return aligned_alloc(alignment, numBytes);
 }
 

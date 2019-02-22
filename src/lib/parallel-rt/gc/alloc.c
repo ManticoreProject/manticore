@@ -74,6 +74,10 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
 
     vp->allocPtr += WORD_SZB * (nElems+1);
 
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (nElems+1);
+    #endif
+
     return PtrToValue(obj);
 }
 
@@ -123,6 +127,10 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
 
     vp->allocPtr += WORD_SZB * (nElems+1);
 
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (nElems+1);
+    #endif
+
     return PtrToValue(obj);
 }
 
@@ -141,6 +149,10 @@ Value_t AllocRaw (VProc_t *vp, uint32_t len)
 
     obj[-1] = RAW_HDR(nWords);
     vp->allocPtr += WORD_SZB * (nWords+1);
+
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (nWords+1);
+    #endif
 
     return PtrToValue(obj);
 
@@ -163,6 +175,10 @@ Value_t AllocStkCont (VProc_t *vp, Addr_t codeP, Value_t stkPtr, Value_t stkInfo
     obj[2] = (Word_t) stkInfo;
 
     vp->allocPtr += WORD_SZB * (nWords+1);
+
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (nWords+1);
+    #endif
 
     return PtrToValue(obj);
 
@@ -236,6 +252,10 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
     obj[-1] = VEC_HDR(i);
     vp->allocPtr += WORD_SZB * (i+1);
 
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (i+1);
+    #endif
+
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
 }
 
@@ -264,6 +284,10 @@ Value_t AllocVectorRev (VProc_t *vp, int len, Value_t values)
     obj[-1] = VEC_HDR(i);
     vp->allocPtr += WORD_SZB * (i+1);
 
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (i+1);
+    #endif
+
     assert (len == i);
 
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
@@ -280,6 +304,11 @@ Value_t WrapWord (VProc_t *vp, Word_t i)
     obj[0] = i;
 
     vp->allocPtr += WORD_SZB * 2;
+
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (2);
+    #endif
+
     return PtrToValue(obj);
 }
 
@@ -301,6 +330,11 @@ Value_t CreateBaseFrame (VProc_t *vp, Word_t i) {
     obj[2] = 0;     // watermark
 
     vp->allocPtr += WORD_SZB * (sz+1);
+
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (sz+1);
+    #endif
+
     return PtrToValue(obj);
 }
 
@@ -314,6 +348,11 @@ Value_t CreateLinkStackCont (VProc_t *vp, Value_t codeP, Value_t frameP) {
     obj[1] = (Word_t) frameP;     // stack frame
 
     vp->allocPtr += WORD_SZB * (sz+1);
+
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (sz+1);
+    #endif
+
     return PtrToValue(obj);
 }
 
@@ -339,6 +378,11 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
   obj[2] = (Word_t) funClos;                       // fn to invoke
 
   vp->allocPtr += WORD_SZB * (sz+1);
+
+  #ifndef NO_GC_STATS
+      vp->minorStats.nBytesAlloc += WORD_SZB * (sz+1);
+  #endif
+
   return PtrToValue(obj);
 }
 
@@ -359,6 +403,10 @@ Value_t AllocString (VProc_t *vp, const char *s)
     obj[-1] = RAW_HDR(nWords);
     memcpy (obj, s, len);
     vp->allocPtr += WORD_SZB * (nWords+1);
+
+    #ifndef NO_GC_STATS
+        vp->minorStats.nBytesAlloc += WORD_SZB * (nWords+1);
+    #endif
 
   /* allocate the string header object */
     return AllocNonUniform (vp, 2, PTR(obj), INT(len-1));
@@ -475,6 +523,10 @@ Value_t GlobalAllocVector (VProc_t *vp, int len, Value_t values)
     assert (i == len);
 
     vp->globNextW += WORD_SZB * (len+1);
+
+    #ifndef NO_GC_STATS
+        vp->globalStats.nBytesAlloc += WORD_SZB * (len+1);
+    #endif
 
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(len));
 }

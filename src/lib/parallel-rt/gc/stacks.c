@@ -108,6 +108,9 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     info->guardSz = guardSz;
     info->usableSpace = numBytes;
     info->memAlloc = mem;
+    #ifndef NO_GC_STATS
+      info->totalSz = totalSz;
+    #endif
 
     // setup stack pointer
     val = val + stackLen - 16;        // switch sides, leaving some headroom.
@@ -144,6 +147,10 @@ void DeallocateStackMem(VProc_t *vp, StackInfo_t* info) {
       if (mprotect(mem, guardSz, PROT_READ | PROT_WRITE | PROT_EXEC))
         Die("DeallocateStackMem failed to clear the guard page.");
     }
+
+    #ifndef NO_GC_STATS
+      vp->largeObjStats.nBytesCollected += info->totalSz;
+    #endif
 
     lo_free(vp, mem);
 }

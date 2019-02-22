@@ -10,6 +10,8 @@
 #ifndef _LARGE_OBJECT_H_
 #define _LARGE_OBJECT_H_
 
+#include "vproc.h"
+
 /**
  * Allocates memory in the context of the given vproc, returning
  * a pointer to the allocated region.

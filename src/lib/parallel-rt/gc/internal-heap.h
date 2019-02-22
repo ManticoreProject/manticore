@@ -105,6 +105,9 @@ struct struct_stackinfo {
     size_t guardSz      ALIGN_8;
     size_t usableSpace  ALIGN_8;
     uint8_t* memAlloc   ALIGN_8;
+  #ifndef NO_GC_STATS
+    uint64_t totalSz   ALIGN_8;   // in bytes
+  #endif
 };
 
 

@@ -122,10 +122,11 @@ struct struct_vproc {
     uint32_t	nMajorGCs;	//!< number of major GCs by this vproc
     GCCntrs_t	minorStats;	//!< information about minor GCs on this vproc
     GCCntrs_t	majorStats;	//!< information about major GCs on this vproc
-    GCCntrs_t	globalStats;	//!< information about this vproc's part in
-				//!  global GCs.
+    GCCntrs_t	globalStats;	//!< information about this vproc's part in global GCs.
+    GCCntrs_t	largeObjStats; // information about allocation in large-object area
     uint64_t	nBytesPromoted;	//!< the number of bytes promoted on this vproc
     Timer_t	promoteTimer;	//!< used to track time taken by promotions
+
 #endif
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 
