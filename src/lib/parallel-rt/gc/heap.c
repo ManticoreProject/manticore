@@ -99,6 +99,7 @@ static bool        ReportStatsFlg = false;        // true for report enabled
 static bool        DetailStatsFlg = false;        // true for detailed report (per-vproc)
 static bool        CSVStatsFlg = false;        // true for CSV-format report
 static bool        SMLStatsFlg = false;        // true for SML-format report
+static bool        OutFileAlreadyExists = false;
 static FILE     *StatsOutFile = 0;      // stats output file
 #endif
 
@@ -454,7 +455,8 @@ static void ParseGCStatsOptions (Options_t *opts)
 
     StatsOutFile = stderr;
     if (outFileOpt != 0) {
-        if ((StatsOutFile = fopen (outFileOpt, "w")) == 0)
+        OutFileAlreadyExists = access( outFileOpt, F_OK ) != -1;
+        if ((StatsOutFile = fopen (outFileOpt, "a")) == 0)
             StatsOutFile = stderr;
     }
 
@@ -508,8 +510,8 @@ typedef struct {
     double        time;
 } GCSummary_t;
 
-void outputGCCounts(FILE *outF, uint32_t count, GCCntrs_t stage) {
-  const char* gc_seq_vals = "%d, %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %f";
+void outputGCCounts(FILE *outF, uint64_t count, GCCntrs_t stage) {
+  const char* gc_seq_vals = "%" PRIu64 ", %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %f";
   fprintf(outF, gc_seq_vals,
     count, // count
     stage.nBytesAlloc, // allocd
@@ -541,6 +543,7 @@ void ReportGCStats ()
     uint32_t nPromotes = 0;
     uint32_t nMinorGCs = 0;
     uint32_t nMajorGCs = 0;
+    uint64_t nLargeObjs = 0;
     GCSummary_t totMinor = { 0, 0, 0, 0.0 };
     GCSummary_t totMajor = { 0, 0, 0, 0.0 };
     GCSummary_t totGlobal = { 0, 0, 0, 0.0 };
@@ -557,6 +560,7 @@ void ReportGCStats ()
         nPromotes += vp->nPromotes;
         nMinorGCs += vp->nMinorGCs;
         nMajorGCs += vp->nMajorGCs;
+        nLargeObjs += vp->nLargeObjs;
 
         totMinor.nBytesAlloc += vp->minorStats.nBytesAlloc;
         totMinor.nBytesCollected += vp->minorStats.nBytesCollected;
@@ -585,15 +589,16 @@ void ReportGCStats ()
     if (CSVStatsFlg) {
       // report per-vproc stats
 
-      // print the header row
-
-      fprintf(outF, "vproc,time,gc_time,");
-      outputGCColNames(outF, "minor"); fprintf(outF, ",");
-      outputGCColNames(outF, "major"); fprintf(outF, ",");
-      fprintf(outF, "promote_count,promote_bytes,promote_time,");
-      outputGCColNames(outF, "global"); fprintf(outF, ",");
-      outputGCColNames(outF, "large"); fprintf(outF, ",");
-      fprintf(outF, "\n");
+        // print the header row
+        if (!OutFileAlreadyExists) {
+          fprintf(outF, "vproc,time,gc_time,");
+          outputGCColNames(outF, "minor"); fprintf(outF, ",");
+          outputGCColNames(outF, "major"); fprintf(outF, ",");
+          fprintf(outF, "promote_count,promote_bytes,promote_time,");
+          outputGCColNames(outF, "global"); fprintf(outF, ",");
+          outputGCColNames(outF, "large");
+          fprintf(outF, "\n");
+        }
 
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
@@ -656,8 +661,8 @@ void ReportGCStats ()
     else {
       // print the header
         fprintf(outF, "         Time                    Minor GCs                          Major GCs                      Promotions                    Global GCs                     Large-objects\n");
-        fprintf(outF, "     total    gc      num   alloc     copied      time    num   alloc      copied     time     num    bytes   time    num   alloc     copied      time     alloc   freed   time\n");
-        fprintf(outF, "--- ------- ------- ------ ------- ------------- ------- ----- ------- ------------- ------- ------- ------- ------- ----- ------- ------------- -------  ------- ------- -------\n");
+        fprintf(outF, "     total    gc      num   alloc     copied      time    num   alloc      copied     time     num    bytes   time    num   alloc     copied      time    num   alloc   freed   time\n");
+        fprintf(outF, "--- ------- ------- ------ ------- ------------- ------- ----- ------- ------------- ------- ------- ------- ------- ----- ------- ------------- ------- ----- ------- ------- -------\n");
         if (DetailStatsFlg && (NumVProcs > 1)) {
           // report per-vproc stats
             for (int i = 0;  i < NumVProcs;  i++) {
@@ -694,6 +699,7 @@ void ReportGCStats ()
                 PrintPct (outF, vp->globalStats.nBytesCopied, vp->globalStats.nBytesCollected);
                 PrintTime (outF, globalT);
               // large-objects
+                fprintf (outF, " %5d", nLargeObjs);
                 PrintNum (outF, 7, vp->largeObjStats.nBytesAlloc);
                 PrintNum (outF, 7, vp->largeObjStats.nBytesCollected);
                 PrintTime (outF, largeObjT);
@@ -730,6 +736,7 @@ void ReportGCStats ()
         PrintPct (outF, totGlobal.nBytesCopied, totGlobal.nBytesCollected);
         PrintTime (outF, timeScale * totGlobal.time);
       // large-objects
+        fprintf (outF, " %5d", nLargeObjs);
         PrintNum (outF, 7, totLargeObj.nBytesAlloc);
         PrintNum (outF, 7, totLargeObj.nBytesCollected);
         PrintTime (outF, timeScale * totLargeObj.time);

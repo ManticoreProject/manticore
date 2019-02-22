@@ -120,7 +120,7 @@ struct struct_vproc {
     uint32_t	nPromotes;	//!< number of promotions
     uint32_t	nMinorGCs;	//!< number of minor GCs by this vproc
     uint32_t	nMajorGCs;	//!< number of major GCs by this vproc
-    uint32_t  nLargeObjs; // number of large objects allocated by this vproc
+    uint64_t  nLargeObjs; // number of large objects allocated by this vproc
     GCCntrs_t	minorStats;	//!< information about minor GCs on this vproc
     GCCntrs_t	majorStats;	//!< information about major GCs on this vproc
     GCCntrs_t	globalStats;	//!< information about this vproc's part in global GCs.
