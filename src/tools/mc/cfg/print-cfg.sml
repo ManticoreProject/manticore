@@ -117,11 +117,11 @@ structure PrintCFG : sig
 			| (CFG.LK_Func _, CFG.StdCont _) =>
                             ("cont ", CFG.paramsOfConv(entry, args), NONE)
 
-			| (CFG.LK_Func _, CFG.KnownFunc _) =>
-                            ("kfun ", CFG.paramsOfConv(entry, args), NONE)
+			| (CFG.LK_Func _, CFG.KnownConv _) =>
+                            ("kconv ", CFG.paramsOfConv(entry, args), NONE)
 
-            | (CFG.LK_Func _, CFG.KnownDirectFunc{ret=retTys,...}) =>
-                            ("ds-kfun ", CFG.paramsOfConv(entry, args), SOME retTys)
+            | (CFG.LK_Func _, CFG.KnownDirectConv{ret=retTys,...}) =>
+                            ("ds-kconv ", CFG.paramsOfConv(entry, args), SOME retTys)
 
 			| (CFG.LK_Block _, _) => ("block ", args, NONE)
 			| _ => raise Fail "bogus function"

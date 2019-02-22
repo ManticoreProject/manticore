@@ -45,23 +45,24 @@ structure CFG =
 				(* it uses the standard continuation-calling convention *)
 	    clos : var		  (* closure parameter *)
 	  }
-      | KnownFunc of {		(* a function/continuation for which we know all of its call sites *)
-				(* and only known functions are called from those sites (Serrano's *)
-				(* "T" property).  It uses a specialized calling convention. *)
+      | KnownConv of {		(* a function/continuation for which we know all of *)
+                                (* its call sites and only known functions are called *)
+                                (* from those sites.  Thus, we know its calling *)
+                                (* convention and can specialize it (Serrano's T property) *)
 	    clos : var		  (* closure parameter *)
           }
-          
-      | StdDirectFunc of {		(* a direct-style function that may be called from unknown sites*)
+
+      | StdDirectFunc of {      (* a direct-style function that may be called from unknown sites *)
 	    clos : var,		  (* closure parameter *)
 	    exh : var,		  (* exception-handler parameter *)
-        ret : ty list
+            ret : ty list
 	  }
-      
-      | KnownDirectFunc of {		(* a direct-style function for which all call sites are known *)
+
+      | KnownDirectConv of {    (* a direct-style function for which all call sites are known *)
 	    clos : var,		  (* closure parameter *)
-        ret : ty list
+            ret : ty list
 	  }
-      
+
 
     and exp
       = E_Var of var list * var list            (* parallel assignment *)
@@ -90,17 +91,17 @@ structure CFG =
       = StdApply of {f : var, clos : var, args : var list, ret : var, exh : var}
       | StdThrow of {k : var, clos : var, args : var list}
       | Apply of {f : var, clos : var, args : var list}
-      
-      (* Call is a direct-style Apply 
+
+      (* Call is a direct-style Apply
          the presence of the 'next' field determines whether it is a tail or non-tail call.
-         
+
          In the case of a non-tail call:
-         
+
          - the var list represents the bindings for the values returned by the call.
          - the jump represents the goto performed after the call returns.
              if any of the values returned by the call is needed in the goto block,
              it must be included in the list of vars of the jump to carry them over.
-             
+
         The type of f determines the convention: If it is a ds-stdfun, then the
         last argument is always the exception handler.
        *)
@@ -110,13 +111,13 @@ structure CFG =
           args : var list,
           next : (var list * jump) option
       }
-                    
+
       (* a direct-style Throw of a return continuation corresponding to a Call.
-         We attach the name of the enclosing function to aid analysis and 
+         We attach the name of the enclosing function to aid analysis and
          answer simple questions such as where this return might go to.
        *)
       | Return of { args : var list, name : label }
-      
+
       | Goto of jump
       | If of (cond * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
@@ -181,7 +182,7 @@ structure CFG =
     end
 
     local
-        val { getFn : label -> label list, 
+        val { getFn : label -> label list,
               setFn : (label * label list) -> unit,
               peekFn : label -> label list option,
               clrFn : label -> unit, ... } =
@@ -252,9 +253,9 @@ structure CFG =
   (* project out the parameters of a convention *)
     fun paramsOfConv (StdFunc{clos, ret, exh}, params) = clos :: params @ [ret, exh]
       | paramsOfConv (StdCont{clos}, params) = clos::params
-      | paramsOfConv (KnownFunc{clos}, params) = clos::params
+      | paramsOfConv (KnownConv{clos}, params) = clos::params
       | paramsOfConv (StdDirectFunc {clos, exh,...}, params) = clos :: params @ [exh]
-      | paramsOfConv (KnownDirectFunc {clos,...}, params) = clos :: params
+      | paramsOfConv (KnownDirectConv {clos,...}, params) = clos :: params
 
     fun mkBlock (lab, args, body, exit) = let
         val block = BLK{lab=lab, args=args, body=body, exit=exit}
@@ -282,11 +283,11 @@ structure CFG =
     fun mkCFun arg = (
 	  Label.setKind (#var arg, LK_Extern(#name arg));
 	  CFunctions.CFun arg)
-      
+
     fun mkMantiExtern lab = (
 	  Label.setKind (lab, LK_Extern(Label.nameOf lab)) ;
       lab)
-      
+
 
     fun mkModule (name, externs, mantiExterns, code) = MODULE{
 	    name = name,

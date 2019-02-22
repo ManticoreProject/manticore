@@ -764,7 +764,7 @@ structure DirectFlatClosureWithCFA : sig
                 val env = insertVar(env, ret, RetCont)
                 val retTys = retTyOf ret
                 val clos = envPtrOf env
-                val conv = CFG.KnownDirectFunc {
+                val conv = CFG.KnownDirectConv {
                         clos = clos,
                         ret = retTys
                       }

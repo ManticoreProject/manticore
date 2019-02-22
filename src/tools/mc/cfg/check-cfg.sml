@@ -146,21 +146,21 @@ structure CheckCFG : sig
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
 
-                  | (CFG.KnownFunc {clos},
+                  | (CFG.KnownConv{clos},
                      Ty.T_KnownFunc {clos = closTy, args = argTys}) => (
-                      checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " clos"],
+                      checkArgTypes(TyU.equal, concat["KnownConv ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
-                      checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " args"],
+                      checkArgTypes(TyU.equal, concat["KnownConv ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
 
-                  | (CFG.KnownDirectFunc {clos, ret},
+                  | (CFG.KnownDirectConv{clos, ret},
                      Ty.T_KnownDirFunc {clos = closTy, args = argTys, ret = retTy}) => (
-                      checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " clos"],
+                      checkArgTypes(TyU.equal, concat["KnownDirectConv ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
-                      checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " args"],
+                      checkArgTypes(TyU.equal, concat["KnownDirectConv ", l2s lab, " args"],
                                     argTys, typesOf args);
-                      checkArgTypes(TyU.equal, concat["KnownDirFunc ", l2s lab, " retTy"],
+                      checkArgTypes(TyU.equal, concat["KnownDirectConv ", l2s lab, " retTy"],
                                     retTy, ret);
                       addVars(VSet.empty, clos::args))
 
@@ -169,8 +169,8 @@ structure CheckCFG : sig
                             (case conv
                               of CFG.StdFunc _ => "stdfunc"
                                | CFG.StdCont _ => "stdcont"
-                               | CFG.KnownFunc _ => "known"
-                               | CFG.KnownDirectFunc _ => "ds-kfun"
+                               | CFG.KnownConv _ => "known-conv"
+                               | CFG.KnownDirectConv _ => "ds-known-conv"
                                | CFG.StdDirectFunc _ => "ds-stdfun"
                              (* end case *)),
                             " (expected ", TyU.toString ty, ")\n"];
