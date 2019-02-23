@@ -82,6 +82,23 @@ _GSYM(ASM_LongJmp2):
     // **** fall-through to EscapeThrow ****
 .p2align 4, 0x90              // must pad with NOPs!
 _GSYM(ASM_DS_EscapeThrow):
+
+#if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOCOPY_OVERFLOW) && !defined(LAZY_UNDERFLOW)
+  // NOTE: this is only safe to do because every capture seals off the
+  // the segment and begins operating in a new one, thus we always know
+  // the current segment != new segment being thrown to.
+  //
+  // I believe we could do a pointer comparison, and if not equal, it would be safe
+  // to do free the segment in the case of _not_ sealing off the segment
+  // on capture, i.e., NOCOPY_OVERFLOW. It's not as crucial of an optimization
+  // in this case anyways (it becomes uncommon), so I've omitted it. ~kavon
+
+  // then whichever segment we were operating in is no longer live, so
+  // we can try to free it if it belongs to us.
+  movq      STD_CONT(VPROC_PTR_REG), TMP_REG1
+  callq     _GSYM(ASM_TryFreeSegment)
+#endif
+
     // set the stack ptr.
     movq    8(STD_EP_REG), %rsp
     // set stack descriptor
@@ -193,14 +210,22 @@ manti_growstack_impl:
 
 #endif // segmented or resize stack
 
-
-
-// This version is primarily for segmented stacks a la Bruggeman et al.
 .p2align 4, 0xCC
-.globl	_GSYM(ASM_DS_SegUnderflow)
-_GSYM(ASM_DS_SegUnderflow):
-    // grab current segment
-    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
+.globl	_GSYM(ASM_TryFreeSegment)
+_GSYM(ASM_TryFreeSegment):
+// because we need the ability to free the current segment in-line with manticore code,
+// this function will do so without clobbering manticore registers
+// NOTE: convention is to use call/ret
+
+// INPUTS:
+// VPROC_PTR_REG = vproc
+// TMP_REG1      = the segment to be freed.
+// (%rsp)        = address to return to when done.
+//
+// OUTPUTS:
+// VPROC_PTR_REG = vproc ptr
+// TMP_REG1      = the (maybe now freed) segment input to this function.
+
 
     // Check if this segment can be reclaimed by the current
     // vproc. If we're not the one who allocated it,
@@ -208,16 +233,9 @@ _GSYM(ASM_DS_SegUnderflow):
     // list, and it's unsafe to free it as ours without synchronization.
     movq   OWNER(TMP_REG1), TMP_REG0
     cmpq   VPROC_PTR_REG, TMP_REG0      // is this segment in our alloc queue?
-    jne    doneFreeing                  // if not, we can't free it now.
+    jne    finished                     // if not, we can't free it now.
 
-#ifndef LAZY_UNDERFLOW
-    /////////
-    // remove current segment from allocated list,
-    // which is doubly linked to support this operation.
-    // refer to FreeStacks in minor-gc.c
-    /////////
-
-// this is okay since it's definitely not live on underflow.
+// this is okay since it's definitely not live during function entry/exit.
 #define SPARE_REG    %r8
 
     movq    LIST_NEXT(TMP_REG1), TMP_REG0  // get allocdNext
@@ -255,8 +273,27 @@ prevTestJoin:
 
     // done with freeing the current segment
     /////////////
+finished:
+    retq
+
+
+
+
+// This version is primarily for segmented stacks a la Bruggeman et al.
+.p2align 4, 0xCC
+.globl	_GSYM(ASM_DS_SegUnderflow)
+_GSYM(ASM_DS_SegUnderflow):
+    // grab current segment
+    movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
+
+#ifndef LAZY_UNDERFLOW
+    /////////
+    // remove current segment from allocated list,
+    // which is doubly linked to support this operation.
+    // refer to FreeStacks in minor-gc.c
+    /////////
+    callq  _GSYM(ASM_TryFreeSegment)
 #endif
-doneFreeing:
 
     // grab the previous segment descriptor
     // from the current segment
