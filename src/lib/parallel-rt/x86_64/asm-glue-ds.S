@@ -88,10 +88,12 @@ _GSYM(ASM_DS_EscapeThrow):
   // the segment and begins operating in a new one, thus we always know
   // the current segment != new segment being thrown to.
   //
-  // I believe we could do a pointer comparison, and if not equal, it would be safe
-  // to do free the segment in the case of _not_ sealing off the segment
-  // on capture, i.e., NOCOPY_OVERFLOW. It's not as crucial of an optimization
-  // in this case anyways (it becomes uncommon), so I've omitted it. ~kavon
+  // It is _not_ safe if NOCOPY_OVERFLOW, i.e., when we do _not_ seal off on
+  // every capture because the current segment may have a live cont capture
+  // still in it. Consider code that captures a cont, stores it somewhere,
+  // and then immediately throws to a different continuation.
+  // Then the current segment still has a live captured cont in memory.
+  // ~kavon
 
   // then whichever segment we were operating in is no longer live, so
   // we can try to free it if it belongs to us.
