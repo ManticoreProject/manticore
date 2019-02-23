@@ -166,6 +166,7 @@ ACX_PTHREAD()
 dnl
 dnl check for various library routines etc.
 dnl
+AC_CHECK_FUNCS(aligned_alloc)
 AC_CHECK_FUNCS(posix_memalign)
 if test x"$ac_cv_func_posix_memalign" != xyes ; then
   AC_CHECK_FUNCS(memalign)

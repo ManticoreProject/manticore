@@ -247,13 +247,22 @@ void *NewVProc (void *arg)
   // alocate the vproc's local heap
     Addr_t vprocHeap = AllocVProcMemory (initData->id, initData->loc);
     if (vprocHeap == 0) {
-	Die ("unable to allocate memory for vproc %d\n", initData->id);
+	Die ("unable to allocate heap for vproc %d\n", initData->id);
     }
 
   /* we want 64-byte alignment for the whole object so that the 64-byte-aligned
    * fields are actually aligned on 64-byte boundaries.
    */
-   VProc_t *vproc = (VProc_t*) aligned_alloc(64, sizeof(VProc_t));
+#ifdef HAVE_ALIGNED_ALLOC
+    VProc_t *vproc = (VProc_t*) aligned_alloc(64, sizeof(VProc_t));
+#elif HAVE_POSIX_MEMALIGN
+    VProc_t *vproc;
+    if (posix_memalign ((void **)&vproc, 64, sizeof(VProc_t)) != 0) {
+	Die ("Unable to allocate vproc\n");
+    }
+#else
+#  error no way to allocate aligned memory block
+#endif
 
     VProcs[initData->id] = vproc;
 

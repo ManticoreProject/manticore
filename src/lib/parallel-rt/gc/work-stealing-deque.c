@@ -37,15 +37,21 @@ static WorkGroupList_t **PerVProcLists;
 void M_InitWorkGroupList ()
 {
     PerVProcLists = NEWVEC(WorkGroupList_t*, NumVProcs);
-    for (int i = 0; i < NumVProcs; i++)
+    for (int i = 0; i < NumVProcs; i++) {
 	PerVProcLists[i] = NULL;
+    }
 }
 
 static WorkGroupList_t *FindWorkGroup (VProc_t *self, uint64_t workGroupId)
 {
-    for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next)
-	if (wgList->workGroupId == workGroupId)
+    for (WorkGroupList_t *wgList = PerVProcLists[self->id];
+         wgList != NULL;
+         wgList = wgList->next)
+    {
+	if (wgList->workGroupId == workGroupId) {
 	    return wgList;        // found an entry for the work group
+        }
+    }
     // found no entry for the given work group, so create such an entry and return it
     WorkGroupList_t *new = NEW(WorkGroupList_t);
     new->workGroupId = workGroupId;
@@ -94,14 +100,24 @@ static Deque_t *DequeAlloc (VProc_t *self, int32_t size)
    * between deque memory by aligning each deque's memory chunk.
    */
     uint32_t dequeAlignSzB = 1 << CeilingLg (dequeSzB);  // next power of two greater than the deque size
+#ifdef HAVE_ALIGNED_ALLOC
     Deque_t *deque = (Deque_t*) aligned_alloc(dequeAlignSzB, dequeSzB);
+#elif HAVE_POSIX_MEMALIGN
+    Deque_t *deque;
+    if (posix_memalign ((void **)&deque, dequeAlignSzB, dequeSzB) != 0) {
+	Die ("Unable to allocate deque\n");
+    }
+#else
+#  error no way to allocate aligned memory block
+#endif
 
     deque->new = 0;
     deque->old = 0;
     deque->maxSz = size;
     deque->nClaimed = 1;         // implicitly claim the deque for the allocating process
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < size; i++) {
 	deque->elts[i] = M_NIL;
+    }
     // add the deque to the list of deques owned by the work group
     return deque;
 }
@@ -152,10 +168,12 @@ Value_t M_ResumeDequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size)
  */
 static int DequeNumElts (Deque_t *deque)
 {
-    if (deque->old <= deque->new)
+    if (deque->old <= deque->new) {
 	return deque->new - deque->old;
-    else  // wrapped around
+    }
+    else { // wrapped around
 	return deque->maxSz - deque->old + deque->new;
+    }
 }
 
 static DequeList_t *PruneDequeList (DequeList_t *deques)
@@ -163,10 +181,12 @@ static DequeList_t *PruneDequeList (DequeList_t *deques)
     DequeList_t *new = NULL;
 
     for (DequeList_t *next = deques; next != NULL; next = next->next) {
-	if (DequeNumElts (next->deque) == 0 && next->deque->nClaimed == 0)
+	if (DequeNumElts (next->deque) == 0 && next->deque->nClaimed == 0) {
 	    FREE(next->deque);
-	else
+        }
+	else {
 	    new = ConsDeque (next->deque, new);
+        }
     }
 
     for (DequeList_t *next = deques; next != NULL; ) {
@@ -184,8 +204,9 @@ static DequeList_t *PruneDequeList (DequeList_t *deques)
 static void Prune (VProc_t *self)
 {
     WorkGroupList_t *wgList = PerVProcLists[self->id];
-    for (; wgList != NULL; wgList = wgList->next)
+    for (; wgList != NULL; wgList = wgList->next) {
 	wgList->resumeDeques = PruneDequeList (wgList->resumeDeques);
+    }
 }
 
 /* \brief number of roots needed for deques on the given vproc
