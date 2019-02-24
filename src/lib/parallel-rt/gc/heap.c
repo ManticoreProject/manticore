@@ -123,6 +123,9 @@ void HeapInit (Options_t *opts)
     dfltStackSz = GetSizeOpt (opts, "-stacksz", ONE_K, 8 * ONE_MEG);
 #endif
 
+    if (dfltStackSz < ONE_K)
+      dfltStackSz = ONE_K;
+
     MajorGCThreshold = GetSizeConfig ("MAJOR_GC_THRESHOLD", ONE_K, VP_HEAP_SZB / 10);
     if (MajorGCThreshold < MIN_NURSERY_SZB)
       MajorGCThreshold = MIN_NURSERY_SZB;
