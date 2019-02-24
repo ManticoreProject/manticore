@@ -215,6 +215,8 @@ void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
 
         if (prev != NULL)
           prev->next = cur;
+        else
+          vp->freeStacks = cur;
 
         prev = cur;
         cur = cur->next;
@@ -286,7 +288,7 @@ void FreeStacks(VProc_t *vp, Age_t epoch) {
   #ifndef NO_GC_STATS
       TIMER_Start(&(vp->largeObjStats.timer));
   #endif
-  
+
     StackInfo_t* allocd = vp->allocdStacks;
 
     while (allocd != NULL) {

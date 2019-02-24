@@ -184,15 +184,17 @@ ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
 
   while (cur != NULL && checked < FIRST_FIT_MAX_CHK) {
     if (cur->usableSpace >= requiredSpace) {
-      // unlink cur from the free-list.
-      if (prev != NULL)
-        prev->next = cur->next;
+
+      // unlink cur
+      if (prev == NULL)
+        vp->freeStacks = cur->next;
       else
-        vp->freeStacks = NULL;
+        prev->next = cur->next;
 
       return cur;
     }
-    // check next
+
+    // advance
     prev = cur;
     cur = cur->next;
     checked++;
