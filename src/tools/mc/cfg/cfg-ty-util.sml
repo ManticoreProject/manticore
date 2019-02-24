@@ -69,7 +69,7 @@ structure CFGTyUtil : sig
             | (CTy.T_Raw rty1, CTy.T_Raw rty2) => rty1 = rty2
             | (CTy.T_Tuple(mut1, tys1), CTy.T_Tuple(mut2, tys2)) =>
                  mut1 = mut2 andalso equalList (tys1, tys2)
-            | (CTy.T_OpenTuple tys1, CTy.T_OpenTuple tys2) => 
+            | (CTy.T_OpenTuple tys1, CTy.T_OpenTuple tys2) =>
                  equalList (tys1, tys2)
 	    | (CTy.T_Addr ty1, CTy.T_Addr ty2) => equal (ty1, ty2)
 	    | (CTy.T_CFun c_proto1, CTy.T_CFun c_proto2) => c_proto1 = c_proto2
@@ -79,23 +79,23 @@ structure CFGTyUtil : sig
                CTy.T_StdFun{clos = clos2, args = args2, ret = ret2, exh = exh2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2) andalso
                   equal (ret1, ret2) andalso equal (exh1, exh2)
-            | (CTy.T_StdCont{clos = clos1, args = args1}, 
+            | (CTy.T_StdCont{clos = clos1, args = args1},
                CTy.T_StdCont{clos = clos2, args = args2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2)
-            | (CTy.T_KnownFunc{clos = clos1, args = args1}, 
-               CTy.T_KnownFunc{clos = clos2, args = args2}) => 
+            | (CTy.T_KnownFunc{clos = clos1, args = args1},
+               CTy.T_KnownFunc{clos = clos2, args = args2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2)
-                  
-            | (CTy.T_KnownDirFunc{clos = clos1, args = args1, ret = rets1}, 
-               CTy.T_KnownDirFunc{clos = clos2, args = args2, ret = rets2}) => 
+
+            | (CTy.T_KnownDirFunc{clos = clos1, args = args1, ret = rets1},
+               CTy.T_KnownDirFunc{clos = clos2, args = args2, ret = rets2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2)
                   andalso equalList (rets1, rets2)
-                  
+
             | (CTy.T_StdDirFun{clos = clos1, args = args1, ret = rets1, exh = exh1},
                CTy.T_StdDirFun{clos = clos2, args = args2, ret = rets2, exh = exh2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2) andalso
                   equalList (rets1, rets2) andalso equal (exh1, exh2)
-                  
+
             | _ => false
 	  (* end case *))
     and equalList (tys1, tys2) = ListPair.allEq equal (tys1, tys2)
@@ -115,7 +115,7 @@ structure CFGTyUtil : sig
 	  (* the following shouldn't be here, since it isn't really sound, but we need it
 	   * to handle surface-language polymorphism, which is translated to T_Any.
 	   *)
-	    | (CTy.T_Any, toTy) => isKind CTy.K_ANY (kindOf toTy)  
+	    | (CTy.T_Any, toTy) => isKind CTy.K_ANY (kindOf toTy)
 	    | (CTy.T_Enum w1, CTy.T_Enum w2) => (w1 <= w2)
 	    | (CTy.T_Enum _, CTy.T_Tuple _) => true
 	    | (CTy.T_Tuple(isMut1, tys1), CTy.T_Tuple(isMut2, tys2)) =>
@@ -142,7 +142,7 @@ structure CFGTyUtil : sig
                   ListPair.allEq match (args2, args1) andalso
                   match (ret2, ret1) andalso
                   match (exh2, exh1)
-            | (CTy.T_StdCont{clos = clos1, args = args1}, 
+            | (CTy.T_StdCont{clos = clos1, args = args1},
                CTy.T_StdCont{clos = clos2, args = args2}) =>
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
@@ -152,7 +152,7 @@ structure CFGTyUtil : sig
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1))
-                  
+
             | (CTy.T_StdDirFun{clos = clos1, args = args1, ret = rets1, exh = exh1},
                CTy.T_StdDirFun{clos = clos2, args = args2, ret = rets2, exh = exh2}) =>
               (* Note contravariance for arguments! *)
@@ -160,14 +160,14 @@ structure CFGTyUtil : sig
                   ListPair.allEq match (args2, args1) andalso
                   ListPair.allEq match (rets2, rets1) andalso
                   match (exh2, exh1)
-                  
+
             | (CTy.T_KnownDirFunc{clos = clos1, args = args1, ret = rets1},
                CTy.T_KnownDirFunc{clos = clos2, args = args2, ret = rets2}) =>
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1) andalso
                   ListPair.allEq match (rets2, rets1)
-                  
+
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
@@ -212,7 +212,7 @@ structure CFGTyUtil : sig
           | CTy.T_StdDirFun {clos, args, ret, exh} => concat[
 		    "ds-fun(", toString clos, "/", args2s args, "/", toString exh, "->", args2s ret, ")"
 		  ]
-                
+
 	    (* end case *)
 	  end
 
