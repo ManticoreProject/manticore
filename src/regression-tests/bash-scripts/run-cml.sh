@@ -16,6 +16,8 @@ REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
 LOG="$DIR/LOG-CML"
 
+FAIL_MSG="test has FAILED"
+
 # allow core dumps
 ulimit -c unlimited
 
@@ -48,13 +50,13 @@ do
 	 else
 	   echo "***** Check failed for goal $g in file $f." >> $REPORT
 	   diff $fname.test $fname.ok >> $REPORT
-           echo "fail" >> $LOG
-	   echo "fail"
+           echo "$FAIL_MSG" >> $LOG
+	   echo "FAIL"
 	 fi
        else
 	 echo "***** Compile failed for goal $g in file $f." >> $REPORT
-         echo "fail" >> $LOG
-	 echo "fail"
+         echo "$FAIL_MSG" >> $LOG
+	 echo "FAIL"
        fi
        rm -f a.out $fname.s $fname.test $fname.ll ${fname}_opt.bc
        rm -rf a.out.dSYM
@@ -66,5 +68,5 @@ done
 )
 echo "Report available at: $REPORT"
 
-NUM_FAILS=$(grep -c 'fail' < $LOG)
+NUM_FAILS=$(grep -c "test has FAILED" < $LOG)
 exit $NUM_FAILS
