@@ -8,7 +8,7 @@ ABSPATH="$(cd "${0%/*}" 2>/dev/null; echo "$PWD"/"${0##*/}")"
 DIR=`dirname "$ABSPATH"`/..
 # set the BACKEND flag
 PMLC="sml @SMLcmdname=pmlc @SMLload=$DIR/../../src/tools/mc/pmlc"
-PMLCFLAGS="-sequential -Cmatch.check=true $BACKEND"
+PMLCFLAGS="-sequential $BACKEND"
 #PMLCFLAGS="-sequential -Cmatch.check=true -Ccps.enable-ho-inline=true -Cstats.report=true -Ccps.copy-propagation-reflow=true"
 
 DATE=$( date +"%F-%H-%M-%S" )
@@ -66,5 +66,5 @@ done
 
 echo "Report available at: $REPORT"
 
-! grep fail $LOG
-exit $?
+NUM_FAILS=$(grep -c 'fail' < $LOG)
+exit $NUM_FAILS

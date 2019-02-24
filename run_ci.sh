@@ -74,8 +74,9 @@ touch $CI_REPORT
 # $3 = aout flags
 runTest () {
     AOUTFLAGS="$3" BACKEND="$1" $TIMEOUT 20m "./src/regression-tests/bash-scripts/$2"
-    if [ "$?" -ne 0 ]; then
-        echo "$1, $2, $3" >> $CI_REPORT
+    RET_CODE="$?"
+    if [ "$RET_CODE" -ne 0 ]; then
+        echo "$RET_CODE fails for $1, $2, $3" >> $CI_REPORT
     fi
 }
 

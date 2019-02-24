@@ -65,5 +65,5 @@ done
 )
 echo "Report available at: $REPORT"
 
-! grep fail $LOG
-exit $?
+NUM_FAILS=$(grep -c 'fail' < $LOG)
+exit $NUM_FAILS
