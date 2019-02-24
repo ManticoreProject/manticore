@@ -371,30 +371,62 @@ doShutdown:
 
               /* is there a pending signal that we can deliver? */
                 if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
-                Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
-                                                    vp->stdEnvPtr, // stack ptr
-                                                    vp->stdCont); // stack info
+                  StackInfo_t* curInfo = (StackInfo_t*) vp->stdCont;
+
+                  Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
+                                                      vp->stdEnvPtr, // stack ptr
+                                                      (Value_t)curInfo); // stack info
 
                   /* pass the signal to scheduling code in the BOM runtime */
 
-            closObj = ValueToClosure(vp->schedCont);
-            envP = closObj->ep;
-            codeP = ValueToAddr(closObj->cp);
-            arg = resumeK;
-            exnCont = M_UNIT;
-            vp->atomic = M_TRUE;
-            vp->sigPending = M_FALSE;
-            LogPreemptSignal(vp);
+                      vp->atomic = M_TRUE;
+                      vp->sigPending = M_FALSE;
+                      LogPreemptSignal(vp);
 
-            stkPtr = vp->stdEnvPtr;
+                  #if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOCOPY_OVERFLOW)
 
-            #if defined(SEGSTACK) || defined(RESIZESTACK)
-              // set stack limit
-              vp->stdEnvPtr = GetStkLimit((StackInfo_t*) vp->stdCont);
-            #endif
+                      // after capturing the resumeK, we need to execute in a new segment
+                      #ifndef NO_GC_STATS
+                          TIMER_Start(&(vp->largeObjStats.timer));
+                      #endif
 
-            LogRunThread(vp, 0);
-            ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
+                      curInfo = NewStackForClos(vp, vp->schedCont);
+
+                      #ifndef NO_GC_STATS
+                          TIMER_Stop(&(vp->largeObjStats.timer));
+                      #endif
+
+                      vp->stdCont = (Value_t) curInfo;
+
+                      stkPtr = GetCurrentSP(curInfo);
+                      envP = M_UNIT;
+                      exnCont = M_UNIT;
+                      arg = resumeK;
+
+                      vp->stdEnvPtr = GetStkLimit(curInfo);
+
+                      LogRunThread(vp, 0);
+                      ASM_Resume_Stack (vp, stkPtr, envP, exnCont, arg);
+                  #else
+
+
+                      closObj = ValueToClosure(vp->schedCont);
+                      envP = closObj->ep;
+                      codeP = ValueToAddr(closObj->cp);
+                      arg = resumeK;
+                      exnCont = M_UNIT;
+
+                      stkPtr = vp->stdEnvPtr;
+
+                      #if defined(SEGSTACK) || defined(RESIZESTACK)
+                        // set stack limit
+                        vp->stdEnvPtr = GetStkLimit(curInfo);
+                        SetCanCopy(curInfo, 0);
+                      #endif
+
+                      LogRunThread(vp, 0);
+                      ASM_DS_Apply(vp, codeP, envP, exnCont, arg, stkPtr);
+                  #endif // end handling for capturing resumeK
 
                 }
                 else {

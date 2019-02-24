@@ -268,11 +268,7 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
     return info;
 }
 
-// NOTE: exposed to BOM code.
-Value_t NewStack (VProc_t *vp, Value_t funClos) {
-  #ifndef NO_GC_STATS
-      TIMER_Start(&(vp->largeObjStats.timer));
-  #endif
+StackInfo_t* NewStackForClos(VProc_t *vp, Value_t funClos) {
     StackInfo_t* info = GetStack(vp, dfltStackSz);
 
     uint64_t* sp = (uint64_t*)(info->initialSP);
@@ -293,6 +289,20 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
     sp[-4] = (uint64_t)&ASM_DS_StartStack;
     sp = sp - 4;
 
+    info->currentSP = sp;
+
+    return info;
+}
+
+// NOTE: exposed to BOM code.
+Value_t NewStack (VProc_t *vp, Value_t funClos) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
+
+    StackInfo_t* info = NewStackForClos(vp, funClos);
+    uint64_t* sp = info->currentSP;
+
     // now we need to allocate the stack cont object
     Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
                                         PtrToValue(sp), // stack ptr
@@ -303,6 +313,7 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
     #endif
     return resumeK;
 }
+
 
 StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
   #ifndef NO_GC_STATS
@@ -325,6 +336,14 @@ StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
 
 void* GetStkLimit(StackInfo_t* info) {
     return info->stkLimit;
+}
+
+void* GetCurrentSP(StackInfo_t* info) {
+    return info->currentSP;
+}
+
+void SetCanCopy(StackInfo_t* info, uint64_t val) {
+    info->canCopy = val;
 }
 
 void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {

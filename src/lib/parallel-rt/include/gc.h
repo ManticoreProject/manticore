@@ -17,10 +17,15 @@ extern void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top);
 extern void StartGlobalGC (VProc_t *vp, Value_t **roots);
 extern Value_t PromoteObj (VProc_t *vp, Value_t root);
 
+// NOTE: exposed to BOM.
 extern Value_t NewStack (VProc_t *vp, Value_t funClos);
+
+extern StackInfo_t* NewStackForClos(VProc_t *vp, Value_t funClos);
 extern StackInfo_t* NewMainStack (VProc_t *vp, void** initialSP);
 extern void DeallocateStackMem (VProc_t *vp, StackInfo_t* info);
 extern void* GetStkLimit (StackInfo_t* info);
+extern void* GetCurrentSP (StackInfo_t* info);
+extern void SetCanCopy(StackInfo_t* info, uint64_t val);
 extern void WarmUpFreeList(VProc_t* vp, uint64_t numBytes);
 
 extern void InvalidReturnAddr();
