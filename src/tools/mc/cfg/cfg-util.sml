@@ -24,7 +24,7 @@ structure CFGUtil : sig
 
    (* project the lhs variables of a control transfer *)
     val lhsOfXfer : CFG.transfer -> CFG.var list
-    
+
     (* map a function over all local successors of the transfer. *)
     val mapSuccOfXfer : (CFG.jump -> CFG.jump) -> CFG.transfer -> CFG.transfer
 
@@ -47,6 +47,10 @@ structure CFGUtil : sig
    (* variable substitution over an transfer *)
     val substTransfer : substitution -> CFG.transfer -> CFG.transfer
 
+    val maybeNext : CFG.next_kind -> (CFG.var list * CFG.jump) option
+    val mapNext : ((CFG.var list * CFG.jump) -> (CFG.var list * CFG.jump)) -> CFG.next_kind -> CFG.next_kind
+    val appNext : ((CFG.var list * CFG.jump) -> unit) -> CFG.next_kind -> unit
+
   end = struct
     structure M = CFG
     structure L = List
@@ -55,6 +59,15 @@ structure CFGUtil : sig
     datatype exp = datatype CFG.exp
     datatype convention = datatype CFG.convention
     datatype transfer = datatype CFG.transfer
+
+    fun maybeNext (CFG.NK_Resume xfer) = SOME xfer
+      | maybeNext _ = NONE
+
+    fun mapNext f (CFG.NK_Resume xfer) = CFG.NK_Resume (f xfer)
+      | mapNext f next = next
+
+    fun appNext f (CFG.NK_Resume xfer) = (f xfer ; ())
+      | appNext _ _ = ()
 
   (* return the block that a label is bound to, or NONE if it is external *)
     fun blockOfLabel lab = (case CFG.Label.kindOf lab
@@ -101,14 +114,16 @@ structure CFGUtil : sig
       | varsOfXfer (HeapCheck{nogc=(_, args), ...}) = args
       | varsOfXfer (HeapCheckN{nogc=(_, args), ...}) = args
       | varsOfXfer (AllocCCall{lhs, args, ret=(_, rArgs), ...}) = lhs @ args @ rArgs
-      | varsOfXfer (Call{f, clos, args, next}) = 
+      | varsOfXfer (Call{f, clos, args, next}) =
             (* NOTE(kavon): going with the live vars here *)
-            f :: clos :: args @ (fn (SOME(_,(_,fvNext))) => fvNext | (NONE) => []) next
+            f :: clos :: args @ (fn (SOME(_,(_,fvNext))) => fvNext | (NONE) => []) (maybeNext next)
       | varsOfXfer (Return {args,...}) = args
 
    (* project the lhs variables of a control transfer *)
     fun lhsOfXfer (AllocCCall{lhs, ...}) = lhs
-      | lhsOfXfer (Call{next=SOME(lhs,_), ...}) = lhs
+      | lhsOfXfer (Call{next, ...}) = (case maybeNext next
+                                        of SOME (lhs,_) => lhs
+                                         | NONE => [])
       | lhsOfXfer _ = []
 
   (* project the list of destination labels in a control transfer; note that this function
@@ -128,8 +143,9 @@ structure CFGUtil : sig
       | labelsOfXfer (HeapCheckN{nogc=(lab, _), ...}) = [lab]
       | labelsOfXfer (AllocCCall{ret=(lab, _), ...}) = [lab]
       | labelsOfXfer (Return _) = []
-      | labelsOfXfer (Call {next=SOME(_, (lab, _)), ...}) = [lab]
-      | labelsOfXfer (Call _) = []
+      | labelsOfXfer (Call {next, ...}) = (case maybeNext next
+                                            of SOME(_, (lab, _)) => [lab]
+                                             | NONE => [])
 
   (* project out the parameters of a convention *)
     val paramsOfConv = CFG.paramsOfConv
@@ -158,7 +174,7 @@ structure CFGUtil : sig
    (* variable substitution over an expression *)
     fun substExp (env : substitution) e = let
 	  val substVar = substVar env
-	  in 
+	  in
             case e
 	     of E_Var(lhs, rhs) => CFG.mkVar (lhs, List.map substVar rhs)
 	      | E_Cast(lhs, ty, rhs) => CFG.mkCast (lhs, ty, substVar rhs)
@@ -182,7 +198,7 @@ structure CFGUtil : sig
     fun substTransfer (env : substitution) transfer = let
 	  val sv = substVar env
 	  fun sj (l, args) = (l, List.map sv args)
-	  in 
+	  in
 	    case transfer
 	     of StdApply{f, clos, args, ret, exh} =>
 		  StdApply{f=sv f, clos=sv clos, args=List.map sv args, ret=sv ret, exh=sv exh}
@@ -198,7 +214,7 @@ structure CFGUtil : sig
 		  AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
 	     (* end case *)
 	  end
-      
+
     fun mapSuccOfXfer f xfer = (case xfer
         of Goto j => Goto (f j)
          | If (c, j1, j2) => If (c, f j1, f j2)
@@ -207,7 +223,7 @@ structure CFGUtil : sig
              in
                 Switch(x, L.map chg cases, Option.map f dflt)
              end
-         
+
          | HeapCheck {hck, szb, nogc} => HeapCheck {hck=hck, szb=szb, nogc= f nogc}
          | HeapCheckN {hck, n, szb, nogc} => HeapCheckN {hck=hck, n=n, szb=szb, nogc= f nogc}
          | AllocCCall {lhs, f=tgt, args, ret} =>
@@ -215,9 +231,9 @@ structure CFGUtil : sig
          | Call {f=tgt,clos,args,next} => let
                 fun chg (lhs, jmp) = (lhs, f jmp)
              in
-                Call {f=tgt,clos=clos,args=args, next = Option.map chg next}
+                Call {f=tgt,clos=clos,args=args, next = mapNext chg next}
              end
-         
+
          (* no explicit local transfers *)
          | StdApply _ => xfer
          | StdThrow _ => xfer

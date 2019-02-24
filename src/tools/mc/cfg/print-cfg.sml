@@ -244,14 +244,17 @@ structure PrintCFG : sig
                   prJump("", (l,lhs@rArgs))  (* the post call jump *)
             )
 
-          | CFG.Call {f, clos, args, next=SOME(lhs, (afterL, liveAfter))} => (
+          | CFG.Call {f, clos, args, next=CFG.NK_Resume(lhs, (afterL, liveAfter))} => (
               prCall("call", lhs, f, clos::args);
               indent (i+1);
                 prJump("next", (afterL, liveAfter))
             )
 
-          | CFG.Call {f, clos, args, next=NONE} =>
+          | CFG.Call {f, clos, args, next=CFG.NK_TailRet} =>
               prCall("tailcall", nil, f, clos::args)
+
+          | CFG.Call {f, clos, args, next=CFG.NK_NoReturn} =>
+              prCall("non-ret tailcall", nil, f, clos::args)
 
           | CFG.Return {args, name} => prReturn("return", args, name)
 

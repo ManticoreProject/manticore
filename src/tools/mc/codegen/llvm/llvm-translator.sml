@@ -908,8 +908,8 @@ fun output (outS, module as C.MODULE { name = module_name,
 
                    in
                         (case next
-                            of SOME info => nonTail info
-                             | NONE => tail ()
+                            of C.NK_Resume info => nonTail info
+                             | C.NK_TailRet => tail ()
                             (* esac *))
                    end (* end Call case *)
 

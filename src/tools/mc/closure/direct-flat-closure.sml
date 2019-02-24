@@ -971,7 +971,7 @@ structure DirectFlatClosureWithCFA : sig
                     f = cp,
                     clos = ep,
                     args = [funarg, exnh],
-                    next = SOME (lhs, (labelOf retk, retkArgs))
+                    next = CFG.NK_Resume (lhs, (labelOf retk, retkArgs))
                   }
           in
             (bindLab :: bindEP :: exnBinds @ argBinds, xfer)
@@ -1042,7 +1042,9 @@ structure DirectFlatClosureWithCFA : sig
                             f = cp,
                             clos = ep,
                             args = args @ exnh,
-                            next = NONE
+                            next = if CPSUtil.isUnitRet (hd rets)
+                                    then CFG.NK_NoReturn
+                                    else CFG.NK_TailRet
                           }
                     in
                       (binds' @ exnhBinds @ argBinds, xfer)
@@ -1051,7 +1053,7 @@ structure DirectFlatClosureWithCFA : sig
 
                 fun doCall () = let
 
-                    val (retk :: _) = rets
+                    val retk = hd rets
 
                     (*val _ = prEnv env*)
 
@@ -1084,7 +1086,7 @@ structure DirectFlatClosureWithCFA : sig
                             f = cp,
                             clos = ep,
                             args = args @ exnh,
-                            next = SOME (lhs, (labelOf retk, retkArgs))
+                            next = CFG.NK_Resume (lhs, (labelOf retk, retkArgs))
                           }
                 in
                     (binds' @ exnhBinds @ argBinds, xfer)

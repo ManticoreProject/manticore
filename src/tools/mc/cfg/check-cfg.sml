@@ -529,16 +529,19 @@ structure CheckCFG : sig
                         fun chkAfter env (lhs, jmp) =
                             chkJump(addVars(env, lhs), jmp, name)
 
-                        fun chkLHS retTys (SOME(lhs, _)) =
+                        fun chkLHS retTys (CFG.NK_Resume(lhs, _)) =
                                     checkArgTypes (TyU.match, concat [name, v2s f, " retVals"],
                                                     retTys, typesOf lhs)
 
-                          | chkLHS retTys NONE = (case L.typeOf enclF
+                          | chkLHS retTys (CFG.NK_TailRet) = (case L.typeOf enclF
                               of (Ty.T_StdDirFun{ret,...} | Ty.T_KnownDirFunc{ret,...}) =>
                                     checkArgTypes (TyU.match, concat [name, v2s f, " tailcall"],
                                                    ret, retTys)
                                | _ => error ["tailcall can only appear in a direct-style fun"]
                                (* esac *))
+
+                          (* if it doesn't return, we don't care about the type returned. *)
+                          | chkLHS _ (CFG.NK_NoReturn) = ()
 
                         fun chkTys () = (case V.typeOf f
                             of Ty.T_KnownDirFunc {clos = closTy, args = argTys, ret = retTys} => (
@@ -564,7 +567,7 @@ structure CheckCFG : sig
                      chkVar(env, clos, name);
                      chkVars(env, args, name);
                      chkTys();
-                     Option.app (chkAfter env) next
+                     CFGUtil.appNext (chkAfter env) next
                     )
                   end
 

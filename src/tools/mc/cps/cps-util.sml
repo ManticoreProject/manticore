@@ -21,7 +21,7 @@ structure CPSUtil : sig
 
   (* create a copy of a list of mutually recursive functions *)
     val copyLambdas : CPS.lambda list -> CPS.lambda list
-    
+
   (* project the return/exception continuation vars *)
     val getRetK : CPS.lambda -> CPS.var option
     val getExnK : CPS.lambda -> CPS.var option
@@ -34,6 +34,9 @@ structure CPSUtil : sig
    * according to the given substitution.
    *)
     val copyExp : (subst * CPS.exp) -> CPS.exp
+
+    (* checks if a var is bound to a junk value to represent a non-returning function *)
+    val isUnitRet : CPS.var -> bool
 
   end = struct
 
@@ -331,10 +334,16 @@ structure CPSUtil : sig
 	    List.app (fn (CFunctions.CFun{var, ...}) => func var) externs;
 	    applyToFBs [body]
 	  end
-      
+
       fun getRetK (C.FB{ rets as retk :: _, ...}) = SOME retk
         | getRetK _ = NONE
       and getExnK (C.FB{ rets as [_, exnk], ...}) = SOME exnk
         | getExnK _ = NONE
+
+        fun isUnitRet v = (case CV.kindOf v
+                            of C.VK_Let(C.Cast(_, v)) => isUnitRet v
+                             | C.VK_Let(C.Const _) => true
+                             | _ => false
+                            (* esac *))
 
   end

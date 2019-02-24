@@ -374,7 +374,7 @@ structure CFACFG : sig
                     | CFG.AllocCCall{ret, ...} => addJump ret
                     | CFG.Call{f, next, ...} => (
                         addSet f;
-                        Option.app (doNext f) next)
+                        CFGUtil.appNext (doNext f) next)
                     | CFG.Return _ => ()
                   (* end case *)
                 end
@@ -491,7 +491,7 @@ structure CFACFG : sig
                         doApply (f,
                                  (name ^ " {f = " ^ (CFG.Var.toString f) ^ ", ...}", chk),
                                  clos :: args);
-                        Option.app (fn (_, jmp) => doJump jmp) next
+                        CFGUtil.appNext (fn (_, jmp) => doJump jmp) next
                       end
 
 

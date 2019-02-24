@@ -122,9 +122,9 @@ structure Contract : sig
 		    List.map (fn (tag, jmp) => (tag, contractJump jmp)) cases,
 		    Option.map contractJump dflt)
 	      | C.HeapCheck{hck, szb, nogc} => C.HeapCheck{hck=hck, szb=szb, nogc=contractJump nogc}
-          | C.HeapCheckN{hck, n, szb, nogc} => 
+          | C.HeapCheckN{hck, n, szb, nogc} =>
                     C.HeapCheckN{hck=hck, n = applySubst(env, n), szb=szb, nogc=contractJump nogc}
-	      | C.AllocCCall{lhs, f, args, ret} => 
+	      | C.AllocCCall{lhs, f, args, ret} =>
                    C.AllocCCall{lhs=lhs, f=applySubst(env, f), args=applySubst'(env, args), ret=contractJump ret}
           | C.Return {args, name} => C.Return {args = applySubst'(env, args), name = name}
           | C.Call {f, clos, args, next} =>
@@ -132,7 +132,7 @@ structure Contract : sig
                     f = applySubst(env, f),
                     clos = applySubst(env, clos),
                     args = applySubst'(env, args),
-                    next = Option.map (fn (lhs, jmp) => (lhs, contractJump jmp)) next
+                    next = CFGUtil.mapNext (fn (lhs, jmp) => (lhs, contractJump jmp)) next
                 }
 	    (* end case *)
 	  end
@@ -271,18 +271,18 @@ structure Contract : sig
 	  end
 
   (* delete a function, which includes decrementing the use counts of any labels *)
-    fun deleteFunc (C.FUNC{start, body, ...}) = 
+    fun deleteFunc (C.FUNC{start, body, ...}) =
         ( deleteBlock start;
           List.app deleteBlock body )
-    
+
     and deleteExp (C.E_Label(_, lab)) = Census.decLab lab
 	  | deleteExp _ = ()
-      
+
     and deleteBlock (C.BLK{body, exit, ...}) = (
         ST.tick cntUnusedBlock;
         List.app deleteExp body;
         deleteExit exit)
-        
+
     and deleteExit (exit) = (case exit
          of C.StdApply _ => ()
           | C.StdThrow _ => ()
@@ -295,20 +295,20 @@ structure Contract : sig
           | C.HeapCheck{hck, szb, nogc} => deleteJump nogc
           | C.AllocCCall{lhs, f, args, ret} => deleteJump ret
           | C.Return _ => ()
-          | C.Call{f, clos, args, next} => Option.app (fn (_,jmp) => deleteJump jmp) next
+          | C.Call{f, clos, args, next} => CFGUtil.appNext (fn (_,jmp) => deleteJump jmp) next
         (* end case *))
-	
+
     and deleteJump (lab, _) = Census.decLab lab
-	
+
   (* contract a function *)
     fun contractFunc (func as C.FUNC{lab, entry, start, body}) = let
-        
+
         fun contractBlock (block as C.BLK{lab, args, body, exit}) = let
             val (body,exit) = contractExps (VMap.empty, body, exit)
         in
             C.mkBlock(lab, args, body, exit)
         end
-        
+
         (* specific for body block because we want to avoid accidentially deleting
            the start block *)
         fun contractBodyBlock (block as C.BLK{lab, ...}) =
