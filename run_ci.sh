@@ -40,10 +40,10 @@ llvmOptions=(
 
 segmentLike=(
   "-segstack"
-  "-resizestack"
+  # "-resizestack"
 
   "-segstack -nocopyoverflow"
-  "-resizestack -nocopyoverflow"
+  # "-resizestack -nocopyoverflow"
 )
 
 stacks=(
@@ -57,6 +57,8 @@ stacks=(
   "-Ccshim=true"
   "-contigstack -Ccshim=true"
   "-segstack -Ccshim=false"
+
+  "-resizestack -nocopyoverflow"
 
   # now we test noras
   # "-noras"
@@ -73,7 +75,7 @@ touch $CI_REPORT
 # $2 = script, e.g., run-seq.sh
 # $3 = aout flags
 runTest () {
-    AOUTFLAGS="$3" BACKEND="$1" $TIMEOUT 20m "./src/regression-tests/bash-scripts/$2"
+    AOUTFLAGS="$3" BACKEND="$1" $TIMEOUT 5m "./src/regression-tests/bash-scripts/$2"
     RET_CODE="$?"
     if [ "$RET_CODE" -ne 0 ]; then
         echo "$RET_CODE fails for $1, $2, $3" >> $CI_REPORT
