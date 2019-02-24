@@ -898,18 +898,31 @@ fun output (outS, module as C.MODULE { name = module_name,
                        end (* end nonTail *)
 
 
-                       fun tail _ = let
+                       fun tail doesReturn = let
                             val conv = (AS.singleton A.Tail, LB.jwaCC)
                        in
-                            case (LB.callAs' b conv (f, V.fromList allArgs))
-                            of SOME result => (fn () => [LB.ret b result])
-                             | NONE => (fn () => [LB.retVoid b])
+                          case (LB.callAs' b conv (f, V.fromList allArgs), doesReturn)
+                            of (SOME result, true) => (fn () => [LB.ret b result])
+                             | (NONE, false)       => (fn () => [LB.retVoid b])
+
+                            (* callee has a result type, but it should never return.
+                                we add a trap after the call to ensure nothing
+                                goes wrong. LLVM will emit a callq instruction
+                                no matter what, so the stack will grow :/ *)
+                             | (SOME _, false) => let
+                                     val (trapLab, NONE) = LR.trap
+                                     val NONE = LB.call b (LB.fromV trapLab, #[])
+                                 in
+                                    (fn () => [LB.unreachable b])
+                                 end
+                             | _ => raise Fail "inconsistency in tailcall expectations."
                        end
 
                    in
                         (case next
                             of C.NK_Resume info => nonTail info
-                             | C.NK_TailRet => tail ()
+                             | C.NK_TailRet => tail true
+                             | C.NK_NoReturn => tail false
                             (* esac *))
                    end (* end Call case *)
 
