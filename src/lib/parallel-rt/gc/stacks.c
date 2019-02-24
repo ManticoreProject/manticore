@@ -88,9 +88,9 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
         mem = lo_alloc(vp, totalSz);
 
         if (mem == NULL) {
-            Die("AllocStackMem: unable to allocate memory.");
-            return NULL;
-          }
+          Die("AllocStackMem: unable to allocate memory.");
+          return NULL;
+        }
     }
 
     uint64_t val = (uint64_t) mem;
@@ -465,6 +465,12 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
   StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
   size_t newSize = shouldCopy ? old->usableSpace * 2 : dfltStackSz;
+
+  // the size we grow to is capped.
+  if (newSize > RESIZED_SEG_LIMIT) {
+    newSize = RESIZED_SEG_LIMIT;
+    shouldCopy = false;
+  }
 
   assert(newSize >= dfltStackSz);
   StackInfo_t* fresh = GetStack(vp, newSize);

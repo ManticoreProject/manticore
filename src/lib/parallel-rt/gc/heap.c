@@ -116,11 +116,11 @@ void HeapInit (Options_t *opts)
       MaxNurserySzB = MIN_NURSERY_SZB;
 
 #if defined(SEGSTACK)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 16 * ONE_K);
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", ONE_K, 16 * ONE_K);
 #elif defined(RESIZESTACK)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, ONE_K);
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", ONE_K, ONE_K);
 #elif defined(DIRECT_STYLE)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 100 * ONE_MEG);
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", ONE_K, 8 * ONE_MEG);
 #endif
 
     MajorGCThreshold = GetSizeConfig ("MAJOR_GC_THRESHOLD", ONE_K, VP_HEAP_SZB / 10);

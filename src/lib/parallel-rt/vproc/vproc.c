@@ -60,6 +60,7 @@ int                     *MinVProcPerNode;
 
 #ifdef DIRECT_STYLE
     extern int ASM_DS_VProcSleep;
+    extern size_t dfltStackSz;
 #else
     extern int ASM_VProcSleep;
 #endif
@@ -351,9 +352,9 @@ void *NewVProc (void *arg)
     TIMER_Init (&(vproc->promoteTimer));
 #endif
 
-#if defined(DIRECT_STYLE) && !defined(RESIZESTACK)
-    // warm up the free list with 1MB worth of extra stack
-    WarmUpFreeList(vproc, ONE_MEG);
+#if defined(SEGSTACK) || defined(RESIZESTACK)
+    // warm up the free list
+    WarmUpFreeList(vproc, 64 * dfltStackSz);
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */
