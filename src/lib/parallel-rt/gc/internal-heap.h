@@ -71,7 +71,7 @@ typedef uint64_t Age_t;
   #define MAX_STACK_CACHE_SZ      (2 * (dfltStackSz / ONE_K) * ONE_MEG)
   #define MAX_SEG_SIZE_IN_CACHE   dfltStackSz
 
-  #define MAX_ALLOC_SINCE_GC      (256 * ONE_MEG)
+  #define MAX_ALLOC_SINCE_GC      (256 * ONE_MEG * (dfltStackSz / ONE_K))
 
 #elif defined(RESIZESTACK)
 
