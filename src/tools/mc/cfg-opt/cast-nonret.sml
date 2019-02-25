@@ -16,24 +16,23 @@ structure CastNonRet : sig
     structure C = CFG
     structure CV = CFG.Var
 
-    fun doFn (f as C.FUNC{lab, entry, start, body}) = (case getRetTy entry
-          of NONE => f
-           | SOME retTy => let
-        val start' :: body' = map (doBlk retTy) (start::body)
+    fun doFn (f as C.FUNC{lab, entry, start, body}) = let
+        val retTys = getRetTy entry
+        val start' :: body' = map (doBlk retTys) (start::body)
     in
       C.mkLocalFunc (lab, entry, start', body')
-    end)
+    end
 
-    and doBlk retTy (C.BLK{lab, args, body, exit}) = let
-        val (newBody, newExit) = inspect (retTy, body, exit)
+    and doBlk retTys (C.BLK{lab, args, body, exit}) = let
+        val (newBody, newExit) = inspect (retTys, body, exit)
     in
         C.mkBlock (lab, args, newBody, newExit)
     end
 
 
-    and inspect (retTy, body, exit) = (case exit
+    and inspect (retTys, body, exit) = (case exit
         of C.Call{f, clos, args, next=C.NK_NoReturn} => let
-              val newTy = replaceRetTy retTy (CV.typeOf f)
+              val newTy = replaceRetTy retTys (CV.typeOf f)
               val newF = CV.new("nonRetCast", newTy)
             in (
                 Census.inc newF ;
@@ -49,23 +48,23 @@ structure CastNonRet : sig
         (* end case *))
 
     and replaceRetTy new fnTy = (case fnTy
-        of CFGTy.T_KnownDirFunc {clos, args, ret = (_::rest)} =>
+        of CFGTy.T_KnownDirFunc {clos, args, ret = _} =>
               CFGTy.T_KnownDirFunc { clos=clos,
                                      args=args,
-                                     ret = new::rest }
-         | CFGTy.T_StdDirFun {clos, args, exh, ret = [_]} =>
+                                     ret = new }
+         | CFGTy.T_StdDirFun {clos, args, exh, ret = _} =>
               CFGTy.T_StdDirFun {clos=clos,
                                  args=args,
                                  exh=exh,
-                                 ret = [new]}
+                                 ret = new}
 
                 (* should be able to handle others. just don't expect them. *)
          | _ => raise Fail "unexpected target of non-ret tail call."
          (* end *))
 
-    and getRetTy (C.StdDirectFunc{ret = (r :: _) ,...}) = SOME r
-      | getRetTy (C.KnownDirectConv{ret = (r :: _),...}) = SOME r
-      | getRetTy _ = NONE
+    and getRetTy (C.StdDirectFunc{ret,...}) = ret
+      | getRetTy (C.KnownDirectConv{ret,...}) = ret
+      | getRetTy _ = raise Fail "unexpected function type"
 
     fun transform (m as C.MODULE{name, externs, mantiExterns, code}) =
       if Controls.get BasicControl.direct

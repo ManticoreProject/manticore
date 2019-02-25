@@ -901,10 +901,12 @@ fun output (outS, module as C.MODULE { name = module_name,
                        fun tail doesReturn = let
                             val conv = (AS.singleton A.Tail, LB.jwaCC)
                        in
+                          (* NOTE: a call followed by unreachable will lead to
+                              LLVM not cleaning up the frame and emitting a callq
+                              with an address that is not in the stackmap! *)
                           case (LB.callAs' b conv (f, V.fromList allArgs), doesReturn)
-                            of (SOME result, true) => (fn () => [LB.ret b result])
+                            of (SOME result, _) => (fn () => [LB.ret b result])
                              | (NONE, _)        => (fn () => [LB.retVoid b])
-                             | (SOME result, false) => (fn () => [LB.unreachable b])
                        end
 
                    in
