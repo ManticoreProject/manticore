@@ -66,7 +66,9 @@ void ScanStackMinor (
 
 // #define DEBUG_STACK_SCAN_MINOR
 
+#ifdef DEBUG_STACK_SCAN_MINOR
     uint64_t framesSeen = 0;
+#endif
 
     enum LimitState {
         LS_NoMark,
@@ -523,7 +525,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
     // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
         sprintf(buf, "root[%d]", i);
-        Value_t v = *roots[i];
+        // Value_t v = *roots[i];
         CheckLocalPtrMinor (self, roots[i], buf);
     }
 

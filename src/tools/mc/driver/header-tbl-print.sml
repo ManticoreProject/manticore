@@ -23,6 +23,7 @@ struct
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "#include \"gc-scan.h\"\n");
         TextIO.output (MyoutStrm, "#include \"gc-inline.h\"\n");
+        TextIO.output (MyoutStrm, "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "\n");
         ()

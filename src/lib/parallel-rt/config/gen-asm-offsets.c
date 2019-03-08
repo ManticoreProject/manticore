@@ -61,7 +61,6 @@ int main ()
     LogBuffer_t		logBuffer;
     LogEvent_t		logEvent;
     SchedActStkItem_t	actcons;
-    RdyQItem_t		rdyq, sndq;
     unsigned char	buf[8*1024];
     char		*bp = (char *)buf;
 

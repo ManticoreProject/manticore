@@ -33,11 +33,11 @@ return scanPtr;
 Word_t * globalGCscanSTKCONTpointer (Word_t* ptr, VProc_t *vp) {
 
 Word_t *scanPtr = ptr;
-Word_t hdr = scanPtr[-1];
-int len = GetLength(hdr);
+Word_t hdr __attribute__((unused));
+hdr = scanPtr[-1];
 assert (isStackHdr(hdr));
 const int expectedLen = 3;
-assert(len == expectedLen);
+assert(GetLength(hdr) == expectedLen);
 
 void* stkPtr = (void*)(scanPtr[1]);
 StackInfo_t* stkInfo = (StackInfo_t*)(scanPtr[2]);
@@ -143,6 +143,6 @@ for (; pat > 0; pat >>= 1, scanPtr++) {
 return (ptr+len);
 }
 
-Word_t * globalGCscanPROXYpointer (Word_t* ptr, VProc_t *vp) { 
+Word_t * globalGCscanPROXYpointer (Word_t* ptr, VProc_t *vp) {
   Die("GlobalGC encountered a Proxy object");
 }

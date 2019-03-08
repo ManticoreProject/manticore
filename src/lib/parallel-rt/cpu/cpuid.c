@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 typedef enum {
 	Unknown,
 	Intel,

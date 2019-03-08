@@ -27,11 +27,11 @@ return scanPtr;
 
 Word_t * majorGCscanSTKCONTpointer (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {
 Word_t *scanPtr = ptr;
-Word_t hdr = scanPtr[-1];   // get object header
+Word_t hdr __attribute__((unused));
+hdr = scanPtr[-1];   // get object header
 assert (isStackHdr(hdr));
-int len = GetLength(hdr);
 const int expectedLen = 3;
-assert(len == expectedLen);
+assert(GetLength(hdr) == expectedLen);
 
 void* stkPtr = (void*)(scanPtr[1]);
 StackInfo_t* stkInfo = (StackInfo_t*)(scanPtr[2]);

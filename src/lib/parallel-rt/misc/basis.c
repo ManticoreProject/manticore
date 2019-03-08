@@ -64,7 +64,6 @@ Value_t M_IntFromString (SequenceHdr_t *s)
 	str++;
     }
 
-    Value_t result = M_NONE;
 
     if (len > 0) {
 	int32_t n;
@@ -104,7 +103,6 @@ Value_t M_LongFromString (SequenceHdr_t *s)
 	str++;
     }
 
-    Value_t result = M_NONE;
 
     if (len > 0) {
 	int64_t n;
@@ -469,21 +467,24 @@ void M_PrintFloat (float f)
 int M_ReadInt ()
 {
     int i;
-    int ignored = scanf ("%d\n", &i);
+    int ignored __attribute((unused));
+    ignored = scanf ("%d\n", &i);
     return i;
 }
 
 float M_ReadFloat ()
 {
     float i;
-    int ignored = scanf ("%f", &i);
+    int ignored __attribute((unused));
+    ignored = scanf ("%f", &i);
     return (float)i;
 }
 
 double M_ReadDouble ()
 {
     double i;
-    int ignored = scanf ("%lf", &i);
+    int ignored __attribute((unused));
+    ignored = scanf ("%lf", &i);
     return i;
 }
 

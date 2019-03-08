@@ -241,7 +241,7 @@ void initElapsedTS(){
 void printAndClearEventBuf (VProc_t * vp)
 {
     EventsBuf * ebuf = vp->event_log;
-    uint64_t numBytes = 0, written = 0;
+    uint64_t numBytes = 0;
 
     closeBlockMarker(vp->event_log);
 

@@ -230,7 +230,6 @@ void VProcInit (bool isSequential, Options_t *opts)
 void *NewVProc (void *arg)
 {
     InitData_t	*initData = (InitData_t *)arg;
-    struct sigaction	sa;
 
 #ifndef NDEBUG
     if (DebugFlg) {
@@ -304,7 +303,7 @@ void *NewVProc (void *arg)
     vproc->inPromotion = false;
     vproc->ffiStack = NULL;
 
-    const size_t FFI_SIZE = 4 * ONE_MEG;
+#define FFI_SIZE    (4 * ONE_MEG)
 #if defined(DIRECT_STYLE)
     // Segstack overflow handling, and service requests, use this.
     vproc->ffiStack = AllocFFIStack(vproc, FFI_SIZE);
@@ -314,6 +313,7 @@ void *NewVProc (void *arg)
     vproc->ffiStack = FFIStackFlag ? AllocFFIStack(vproc, FFI_SIZE) : 0;
 
 #endif // for linkstack, the RTS stack is used as the FFI stack.
+#undef FFI_SIZE
 
     MutexInit (&(vproc->lock));
     CondInit (&(vproc->wait));
@@ -444,10 +444,9 @@ static void MainVProc (VProc_t *vp, void *arg)
     vp->sleeping = false;
 
     FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
-    Value_t resV = ApplyFun (vp, PtrToValue(&fn), PtrToValue(arg));
+    ApplyFun (vp, PtrToValue(&fn), PtrToValue(arg));
 
-  /* should never get here! */
-    assert (0);
+    Die("should never get here!");
 }
 
 /*! \brief return a pointer to the VProc that the caller is running on.

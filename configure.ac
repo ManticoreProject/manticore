@@ -122,14 +122,13 @@ AC_PROG_MAKE_SET
 dnl
 dnl extra CFLAGS
 dnl
-dnl NOTE: We can't error on pedantic errors because perf-counter.h, which is
-dnl from the Linux kernel, uses non-standard enum values.
 dnl
-dnl The other "don't care" values are just because there are a lot of them
-dnl and it's not a big deal right now.
-DONT_CARE_WARNS="-Wno-unused-variable -Wno-unused-function -Wno-format -Wno-pedantic"
+dnl These are needed either due to how we implemented logging, or because
+dnl it's too much of a pain to fix issues caught by this warning.
+DONT_CARE_WARNS="-Wno-unused-value -Wno-unused-function"
 
-CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic -Wall -Werror -std=c11 $DONT_CARE_WARNS"
+dnl for reasons why we use no-strict-aliasing, see https://blog.regehr.org/archives/1307
+CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic -Wall -Werror -fno-strict-aliasing -std=c11 $DONT_CARE_WARNS"
 CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE -D__STDC_FORMAT_MACROS"
 
 dnl

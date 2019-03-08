@@ -115,7 +115,9 @@ void ScanStackMajor (
 
 // #define DEBUG_STACK_SCAN_MAJOR
 
+#ifdef DEBUG_STACK_SCAN_MAJOR
     uint64_t framesSeen = 0;
+#endif
 
     enum LimitState {
         LS_NoMark,
@@ -238,7 +240,8 @@ nextIter:
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
     Addr_t    heapBase = vp->heapBase;
-    Addr_t    oldSzB = top - heapBase;
+    Addr_t    oldSzB  __attribute__((unused));
+    oldSzB = top - heapBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
    * data word of the next object (not the header word)!
    */

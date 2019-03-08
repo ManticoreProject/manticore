@@ -65,7 +65,7 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 #ifndef NDEBUG
         MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
         if (cq->sts != TO_SP_CHUNK) {
-            fprintf(stderr, "[%2d] Value %llx is not in to-space\n", vp->id, v);}
+            fprintf(stderr, "[%2d] Value %llx is not in to-space\n", vp->id, (long long unsigned int) v);}
 #endif
                 assert (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
         return v;
@@ -115,7 +115,9 @@ void ScanStackGlobal (
 
 // #define DEBUG_STACK_SCAN_GLOBAL
 
+#ifdef DEBUG_STACK_SCAN_GLOBAL
     uint64_t framesSeen = 0;
+#endif
 
 #if defined(SEGSTACK) || defined(RESIZESTACK)
   stkInfo->currentSP = origStkPtr;
@@ -343,7 +345,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     MutexLock(&NodeHeaps[node].lock);
     assert(NodeHeaps[node].scannedTo == NULL);
     NodeHeaps[node].completed = false;
-    MemChunk_t *p;
 
     if (self->globAllocChunk != NULL) {
         self->globAllocChunk->usedTop = self->globNextW - WORD_SZB;
@@ -394,7 +395,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
         // those still being used as global allocation chunks for each
         // vproc
         for (int i = 0; i < NumHWNodes; i++) {
-            for (p = NodeHeaps[i].scannedTo;  p != (MemChunk_t *)0;  p = p->next) {
+            for (MemChunk_t *p = NodeHeaps[i].scannedTo;  p != NULL;  p = p->next) {
                 uint32_t used = p->usedTop - p->baseAddr;
                 self->globalStats.nBytesCopied += used;
 #if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
@@ -801,7 +802,7 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
     for (int i = 0;  roots[i] != 0;  i++) {
     char buf[18];
     sprintf(buf, "root[%d]", i);
-    Value_t v = *roots[i];
+    // Value_t v = *roots[i];
     CheckLocalPtrGlobal (self, roots[i], buf);
     }
 

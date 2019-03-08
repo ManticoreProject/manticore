@@ -14,6 +14,9 @@
 #ifndef _LINUX_PERF_COUNTER_H
 #define _LINUX_PERF_COUNTER_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 #include <linux/types.h>
 #include <linux/ioctl.h>
 #include <asm/byteorder.h>
@@ -797,4 +800,7 @@ static inline void perf_counter_init(void)				{ }
 #endif
 
 #endif /* __KERNEL__ */
+
+#pragma GCC diagnostic pop
+
 #endif /* _LINUX_PERF_COUNTER_H */

@@ -534,7 +534,6 @@ void outputGCColNames(FILE *outF, const char* stage) {
 
 void ReportGCStats ()
 {
-    char buffer[256], *bp;
 
     if (! ReportStatsFlg)
         return;
@@ -654,10 +653,10 @@ void ReportGCStats ()
                 "  } ::\n",
                 i,
                 TIMER_GetTime (&(vp->timer)),
-                vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCollected, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
-                vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCollected, vp->majorStats.nBytesCopied, TIMER_GetTime (&(vp->majorStats.timer)),
-                vp->nPromotes, vp->nBytesPromoted, TIMER_GetTime (&(vp->promoteTimer)),
-                NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCollected, vp->globalStats.nBytesCopied, TIMER_GetTime (&(vp->globalStats.timer)));
+                vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCollected, vp->minorStats.nBytesCopied, minorT,
+                vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCollected, vp->majorStats.nBytesCopied, majorT,
+                vp->nPromotes, vp->nBytesPromoted, promoteT,
+                NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCollected, vp->globalStats.nBytesCopied, globalT);
         }
         fprintf (outF, "nil\n");
     }
@@ -702,7 +701,7 @@ void ReportGCStats ()
                 PrintPct (outF, vp->globalStats.nBytesCopied, vp->globalStats.nBytesCollected);
                 PrintTime (outF, globalT);
               // large-objects
-                fprintf (outF, " %5d", nLargeObjs);
+                fprintf (outF, " %5ld", nLargeObjs);
                 PrintNum (outF, 7, vp->largeObjStats.nBytesAlloc);
                 PrintNum (outF, 7, vp->largeObjStats.nBytesCollected);
                 PrintTime (outF, largeObjT);
@@ -739,7 +738,7 @@ void ReportGCStats ()
         PrintPct (outF, totGlobal.nBytesCopied, totGlobal.nBytesCollected);
         PrintTime (outF, timeScale * totGlobal.time);
       // large-objects
-        fprintf (outF, " %5d", nLargeObjs);
+        fprintf (outF, " %5ld", nLargeObjs);
         PrintNum (outF, 7, totLargeObj.nBytesAlloc);
         PrintNum (outF, 7, totLargeObj.nBytesCollected);
         PrintTime (outF, timeScale * totLargeObj.time);

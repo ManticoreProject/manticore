@@ -7,6 +7,10 @@
  * global heap.
  */
 
+#ifndef __GNUC__
+  #error "__GNUC__ not defined"
+#endif
+
 #include "manticore-rt.h"
 #include <stdarg.h>
 #include <string.h>
@@ -235,7 +239,6 @@ Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
  */
 Value_t AllocVector (VProc_t *vp, Value_t values)
 {
-    Value_t retval;
     int i = 0;
 
     EnsureNurserySpace(vp, i);
@@ -343,7 +346,7 @@ Value_t CreateLinkStackCont (VProc_t *vp, Value_t codeP, Value_t frameP) {
     EnsureNurserySpace(vp, sz+1);
 
     Word_t  *obj = (Word_t *)(vp->allocPtr);
-    obj[-1] = BITPAT_HDR((Word_t)0b10, sz);
+    obj[-1] = BITPAT_HDR((Word_t) __extension__ 0b10, sz);
     obj[0] = (Word_t) codeP;      // code pointer to invoke the frame
     obj[1] = (Word_t) frameP;     // stack frame
 
@@ -372,7 +375,7 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
   EnsureNurserySpace(vp, sz+1);
 
   Word_t  *obj = (Word_t *)(vp->allocPtr);
-  obj[-1] = BITPAT_HDR((Word_t)0b110, sz);
+  obj[-1] = BITPAT_HDR((Word_t) __extension__ 0b110, sz);
   obj[0] = (Word_t) (&ASM_ContLauncher_Closure);   // code ptr
   obj[1] = (Word_t) baseFrame;                     // stack frame
   obj[2] = (Word_t) funClos;                       // fn to invoke

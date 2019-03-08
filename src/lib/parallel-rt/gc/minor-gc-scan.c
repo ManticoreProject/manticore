@@ -29,11 +29,11 @@ return nextScan;
 
 Word_t * minorGCscanSTKCONTpointer (Word_t* nextScan, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {
 
-Word_t hdr = nextScan[-1];   // get object header
-assert(isStackHdr(hdr));
-int len = GetLength(hdr);
+Word_t hdr __attribute__((unused));
+hdr = nextScan[-1];   // get object header
 const int expectedLen = 3;
-assert(len == expectedLen);
+assert(isStackHdr(hdr));
+assert(GetLength(hdr) == expectedLen);
 
 void* stkPtr = (void*)(nextScan[1]);
 StackInfo_t* stkInfo = (StackInfo_t*)(nextScan[2]);

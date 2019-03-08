@@ -68,7 +68,7 @@ void* SimpleAlloc(size_t szb) {
  */
 void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedBase)
 {
-    void	*memObj, *base, *unmap;
+    void	*memObj, *base;
     size_t	szb;
 
   /* first, we try to allocate a chunk that is one block bigger than

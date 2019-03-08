@@ -30,6 +30,10 @@
 #include <fcntl.h>
 #include <inttypes.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 static bool	ReportStatsFlg = false;	// true for report enabled
 static bool	CSVStatsFlg = false;	// true for CSV-format report
 static bool	SMLStatsFlg = false;	// true for SML-format report
@@ -101,14 +105,14 @@ void InitPerfCounters (VProc_t *vp)
         vp->reads.enabled = false;
         vp->misses.enabled = false;
         return;
-    }        
+    }
 
     int core = (vp->location >> LOC_THREAD_BITS) & ((1 << LOC_CORE_BITS) - 1);
-    
+
     memset (&attr, 0, sizeof(attr));
     attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID;
     attr.freq = 0;
-    
+
     attr.type = PERF_TYPE_RAW;
     attr.config = 0xF74E0;
     //fprintf (stderr, "Core %d = %x mask, %x config\n", core, mask, attr.config);
@@ -134,7 +138,7 @@ void ReportPerfCounters () {
         stopCounter (&vp->reads);
         stopCounter (&vp->misses);
     }
-    
+
     if (CSVStatsFlg) {
         if ((StatsOutFile = fopen ("perf.csv", "w")) == 0)
             StatsOutFile = stderr;
@@ -153,7 +157,7 @@ void ReportPerfCounters () {
 
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
-            
+
             if (vp->misses.enabled)
                 fprintf (StatsOutFile,
                          "PST{processor=%d, \n\
@@ -170,7 +174,7 @@ void ReportPerfCounters () {
     else {
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
-            
+
             if (vp->misses.enabled)
                 fprintf(stderr, "vproc %d, %" PRIi64 " nonGC misses, %" PRIi64 " GC misses, %" PRIi64 " nonGC reads, %" PRIi64 " GC reads\n",
                         i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
@@ -207,6 +211,8 @@ void PERF_StopGC(PerfCntrs_t *p)
 
     p->GC += (count - p->last);
     p->last = count;
-    
+
     p->inGC = false;
 }
+
+#pragma GCC diagnostic pop
