@@ -123,13 +123,14 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
         end
 
         val (files, temps) = tableFiles ()
+        val debugFlags = "-g3 "^cFlags^" -O0 -fno-omit-frame-pointer -fsanitize=thread"
 
         val (cFlags, libName) = (case (gcStats, logging, debug, perf, direct)
          of (true, false, false, false, false) => (cFlags, "mcrt-stats")
           | (_, false, false, false, false) => (cFlags, "mcrt")
           | (_, true, false, false, false) => (cFlags, "mcrt-log")
-          | (_, false, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-debug")
-          | (_, true, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
+          | (_, false, true, false, false) => (debugFlags, "mcrt-debug")
+          | (_, true, true, false, false) => (debugFlags, "mcrt-log-debug")
           | (_, _, _, true, false) => (cFlags, "mcrt-perf")
 
           | (gcStats, _, debug, _, true) => let (* handle various kinds of stacks *)
@@ -150,7 +151,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
                           (* end case *))
               in
                 if debug
-                    then ("-g "^cFlags^" -O0", name ^ "-debug")
+                    then (debugFlags, name ^ "-debug")
                 else if gcStats
                     then (cFlags, name ^ "-stats")
                 else (cFlags, name)

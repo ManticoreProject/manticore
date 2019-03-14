@@ -118,7 +118,7 @@ endif
 
 ifeq ($(ENABLE_DEBUG),true)
   CPPFLAGS += -DNO_INLINE
-  CFLAGS += -g3 -O0
+  CFLAGS += -g3 -O0 -fno-omit-frame-pointer -fsanitize=thread
   GC_SRCS += gc-debug.c
 else
   CPPFLAGS += -DNDEBUG
