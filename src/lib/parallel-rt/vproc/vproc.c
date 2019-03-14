@@ -441,7 +441,7 @@ static void MainVProc (VProc_t *vp, void *arg)
 	SayDebug("[%2d] MainVProc starting\n", vp->id);
 #endif
 
-    vp->sleeping = false;
+    AtomicWriteValue(&(vp->sleeping), M_FALSE);
 
     FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
     ApplyFun (vp, PtrToValue(&fn), PtrToValue(arg));
@@ -483,10 +483,10 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
     do {
         landingPadOrig = vp->landingPad;
         landingPadNew = GlobalAllocUniform (self, 3, dummyFLS, k, landingPadOrig);
-        x = CompareAndSwapValue(&(vp->landingPad), landingPadOrig, landingPadNew);
+        x = CompareAndSwapValue_Atomic(&(vp->landingPad), landingPadOrig, landingPadNew);
     } while (x != landingPadOrig);
 
-    if (vp->sleeping == M_TRUE)
+    if (AtomicReadValue(&(vp->sleeping)) == M_TRUE)
         VProcWake(vp);
 
 }

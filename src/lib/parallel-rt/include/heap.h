@@ -44,22 +44,12 @@ STATIC_INLINE Addr_t LimitPtr (VProc_t *vp)
 
 STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
 {
-    Value_t oldLimitPtr = AtomicExchangeValue((Value_t*)&(vp->limitPtr), AddrToValue(newLimitPtr));
-    return ValueToAddr(oldLimitPtr);
+    return AtomicExchangeAddr(&(vp->limitPtr), newLimitPtr);
 }
 
 STATIC_INLINE void ZeroLimitPtr (VProc_t *vp)
 {
-    Value_t* ptr = (Value_t*)&(vp->limitPtr);
-
-    __asm__ __volatile__ (
-    "xorq %%rax, %%rax\n"	        /* rax = 0ULL */
-	"xchgq %%rax, %0\n"  	        /* xchgq result,ptr */
-	: "+m" (*ptr)
-    :
-	: "rax"
-    );
-
+    AtomicExchangeAddr(&(vp->limitPtr), 0ULL);
 }
 
 /* return true of the given address is within the given vproc heap */

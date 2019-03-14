@@ -46,8 +46,8 @@ typedef struct {    //!< a perf counter
 struct struct_vproc {
   /* the following fields are only accessed by the local vproc */
     Value_t	atomic;		//!< true, when in a vproc-atomic region
-    Value_t	sigPending;	//!< true, when there is a pending signal
-    Value_t	sleeping;       //!< true, when the vproc is sleeping
+    _Atomic Value_t	sigPending;	//!< true, when there is a pending signal
+    _Atomic Value_t	sleeping;       //!< true, when the vproc is sleeping
     Value_t	currentFLS;	//!< the current fiber's local storage
     Value_t	actionStk;	//!< the top of the signal-action stack
     Value_t	schedCont;      //!< continuation that invokes the current scheduler
@@ -102,13 +102,13 @@ struct struct_vproc {
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state
     Cond_t	wait;		//!< for waiting when idle
-    Value_t     landingPad __attribute__((aligned(64)));
+    _Atomic Value_t     landingPad __attribute__((aligned(64)));
                                 //!< the head of the landing pad (stack)
-    Addr_t	limitPtr __attribute__((aligned(64)));
+    _Atomic Addr_t	limitPtr __attribute__((aligned(64)));
                                 //!< heap-limit pointer. this field plays the
                                 //!< additional role of signaling asynchronous events,
                                 //!< which is the reason why the field is shared.
-    bool	globalGCPending __attribute__((aligned(64)));
+    _Atomic bool	globalGCPending __attribute__((aligned(64)));
                                 //!< true when this vproc has been signaled that
 				//! global GC has started, but it has not
 				//! started yet.

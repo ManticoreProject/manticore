@@ -3,9 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Various atomic operations used in the runtime.  If we are using
- * gcc 4.1+, then we use the compiler's builtin operations, otherwise
- * we have machine-specific assembly code.  The operations are
+ * Various atomic operations used in the runtime. The operations are
  * as follows:
  *
  *	void *CompareAndSwap (void **ptr, void *key, void *new)
@@ -62,11 +60,24 @@
 #ifndef _ATOMIC_OPS_H_
 #define _ATOMIC_OPS_H_
 
-#ifdef HAVE_BUILTIN_ATOMIC_OPS
+#if defined(__STDC_NO_ATOMICS__)
+# error "C11 stdatomic support is required"
+#endif
+
+// The use of inline ASM prevents tools like TSan from detecting data races.
+
+#include <stdatomic.h>
 
 STATIC_INLINE Value_t CompareAndSwapValue (volatile Value_t *ptr, Value_t key, Value_t new)
 {
     return __sync_val_compare_and_swap (ptr, key, new);
+}
+
+STATIC_INLINE Value_t CompareAndSwapValue_Atomic (volatile _Atomic Value_t *ptr, Value_t key, Value_t new)
+{
+    Value_t expected = key;
+    atomic_compare_exchange_strong (ptr, &expected, new);
+    return expected;
 }
 
 STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t key, Word_t new)
@@ -84,26 +95,24 @@ STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
     return __sync_val_compare_and_swap (ptr, 0, new);
 }
 
-STATIC_INLINE Value_t AtomicExchangeValue (volatile Value_t *ptr, Value_t new)
+STATIC_INLINE Addr_t AtomicExchangeAddr (volatile _Atomic Addr_t *ptr, Addr_t new)
 {
-    Value_t result = new;
-
-    __asm__ __volatile__ (
-	"xchg %1,%0\n"  	        /* xchgq result,ptr */
-	: "+r" (result), "+m" (*ptr)
-	:
-    );
-
-    return result;
+  return atomic_exchange(ptr, new);
 }
 
-STATIC_INLINE Value_t AtomicWriteValue (volatile Value_t *ptr, Value_t new)
+STATIC_INLINE Value_t AtomicExchangeValue (volatile _Atomic Value_t *ptr, Value_t new)
 {
-  /*
-    *ptr = new;
-    __sync_synchronize();  // FIXME: does this work? 
-  */
-  return AtomicExchangeValue(ptr, new);
+  return atomic_exchange(ptr, new);
+}
+
+STATIC_INLINE void AtomicWriteValue (volatile _Atomic Value_t *ptr, Value_t new)
+{
+    atomic_store(ptr, new);
+}
+
+STATIC_INLINE Value_t AtomicReadValue (volatile _Atomic Value_t *ptr)
+{
+    return atomic_load(ptr);
 }
 
 STATIC_INLINE int FetchAndInc (volatile int *ptr)
@@ -126,126 +135,5 @@ STATIC_INLINE int64_t FetchAndAddU64 (volatile uint64_t *ptr, uint64_t n)
     return __sync_fetch_and_add(ptr, n);
 }
 
-#else /* !HAVE_BUILTIN_ATOMIC_OPS */
-
-STATIC_INLINE Value_t CompareAndSwapValue (volatile Value_t *ptr, Value_t old, Value_t new)
-{
-    Value_t result;
-
-    __asm__ __volatile__ (
-	"movq %2,%%rcx\n\t"		/* %rcx = new */
-	"movq %1,%%rax\n\t"		/* %rax = old */
-	"lock; cmpxchgq %%rcx,%3;\n\t"	/* cmpxchg %rcx,ptr */
-        "movq %%rax,%0;\n"		/* result = %rax */
-	    : "=r" (result)
- 	    : "g" (old), "g" (new), "m" (*ptr)
-  	    : "memory", "%rax", "%rcx");
-    return result;
-}
-
-STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t old, Word_t new)
-{
-    Word_t result;
-
-    __asm__ __volatile__ (
-	"movq %2,%%rcx\n\t"		/* %rcx = new */
-	"movq %1,%%rax\n\t"		/* %rax = old */
-	"lock; cmpxchgq %%rcx,%3;\n\t"	/* cmpxchg %rcx,ptr */
-        "movq %%rax,%0;\n"		/* result = %rax */
-	    : "=r" (result)
- 	    : "g" (old), "g" (new), "m" (*ptr)
-  	    : "memory", "%rax", "%rcx");
-    return result;
-}
-
-STATIC_INLINE void *CompareAndSwapPtr (void *volatile *ptr, void *old, void *new)
-{
-    void *result;
-
-    __asm__ __volatile__ (
-	"movq %2,%%rcx\n\t"		/* %rcx = new */
-	"movq %1,%%rax\n\t"		/* %rax = old */
-	"lock; cmpxchgq %%rcx,%3;\n\t"	/* cmpxchg %rcx,ptr */
-        "movq %%rax,%0;\n"		/* result = %rax */
-	    : "=r" (result)
- 	    : "g" (old), "g" (new), "m" (*ptr)
-  	    : "memory", "%rax", "%rcx");
-    return result;
-}
-
-STATIC_INLINE int TestAndSwap (volatile int *ptr, int new)
-{
-    int result;
-
-    __asm__ __volatile__ (
-	"movl %1,%%ecx\n\t"		/* %ecx = new */
-	"xorl %%eax,%%eax\n\t"		/* %eax = 0 */
-	"lock; cmpxchgl %%ecx,%2;\n\t"	/* cmpxchg %ecx,ptr */
-	"movl %%eax,%0;\n"		/* result = %eax */
-	    : "=r" (result)
-	    : "g" (new), "m" (*ptr)
-	    : "memory", "%eax");
-    return result;
-}
-
-STATIC_INLINE Value_t AtomicExchangeValue (volatile Value_t *ptr, Value_t new)
-{
-    Value_t result = new;
-
-    __asm__ __volatile__ (
-	"xchg %1,%0\n"  	        /* xchgq result,ptr */
-	: "+r" (result), "+m" (*ptr)
-	:
-    );
-
-    return result;
-}
-
-STATIC_INLINE void AtomicWriteValue (volatile Value_t *ptr, Value_t new)
-{
-    AtomicExchangeValue(ptr, new);
-}
-
-STATIC_INLINE int FetchAndInc (volatile int *ptr)
-{
-    int		incr = 1;
-    __asm__ __volatile__ (
-	"lock; xaddl %0,%1\n"
-	    : "=r" (incr), "=m" (*ptr)
-	    : "0" (incr) : "memory");
-    return incr;
-}
-
-STATIC_INLINE int FetchAndDec (volatile int *ptr)
-{
-    int		incr = -1;
-    __asm__ __volatile__ (
-	"lock; xaddl %0,%1\n"
-	    : "=r" (incr), "=m" (*ptr)
-	    : "0" (incr) : "memory");
-    return incr;
-}
-
-STATIC_INLINE int64_t FetchAndAdd64 (volatile int64_t *ptr, int64_t n)
-{
-    int64_t	incr = n;
-    __asm__ __volatile__ (
-	"lock; xaddq %0,%1\n"
-	    : "=r" (incr), "=m" (*ptr)
-	    : "0" (incr) : "memory");
-    return incr;
-}
-
-STATIC_INLINE uint64_t FetchAndAddU64 (volatile uint64_t *ptr, uint64_t n)
-{
-    uint64_t	incr = n;
-    __asm__ __volatile__ (
-	"lock; xaddq %0,%1\n"
-	    : "=r" (incr), "=m" (*ptr)
-	    : "0" (incr) : "memory");
-    return incr;
-}
-
-#endif /* HAVE_BUILTIN_ATOMIC_OPS */
 
 #endif /* !_ATOMIC_OPS_H_*/

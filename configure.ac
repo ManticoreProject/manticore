@@ -148,17 +148,21 @@ if test "$ac_supports_no_pie" = "no" ; then
 fi
 
 dnl check for C11 support
-AC_MSG_CHECKING([for C11 support])
+AC_MSG_CHECKING([for C11 support (including stdatomic)])
 AC_RUN_IFELSE([AC_LANG_PROGRAM([],[
 #if __STDC_VERSION__ >= 201112L
   // good
 #else
   exit(1);
 #endif
+
+#if defined(__STDC_NO_ATOMICS__)
+  exit(1)
+#endif
 ])], [have_c11=yes], [have_c11=no])
 AC_MSG_RESULT($have_c11)
 if test "$have_c11" = "no" ; then
-  AC_MSG_ERROR([compiler reports no C11 support])
+  AC_MSG_ERROR([compiler reports insufficient C11 support])
 fi
 
 

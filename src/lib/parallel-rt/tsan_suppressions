@@ -2,8 +2,8 @@
 
 # Usage: TSAN_OPTIONS="suppressions=/path/to/this/file" ./a.out
 
-# This might be a false positive.
-race:Ping
-
 # these tests are added by -debug flag and can be ignored
 race:CheckGlobalAddr
+
+# ignore races in libnuma
+race:libnuma
