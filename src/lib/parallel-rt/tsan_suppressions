@@ -4,3 +4,6 @@
 
 # This might be a false positive.
 race:Ping
+
+# these tests are added by -debug flag and can be ignored
+race:CheckGlobalAddr

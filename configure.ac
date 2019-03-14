@@ -111,7 +111,6 @@ dnl
 dnl check for standard programs
 dnl
 AC_PROG_CC([clang gcc cc])
-dnl AC_PROG_CC_C99  FIXME not sure how to enforce c11 support here...
 AC_PROG_CXX
 AC_GNU_SOURCE
 AC_CHECK_PROG(AR, ar, ar)
@@ -137,7 +136,7 @@ dnl new default that generates a warning for Manticore-compiled code.
 dnl
 save_LDFLAGS=$LDFLAGS
 LDFLAGS="$LDFLAGS -Wl,-no_pie"
-AC_MSG_CHECKING([Checking for -Wl,-no_pie])
+AC_MSG_CHECKING([for -Wl,-no_pie])
 AC_LINK_IFELSE(
   [AC_LANG_PROGRAM(
     [[]])],
@@ -147,6 +146,21 @@ AC_MSG_RESULT($ac_supports_no_pie)
 if test "$ac_supports_no_pie" = "no" ; then
   LDFLAGS=$save_LDFLAGS
 fi
+
+dnl check for C11 support
+AC_MSG_CHECKING([for C11 support])
+AC_RUN_IFELSE([AC_LANG_PROGRAM([],[
+#if __STDC_VERSION__ >= 201112L
+  // good
+#else
+  exit(1);
+#endif
+])], [have_c11=yes], [have_c11=no])
+AC_MSG_RESULT($have_c11)
+if test "$have_c11" = "no" ; then
+  AC_MSG_ERROR([compiler reports no C11 support])
+fi
+
 
 dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
