@@ -80,6 +80,13 @@ STATIC_INLINE Value_t CompareAndSwapValue_Atomic (volatile _Atomic Value_t *ptr,
     return expected;
 }
 
+STATIC_INLINE Word_t CompareAndSwapWord_Atomic (volatile _Atomic Word_t *ptr, Word_t key, Word_t new)
+{
+    Word_t expected = key;
+    atomic_compare_exchange_strong (ptr, &expected, new);
+    return expected;
+}
+
 STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t key, Word_t new)
 {
     return __sync_val_compare_and_swap (ptr, key, new);
@@ -111,6 +118,11 @@ STATIC_INLINE void AtomicWriteValue (volatile _Atomic Value_t *ptr, Value_t new)
 }
 
 STATIC_INLINE Value_t AtomicReadValue (volatile _Atomic Value_t *ptr)
+{
+    return atomic_load(ptr);
+}
+
+STATIC_INLINE Word_t AtomicReadWord (volatile _Atomic Word_t *ptr)
 {
     return atomic_load(ptr);
 }

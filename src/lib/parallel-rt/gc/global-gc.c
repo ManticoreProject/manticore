@@ -58,7 +58,8 @@ void CheckToSpacesAfterGlobalGC (VProc_t *self);
 Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 {
     Word_t    *p = ((Word_t *)ValueToPtr(v));
-    Word_t    oldHdr = p[-1];
+    volatile _Atomic Word_t *hdrPtr = (volatile _Atomic Word_t *) p - 1;
+    Word_t    oldHdr = AtomicReadWord(hdrPtr);
     if (isForwardPtr(oldHdr)) {
         Value_t v = PtrToValue(GetForwardPtr(oldHdr));
         assert (isPtr(v));
@@ -82,7 +83,7 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
         }
         // try to install the forward pointer
         Word_t fwdPtr = MakeForwardPtr(oldHdr, nextW);
-        Word_t hdr = CompareAndSwapWord(p-1, oldHdr, fwdPtr);
+        Word_t hdr = CompareAndSwapWord_Atomic(hdrPtr, oldHdr, fwdPtr);
         if (oldHdr == hdr) {
             Word_t *newObj = nextW;
             newObj[-1] = hdr;
