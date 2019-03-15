@@ -12,6 +12,7 @@
 #include "os-threads.h"
 #include "timer.h"
 #include "event-log-file.h"
+#include "atomic-ops.h"
 
 #ifndef NO_GC_STATS
 typedef struct {	    //!< counters for a GC
@@ -146,7 +147,7 @@ extern int		NumVProcs;
 extern int		*NumVProcsPerNode;
 extern int		*MinVProcPerNode;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
-extern bool		ShutdownFlg;
+extern atomic_bool		ShutdownFlg;
 
 extern void VProcInit (bool isSequential, Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);

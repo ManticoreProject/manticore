@@ -54,7 +54,7 @@ static Barrier_t	ShutdownBarrier; /* barrier for shutdown */
 int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
-bool                    ShutdownFlg = false;
+atomic_bool             ShutdownFlg = false;
 int                     *NumVProcsPerNode;
 int                     *MinVProcPerNode;
 
