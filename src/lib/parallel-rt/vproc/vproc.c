@@ -31,11 +31,11 @@
 #include "perf.h"
 #include "work-stealing-deque.h"
 
-typedef struct {	    /* data passed to NewVProc */
-    int		id;		/* VProc ID */
-    Location_t	loc;		/* the location for the VProc */
-    VProcFn_t	initFn;		/* the initial function to run */
-    Value_t	initArg;	/* initial argument data for initFn */
+typedef struct {            /* data passed to NewVProc */
+    int                id;                /* VProc ID */
+    Location_t        loc;                /* the location for the VProc */
+    VProcFn_t        initFn;                /* the initial function to run */
+    Value_t        initArg;        /* initial argument data for initFn */
     bool        started;        /* has the vproc started running Manticore code? */
 } InitData_t;
 
@@ -45,18 +45,20 @@ static void IdleVProc (VProc_t *vp, void *arg);
 static void SigHandler (int sig, siginfo_t *si, void *_sc);
 static int GetNumCPUs ();
 
-static pthread_key_t	VProcInfoKey;
+static pthread_key_t        VProcInfoKey;
 
-static Barrier_t	InitBarrier;	/* barrier for initialization */
-static Barrier_t	ShutdownBarrier; /* barrier for shutdown */
+static Barrier_t        InitBarrier;        /* barrier for initialization */
+static Barrier_t        ShutdownBarrier; /* barrier for shutdown */
 
 /********** Globals **********/
-int			NumVProcs;
-int			NumIdleVProcs;
-VProc_t			*VProcs[MAX_NUM_VPROCS];
+int                     NumVProcs;
+int                     NumIdleVProcs;
+VProc_t                 *VProcs[MAX_NUM_VPROCS];
 atomic_bool             ShutdownFlg = false;
 int                     *NumVProcsPerNode;
 int                     *MinVProcPerNode;
+
+OSThread_t* VProcThreadIDs = NULL;
 
 #ifdef DIRECT_STYLE
     extern int ASM_DS_VProcSleep;
@@ -68,9 +70,9 @@ int                     *MinVProcPerNode;
 /*! \brief Items in the ready-queue lists and on the landing pad */
 typedef struct struct_queue_item QueueItem_t;
 struct struct_queue_item {
-    Value_t	fls;	//!< fiber-local storage of thread
-    Value_t	k;	//!< fiber (continuation) of thread
-    QueueItem_t	*next;	//!< link field
+    Value_t        fls;        //!< fiber-local storage of thread
+    Value_t        k;        //!< fiber (continuation) of thread
+    QueueItem_t        *next;        //!< link field
 };
 
 /* VProcInit:
@@ -79,10 +81,10 @@ struct struct_queue_item {
  */
 void VProcInit (bool isSequential, Options_t *opts)
 {
-    bool	denseLayout = false;	// in dense mode, we'll allocate
-					// the first n logical processors.
-					// Otherwise, we spread the load
-					// around.
+    bool        denseLayout = false;        // in dense mode, we'll allocate
+                                        // the first n logical processors.
+                                        // Otherwise, we spread the load
+                                        // around.
 
     // Will point to a static non-null value if locations were specified.
     int *procs = NULL;
@@ -91,15 +93,15 @@ void VProcInit (bool isSequential, Options_t *opts)
 
   /* get command-line options */
     if (isSequential) {
-	NumVProcs = 1;
+        NumVProcs = 1;
     }
     else {
-	NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
+        NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
     NumVProcs = GetVprocsOpt (opts, NumVProcs, &procs);
-	NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
-	if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
-	    Warning ("%d processors requested on a %d processor machine\n",
-		NumVProcs, NumHWThreads);
+        NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
+        if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
+            Warning ("%d processors requested on a %d processor machine\n",
+                NumVProcs, NumHWThreads);
     if (MAX_NUM_VPROCS < NumVProcs)
         Die ("Runtime is only configured to support %d VProcs, but %d were requested.\n",
              MAX_NUM_VPROCS, NumVProcs);
@@ -109,15 +111,15 @@ void VProcInit (bool isSequential, Options_t *opts)
     denseLayout = true;  // no affinity support on Mac OS X
 #else
     if (NumVProcs >= NumHWThreads)
-	denseLayout = true;
+        denseLayout = true;
     else
-	denseLayout = GetFlagOpt (opts, "-dense");
+        denseLayout = GetFlagOpt (opts, "-dense");
 #endif
 
 #ifndef NDEBUG
     SayDebug("%d/%d hardware threads on %d nodes allocated to vprocs (%s)\n",
     NumVProcs, NumHWThreads, NumHWNodes,
-	denseLayout ? "dense layout" : "non-dense layout");
+        denseLayout ? "dense layout" : "non-dense layout");
 #endif
 
 #ifdef ENABLE_LOGGING
@@ -127,7 +129,7 @@ void VProcInit (bool isSequential, Options_t *opts)
 #endif
 
     if (pthread_key_create (&VProcInfoKey, 0) != 0) {
-	Die ("unable to create VProcInfoKey");
+        Die ("unable to create VProcInfoKey");
     }
 
   /* Initialize the work stealing scheduler-local data */
@@ -142,9 +144,9 @@ void VProcInit (bool isSequential, Options_t *opts)
     initData[0].initFn = MainVProc;
     initData[0].initArg = M_UNIT;
     for (int i = 1;  i < NumVProcs;  i++) {
-	initData[i].id = i;
-	initData[i].initFn = IdleVProc;
-	initData[i].initArg = M_UNIT;
+        initData[i].id = i;
+        initData[i].initFn = IdleVProc;
+        initData[i].initArg = M_UNIT;
     }
 
     NumVProcsPerNode = NEWVEC(int, NumHWNodes);
@@ -163,40 +165,40 @@ void VProcInit (bool isSequential, Options_t *opts)
             initData[i].loc = Location(package, core, thread);
         }
     } else if (denseLayout) {
-	for (int i = 0;  i < NumVProcs;  i++)
-	    initData[i].loc = Locations[i%NumHWThreads];
+        for (int i = 0;  i < NumVProcs;  i++)
+            initData[i].loc = Locations[i%NumHWThreads];
     }
     else if (NumVProcs <= NumHWNodes) {
       /* at most one vproc per node */
-	for (int nd = 0;  nd < NumVProcs;  nd++)
-	    initData[nd].loc = Location(nd, 0, 0);
+        for (int nd = 0;  nd < NumVProcs;  nd++)
+            initData[nd].loc = Location(nd, 0, 0);
     }
     else if (NumVProcs <= NumHWCores) {
       /* at most one vproc per core */
-	int nd = 0;
-	int core = 0;
-	for (int i = 0;  i < NumVProcs;  i++) {
-	    initData[i].loc = Location(nd, core, 0);
-	    if (++nd == NumHWNodes) {
-		nd = 0;
-		core++;
-	    }
-	}
+        int nd = 0;
+        int core = 0;
+        for (int i = 0;  i < NumVProcs;  i++) {
+            initData[i].loc = Location(nd, core, 0);
+            if (++nd == NumHWNodes) {
+                nd = 0;
+                core++;
+            }
+        }
     }
     else {
-	int nd = 0;
-	int core = 0;
-	int thd = 0;
-	for (int i = 0;  i < NumVProcs;  i++) {
-	    initData[i].loc = Location(nd, core, thd);
-	    if (++nd == NumHWNodes) {
-		nd = 0;
-		if (++core == NumCoresPerNode) {
-		    core = 0;
-		    thd++;
-		}
-	    }
-	}
+        int nd = 0;
+        int core = 0;
+        int thd = 0;
+        for (int i = 0;  i < NumVProcs;  i++) {
+            initData[i].loc = Location(nd, core, thd);
+            if (++nd == NumHWNodes) {
+                nd = 0;
+                if (++core == NumCoresPerNode) {
+                    core = 0;
+                    thd++;
+                }
+            }
+        }
     }
 
     for (int i = 0;  i < NumVProcs;  i++) {
@@ -208,10 +210,12 @@ void VProcInit (bool isSequential, Options_t *opts)
     }
 
   /* create vprocs */
+    VProcThreadIDs = (OSThread_t*) malloc(sizeof(OSThread_t) * NumVProcs);
     for (int i = 0;  i < NumVProcs;  i++) {
-	OSThread_t pid;
-	if (! SpawnAt (&pid, NewVProc, &(initData[i]), initData[i].loc))
-	    Die ("Unable to start vproc %d\n", i);
+        OSThread_t pid;
+        if (! SpawnAt (&pid, NewVProc, &(initData[i]), initData[i].loc))
+            Die ("Unable to start vproc %d\n", i);
+        VProcThreadIDs[i] = pid;
     }
 
     BarrierWait (&InitBarrier);
@@ -219,6 +223,13 @@ void VProcInit (bool isSequential, Options_t *opts)
     FREE (initData);
 
 } /* end of VProcInit */
+
+void CleanUpVProcsAfterShutdown() {
+  for (int i = 0; i < NumVProcs; i++) {
+    OSThread_t pid = VProcThreadIDs[i];
+    ThreadJoin(pid);
+  }
+}
 
 
 /* NewVProc:
@@ -229,13 +240,13 @@ void VProcInit (bool isSequential, Options_t *opts)
  */
 void *NewVProc (void *arg)
 {
-    InitData_t	*initData = (InitData_t *)arg;
+    InitData_t        *initData = (InitData_t *)arg;
 
 #ifndef NDEBUG
     if (DebugFlg) {
-	char buf[16];
-	LocationString (buf, sizeof(buf), initData->loc);
-	SayDebug("[%2d] NewVProc: initializing at %s...\n", initData->id, buf);
+        char buf[16];
+        LocationString (buf, sizeof(buf), initData->loc);
+        SayDebug("[%2d] NewVProc: initializing at %s...\n", initData->id, buf);
     }
 #endif
 
@@ -247,7 +258,7 @@ void *NewVProc (void *arg)
   // alocate the vproc's local heap
     Addr_t vprocHeap = AllocVProcMemory (initData->id, initData->loc);
     if (vprocHeap == 0) {
-	Die ("unable to allocate heap for vproc %d\n", initData->id);
+        Die ("unable to allocate heap for vproc %d\n", initData->id);
     }
 
   /* we want 64-byte alignment for the whole object so that the 64-byte-aligned
@@ -258,7 +269,7 @@ void *NewVProc (void *arg)
 #elif HAVE_POSIX_MEMALIGN
     VProc_t *vproc;
     if (posix_memalign ((void **)&vproc, 64, sizeof(VProc_t)) != 0) {
-	Die ("Unable to allocate vproc\n");
+        Die ("Unable to allocate vproc\n");
     }
 #else
 #  error no way to allocate aligned memory block
@@ -374,7 +385,7 @@ void *NewVProc (void *arg)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] NewVProc: run initFn\n", vproc->id);
+        SayDebug("[%2d] NewVProc: run initFn\n", vproc->id);
 #endif
 
   /* run the initial vproc function */
@@ -396,33 +407,30 @@ void VProcExit (VProc_t *vp)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcExit: %7.3f seconds\n",
-	    vp->id, TIMER_GetTime(&(vp->timer)));
+        SayDebug("[%2d] VProcExit: %7.3f seconds\n",
+            vp->id, TIMER_GetTime(&(vp->timer)));
 #endif
 
     BarrierWait(&ShutdownBarrier);
 
     if (vp == VProcs[0]) {
       /* assign vproc 0 to finalize the runtime state */
-	LogVProcExitMain (vp);
+      LogVProcExitMain (vp);
 
 #ifdef ENABLE_LOGGING
-	FinishEventLog (vp);
+      FinishEventLog (vp);
 #endif
 
 #if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
-    ReportPerfCounters ();
+      ReportPerfCounters ();
 #endif
 
 #ifndef NO_GC_STATS
-	ReportGCStats ();
+      ReportGCStats ();
 #endif
+    } // END OF FINIALIZER BLOCK
 
-	exit (0);
-    }
-    else {
-	ThreadExit ();
-    }
+    ThreadExit ();
 }
 
 /* MainVProc:
@@ -432,13 +440,13 @@ void VProcExit (VProc_t *vp)
  */
 static void MainVProc (VProc_t *vp, void *arg)
 {
-    extern int mantEntry;		/* the entry-point of the Manticore code */
+    extern int mantEntry;                /* the entry-point of the Manticore code */
 
     // LogStartup (vp, NumVProcs); // FIXME logging is a mess right now
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] MainVProc starting\n", vp->id);
+        SayDebug("[%2d] MainVProc starting\n", vp->id);
 #endif
 
     AtomicWriteValue(&(vp->sleeping), M_FALSE);
@@ -499,10 +507,10 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
   /*
 #ifndef NDEBUG
     if (DebugFlg) {
-	if (self == 0)
-	    SayDebug("Timer interrupt on vproc %d.\n", vp->id);
-	else
-	    SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
+        if (self == 0)
+            SayDebug("Timer interrupt on vproc %d.\n", vp->id);
+        else
+            SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
     }
 #endif
   */
@@ -541,19 +549,19 @@ void VProcSleep (VProc_t *vp)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcSleep called\n", vp->id);
+        SayDebug("[%2d] VProcSleep called\n", vp->id);
 #endif
 
     MutexLock(&(vp->lock));
-	AtomicWriteValue (&(vp->sleeping), M_TRUE);
-	while (vp->landingPad == M_NIL)
-	    CondWait (&(vp->wait), &(vp->lock));
-	AtomicWriteValue (&(vp->sleeping), M_FALSE);
+        AtomicWriteValue (&(vp->sleeping), M_TRUE);
+        while (vp->landingPad == M_NIL)
+            CondWait (&(vp->wait), &(vp->lock));
+        AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock(&(vp->lock));
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcSleep exiting\n", vp->id);
+        SayDebug("[%2d] VProcSleep exiting\n", vp->id);
 #endif
 
 }
@@ -568,7 +576,7 @@ STATIC_INLINE struct timespec TimespecAdd (struct timespec time1, struct timespe
     result.tv_nsec = time1.tv_nsec + time2.tv_nsec;
     while (result.tv_nsec > ONE_SECOND) {
         result.tv_sec++;
-	result.tv_nsec -= ONE_SECOND;
+        result.tv_nsec -= ONE_SECOND;
     }
     return result;
 }
@@ -594,7 +602,7 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 #ifndef NDEBUG
     if (DebugFlg)
         SayDebug ("[%2d] VProcNanosleep for %" PRIu64 " seconds and %" PRIu64 " nanoseconds\n",
-	    vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
+            vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
 #endif
 
     struct timeval t;
@@ -606,31 +614,31 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 
     MutexLock (&(vp->lock));
 // QUESTION: do we really need an AtomicWriteValue here, since we are inside a lock?
-	AtomicWriteValue (&(vp->sleeping), M_TRUE);
-	while ((vp->landingPad == M_NIL)
-	     /* nonzero status indicates an error, OS interrupt, or timeout */
-	&& !(status = CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake)))
-	    continue;
-	AtomicWriteValue (&(vp->sleeping), M_FALSE);
+        AtomicWriteValue (&(vp->sleeping), M_TRUE);
+        while ((vp->landingPad == M_NIL)
+             /* nonzero status indicates an error, OS interrupt, or timeout */
+        && !(status = CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake)))
+            continue;
+        AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock (&(vp->lock));
 
 #ifndef NDEBUG
     if (DebugFlg) {
-	switch (status) {
-	  case 0:
-	    SayDebug("[%2d] VProcNanosleep exiting (awoken by another vproc)\n", vp->id);
-	    break;
-	  case ETIMEDOUT:
-	    SayDebug("[%2d] VProcNanosleep exiting (awoken by timeout)\n", vp->id);
-	    break;
-	  case EINTR:
-	    SayDebug("[%2d] VProcNanosleep exiting (awoken by interrupt)\n", vp->id);
-	    break;
-	  default:
-	    SayDebug("[%2d] VProcNanosleep exiting; status = %d, errno = %d\n",
-		vp->id, status, errno);
-	    break;
-	}
+        switch (status) {
+          case 0:
+            SayDebug("[%2d] VProcNanosleep exiting (awoken by another vproc)\n", vp->id);
+            break;
+          case ETIMEDOUT:
+            SayDebug("[%2d] VProcNanosleep exiting (awoken by timeout)\n", vp->id);
+            break;
+          case EINTR:
+            SayDebug("[%2d] VProcNanosleep exiting (awoken by interrupt)\n", vp->id);
+            break;
+          default:
+            SayDebug("[%2d] VProcNanosleep exiting; status = %d, errno = %d\n",
+                vp->id, status, errno);
+            break;
+        }
     }
 #endif
 
@@ -647,7 +655,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
 
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] IdleVProc starting\n", vp->id);
+        SayDebug("[%2d] IdleVProc starting\n", vp->id);
 #endif
 
     VProcSleep(vp);
@@ -682,28 +690,28 @@ static int GetNumCPUs ()
     FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
     char buf[1024];
     if (cpuinfo != NULL) {
-	int n = 0;
-	while (fgets(buf, sizeof(buf), cpuinfo) != 0) {
-	    int id;
-	    if (sscanf(buf, "processor : %d", &id) == 1)
-		n++;
-	}
-	fclose (cpuinfo);
-	return n;
+        int n = 0;
+        while (fgets(buf, sizeof(buf), cpuinfo) != 0) {
+            int id;
+            if (sscanf(buf, "processor : %d", &id) == 1)
+                n++;
+        }
+        fclose (cpuinfo);
+        return n;
     }
     else {
-	Warning("unable to determine the number of processors\n");
-	return 0;
+        Warning("unable to determine the number of processors\n");
+        return 0;
     }
 #elif defined(TARGET_DARWIN)
-    int		numCPUs;
-    size_t	len = sizeof(int);
+    int                numCPUs;
+    size_t        len = sizeof(int);
     if (sysctlbyname("hw.activecpu", &numCPUs, &len, 0, 0) < 0) {
-	Warning("unable to determine the number of processors\n");
-	return 0;
+        Warning("unable to determine the number of processors\n");
+        return 0;
     }
     else
-	return numCPUs;
+        return numCPUs;
 #else
     return 0;
 #endif
@@ -736,11 +744,11 @@ int GetNumHWNodes ()
  */
 Value_t ListVProcs (VProc_t *self)
 {
-    Value_t	l = M_NIL;
+    Value_t        l = M_NIL;
 
     for (int i = NumVProcs-1;  i >= 0;  i--) {
-	Value_t vp = WrapWord (self, (Word_t)(VProcs[i]));
-	l = Cons(self, vp, l);
+        Value_t vp = WrapWord (self, (Word_t)(VProcs[i]));
+        l = Cons(self, vp, l);
     }
 
     return l;

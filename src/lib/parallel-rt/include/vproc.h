@@ -157,5 +157,6 @@ extern void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 extern void VProcSleep (VProc_t *vp);
 extern void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
 extern Value_t VProcNanosleep (VProc_t *vp, Time_t nsec);
+extern void CleanUpVProcsAfterShutdown();
 
 #endif /* !_VPROC_H_ */

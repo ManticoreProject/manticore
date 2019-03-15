@@ -53,6 +53,11 @@ STATIC_INLINE void ThreadExit ()
     pthread_exit (0);
 }
 
+STATIC_INLINE void ThreadJoin (OSThread_t tid)
+{
+    CHECK_RETURN( pthread_join(tid, NULL) );
+}
+
 
 /********** Mutual exclusion synchronization **********/
 

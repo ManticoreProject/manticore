@@ -18,7 +18,7 @@
 #include "asm-offsets.h" /* for RUNTIME_MAGIC */
 
 #ifdef ENABLE_PERF_COUNTERS
-	#include "perf.h"
+        #include "perf.h"
 #endif
 
 static void PingLoop ();
@@ -27,14 +27,14 @@ static void Ping (int n);
 static void SigHandler (int sig, siginfo_t *si, void *uc);
 #endif
 
-#define MIN_TIMEQ_NS	1000000		/* minimum timeq in nanoseconds (== 1ms) */
+#define MIN_TIMEQ_NS        1000000                /* minimum timeq in nanoseconds (== 1ms) */
 
-static int	TimeQ;			/* time quantum in milliseconds */
+static int        TimeQ;                        /* time quantum in milliseconds */
 #ifndef NDEBUG
-static FILE	*DebugF = NULL;
-bool		DebugFlg = false;
+static FILE        *DebugF = NULL;
+bool                DebugFlg = false;
 #endif
-static Mutex_t	PrintLock;		/* lock for output routines */
+static Mutex_t        PrintLock;                /* lock for output routines */
 
 extern int32_t mantMagic;
 extern int32_t SequentialFlag;
@@ -113,7 +113,7 @@ int main (int argc, const char **argv)
     TimeQ = GetIntOpt(opts, "-q", DFLT_TIME_Q_MS);
 
     if (mantMagic != RUNTIME_MAGIC) {
-	Die("runtime/compiler inconsistency\n");
+        Die("runtime/compiler inconsistency\n");
     }
 
     DiscoverTopology ();
@@ -125,6 +125,9 @@ int main (int argc, const char **argv)
 
     PingLoop();
 
+    CleanUpVProcsAfterShutdown();
+
+    return 0;
 } /* end of main */
 
 
@@ -132,26 +135,26 @@ int main (int argc, const char **argv)
  */
 static void PingLoop ()
 {
-    struct timespec	tq;
+    struct timespec        tq;
 
   /* compute interval for preempting the vprocs */
     long ns = 1000000 * (long)TimeQ;
     int nPings = 1;
     while (((nPings * ns) / NumVProcs < MIN_TIMEQ_NS) && (nPings < NumVProcs)) {
-	nPings++;
+        nPings++;
     }
 
     long nsec = ns / NumVProcs;
     tq.tv_sec = 0;
     while (nsec >= 1000000000) {
-	nsec -= 1000000000;
-	tq.tv_sec++;
+        nsec -= 1000000000;
+        tq.tv_sec++;
     }
     tq.tv_nsec = nsec / NumVProcs;
 
 #if defined(HAVE_SIGTIMEDWAIT)
-    sigset_t		sigs;
-    siginfo_t		info;
+    sigset_t                sigs;
+    siginfo_t                info;
 
     sigemptyset (&sigs);
     sigaddset (&sigs, SIGHUP);
@@ -168,26 +171,26 @@ static void PingLoop ()
     sigaction (SIGQUIT, &sa, 0);
 #endif
 
-    while (true) {
+    while (!ShutdownFlg) {
 #if defined(HAVE_SIGTIMEDWAIT)
-	int sigNum = sigtimedwait (&sigs, &info, &tq);
-	if (sigNum < 0) {
-	  // timeout
-	    Ping (nPings);
-	}
-	else {
-	  // signal
-	    Error("Received signal %d\n", info.si_signo);
-	    exit (0);
-	}
+        int sigNum = sigtimedwait (&sigs, &info, &tq);
+        if (sigNum < 0) {
+          // timeout
+            Ping (nPings);
+        }
+        else {
+          // signal
+            Error("Received signal %d\n", info.si_signo);
+            exit (0);
+        }
 #elif defined(HAVE_NANOSLEEP)
-	if (nanosleep(&tq, 0) == -1) {
-	  // we were interrupted
-	}
-	else {
-	  // timeout
-	    Ping (nPings);
-	}
+        if (nanosleep(&tq, 0) == -1) {
+          // we were interrupted
+        }
+        else {
+          // timeout
+            Ping (nPings);
+        }
 #endif
     }
 
@@ -195,13 +198,13 @@ static void PingLoop ()
 
 static void Ping (int n)
 {
-    static int	nextPing = 0;
+    static int        nextPing = 0;
 
     for (int i = 0;  i < n;  i++) {
-	if (VProcs[nextPing]->sleeping != M_TRUE)
-	    VProcPreempt (0, VProcs[nextPing]);
-	if (++nextPing == NumVProcs)
-	    nextPing = 0;
+        if (VProcs[nextPing]->sleeping != M_TRUE)
+            VProcPreempt (0, VProcs[nextPing]);
+        if (++nextPing == NumVProcs)
+            nextPing = 0;
     }
 
 } /* end of Ping */
@@ -222,12 +225,12 @@ static void SigHandler (int sig, siginfo_t *si, void *_uc)
  */
 void Say (const char *fmt, ...)
 {
-    va_list	ap;
+    va_list        ap;
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-	vfprintf (stdout, fmt, ap);
-	fflush (stdout);
+        vfprintf (stdout, fmt, ap);
+        fflush (stdout);
     MutexUnlock (&PrintLock);
     va_end(ap);
 
@@ -239,12 +242,12 @@ void Say (const char *fmt, ...)
  */
 void SayDebug (const char *fmt, ...)
 {
-    va_list	ap;
+    va_list        ap;
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-	vfprintf (DebugF, fmt, ap);
-	fflush (DebugF);
+        vfprintf (DebugF, fmt, ap);
+        fflush (DebugF);
     MutexUnlock (&PrintLock);
     va_end(ap);
 
@@ -256,16 +259,16 @@ void SayDebug (const char *fmt, ...)
  */
 void Error (const char *fmt, ...)
 {
-    va_list	ap;
-    VProc_t	*vp = VProcSelf();
+    va_list        ap;
+    VProc_t        *vp = VProcSelf();
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-	if (vp != 0)
-	    fprintf (stderr, "[%2d] Error -- ", VProcSelf()->id);
-	else
-	    fprintf (stderr, "Error -- ");
-	vfprintf (stderr, fmt, ap);
+        if (vp != 0)
+            fprintf (stderr, "[%2d] Error -- ", VProcSelf()->id);
+        else
+            fprintf (stderr, "Error -- ");
+        vfprintf (stderr, fmt, ap);
         fflush (stderr);
     MutexUnlock (&PrintLock);
     va_end(ap);
@@ -277,16 +280,16 @@ void Error (const char *fmt, ...)
  */
 void Warning (const char *fmt, ...)
 {
-    va_list	ap;
-    VProc_t	*vp = VProcSelf();
+    va_list        ap;
+    VProc_t        *vp = VProcSelf();
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-	if (vp != 0)
-	    fprintf (stderr, "[%2d] Warning -- ", VProcSelf()->id);
-	else
-	    fprintf (stderr, "Warning -- ");
-	vfprintf (stderr, fmt, ap);
+        if (vp != 0)
+            fprintf (stderr, "[%2d] Warning -- ", VProcSelf()->id);
+        else
+            fprintf (stderr, "Warning -- ");
+        vfprintf (stderr, fmt, ap);
         fflush (stderr);
     MutexUnlock (&PrintLock);
     va_end(ap);
@@ -299,17 +302,17 @@ void Warning (const char *fmt, ...)
  */
 void Die (const char *fmt, ...)
 {
-    va_list	ap;
-    VProc_t	*vp = VProcSelf();
+    va_list        ap;
+    VProc_t        *vp = VProcSelf();
 
     va_start (ap, fmt);
     MutexLock (&PrintLock);
-	if (vp != 0)
-	    fprintf (stderr, "[%2d] Fatal error -- ", VProcSelf()->id);
-	else
-	    fprintf (stderr, "Fatal error -- ");
-	vfprintf (stderr, fmt, ap);
-	fprintf (stderr, "\n");
+        if (vp != 0)
+            fprintf (stderr, "[%2d] Fatal error -- ", VProcSelf()->id);
+        else
+            fprintf (stderr, "Fatal error -- ");
+        vfprintf (stderr, fmt, ap);
+        fprintf (stderr, "\n");
         fflush (stderr);
     MutexUnlock(&PrintLock);
     va_end(ap);
