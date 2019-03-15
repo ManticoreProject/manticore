@@ -181,7 +181,7 @@ static void PingLoop ()
         else {
           // signal
             Error("Received signal %d\n", info.si_signo);
-            exit (0);
+            exit (1);
         }
 #elif defined(HAVE_NANOSLEEP)
         if (nanosleep(&tq, 0) == -1) {
