@@ -33,6 +33,7 @@ structure PArray = struct
   fun tabFromToStep (a, b, step, f) = fromRope (Rope.tabFromToStep (a, b, step, f))
   fun map f pa = fromRope (Rope.map f (toRope pa))
   fun reduce rator init pa = Rope.reduce rator init (toRope pa)
+  fun scan rator init pa = fromRope (Rope.scan rator init (toRope pa))
   fun segreduce (oper,init,pa) = let
 (*    val b = Time.now() *)
     val res = map (reduce oper init) pa
