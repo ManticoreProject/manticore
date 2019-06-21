@@ -128,12 +128,14 @@
     ret_val
   end (* new_label() *)
 
-  val listTyTerm = BPT.T_TyCon {tree = ([Atom.atom "List"], Op.list), span = (0, 0)}
+  val spanZZ = (Position.fromInt 0, Position.fromInt 0)
+
+  val listTyTerm = BPT.T_TyCon {tree = ([Atom.atom "List"], Op.list), span = spanZZ}
 
   val nilPat = BPT.RW_Const((Literal.Enum(Word.fromInt 0), listTyTerm))
-  val listCons = {tree = ([Atom.atom "List"], Op.listCons'), span = (0, 0)}
+  val listCons = {tree = ([Atom.atom "List"], Op.listCons'), span = spanZZ}
 
-  val trueID = {tree = ([] : Atom.atom list, Op.boolTrue), span = (0, 0)}
+  val trueID = {tree = ([] : Atom.atom list, Op.boolTrue), span = spanZZ}
   val trueVar = BPT.SE_Var trueID
   fun mkTrueCheck se =
       [se, trueVar]
