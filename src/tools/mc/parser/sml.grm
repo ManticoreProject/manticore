@@ -94,7 +94,8 @@
 (* apply a mark constructor to a span and a tree *)
   fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
 
-  val nilID = {tree = ([] : Atom.atom list, Op.listNil), span = (0, 0)}
+  val spanZZ = (Position.fromInt 0, Position.fromInt 0)
+  val nilID = {tree = ([] : Atom.atom list, Op.listNil), span = spanZZ}
 
 (* specialize mark functions for common node types *)
   val markDecl = mark PT.MarkDecl
