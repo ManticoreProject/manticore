@@ -1,7 +1,7 @@
 [submodule "llvm/src"]
 	path = llvm/src
 	url = https://github.com/ManticoreProject/llvm.git
-	branch = manti-stacks
+	branch = mantistack-master
 [submodule "src/benchmarks"]
 	path = src/benchmarks
 	url = https://github.com/ManticoreProject/benchmark.git

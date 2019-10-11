@@ -211,8 +211,8 @@ structure LLVMBuilder : sig
 
 
   val noCC  = ""
-  val jwaCC  = "cc97"
-  val cshimCC  = "cc98"
+  val jwaCC  = "cc98"
+  val cshimCC  = "cc99"
   val stdCC  = "x86_64_sysvcc"
   fun cctoStr x = x
 

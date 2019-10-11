@@ -144,7 +144,9 @@ AC_LINK_IFELSE(
   [ac_supports_no_pie=no])
 AC_MSG_RESULT($ac_supports_no_pie)
 if test "$ac_supports_no_pie" = "no" ; then
+  dnl then we have to use PIC
   LDFLAGS=$save_LDFLAGS
+  CFLAGS="$CFLAGS -fPIC"
 fi
 
 dnl check for C11 support
