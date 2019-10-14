@@ -139,6 +139,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     return info;
 }
 
+// the vp does _not_ need to be the owner of the stack segment.
 void DeallocateStackMem(VProc_t *vp, StackInfo_t* info) {
     size_t guardSz = info->guardSz;
     uint8_t* mem = info->memAlloc;

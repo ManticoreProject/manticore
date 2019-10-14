@@ -139,10 +139,29 @@ void ScanStackMajor (
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
 
-    // only during a GC cycle is it valid to do this test of the deepestScan,
-    // because otherwise during a PromoteObj, we never end up clearing this,
-    // and will not scan the stack.
-    if (!(vp->inPromotion)) {
+
+    if (vp->inPromotion) {
+      // remove this segment from our local list
+      RemoveFromAllocList(vp, stkInfo);
+      stkInfo->owner = NULL; // it's not owned by anyone in particular now.
+
+      // then push it onto the global allocd list
+      MutexLock(&GlobStackMutex);
+      StackInfo_t* top = GlobAllocdList;
+      GlobAllocdList = stkInfo;
+
+      stkInfo->prev = NULL;
+      stkInfo->next = top;
+
+      if (top != NULL)
+        top->prev = stkInfo;
+
+      MutexUnlock(&GlobStackMutex);
+
+    } else {
+      // only during a GC cycle is it valid to do this test of the deepestScan,
+      // because otherwise during a PromoteObj, we never end up clearing this,
+      // and will not scan the stack.
         uint64_t deepest = (uint64_t)stkInfo->deepestScan;
         if(deepest <= (uint64_t)origStkPtr) {
             goto nextIter; // this part of the stack has already been scanned.
@@ -330,7 +349,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifdef DIRECT_STYLE
     // try to reclaim stacks
-    FreeStacks(vp, AGE_Major);
+    vp->allocdStacks = FreeStacks(vp, vp->allocdStacks, AGE_Major);
 #endif
 
     PushToSpaceChunks (vp, scanChunk, false);

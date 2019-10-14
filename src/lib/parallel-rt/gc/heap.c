@@ -58,6 +58,9 @@ extern int ASM_ForkFrame;
 size_t dfltStackSz;
 void InitStackMaps ();
 
+Mutex_t GlobStackMutex = PTHREAD_MUTEX_INITIALIZER;
+StackInfo_t* GlobAllocdList = NULL;
+
 
 /* Heap sizing parameters.  The normal to-space size is computed as
  *

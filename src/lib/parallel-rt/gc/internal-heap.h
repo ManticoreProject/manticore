@@ -91,6 +91,9 @@ typedef uint64_t Age_t;
 // assuming all fields are 8 bytes wide.
 #define ALIGN_8  __attribute__ ((aligned (8)))
 
+extern Mutex_t GlobStackMutex;
+extern StackInfo_t* GlobAllocdList;
+
 struct struct_stackinfo {
     // these fields are only used by segmented stacks.
     void* currentSP             ALIGN_8;
@@ -155,8 +158,9 @@ extern void InitGlobalGC ();
 extern void StartGlobalGC (VProc_t *self, Value_t **roots);
 extern MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal);
 
-extern void FreeStacks(VProc_t *vp, Age_t epoch);
+extern StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t*, Age_t epoch);
 extern void FreeOneStack(VProc_t *vp, StackInfo_t* allocd);
+extern void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd);
 
 extern void ScanStackMinor (
     void* origStkPtr,

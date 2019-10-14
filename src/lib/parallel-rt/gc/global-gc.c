@@ -467,8 +467,18 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     }
 
 #ifdef DIRECT_STYLE
-    /* another part of phase 4 is for each vproc to reclaim unmarked stacks */
-    FreeStacks(self, AGE_Global);
+    /* another part of phase 4 is for each vproc to reclaim unmarked stacks,
+       with the leader taking care of cleaning the global alloc'd list */
+
+    if (leaderVProc) {
+      // NOTE: the global alloc'd list has no owners, so FreeStacks will
+      // release the memory instead of, say, distributing the free stacks to
+      // vprocs or maintaining a global free list. This may not be ideal for
+      // performance.
+      GlobAllocdList = FreeStacks(self, GlobAllocdList, AGE_Global);
+    }
+
+    self->allocdStacks = FreeStacks(self, self->allocdStacks, AGE_Global);
 #endif
 
   /* synchronize on from-space being reclaimed */

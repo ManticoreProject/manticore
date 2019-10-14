@@ -243,27 +243,10 @@ void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
   #endif
 }
 
-
-// Adds a stack to the VProc's stack cache,
-// removing it from the allocated list.
-// Updates here must also be reflected in asm-glue-ds, since
-// ASM_DS_SegUnderflow will also free a stack!
-void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
-  assert(allocd->owner == vp && "unexpected stack in allocd list");
-
+void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd) {
   // save links
   StackInfo_t* allocdNext = allocd->next;
   StackInfo_t* allocdPrev = allocd->prev;
-
-  // demote and put allocd on free list
-  // note that we don't bother with prev links
-  // on the free list since we never unlink
-  // in the middle.
-  allocd->age = AGE_Minor; // demote
-  allocd->next = vp->freeStacks;
-  allocd->prev = NULL;
-  allocd->canCopy = 1;
-  vp->freeStacks = allocd;
 
   // update links in next/prev
   if (allocdNext != NULL)
@@ -275,12 +258,39 @@ void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
   } else {
       vp->allocdStacks = allocdNext;
   }
+}
 
+
+// Adds a stack to the VProc's stack cache or releases the memory altogether,
+// depending on the ownership of the segment and vproc given.
+//
+// Updates here must also be reflected in asm-glue-ds, since
+// ASM_DS_SegUnderflow will also free a stack!
+void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
+
+  RemoveFromAllocList(vp, allocd);
+
+  if (allocd->owner == vp) {
+    // demote and put it on the free list
+    // note that we don't bother with prev links
+    // on the free list since we never unlink
+    // in the middle.
+    allocd->age = AGE_Minor; // demote
+    allocd->next = vp->freeStacks;
+    allocd->prev = NULL;
+    allocd->canCopy = 1;
+    vp->freeStacks = allocd;
+
+  } else {
+    // release the memory associated with this stack.
+    DeallocateStackMem(vp, allocd);
+  }
 }
 
 /*
  * We perform a pass over the allocated list of stacks,
- * freeing any unmarked stacks who are young enough.
+ * freeing any unmarked stacks who are young enough either to
+ * the VProc's stack cache or by releasing it totally.
  *
  * Otherwise, marked stacks are unmarked.
  *
@@ -288,37 +298,40 @@ void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
  *
  * This function is also used by later GCs.
  */
-void FreeStacks(VProc_t *vp, Age_t epoch) {
+StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch) {
   #ifndef NO_GC_STATS
       TIMER_Start(&(vp->largeObjStats.timer));
   #endif
 
-    StackInfo_t* allocd = vp->allocdStacks;
+    StackInfo_t* current = top;
+    top = NULL;
 
-    while (allocd != NULL) {
+    while (current != NULL) {
+        StackInfo_t* nextIter = current->next;
 
-        StackInfo_t* nextIter = allocd->next;
-
-        bool marked = (allocd->deepestScan != allocd);
-        bool safe = allocd->age <= epoch; // young enough
-        assert(allocd->owner == vp && "unexpected stack in allocd list");
+        bool marked = (current->deepestScan != current);
+        bool safe = current->age <= epoch; // young enough
 
         if (!marked && safe) {
             // we can free it
-            FreeOneStack(vp, allocd);
+            FreeOneStack(vp, current);
         }
 
         if (marked) {
-          // clear the marking.
-          allocd->deepestScan = allocd;
+          // clear the marking since we're keeping it.
+          current->deepestScan = current;
+          if (top == NULL)
+            top = current;
         }
 
         // advance position
-        allocd = nextIter;
+        current = nextIter;
     }
     #ifndef NO_GC_STATS
         TIMER_Stop(&(vp->largeObjStats.timer));
     #endif
+
+    return top;
 }
 
 /* MinorGC:
@@ -458,7 +471,7 @@ void MinorGC (VProc_t *vp)
 
     #ifdef DIRECT_STYLE
         /* try to free unreachable stacks */
-        FreeStacks(vp, AGE_Minor);
+        vp->allocdStacks = FreeStacks(vp, vp->allocdStacks, AGE_Minor);
     #endif
 
     //LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
