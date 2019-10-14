@@ -249,6 +249,8 @@ void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
 // Updates here must also be reflected in asm-glue-ds, since
 // ASM_DS_SegUnderflow will also free a stack!
 void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
+  assert(allocd->owner == vp && "unexpected stack in allocd list");
+
   // save links
   StackInfo_t* allocdNext = allocd->next;
   StackInfo_t* allocdPrev = allocd->prev;
@@ -299,6 +301,7 @@ void FreeStacks(VProc_t *vp, Age_t epoch) {
 
         bool marked = (allocd->deepestScan != allocd);
         bool safe = allocd->age <= epoch; // young enough
+        assert(allocd->owner == vp && "unexpected stack in allocd list");
 
         if (!marked && safe) {
             // we can free it
