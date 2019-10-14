@@ -512,11 +512,22 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     /* Phase 2
      * scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {
-    Value_t p = *roots[i];
-    if (isFromSpacePtr(p)) {
-        *roots[i] = ForwardObjGlobal(vp, p);
+      Value_t p = *roots[i];
+      if (isFromSpacePtr(p)) {
+          *roots[i] = ForwardObjGlobal(vp, p);
+      }
     }
-    }
+
+    // The landingPad is not in the root set until global GC, because
+    // all of the elements in that list should be in the global heap already.
+    // We can also only scan it safely during a global GC because this field of
+    // a VProc is accessed in parallel by other threads.
+    // These threads are are sending messages at the same time that a VProc may
+    // be performing an asynchronous Minor or Major GC.
+    // Since the Global GC is synchronized it's safe to scan and update like this.
+    Value_t pad = vp->landingPad;
+    if (isFromSpacePtr(pad)) {
+        vp->landingPad = ForwardObjGlobal(vp, pad);
 
     ScanVProcHeap (vp);
 

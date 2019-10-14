@@ -361,9 +361,6 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->rdyQTl);
     *rp++ = &(vp->sndQHd);
     *rp++ = &(vp->sndQTl);
-    *rp++ = (Value_t*) &(vp->landingPad);
-    /* FIXME the landingPad is a shared, atomic field!! What if between reading
-       the root and then forwarding it, the value changes!? */
 
 #ifdef LINKSTACK
     // protocol is different: stdCont holds the stack pointer
