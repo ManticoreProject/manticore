@@ -108,6 +108,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     info->guardSz = guardSz;
     info->usableSpace = numBytes;
     info->memAlloc = mem;
+    MutexInit(&info->gcLock);
     #ifndef NO_GC_STATS
       info->totalSz = totalSz;
     #endif

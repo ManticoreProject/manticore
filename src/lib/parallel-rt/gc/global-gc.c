@@ -109,41 +109,34 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 
 }
 
-void ScanStackGlobal (
-    void* origStkPtr,
-    StackInfo_t* stkInfo,
-    VProc_t* vp) {
-
 // #define DEBUG_STACK_SCAN_GLOBAL
 
-#ifdef DEBUG_STACK_SCAN_GLOBAL
-    uint64_t framesSeen = 0;
-#endif
+// returns the number of frames encountered
+void ScanOneSegmentGlobal (
+  void* origStkPtr,
+  StackInfo_t* stkInfo,
+  VProc_t* vp) {
 
-#if defined(SEGSTACK) || defined(RESIZESTACK)
-  stkInfo->currentSP = origStkPtr;
+    ////////////////////////////////////////////////////////
+    ///////////// critical section start
+    MutexLock(&stkInfo->gcLock);
 
-  while (stkInfo != NULL) {
+    uint64_t deepest = (uint64_t)stkInfo->deepestScan;
+    if (deepest <= (uint64_t)origStkPtr) {
+      // this part of the segment has already been scanned by someone else.
 
-    origStkPtr = stkInfo->currentSP;
-#endif // SEGSTACK
+      ///////////////////////////////////////////////////
+      ///////////// critical section end
+      MutexUnlock(&stkInfo->gcLock);
+      return;
+    }
 
     frame_info_t* frame;
     uint64_t stackPtr = (uint64_t)origStkPtr;
 
-    // NOTE we might need to do an atomic update on the deepestScan field?
-
-    uint64_t deepest = (uint64_t)stkInfo->deepestScan;
-    if(deepest <= (uint64_t)origStkPtr) {
-        goto nextIter; // this part of the stack has already been scanned.
-    }
-
-    stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
-
     while ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) {
 
 #ifdef DEBUG_STACK_SCAN_GLOBAL
-        framesSeen++;
         print_frame(stderr, frame);
 #endif
 
@@ -187,22 +180,35 @@ void ScanStackGlobal (
     // the roots have been forwarded to another part of the global heap
     stkInfo->age = AGE_Global;
 
-nextIter:
-#if defined(SEGSTACK) || defined(RESIZESTACK)
-    stkInfo = stkInfo->prevSegment;
+    stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
 
-    #ifdef DEBUG_STACK_SCAN_GLOBAL
-        // end of a stack segment
-        fprintf(stderr, "=============================================\n");
-    #endif
+    ///////////////////////////////////////////////////
+    ///////////// critical section end
+    MutexUnlock(&stkInfo->gcLock);
+  }
 
-  } // end stkInfo while
-#endif // SEGSTACK
+void ScanStackGlobal (
+    void* origStkPtr,
+    StackInfo_t* stkInfo,
+    VProc_t* vp) {
+
+  do {
+        if (origStkPtr == NULL)
+          origStkPtr = stkInfo->currentSP;
+
+        ScanOneSegmentGlobal(origStkPtr, stkInfo, vp);
+
+        stkInfo = stkInfo->prevSegment;
+        origStkPtr = NULL; // after 1st segment, we use currentSP.
+
+        #ifdef DEBUG_STACK_SCAN_GLOBAL
+            // end of a stack segment
+            fprintf(stderr, "=============================================\n");
+        #endif
+
+  } while (stkInfo != NULL);
 
 #ifdef DEBUG_STACK_SCAN_GLOBAL
-        if (framesSeen == 0) {
-            Die("GlobalGC: Should have seen at least one frame!");
-        }
         fprintf(stderr, "##########################################\n");
 #endif
 
