@@ -526,7 +526,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     // be performing an asynchronous Minor or Major GC.
     // Since the Global GC is synchronized it's safe to scan and update like this.
     Value_t pad = vp->landingPad;
-    if (isFromSpacePtr(pad)) {
+    if (isFromSpacePtr(pad))
         vp->landingPad = ForwardObjGlobal(vp, pad);
 
     ScanVProcHeap (vp);
