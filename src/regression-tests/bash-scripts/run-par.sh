@@ -39,23 +39,23 @@ do
        echo "checking $g/$f" >> $LOG
        $PMLC $PMLCFLAGS $f 2>> $LOG 1>> $LOG
        if [ "$?" -eq "0" ] ; then
-	 ./a.out $AOUTFLAGS > $fname.test
-	 diffs=$(diff $fname.test $fname.ok)
-	 status=$(diff $fname.test $fname.ok | wc -l)
-	 if [ $status -eq "0" ] ; then
-	   echo "***** Check succeeded for goal $g in file $f." >> $REPORT
-	   echo "ok" >> $LOG
-	   echo "ok"
-	 else
-	   echo "***** Check failed for goal $g in file $f." >> $REPORT
-	   diff $fname.test $fname.ok >> $REPORT
+         ./a.out $AOUTFLAGS > $fname.test
+         diffs=$(diff $fname.test $fname.ok)
+         status=$(diff $fname.test $fname.ok | wc -l)
+         if [ $status -eq "0" ] ; then
+           echo "***** Check succeeded for goal $g in file $f." >> $REPORT
+           echo "ok" >> $LOG
+           echo "ok"
+         else
+           echo "***** Check failed for goal $g in file $f." >> $REPORT
+           diff $fname.test $fname.ok >> $REPORT
            echo "$FAIL_MSG" >> $LOG
-	   echo "FAIL"
-	 fi
+           echo "CHECK FAIL"
+         fi
        else
-	 echo "***** Compile failed for goal $g in file $f." >> $REPORT
+         echo "***** Compile failed for goal $g in file $f." >> $REPORT
          echo "$FAIL_MSG" >> $LOG
-	 echo "FAIL"
+         echo "COMPILE FAIL"
        fi
        rm -f a.out $fname.s $fname.test $fname.ll ${fname}_opt.bc
        rm -rf a.out.dSYM

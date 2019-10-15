@@ -78,6 +78,9 @@ runTest () {
     AOUTFLAGS="$3" BACKEND="$1" $TIMEOUT 5m "./src/regression-tests/bash-scripts/$2"
     RET_CODE="$?"
     if [ "$RET_CODE" -ne 0 ]; then
+      if [ "$RET_CODE" -eq 124 ]; then
+        RET_CODE="timeout"
+      fi
         echo "$RET_CODE fails for $1, $2, $3" >> $CI_REPORT
     fi
 }
