@@ -174,50 +174,88 @@ extern int ASM_DS_StartStack;
 extern int ASM_DS_EscapeThrow;
 extern int ASM_DS_SegUnderflow;
 
-// Checks for and retrieves a stack from the VProc's local free-stack cache.
+
+void ResetSegment(VProc_t* vp, StackInfo_t* info) {
+  // reset some fields
+  info->deepestScan = info;
+  info->age = AGE_Minor;
+  info->prevSegment = NULL;
+  info->currentSP = NULL;
+  info->owner = vp;
+  info->canCopy = 1; // default is to allow copying.
+}
+
+// Checks for and retrieves a stack from the VProc's local free-stack cache
+// or its global free-stack cache.
 // Returns NULL is there are no available stacks that meet the required size.
 #if defined(RESIZESTACK)
 ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
-  // Use a basic first-fit strategy (without splitting).
-  // We giveup after a certian number since the free list may be long
-  size_t checked = 0;
-  StackInfo_t* prev = NULL;
-  StackInfo_t* cur = vp->freeStacks;
+  #define NUM_SOURCES 2
+  StackInfo_t** sources[NUM_SOURCES] = { &vp->freeStacks,
+                                         &GlobFreeStacks[vp->id].top };
 
-  while (cur != NULL && checked < FIRST_FIT_MAX_CHK) {
-    if (cur->usableSpace >= requiredSpace) {
+  for (int i = 0; i < NUM_SOURCES; ++i) {
+    StackInfo_t** listTop = sources[i];
 
-      // unlink cur
-      if (prev == NULL)
-        vp->freeStacks = cur->next;
-      else
-        prev->next = cur->next;
+    // Use a basic first-fit strategy (without splitting).
+    // We giveup after a certian number since the free list may be long
+    size_t checked = 0;
+    StackInfo_t* prev = NULL;
+    StackInfo_t* cur = *listTop;
 
-      return cur;
+    while (cur != NULL && checked < FIRST_FIT_MAX_CHK) {
+      if (cur->usableSpace >= requiredSpace) {
+
+        // unlink cur
+        if (prev == NULL)
+          *listTop = cur->next;
+        else
+          prev->next = cur->next;
+
+        ResetSegment(vp, cur);
+        return cur;
+      }
+
+      // advance
+      prev = cur;
+      cur = cur->next;
+      checked++;
     }
-
-    // advance
-    prev = cur;
-    cur = cur->next;
-    checked++;
   }
 
   return NULL;
+  #undef NUM_SOURCES
 }
 
 
 #else
 
 ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
-  // Free-list contains stacks all of the same usable size.
-  StackInfo_t* info = NULL;
-  if (vp->freeStacks != NULL) {
-    // pop an existing stack
-    info = vp->freeStacks;
-    vp->freeStacks = info->next;
-    assert(info->usableSpace == requiredSpace && "expected uniform sizes!");
+  // Free-lists all contain stacks all of the same usable size.
+  #define NUM_SOURCES 2
+  StackInfo_t** sources[NUM_SOURCES] = { &vp->freeStacks,
+                                         &GlobFreeStacks[vp->id].top };
+
+  for (int i = 0; i < NUM_SOURCES; ++i) {
+    StackInfo_t** listTop = sources[i];
+    StackInfo_t* info = *listTop;
+    if (info != NULL) {
+      // pop the segment
+      *listTop = info->next;
+
+      ResetSegment(vp, info);
+
+      assert(info->usableSpace == requiredSpace && "expected uniform sizes!");
+
+      // Say("Stack-cache hit at level %i\n", i);
+      return info;
+    }
   }
-  return info;
+
+  // Say("Stack-cache miss by vproc %i.\n", vp->id);
+  return NULL;
+
+  #undef NUM_SOURCES
 }
 #endif
 
@@ -235,25 +273,24 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
         size_t guardSz = FFIStackFlag && isSegment ? 0 : GUARD_PAGE_BYTES;
         info = AllocStackMem(vp, usableSpace, guardSz, isSegment);
 
-  #if defined(SEGSTACK) || defined(RESIZESTACK)
         uint64_t sinceGC = vp->allocdSinceGC;
-
         if (sinceGC != ~0) {
-          #ifdef SEGSTACK
-            sinceGC += usableSpace; // in terms of bytes
-          #else
+          #if defined(RESIZESTACK)
             sinceGC += 1; // in terms of # segments
+          #else
+            sinceGC += usableSpace; // in terms of bytes
           #endif
 
             if (sinceGC > MAX_ALLOC_SINCE_GC) {
-              // trigger a GC cycle on next heap check to reclaim some stacks
+              // trigger a full GC cycle on myself when reaching the next
+              // heap check to reclaim as many stacks as possible.
               vp->allocdSinceGC = ~0;
+              vp->globalGCPending = true;
               ZeroLimitPtr(vp);
             } else {
               vp->allocdSinceGC = sinceGC;
             }
         }
-#endif // trigger GC
 
 } // end of alloc new memory
 
@@ -520,8 +557,10 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     fresh->prevSegment = old->prevSegment;
     fresh->canCopy = old->canCopy;
 
-    if (old->owner == vp)
-      FreeOneStack(vp, old);  // add back to cache, it's hot
+    if (old->owner == vp) {
+      old = FreeOneStack(vp, old, false);  // add back to cache, it's hot
+      assert(old == NULL && "if failed, then stack memory would leak");
+    }
 
   } else {
     // link a new segment

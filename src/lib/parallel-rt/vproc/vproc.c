@@ -122,6 +122,8 @@ void VProcInit (bool isSequential, Options_t *opts)
         denseLayout ? "dense layout" : "non-dense layout");
 #endif
 
+    InitVProcDependentHeap(NumVProcs);
+
 #ifdef ENABLE_LOGGING
   /* initialize the log file */
     const char *logFile = GetStringOpt(opts, "-log", DFLT_LOG_FILE);

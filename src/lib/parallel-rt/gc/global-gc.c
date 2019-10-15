@@ -475,10 +475,13 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
       // release the memory instead of, say, distributing the free stacks to
       // vprocs or maintaining a global free list. This may not be ideal for
       // performance.
-      GlobAllocdList = FreeStacks(self, GlobAllocdList, AGE_Global);
+      GlobAllocdList = FreeStacks(self, GlobAllocdList, AGE_Global, true);
     }
 
-    self->allocdStacks = FreeStacks(self, self->allocdStacks, AGE_Global);
+    self->allocdStacks = FreeStacks(self, self->allocdStacks, AGE_Global, false);
+
+    // reset the count
+    self->allocdSinceGC = 0;
 #endif
 
   /* synchronize on from-space being reclaimed */

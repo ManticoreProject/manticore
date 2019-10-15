@@ -58,8 +58,10 @@ extern int ASM_ForkFrame;
 size_t dfltStackSz;
 void InitStackMaps ();
 
+// initalize items related to stack allocation in the global heap context.
 Mutex_t GlobStackMutex = PTHREAD_MUTEX_INITIALIZER;
 StackInfo_t* GlobAllocdList = NULL;
+PaddedStackInfoPtr_t *GlobFreeStacks = NULL;
 
 
 /* Heap sizing parameters.  The normal to-space size is computed as
@@ -199,6 +201,16 @@ void HeapInit (Options_t *opts)
     InitStackMaps();
 
 } /* end of HeapInit */
+
+void InitVProcDependentHeap(int numVP) {
+  #ifdef DIRECT_STYLE
+      /* Initialize the global stack free list */
+      GlobFreeStacks = NEWVEC(PaddedStackInfoPtr_t, numVP);
+      for (int i = 0; i < numVP; i++) {
+        GlobFreeStacks[i].top = NULL;
+      }
+  #endif
+}
 
 /* InitVProcHeap:
  */

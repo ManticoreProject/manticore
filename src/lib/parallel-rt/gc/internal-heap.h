@@ -65,25 +65,27 @@ typedef uint64_t Age_t;
 #define AGE_Major 1
 #define AGE_Global 2
 
-#if defined(SEGSTACK)
 
-  // both in terms of bytes
-  #define MAX_STACK_CACHE_SZ      (2 * (dfltStackSz / ONE_K) * ONE_MEG)
-  #define MAX_SEG_SIZE_IN_CACHE   dfltStackSz
-
-  #define MAX_ALLOC_SINCE_GC      (256 * ONE_MEG * (dfltStackSz / ONE_K))
-
-#elif defined(RESIZESTACK)
+#if defined(RESIZESTACK)
 
   // in terms of number of bytes
   #define MAX_STACK_CACHE_SZ      (2 * (dfltStackSz / ONE_K) * ONE_MEG)
   #define MAX_SEG_SIZE_IN_CACHE   dfltStackSz
 
   // in terms of number of segments, since the size varies
-  #define MAX_ALLOC_SINCE_GC   ((256 * ONE_MEG) / dfltStackSz)
+  #define MAX_ALLOC_SINCE_GC   (1 + (256 * ONE_MEG) / dfltStackSz)
   #define FIRST_FIT_MAX_CHK    (2)
 
   #define RESIZED_SEG_LIMIT    (32 * ONE_MEG)
+
+#else
+
+  // both in terms of bytes, for other stack strategies that use large-object
+  // allocation (segmented and contiguous).
+  #define MAX_STACK_CACHE_SZ      (2 * (dfltStackSz / ONE_K) * ONE_MEG)
+  #define MAX_SEG_SIZE_IN_CACHE   dfltStackSz
+
+  #define MAX_ALLOC_SINCE_GC      (4096ULL * ONE_MEG)
 
 #endif
 
@@ -91,8 +93,20 @@ typedef uint64_t Age_t;
 // assuming all fields are 8 bytes wide.
 #define ALIGN_8  __attribute__ ((aligned (8)))
 
+typedef struct {
+  StackInfo_t* top;
+  char padding[128-sizeof(StackInfo_t*)];
+} PaddedStackInfoPtr_t;
+
 extern Mutex_t GlobStackMutex;
+
+// outside globGC, requires GlobStackMutex
+// inside globGC, leader vproc exclusive.
 extern StackInfo_t* GlobAllocdList;
+
+// outside globGC, each vproc has exlusive access to its own element.
+// inside globGC, leader vproc has exlusive access to add elements.
+extern PaddedStackInfoPtr_t *GlobFreeStacks;
 
 struct struct_stackinfo {
     // these fields are only used by segmented stacks.
@@ -158,8 +172,8 @@ extern void InitGlobalGC ();
 extern void StartGlobalGC (VProc_t *self, Value_t **roots);
 extern MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal);
 
-extern StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t*, Age_t epoch);
-extern void FreeOneStack(VProc_t *vp, StackInfo_t* allocd);
+extern StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t*, Age_t epoch, bool GlobalGCLeader);
+extern StackInfo_t* FreeOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC);
 extern void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd);
 
 extern void ScanStackMinor (

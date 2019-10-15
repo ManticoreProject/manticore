@@ -261,48 +261,77 @@ void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd) {
 }
 
 
-// Adds a stack to the VProc's stack cache or releases the memory altogether,
-// depending on the ownership of the segment and vproc given.
+// Adds a stack to the VProc's stack cache if owned by that vproc.
+//
+// Otherwise, depending on whether the stack is being freed during
+// a GlobalGC, the stack is either returned or deallocated.
 //
 // Updates here must also be reflected in asm-glue-ds, since
 // ASM_DS_SegUnderflow will also free a stack!
-void FreeOneStack(VProc_t *vp, StackInfo_t* allocd) {
+StackInfo_t* FreeOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC) {
 
   RemoveFromAllocList(vp, allocd);
 
+  // demote
+  allocd->age = AGE_Minor;
+  allocd->canCopy = 1;
+  allocd->prev = NULL;
+
   if (allocd->owner == vp) {
-    // demote and put it on the free list
+    // put it on the free list
     // note that we don't bother with prev links
     // on the free list since we never unlink
     // in the middle.
-    allocd->age = AGE_Minor; // demote
     allocd->next = vp->freeStacks;
-    allocd->prev = NULL;
-    allocd->canCopy = 1;
     vp->freeStacks = allocd;
+
+  } else if (GlobalGC) {
+    return allocd;
 
   } else {
     // release the memory associated with this stack.
     DeallocateStackMem(vp, allocd);
   }
+
+  return NULL;
+}
+
+int RedistributeOrphanStack(int nextVP, StackInfo_t* free) {
+  // recycle this stack by pushing this onto one of the vproc's
+  // global free list. We use a basic round-robin approach to
+  // redistributing stacks.
+
+  // FIXME: not all vprocs are guaranteed to use these stacks at the same rate,
+  // so at some point you need to stop adding and deallocate the excess!
+
+  StackInfo_t* old = GlobFreeStacks[nextVP].top;
+  free->next = old;
+  free->prev = NULL;
+  GlobFreeStacks[nextVP].top = free;
+
+  // Say("Distributed stack to %i\n", nextVP);
+
+  return (nextVP + 1) % NumVProcs;
 }
 
 /*
  * We perform a pass over the allocated list of stacks,
  * freeing any unmarked stacks who are young enough either to
- * the VProc's stack cache or by releasing it totally.
+ * a VProc's stack cache (local / global) or by releasing it totally.
  *
  * Otherwise, marked stacks are unmarked.
  *
- * The value returned indicates how many bytes were reclaimed.
+ * The value returned indicates the new top of the list of stacks
+ * that was initially passed in.
  *
  * This function is also used by later GCs.
  */
-StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch) {
+StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool GlobalGCLeader) {
   #ifndef NO_GC_STATS
       TIMER_Start(&(vp->largeObjStats.timer));
   #endif
 
+    int NextVProc = 0;
     StackInfo_t* current = top;
     top = NULL;
 
@@ -314,7 +343,13 @@ StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch) {
 
         if (!marked && safe) {
             // we can free it
-            FreeOneStack(vp, current);
+            StackInfo_t* maybeStack = FreeOneStack(vp, current, GlobalGCLeader);
+            if (maybeStack != NULL) {
+              if (!GlobalGCLeader) // is it safe to mutate the global free stack list?
+                Die("should not have got back a stack if not the global gc leader.");
+
+              NextVProc = RedistributeOrphanStack(NextVProc, maybeStack);
+            }
         }
 
         if (marked) {
@@ -471,7 +506,7 @@ void MinorGC (VProc_t *vp)
 
     #ifdef DIRECT_STYLE
         /* try to free unreachable stacks */
-        vp->allocdStacks = FreeStacks(vp, vp->allocdStacks, AGE_Minor);
+        vp->allocdStacks = FreeStacks(vp, vp->allocdStacks, AGE_Minor, false);
     #endif
 
     //LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
@@ -494,9 +529,6 @@ void MinorGC (VProc_t *vp)
 #if defined(SEGSTACK) || defined(RESIZESTACK)
     /* Now that GC is over, thin-out the free stack cache */
     ReleaseStacks(vp, MAX_STACK_CACHE_SZ, MAX_SEG_SIZE_IN_CACHE);
-
-    // reset the count
-    vp->allocdSinceGC = 0;
 #endif
 
     /* reset the allocation pointer */
