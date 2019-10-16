@@ -74,17 +74,24 @@ typedef uint64_t Age_t;
 
   // in terms of number of segments, since the size varies
   #define MAX_ALLOC_SINCE_GC   (1 + (256 * ONE_MEG) / dfltStackSz)
-  #define FIRST_FIT_MAX_CHK    (2)
 
+  // resizing stack specific parameters
+  #define FIRST_FIT_MAX_CHK    (2)
   #define RESIZED_SEG_LIMIT    (32 * ONE_MEG)
 
-#else
+#elif defined(SEGSTACK)
 
-  // both in terms of bytes, for other stack strategies that use large-object
-  // allocation (segmented and contiguous).
+  // all in terms of bytes
   #define MAX_STACK_CACHE_SZ      (2 * (dfltStackSz / ONE_K) * ONE_MEG)
   #define MAX_SEG_SIZE_IN_CACHE   dfltStackSz
 
+  // if this is too high, some programs may spend all of their time
+  // scanning the allocated list.
+  #define MAX_ALLOC_SINCE_GC      (256 * ONE_MEG * (dfltStackSz / ONE_K))
+
+#else
+
+  // contiguous stacks need a much higher byte limit
   #define MAX_ALLOC_SINCE_GC      (4096ULL * ONE_MEG)
 
 #endif
