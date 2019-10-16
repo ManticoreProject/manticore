@@ -479,9 +479,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     }
 
     self->allocdStacks = FreeStacks(self, self->allocdStacks, AGE_Global, false);
-
-    // reset the count
-    self->allocdSinceGC = 0;
 #endif
 
   /* synchronize on from-space being reclaimed */

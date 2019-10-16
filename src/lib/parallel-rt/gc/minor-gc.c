@@ -507,6 +507,9 @@ void MinorGC (VProc_t *vp)
     #ifdef DIRECT_STYLE
         /* try to free unreachable stacks */
         vp->allocdStacks = FreeStacks(vp, vp->allocdStacks, AGE_Minor, false);
+
+        // reset the count
+        vp->allocdSinceGC = 0;
     #endif
 
     //LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);

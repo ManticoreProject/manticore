@@ -282,10 +282,15 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
           #endif
 
             if (sinceGC > MAX_ALLOC_SINCE_GC) {
-              // trigger a full GC cycle on myself when reaching the next
-              // heap check to reclaim as many stacks as possible.
+              // trigger a GC cycle on myself when reaching the next
+              // heap check to reclaim some stacks.
+
+              // Say("Triggering a gc to reclaim stacks.\n");
+
+              // TODO: this causes infinite hangs, but a global GC would be ideal.
+              // vp->globalGCPending = true;
+
               vp->allocdSinceGC = ~0;
-              vp->globalGCPending = true;
               ZeroLimitPtr(vp);
             } else {
               vp->allocdSinceGC = sinceGC;
