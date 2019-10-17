@@ -33,12 +33,12 @@ structure FreeVars : sig
 
 (* +DEBUG *)
     fun prSet s = (
-	  print "{";
-	  VSet.foldl
-	    (fn (x, false) => (print("," ^ V.toString x); false)
-	      | (x, true) => (print(V.toString x); false)
-	    ) true s;
-	  print "}")
+          print "{";
+          VSet.foldl
+            (fn (x, false) => (print("," ^ V.toString x); false)
+              | (x, true) => (print(V.toString x); false)
+            ) true s;
+          print "}")
 (* -DEBUG*)
 
     val checkJoin = ref true
@@ -50,9 +50,9 @@ structure FreeVars : sig
 
   (* is a variable externally bound? *)
     fun isExtern x = (case V.kindOf x
-	   of CPS.VK_CFun _ => true
-	    | _ => false
-	  (* end case *))
+           of CPS.VK_CFun _ => true
+            | _ => false
+          (* end case *))
 
   (* functions to add free variables to a set; if the variable is extern,
    * then it is ignored.
@@ -84,25 +84,25 @@ structure FreeVars : sig
     fun funVar (CPS.FB{f, ...}) = f
 
     fun analExp (theExp as CPS.Exp(_, e)) = (case e
-	   of CPS.Let(xs, rhs, e) => removes (fvOfRHS(analExp e, rhs), xs)
-	    | CPS.Fun(fbs, e) => let
-	      (* first, compute the union of the free variables of the lambdas *)
-		fun f (fb, fv) = VSet.union(analFB fb, fv)
-		val fbEnv = List.foldl f VSet.empty fbs
-	      (* then remove the function names from the free variable set *)
-		fun g (fb, fv) = remove(fv, funVar fb)
-		val fbEnv = List.foldl g fbEnv fbs
-		in
-		(* record the environment for the lambdas *)
-		  List.app (fn fb => setFV (funVar fb, fbEnv)) fbs;
-		(* also remove the function names from the free variables of e *)
-		  List.foldl g (VSet.union(analExp e, fbEnv)) fbs
-		end
-	    | CPS.Cont(fb, ex) => let
-	      (* compute the free variables of the lambda *)
-		val fbEnv = analFB fb
-	      (* remove the continuation's name from the set *)
-		val fbEnv = remove(fbEnv, funVar fb)
+           of CPS.Let(xs, rhs, e) => removes (fvOfRHS(analExp e, rhs), xs)
+            | CPS.Fun(fbs, e) => let
+              (* first, compute the union of the free variables of the lambdas *)
+                fun f (fb, fv) = VSet.union(analFB fb, fv)
+                val fbEnv = List.foldl f VSet.empty fbs
+              (* then remove the function names from the free variable set *)
+                fun g (fb, fv) = remove(fv, funVar fb)
+                val fbEnv = List.foldl g fbEnv fbs
+                in
+                (* record the environment for the lambdas *)
+                  List.app (fn fb => setFV (funVar fb, fbEnv)) fbs;
+                (* also remove the function names from the free variables of e *)
+                  List.foldl g (VSet.union(analExp e, fbEnv)) fbs
+                end
+            | CPS.Cont(fb, ex) => let
+              (* compute the free variables of the lambda *)
+                val fbEnv = analFB fb
+              (* remove the continuation's name from the set *)
+                val fbEnv = remove(fbEnv, funVar fb)
 
     val _ = setFV (funVar fb, fbEnv)
 
@@ -111,26 +111,26 @@ structure FreeVars : sig
                then analExpAndRecord ex
                else analExp ex
 
-		in
-		  remove (VSet.union (fbEnv, eEnv), funVar fb)
-		end
-	    | CPS.If(cond, e1, e2) => let
-		val fv1 = analExpAndRecord e1
-		val fv2 = analExpAndRecord e2
-		in
-		  addVars (VSet.union(fv1, fv2), CondUtil.varsOf cond)
-		end
-	    | CPS.Switch(x, cases, dflt) => let
-		fun doCase ((_, e), fv) = VSet.union (fv, analExpAndRecord e)
-		val fv = List.foldl doCase VSet.empty cases
-		val fv = (case dflt
-		       of SOME e => VSet.union(fv, analExpAndRecord e)
-			| NONE => fv
-		      (* end case *))
-		in
-		  addVar (fv, x)
-		end
-	    | CPS.Apply(f, args, rets) => if !checkDS
+                in
+                  remove (VSet.union (fbEnv, eEnv), funVar fb)
+                end
+            | CPS.If(cond, e1, e2) => let
+                val fv1 = analExpAndRecord e1
+                val fv2 = analExpAndRecord e2
+                in
+                  addVars (VSet.union(fv1, fv2), CondUtil.varsOf cond)
+                end
+            | CPS.Switch(x, cases, dflt) => let
+                fun doCase ((_, e), fv) = VSet.union (fv, analExpAndRecord e)
+                val fv = List.foldl doCase VSet.empty cases
+                val fv = (case dflt
+                       of SOME e => VSet.union(fv, analExpAndRecord e)
+                        | NONE => fv
+                      (* end case *))
+                in
+                  addVar (fv, x)
+                end
+            | CPS.Apply(f, args, rets) => if !checkDS
             then let
                     (* retk is not considered free *)
                     val fv = addVars(VSet.empty, f::args @ (List.tl rets))
@@ -144,7 +144,7 @@ structure FreeVars : sig
             else
                 addVars(VSet.empty, f::args@rets)
 
-	    | CPS.Callec(f, rets) => if not(!checkDS)
+            | CPS.Callec(f, rets) => if not(!checkDS)
             then raise Fail "how did a Callec appear without using direct-style?"
             else let
                 val fv = addVars(VSet.empty, f :: (List.tl rets))
@@ -156,52 +156,52 @@ structure FreeVars : sig
             end
 
 
-	    | CPS.Throw(k, args) => let
-		val fv = addVars(VSet.empty, args)
-		in
-		(* if k is a join continuation, then we need to add its free
-		 * variables here to ensure that they will be present on the
-		 * path from where k is defined to here.  Otherwise, we add
-		 * k in as a free variable.
-		 *)
-		  if (!checkJoin andalso ClassifyConts.isJoinCont k)
-                orelse
-             (!checkDS andalso ClassifyConts.isReturnThrow k)
-		    then VSet.union(fv, getFV k)
-		    else addVar(fv, k)
-		end
-	  (* end case *))
+            | CPS.Throw(k, args) => let
+                val fv = addVars(VSet.empty, args)
+                in
+                (* if k is a join continuation, then we need to add its free
+                 * variables here to ensure that they will be present on the
+                 * path from where k is defined to here.  Otherwise, we add
+                 * k in as a free variable.
+                 *)
+                  if (!checkJoin andalso ClassifyConts.isJoinCont k)
+                      orelse
+                     (!checkDS andalso ClassifyConts.isReturnThrow k)
+                    then VSet.union(fv, getFV k)
+                    else addVar(fv, k)
+                end
+          (* end case *))
 
   (* analyze and record the free variables of an expression *)
     and analExpAndRecord (e as CPS.Exp(ppt, _)) = let
-	  val fv = analExp e
-	  in
-	    setFVOfPt (ppt, fv);
-	    fv
-	  end
+          val fv = analExp e
+          in
+            setFVOfPt (ppt, fv);
+            fv
+          end
 
   (* compute the free variables of a lambda; the resulting set may include
    * the lambda's name.
    *)
     and analFB (CPS.FB{f, params, rets, body}) = VSet.difference (
-	  analExp body,
-	  addVars (addVars(VSet.empty, params), rets))
+          analExp body,
+          addVars (addVars(VSet.empty, params), rets))
 
     fun doAnalysis (CPS.MODULE{name, externs, body, ...}) = let
-	  val fv = analFB body
-	  in
-	    if VSet.isEmpty fv
-	      then ()
-	      else (
-		print(concat["FV(", Atom.toString name, ") = "]);
-		prSet fv; print "\n";
-		raise Fail "non-closed module")
-	  end
+          val fv = analFB body
+          in
+            if VSet.isEmpty fv
+              then ()
+              else (
+                print(concat["FV(", Atom.toString name, ") = "]);
+                prSet fv; print "\n";
+                raise Fail "non-closed module")
+          end
 
     val analyze = BasicControl.mkTracePassSimple {
-	    passName = "free-vars",
-	    pass = doAnalysis
-	  }
+            passName = "free-vars",
+            pass = doAnalysis
+          }
 
 
     fun analyze m = (checkWrapCap := false ;
@@ -222,13 +222,13 @@ structure FreeVars : sig
                                     doAnalysis m)
 
     fun envOfFun f = let
-	  val fv = getFV f
-	  in
+          val fv = getFV f
+          in
             if Controls.get CPSOptControls.debug
                then (print(concat["FV(", V.toString f, ") = "]); prSet fv; print "\n")
             else ();
-	    fv
-	  end
+            fv
+          end
 
     fun freeVarsOfExp (CPS.Exp(ppt, _)) = getFVOfPt ppt
 
@@ -241,32 +241,32 @@ structure FreeVars : sig
         and clearExp(CPS.Exp(ppt, t)) = (
             clearFVOfPt ppt;
             case t
-	     of (CPS.Let(lhs, rhs, e)) => (
-		List.app clearFV lhs;
-		CPSUtil.appRHS clearFV rhs;
-		clearExp e)
-	      | (CPS.Fun(fbs, e)) => (
-		List.app clearFB fbs;
-		clearExp e)
-	      | (CPS.Cont(fb, e)) => (
-		clearFB fb;
-		clearExp e)
-	      | (CPS.If(cond, e1, e2)) => (CondUtil.app clearFV cond; clearExp e1; clearExp e2)
-	      | (CPS.Switch(x, cases, dflt)) => (
-		clearFV x;
-		List.app (fn (_, e) => clearExp e) cases;
-		Option.app clearExp dflt)
-	      | (CPS.Apply(f, args, rets)) => (
-		clearFV f;
-		List.app clearFV args;
-		List.app clearFV rets)
-	      | (CPS.Callec(f, rets)) => (
-		clearFV f;
-		List.app clearFV rets)
-	      | (CPS.Throw(k, args)) => (
-		clearFV k;
-		List.app clearFV args)
-	(* end case *))
+             of (CPS.Let(lhs, rhs, e)) => (
+                List.app clearFV lhs;
+                CPSUtil.appRHS clearFV rhs;
+                clearExp e)
+              | (CPS.Fun(fbs, e)) => (
+                List.app clearFB fbs;
+                clearExp e)
+              | (CPS.Cont(fb, e)) => (
+                clearFB fb;
+                clearExp e)
+              | (CPS.If(cond, e1, e2)) => (CondUtil.app clearFV cond; clearExp e1; clearExp e2)
+              | (CPS.Switch(x, cases, dflt)) => (
+                clearFV x;
+                List.app (fn (_, e) => clearExp e) cases;
+                Option.app clearExp dflt)
+              | (CPS.Apply(f, args, rets)) => (
+                clearFV f;
+                List.app clearFV args;
+                List.app clearFV rets)
+              | (CPS.Callec(f, rets)) => (
+                clearFV f;
+                List.app clearFV rets)
+              | (CPS.Throw(k, args)) => (
+                clearFV k;
+                List.app clearFV args)
+        (* end case *))
     in
         clearFB body
     end
