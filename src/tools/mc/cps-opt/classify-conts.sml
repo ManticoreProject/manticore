@@ -18,7 +18,8 @@ structure ClassifyConts : sig
                          *)
 
       | GotoCont        (* similar to a join-point; throw sites are all known, but
-                         * at least one site occurs in within another function.
+                         * at least one site occurs in within another function
+                         * or an OtherCont.
                          * this cont is mapped as a function instead of a block.
                          *)
 
@@ -326,19 +327,17 @@ structure ClassifyConts : sig
                 (* analyse its body *)
                 analExp (f, body);
 
-                if isJoin f andalso (not o List.null) (usesOf f)
-                        then (* after analyzing the body, we found out
-                                that it's a recursive Join,
-                                so we turn it into a Goto *)
-                            markAsGoto f
-                        else ();
-
                 (* analyze the expression in which it is scoped *)
-                analExp (outer, e);
+                analExp (f, e);
 
+                (* determine whether the join/return is actually a goto *)
                 (case (kindOf f, !usingDS)
                  of ((JoinCont, _) | (ReturnCont, true))  => (
-                        (* do all uses of f occur in the current environment? *)
+                        (* Do all uses of f occur in the current function environment?
+                           we also must ensure that no Other / Goto conts were
+                           bound between this cont's binding and one of its uses.
+                           That's because an Other/Goto cont is considered a
+                           different function environment. *)
                         if List.all (checkUse outer) (usesOf f)
                                 then () (* it remains as is *)
                                 else markAsGoto f (* should be its own function *)
