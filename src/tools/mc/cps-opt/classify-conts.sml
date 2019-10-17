@@ -8,6 +8,8 @@ structure ClassifyConts : sig
 
     val analyze : CPS.module -> unit
 
+    val clear : CPS.module -> unit
+
   (* the different kinds of continuations *)
     datatype cont_kind
       = JoinCont        (* a join-point; all uses are throws that are in the
@@ -133,11 +135,12 @@ structure ClassifyConts : sig
 
   (* the outer context of a letcont-bound variable *)
     local
-      val {peekFn, setFn : C.var * context -> unit, ...} =
+      val {peekFn, setFn : C.var * context -> unit, clrFn : C.var -> unit, ...} =
             CV.newProp (fn _ => raise Fail "nesting")
     in
     val getOuter = peekFn
     val setOuter = setFn
+    val clearOuter = clrFn
     end
 
   (* track the use sites of a possible join-point continuation *)
@@ -163,7 +166,7 @@ structure ClassifyConts : sig
 
   (* track the kind of a bound continuation *)
     local
-      val {peekFn, setFn : C.var * cont_kind -> unit, ...} =
+      val {peekFn, setFn : C.var * cont_kind -> unit, clrFn : C.var -> unit, ...} =
             CV.newProp (fn _ => raise Fail "cont kind")
     in
   (* return the kind of  a continuation *)
@@ -185,15 +188,17 @@ structure ClassifyConts : sig
           (* end case *))
 
     val setKind = setFn
+    fun clearKind k = (clrFn k; clrUses k)
     end
 
     (* check/mark whether an Apply is in a tail position *)
     local
-        val {getFn : ProgPt.ppt -> bool, setFn : ProgPt.ppt * bool -> unit }
+        val {getFn : ProgPt.ppt -> bool, setFn : ProgPt.ppt * bool -> unit}
             = ProgPt.newFlag()
     in
         val checkTail = getFn
         val markTail = setFn
+        fun clearTail ppt = markTail(ppt, false) (* no clrFn for a flag *)
     end
 
     (* Mark throws with their immediately enclosing function. This will allow closure
@@ -213,11 +218,12 @@ structure ClassifyConts : sig
        a jump to a continuation that happens to marked as a return continuation.
     *)
     local
-        val {getFn, setFn : C.var * CV.Set.set -> unit, ...} =
+        val {getFn, setFn : C.var * CV.Set.set -> unit, clrFn : C.var -> unit, ...} =
               CV.newProp (fn _ => CV.Set.empty)
     in
         val contextOfThrow = getFn
         val setContextOfThrow = setFn
+        val clearContextOfThrow = clrFn
         fun addThrowContext (k, CPS.FB{f,...}) = setContextOfThrow(k, CV.Set.add(contextOfThrow k, f))
     end
 
@@ -421,6 +427,11 @@ structure ClassifyConts : sig
                     addUse (outer, actualCont k) ; addThrowContext (k, encl)
                    end
 
+            | C.Callec  (f, args) =>
+              (* NOTE: we're assuming the exn cont is unit, so its classification
+                 is irrelevant *)
+                List.app markAsReturn args
+
 
 
           (* end case *))
@@ -475,4 +486,51 @@ structure ClassifyConts : sig
 
     fun setTailApply (C.Exp(ppt, C.Apply _), status) = markTail (ppt, status)
 
+
+    fun clear (C.MODULE{body=C.FB{f, body, ...}, ...}) =
+        (usingDS := (Controls.get BasicControl.direct) ; clearExp f body)
+
+    and clearExp outer (C.Exp(ppt, t)) = (case t
+            of C.Let (_, _, e) => clearExp outer e
+            | C.Fun(fbs, e) => let
+                fun doFB (C.FB{f, body, ...}) = clearExp f body
+                in
+                  List.app doFB fbs;
+                  clearExp outer e
+                end
+
+            | C.Cont(C.FB{f, body, ...}, e) => (
+                clearOuter f;
+                clearKind f;
+                clearExp f body
+                )
+
+            | C.If(_, e1, e2) => (clearExp outer e1; clearExp outer e2)
+            | C.Switch(_, cases, dflt) => (
+                List.app (fn (_, e) => clearExp outer e) cases;
+                Option.app (fn e => clearExp outer e) dflt)
+
+            | C.Apply(_, args, rets) => let
+                val cfaRets = List.map actualCont rets
+            in
+                (case cfaRets
+                    of [retk, exnk] => (clearKind exnk ; clearKind retk)
+                     | [retk] => (clearKind retk)
+                     | _ => raise Fail "an apply with unexpected rets"
+                (* esac *));
+                List.app clearKind args;
+                clearTail ppt
+            end
+
+            | C.Throw(k, args) =>
+              ( clrUses outer;
+                clearContextOfThrow k
+              )
+
+            | C.Callec(f, args) =>
+                List.app clearKind args
+
+
+
+          (* end case *))
   end

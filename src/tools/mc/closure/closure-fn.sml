@@ -114,6 +114,10 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
         val () = cfaClear module
         val () = cfa module
 
+        val () = if WrapCaptures.correctlyWrapped module
+                  then ()
+                  else raise Fail "WrapCaptures pass produced invalid code.\n\tDebug with: -Ccps.debug=true -Cclos.keep-wrap-captures=true"
+
         val () = freeVarsClear module
         val () = freeVars module
     in

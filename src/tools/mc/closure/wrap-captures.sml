@@ -65,6 +65,7 @@
 structure WrapCaptures : sig
 
     val transform : CPS.module -> CPS.module
+    val correctlyWrapped : CPS.module -> bool
 
   end = struct
 
@@ -78,6 +79,16 @@ structure WrapCaptures : sig
     structure LP = ListPair
     structure K = ClassifyConts
     structure FV = FreeVars
+
+    (* +DEBUG *)
+        fun prSet s = (
+              print "{";
+              VSet.foldl
+                (fn (x, false) => (print("," ^ CV.toString x); false)
+                  | (x, true) => (print(CV.toString x); false)
+                ) true s;
+              print "}")
+    (* -DEBUG*)
 
     (********** Counters for statistics **********)
     val cntExpand = ST.newCounter "wrap-captures:expand"
@@ -287,6 +298,13 @@ structure WrapCaptures : sig
       This is similar to setjmp/longjmp.  *)
     and landingPadCapture env (C.FB{f, params, rets, body}, e) = let
 
+      val fvsOfRest = FV.freeVarsOfExp e
+
+      val () = if Controls.get ClosureControls.debug
+                 then (print(concat["WrapCaptures: FV of exp following ", CV.toString f, " = "]);
+                      prSet fvsOfRest; print "\n")
+                 else ()
+
       val (padFB as C.FB{f=padVar,...}, numbering, neverReturns)
                 = mkLandingPad (env, FV.freeVarsOfExp e, f)
 
@@ -437,6 +455,25 @@ structure WrapCaptures : sig
                             others,
                             fn newEnv => doExp(newEnv, expr))
         }
+    end
+
+    fun correctlyWrapped (m as C.MODULE{body,...}) = let
+      (* NOTE: this is just a correctness check. Make sure CFA is up to date
+         before making this query! *)
+      val _ = ClassifyConts.clear m
+      val _ = ClassifyConts.analyze m
+      val C.FB{body,...} = body
+
+      fun invalidKind (C.Exp(_, C.Cont(C.FB{f,...}, _))) =
+        (case ClassifyConts.kindOfCont f
+          of K.GotoCont => true
+           | K.OtherCont => true
+           | _ => false
+          (* esac *))
+        | invalidKind _ = false
+
+    in
+      not (CPSUtil.expExists invalidKind body)
     end
 
     (* UnifyNonRetSigs and ClassifyConts must be run before this transform. *)

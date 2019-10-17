@@ -38,6 +38,11 @@ structure CPSUtil : sig
     (* checks if a var is bound to a junk value to represent a non-returning function *)
     val isUnitRet : CPS.var -> bool
 
+    (* recursively applies the predicate to every expression contained within
+       the given expression.
+       returns true the first time the predicate returns true, and false otherwise *)
+    val expExists : (CPS.exp -> bool) -> CPS.exp -> bool
+
   end = struct
 
     structure C = CPS
@@ -345,5 +350,24 @@ structure CPSUtil : sig
                              | C.VK_Let(C.Const _) => true
                              | _ => false
                             (* esac *))
+
+
+      fun expExists p (exp as C.Exp(_, t)) =
+        if p exp
+        then true
+        else (case t
+          of (C.Let(_, _, e)) => expExists p e
+           | (C.Fun(fbs, e)) => List.exists (fbExists p) fbs orelse expExists p e
+           | (C.Cont(fb, e)) => fbExists p fb orelse expExists p e
+           | (C.If(_, e1, e2)) => expExists p e1 orelse expExists p e2
+           | (C.Switch(x, cases, dflt)) =>
+               List.exists (fn (_, e) => expExists p e) cases orelse
+               (Option.isSome dflt andalso (expExists p (valOf dflt)))
+           | (C.Apply _) => false
+           | (C.Throw _) => false
+           | (C.Callec _) => false
+         (* end case *))
+      and fbExists p (C.FB{body, ...}) = expExists p body
+
 
   end
