@@ -61,6 +61,10 @@ if test $OS = darwin -a $ARCH = x86 -a $CROSS_COMPILING = 0; then
   fi
 fi
 
+dnl sanitizers include: thread, address, undefined
+SANITIZER="-fsanitize=address"
+AC_SUBST(SANITIZER)
+
 dnl
 dnl FOr now, we only work on x86_64, so check that.
 dnl

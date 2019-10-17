@@ -57,6 +57,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     // We add a bit more for safety.
     size_t slopSz = isSegment ? 128 + 16 : 0;
 
+    numBytes = ROUNDUP(numBytes, 16ULL);
     size_t ccallSz = isSegment && haveGuardPage ? (8 * ONE_K) : 0; // 8KB ought to be enough for anybody (tm)
     size_t bonusSz = 2 * sizeof(uint64_t); // extra space for realigning, etc.
 
@@ -64,7 +65,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     size_t stackLen = guardSz + totalRegion;
     size_t totalSz = stackLen + sizeof(StackInfo_t);
 
-    totalSz = haveGuardPage ? ROUNDUP(totalSz, guardSz) : totalSz;
+    totalSz = haveGuardPage ? ROUNDUP(totalSz, guardSz) : ROUNDUP(totalSz, 16ULL);
 
     uint8_t* mem = NULL;
 
@@ -132,6 +133,9 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
 
     uint8_t* sp = (uint8_t*)valP;
     uint8_t* spLim = (uint8_t*)(valP - numBytes);
+
+    assert((uint64_t)sp % 8 == 0 && "SP must start 8-byte aligned");
+    assert((uint64_t)spLim % 8 == 0 && "SP limit must start 8-byte aligned");
 
     info->initialSP = sp;
     info->stkLimit = spLim;
@@ -272,6 +276,17 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
 
         size_t guardSz = FFIStackFlag && isSegment ? 0 : GUARD_PAGE_BYTES;
         info = AllocStackMem(vp, usableSpace, guardSz, isSegment);
+
+    #ifndef NDEBUG
+        // overwrite the contents
+        uint64_t right = ((uint64_t) info->initialSP) + 8; // cause we left space for RA
+        uint64_t left = (uint64_t) info->stkLimit + 32; // segfaults if we're too close to limit.
+        assert(left < right && "segment limits are backwards");
+        assert(right % 8ULL == 0 && "bad alignment");
+        assert(left % 8ULL == 0 && "bad alignment");
+        uint64_t bytes = right - left;
+        memset((void*)left, (unsigned char) 0xAF, bytes);
+    #endif
 
         uint64_t sinceGC = vp->allocdSinceGC;
         if (sinceGC != ~0) {

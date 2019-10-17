@@ -116,13 +116,9 @@ ifeq ($(ENABLE_LOGGING),true)
 
 endif
 
-# consider adding the following to CFLAGS:
-# -fsanitize=address -fsanitize=thread
-# you will need to add -fsanitize=address to LDFLAGS in configure.ac too
-
 ifeq ($(ENABLE_DEBUG),true)
   CPPFLAGS += -DNO_INLINE
-  CFLAGS += -g3 -O0 -fno-omit-frame-pointer -fsanitize=thread
+  CFLAGS += -g3 -O0 -fno-omit-frame-pointer @SANITIZER@
   GC_SRCS += gc-debug.c
 else
   CPPFLAGS += -DNDEBUG

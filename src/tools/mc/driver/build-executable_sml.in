@@ -123,7 +123,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
         end
 
         val (files, temps) = tableFiles ()
-        val debugFlags = "-g3 "^cFlags^" -O0 -fno-omit-frame-pointer -fsanitize=thread"
+        val debugFlags = "-g3 "^cFlags^" -O0 -fno-omit-frame-pointer @SANITIZER@"
 
         val (cFlags, libName) = (case (gcStats, logging, debug, perf, direct)
          of (true, false, false, false, false) => (cFlags, "mcrt-stats")
