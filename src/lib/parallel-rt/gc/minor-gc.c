@@ -193,7 +193,8 @@ nextIter:
 //
 // If any stack segment's usableSpace > maxSegSz, then it is freed
 // no matter what.
-void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
+int LimitNumStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
+  int released = 0;
   #ifndef NO_GC_STATS
       TIMER_Start(&(vp->largeObjStats.timer));
   #endif
@@ -211,6 +212,7 @@ void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
         StackInfo_t* next = cur->next;
         DeallocateStackMem(vp, cur);
         cur = next;
+        released++;
       } else {
         // keep it.
         usableTot += usableSpace;
@@ -236,11 +238,14 @@ void ReleaseStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
     StackInfo_t* next = cur->next;
     DeallocateStackMem(vp, cur);
     cur = next;
+    released++;
   }
 
   #ifndef NO_GC_STATS
       TIMER_Stop(&(vp->largeObjStats.timer));
   #endif
+
+  return released;
 }
 
 void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd) {
@@ -268,7 +273,7 @@ void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd) {
 //
 // Updates here must also be reflected in asm-glue-ds, since
 // ASM_DS_SegUnderflow will also free a stack!
-StackInfo_t* FreeOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC) {
+StackInfo_t* ReleaseOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC) {
 
   RemoveFromAllocList(vp, allocd);
 
@@ -326,7 +331,7 @@ int RedistributeOrphanStack(int nextVP, StackInfo_t* free) {
  *
  * This function is also used by later GCs.
  */
-StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool GlobalGCLeader) {
+StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool GlobalGCLeader) {
   #ifndef NO_GC_STATS
       TIMER_Start(&(vp->largeObjStats.timer));
   #endif
@@ -343,7 +348,7 @@ StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool GlobalG
 
         if (!marked && safe) {
             // we can free it
-            StackInfo_t* maybeStack = FreeOneStack(vp, current, GlobalGCLeader);
+            StackInfo_t* maybeStack = ReleaseOneStack(vp, current, GlobalGCLeader);
             if (maybeStack != NULL) {
               if (!GlobalGCLeader) // is it safe to mutate the global free stack list?
                 Die("should not have got back a stack if not the global gc leader.");
@@ -506,7 +511,7 @@ void MinorGC (VProc_t *vp)
 
     #ifdef DIRECT_STYLE
         /* try to free unreachable stacks */
-        vp->allocdStacks = FreeStacks(vp, vp->allocdStacks, AGE_Minor, false);
+        vp->allocdStacks = ReclaimStacks(vp, vp->allocdStacks, AGE_Minor, false);
 
         // reset the count
         vp->allocdSinceGC = 0;
@@ -529,9 +534,11 @@ void MinorGC (VProc_t *vp)
 #endif
 
 
-#if defined(SEGSTACK) || defined(RESIZESTACK)
-    /* Now that GC is over, thin-out the free stack cache */
-    ReleaseStacks(vp, MAX_STACK_CACHE_SZ, MAX_SEG_SIZE_IN_CACHE);
+#if defined(DIRECT_STYLE)
+    /* Now that GC is over, thin-out the free-stack cache */
+    // int numReleased = 
+      LimitNumStacks(vp, MAX_STACK_CACHE_SZ, MAX_SEG_SIZE_IN_CACHE);
+    // Say("Released %i segments\n", numReleased);
 #endif
 
     /* reset the allocation pointer */

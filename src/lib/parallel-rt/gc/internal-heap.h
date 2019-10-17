@@ -91,7 +91,11 @@ typedef uint64_t Age_t;
 
 #else
 
-  // contiguous stacks need a much higher byte limit
+  #define MAX_STACK_CACHE_SZ      (2 * (dfltStackSz / ONE_K) * ONE_MEG)
+  #define MAX_SEG_SIZE_IN_CACHE   dfltStackSz
+
+  // contiguous stacks need a much higher byte limit here.
+  // maybe it's better to go by count instead of bytes?
   #define MAX_ALLOC_SINCE_GC      (4096ULL * ONE_MEG)
 
 #endif
@@ -179,8 +183,8 @@ extern void InitGlobalGC ();
 extern void StartGlobalGC (VProc_t *self, Value_t **roots);
 extern MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal);
 
-extern StackInfo_t* FreeStacks(VProc_t *vp, StackInfo_t*, Age_t epoch, bool GlobalGCLeader);
-extern StackInfo_t* FreeOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC);
+extern StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t*, Age_t epoch, bool GlobalGCLeader);
+extern StackInfo_t* ReleaseOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC);
 extern void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd);
 
 extern void ScanStackMinor (

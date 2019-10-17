@@ -563,7 +563,7 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     fresh->canCopy = old->canCopy;
 
     if (old->owner == vp) {
-      old = FreeOneStack(vp, old, false);  // add back to cache, it's hot
+      old = ReleaseOneStack(vp, old, false);  // add back to cache, it's hot
       assert(old == NULL && "if failed, then stack memory would leak");
     }
 
