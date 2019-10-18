@@ -282,10 +282,10 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
         uint64_t right = ((uint64_t) info->initialSP) + 8; // cause we left space for RA
         uint64_t left = (uint64_t) info->stkLimit + 32; // segfaults if we're too close to limit.
         assert(left < right && "segment limits are backwards");
-        assert(right % 8ULL == 0 && "bad alignment");
+        assert(right % 16ULL == 0 && "bad alignment");
         assert(left % 8ULL == 0 && "bad alignment");
         uint64_t bytes = right - left;
-        memset((void*)left, (unsigned char) 0xAF, bytes);
+        memset((void*)left, (unsigned char) 0, bytes);
     #endif
 
         uint64_t sinceGC = vp->allocdSinceGC;

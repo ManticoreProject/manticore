@@ -66,11 +66,13 @@ typedef pthread_mutex_t Mutex_t;
 STATIC_INLINE void MutexInit (Mutex_t *mu)
 {
   pthread_mutexattr_t* mta = NULL; // ask for default.
-  #ifndef NDEBUG
-    pthread_mutexattr_t attrs;
-    mta = &attrs;
-    CHECK_RETURN(pthread_mutexattr_settype(mta, PTHREAD_MUTEX_ERRORCHECK));
-  #endif
+
+  // NOTE: initialization of such a mutex like this seems to fail?
+  // #ifndef NDEBUG
+  //   pthread_mutexattr_t attrs;
+  //   mta = &attrs;
+  //   CHECK_RETURN(pthread_mutexattr_settype(mta, PTHREAD_MUTEX_ERRORCHECK));
+  // #endif
 
     CHECK_RETURN(pthread_mutex_init (mu, mta));
 } /* end of NewMutex */
