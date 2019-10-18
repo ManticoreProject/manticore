@@ -364,10 +364,14 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     }
 #endif
 
+    // check the size of the global to space. Lock must be held for this.
+    MutexLock (&HeapLock);
+      Addr_t spaceSz = ToSpaceSz;
+    MutexUnlock (&HeapLock);
 
     LogMajorGCEnd (vp, nBytesCopied, 0); /* FIXME: nCopiedBytes, nAvailBytes */
 
-    if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit)) {
+    if (vp->globalGCPending || (spaceSz >= ToSpaceLimit)) {
         StartGlobalGC (vp, roots);
     }
 
