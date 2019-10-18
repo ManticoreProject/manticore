@@ -125,7 +125,7 @@ void HeapInit (Options_t *opts)
 #elif defined(RESIZESTACK)
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, ONE_K);
 #elif defined(DIRECT_STYLE)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 64 * ONE_MEG);
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 128 * ONE_MEG);
 #endif
 
 #if defined(DIRECT_STYLE)
