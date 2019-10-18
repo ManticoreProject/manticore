@@ -62,8 +62,11 @@ if test $OS = darwin -a $ARCH = x86 -a $CROSS_COMPILING = 0; then
 fi
 
 dnl sanitizers include: thread, address, undefined
-SANITIZER="-fsanitize=thread"
-AC_SUBST(SANITIZER)
+AC_ARG_VAR(SANITIZE, "debug builds should use a sanitizer: thread address undefined")
+if test $SANITIZE != "" ; then
+  SANITIZER="-fsanitize=$SANITIZE"
+  AC_SUBST(SANITIZER)
+fi
 
 dnl
 dnl FOr now, we only work on x86_64, so check that.
