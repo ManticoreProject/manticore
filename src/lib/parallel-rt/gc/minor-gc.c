@@ -38,6 +38,15 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
     if (isForwardPtr(hdr)) {
         return PtrToValue(GetForwardPtr(hdr));
     } else {
+#ifdef LINKSTACK
+        if (isLinkedFrameHdr(hdr)) {
+          // we must preserve the 16-byte alignment of the object
+          // by rounding up.
+          uint64_t newP = (uint64_t)*nextW;
+          newP = ROUNDUP(newP, 16);
+          *nextW = (Word_t*) newP;
+        }
+#endif
         int len = GetLength(hdr);
         assert(len > 0);
         Word_t *newObj = *nextW;
@@ -536,7 +545,7 @@ void MinorGC (VProc_t *vp)
 
 #if defined(DIRECT_STYLE)
     /* Now that GC is over, thin-out the free-stack cache */
-    // int numReleased = 
+    // int numReleased =
       LimitNumStacks(vp, MAX_STACK_CACHE_SZ, MAX_SEG_SIZE_IN_CACHE);
     // Say("Released %i segments\n", numReleased);
 #endif
