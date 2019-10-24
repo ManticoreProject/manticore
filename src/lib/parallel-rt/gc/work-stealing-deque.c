@@ -86,9 +86,11 @@ static uint32_t FloorLg (uint32_t n) {
 }
 
 /*! \brief compute ceiling(log_2(v))
+ * returns -1 if v is zero.
  */
 static uint32_t CeilingLg (uint32_t v)
 {
+    if (v == 0) return -1;
     uint32_t lg = FloorLg(v);
     return lg + (v - (1<<lg) > 0);
 }
@@ -96,6 +98,8 @@ static uint32_t CeilingLg (uint32_t v)
 static Deque_t *DequeAlloc (VProc_t *self, int32_t size)
 {
     uint32_t dequeSzB = sizeof(Deque_t) + sizeof(Value_t) * ((uint32_t)size - 1);
+    if (dequeSzB == 0)
+      Die("invalid deque size!");
   /* since each processor frequently reads and writes to its deque, we want to prevent false sharing
    * between deque memory by aligning each deque's memory chunk.
    */
