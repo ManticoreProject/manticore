@@ -42,22 +42,10 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
         /* forward object to global heap. */
         Word_t *nextW = (Word_t *)vp->globNextW;
         int len = GetLength(hdr);
-        // +1 for next header, +2 for possible 16-byte alignment
-        if (nextW+len+1+2 >= (Word_t *)(vp->globLimit)) {
+        if (nextW+len+1 >= (Word_t *)(vp->globLimit)) {
             AllocToSpaceChunk (vp);
             nextW = (Word_t *)vp->globNextW;
         }
-
-#ifdef LINKSTACK
-        if (isLinkedFrameHdr(hdr)) {
-          // we must preserve the 16-byte alignment of the object
-          // by rounding up.
-          uint64_t newP = (uint64_t)nextW;
-          newP = ROUNDUP(newP, 16);
-          nextW = (Word_t*) newP;
-        }
-#endif
-
         Word_t *newObj = nextW;
         newObj[-1] = hdr;
         for (int i = 0;  i < len;  i++) {

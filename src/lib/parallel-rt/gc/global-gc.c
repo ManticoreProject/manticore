@@ -77,22 +77,10 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
         // pointer.
         Word_t *nextW = (Word_t *)vp->globNextW;
         int len = GetLength(oldHdr);
-        // +1 for next header, +2 for possible 16-byte alignment
-        if (nextW+len+1+2 >= (Word_t *)(vp->globLimit)) {
+        if (nextW+len+1 >= (Word_t *)(vp->globLimit)) {
             AllocToSpaceChunk (vp);
             nextW = (Word_t *)vp->globNextW;
         }
-
-#ifdef LINKSTACK
-        if (isLinkedFrameHdr(oldHdr)) {
-          // we must preserve the 16-byte alignment of the object
-          // by rounding up.
-          uint64_t newP = (uint64_t)nextW;
-          newP = ROUNDUP(newP, 16);
-          nextW = (Word_t*) newP;
-        }
-#endif
-
         // try to install the forward pointer
         Word_t fwdPtr = MakeForwardPtr(oldHdr, nextW);
         Word_t hdr = CompareAndSwapWord_Atomic(hdrPtr, oldHdr, fwdPtr);
