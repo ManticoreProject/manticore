@@ -93,7 +93,6 @@ struct struct_vproc {
     OSThread_t	hostID;		//!< PThread ID of host
     Location_t	location;	//!< the physical location that hosts this vproc.
 
-    uint64_t allocdSinceGC;
     StackInfo_t* allocdStacks;
     StackInfo_t* freeStacks;
     uint8_t* ffiStack;      // an optionally-used contiguous stack for C calls.

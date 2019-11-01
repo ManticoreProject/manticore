@@ -288,29 +288,6 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
         memset((void*)left, (unsigned char) 0, bytes);
     #endif
 
-        uint64_t sinceGC = vp->allocdSinceGC;
-        if (sinceGC != ~0) {
-          #if defined(RESIZESTACK)
-            sinceGC += 1; // in terms of # segments
-          #else
-            sinceGC += usableSpace; // in terms of bytes
-          #endif
-
-            if (sinceGC > MAX_ALLOC_SINCE_GC) {
-              // trigger a GC cycle on myself when reaching the next
-              // heap check to reclaim some stacks.
-
-              // Say("Triggering a gc to reclaim stacks.\n");
-
-              // TODO: this causes infinite hangs, but a global GC would be ideal.
-              // vp->globalGCPending = true;
-
-              vp->allocdSinceGC = ~0;
-              ZeroLimitPtr(vp);
-            } else {
-              vp->allocdSinceGC = sinceGC;
-            }
-        }
 
 } // end of alloc new memory
 

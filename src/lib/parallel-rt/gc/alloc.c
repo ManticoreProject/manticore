@@ -371,8 +371,15 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
 
   ///////////
   // allocate a special launcher-cont with space for the function closure.
-  uint64_t sz = 3;
-  EnsureNurserySpace(vp, sz+1);
+  const uint64_t sz = 3;
+
+  // bump the allocation pointer further than required
+  // because the main way to reclaim this stack is to
+  // perform a GC. Some heavy-duty programs may end up allocating so many segments
+  // but virtually nothing in the heap. This is a natural way to trigger a GC.
+  // Make sure the total is < the slop size (4k)
+  const uint64_t fluff = 128;
+  EnsureNurserySpace(vp, fluff+sz+1);
 
   Word_t  *obj = (Word_t *)(vp->allocPtr);
   obj[-1] = BITPAT_HDR((Word_t) __extension__ 0b110, sz);
@@ -380,9 +387,11 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
   obj[1] = (Word_t) baseFrame;                     // stack frame
   obj[2] = (Word_t) funClos;                       // fn to invoke
 
-  vp->allocPtr += WORD_SZB * (sz+1);
+  vp->allocPtr += WORD_SZB * (fluff+sz+1);
 
   #ifndef NO_GC_STATS
+      // we don't record the fluff since it's not real data. we just want to
+      // trigger a GC more often.
       vp->minorStats.nBytesAlloc += WORD_SZB * (sz+1);
   #endif
 

@@ -352,8 +352,7 @@ doShutdown:
          * might be from a pending signal.
          */
           if ((LimitPtr(vp) <= vp->allocPtr)
-              || vp->globalGCPending
-              || vp->allocdSinceGC == ~0) {
+              || vp->globalGCPending) {
               /* request a minor GC */
                 MinorGC (vp);
           }

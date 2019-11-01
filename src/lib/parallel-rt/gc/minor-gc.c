@@ -512,9 +512,6 @@ void MinorGC (VProc_t *vp)
     #ifdef DIRECT_STYLE
         /* try to free unreachable stacks */
         vp->allocdStacks = ReclaimStacks(vp, vp->allocdStacks, AGE_Minor, false);
-
-        // reset the count
-        vp->allocdSinceGC = 0;
     #endif
 
     //LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
@@ -536,7 +533,7 @@ void MinorGC (VProc_t *vp)
 
 #if defined(DIRECT_STYLE)
     /* Now that GC is over, thin-out the free-stack cache */
-    // int numReleased = 
+    // int numReleased =
       LimitNumStacks(vp, MAX_STACK_CACHE_SZ, MAX_SEG_SIZE_IN_CACHE);
     // Say("Released %i segments\n", numReleased);
 #endif
