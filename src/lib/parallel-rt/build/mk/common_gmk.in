@@ -59,10 +59,10 @@ else
   ENABLE_LAZY_UNDERFLOW=true
 endif
 
-ifeq (,$(findstring nocopyoverflow,$(BUILD_OPTIONS)))
-  ENABLE_NOCOPY_OVERFLOW=false
+ifeq (,$(findstring nosealingcapture,$(BUILD_OPTIONS)))
+  ENABLE_NOSEALING_CAPTURE=false
 else
-  ENABLE_NOCOPY_OVERFLOW=true
+  ENABLE_NOSEALING_CAPTURE=true
 endif
 
 #
@@ -154,8 +154,8 @@ ifeq ($(ENABLE_LAZY_UNDERFLOW),true)
   CPPFLAGS += -DLAZY_UNDERFLOW
 endif
 
-ifeq ($(ENABLE_NOCOPY_OVERFLOW),true)
-  CPPFLAGS += -DNOCOPY_OVERFLOW
+ifeq ($(ENABLE_NOSEALING_CAPTURE),true)
+  CPPFLAGS += -DNOSEALING_CAPTURE
 endif
 
 C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS) $(CPU_SRCS)

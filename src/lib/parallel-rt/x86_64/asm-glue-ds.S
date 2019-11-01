@@ -83,12 +83,12 @@ _GSYM(ASM_LongJmp2):
 .p2align 4, 0x90              // must pad with NOPs!
 _GSYM(ASM_DS_EscapeThrow):
 
-#if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOCOPY_OVERFLOW) && !defined(LAZY_UNDERFLOW)
+#if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOSEALING_CAPTURE) && !defined(LAZY_UNDERFLOW)
   // NOTE: this is only safe to do because every capture seals off the
   // the segment and begins operating in a new one, thus we always know
   // the current segment != new segment being thrown to.
   //
-  // It is _not_ safe if NOCOPY_OVERFLOW, i.e., when we do _not_ seal off on
+  // It is _not_ safe if NOSEALING_CAPTURE, i.e., when we do _not_ seal off on
   // every capture because the current segment may have a live cont capture
   // still in it. Consider code that captures a cont, stores it somewhere,
   // and then immediately throws to a different continuation.
@@ -140,7 +140,7 @@ _GSYM(__manti_growstack_callec):
 .globl	_GSYM(__manti_growstack)
 _GSYM(__manti_growstack):
     // NOTE we actually start off with RSP 16-byte aligned!
-#ifdef NOCOPY_OVERFLOW
+#ifdef NOSEALING_CAPTURE
     movq    STD_CONT(VPROC_PTR_REG), TMP_REG0     // grab the stack descriptor
     movq    CAN_COPY(TMP_REG0), TMP_REG1          // conditionally copy
 #else
@@ -346,7 +346,7 @@ callec_body:
 
     movq    STD_CONT(VPROC_PTR_REG), STACK_DISC     // grab the stack descriptor
 
-#if defined(NOCOPY_OVERFLOW)
+#if defined(NOSEALING_CAPTURE)
     // no need for a new segment. we disable future copying instead.
     movq    $0, CAN_COPY(STACK_DISC)    // info->canCopy = 0   disable frame copying.
 
@@ -364,7 +364,7 @@ callec_body:
     movq    $STACK_HDR(3), -8(ALLOC_PTR_REG)       // init header
     movq    RESUME_ADDR, (ALLOC_PTR_REG)           // init code ptr
 
-#if !defined(NOCOPY_OVERFLOW) && (defined(SEGSTACK) || defined(RESIZESTACK))
+#if !defined(NOSEALING_CAPTURE) && (defined(SEGSTACK) || defined(RESIZESTACK))
     movq    OLD_SP, 8(ALLOC_PTR_REG)          // init captured stack ptr
 #else
     movq    %rsp, 8(ALLOC_PTR_REG)              // capture current stack ptr

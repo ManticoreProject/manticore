@@ -42,8 +42,8 @@ segmentLike=(
   "-segstack"
   # "-resizestack"
 
-  "-segstack -nocopyoverflow"
-  # "-resizestack -nocopyoverflow"
+  "-segstack -sealingcapture"
+  # "-resizestack -sealingcapture"
 )
 
 stacks=(
@@ -58,7 +58,7 @@ stacks=(
   "-contigstack -Ccshim=true"
   "-segstack -Ccshim=false"
 
-  "-resizestack -nocopyoverflow"
+  "-resizestack -sealingcapture"
 
   # now we test noras
   # "-noras"

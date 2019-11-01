@@ -601,20 +601,20 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-direct-stats, [stats direct])
 
     MK_BUILD_DIR(mcrt-resizestack, [direct resizestack])
-    MK_BUILD_DIR(mcrt-resizestack-nocopyoverflow, [direct resizestack nocopyoverflow])
+    MK_BUILD_DIR(mcrt-resizestack-nosealingcapture, [direct resizestack nosealingcapture])
 
     MK_BUILD_DIR(mcrt-resizestack-stats, [stats direct resizestack])
-    MK_BUILD_DIR(mcrt-resizestack-nocopyoverflow-stats, [stats direct resizestack nocopyoverflow])
+    MK_BUILD_DIR(mcrt-resizestack-nosealingcapture-stats, [stats direct resizestack nosealingcapture])
 
     MK_BUILD_DIR(mcrt-segstack, [direct segstack])
     MK_BUILD_DIR(mcrt-segstack-lazyunderflow, [direct segstack lazyunderflow])
-    MK_BUILD_DIR(mcrt-segstack-nocopyoverflow, [direct segstack nocopyoverflow])
-    MK_BUILD_DIR(mcrt-segstack-lazyunderflow-nocopyoverflow, [direct segstack lazyunderflow nocopyoverflow])
+    MK_BUILD_DIR(mcrt-segstack-nosealingcapture, [direct segstack nosealingcapture])
+    MK_BUILD_DIR(mcrt-segstack-lazyunderflow-nosealingcapture, [direct segstack lazyunderflow nosealingcapture])
 
     MK_BUILD_DIR(mcrt-segstack-stats, [stats direct segstack])
     MK_BUILD_DIR(mcrt-segstack-lazyunderflow-stats, [stats direct segstack lazyunderflow])
-    MK_BUILD_DIR(mcrt-segstack-nocopyoverflow-stats, [stats direct segstack nocopyoverflow])
-    MK_BUILD_DIR(mcrt-segstack-lazyunderflow-nocopyoverflow-stats, [stats direct segstack lazyunderflow nocopyoverflow])
+    MK_BUILD_DIR(mcrt-segstack-nosealingcapture-stats, [stats direct segstack nosealingcapture])
+    MK_BUILD_DIR(mcrt-segstack-lazyunderflow-nosealingcapture-stats, [stats direct segstack lazyunderflow nosealingcapture])
 
     dnl NOTE that linkstack does not compile RTS with DIRECT_STYLE enabled!
     dnl this is due to the heavy similarity between it and CPS-style codegen.

@@ -79,7 +79,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
         val segstack = Controls.get BasicControl.segstack
         val resizestack = Controls.get BasicControl.resizestack
         val lazyunderflow = Controls.get BasicControl.lazyunderflow
-        val nocopyoverflow = Controls.get BasicControl.nocopyoverflow
+        val nosealingcapture = Controls.get BasicControl.nosealingcapture
         val linkstack = Controls.get BasicControl.linkstack
 
         (* remove the .s *)
@@ -138,15 +138,15 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
                     (case (segstack, linkstack, resizestack)
                         of (false, false, false) => "mcrt-direct"
                          | (false, true, false) => "mcrt-linkstack"
-                         | (false, false, true) => if nocopyoverflow
-                                                    then "mcrt-resizestack-nocopyoverflow"
+                         | (false, false, true) => if nosealingcapture
+                                                    then "mcrt-resizestack-nosealingcapture"
                                                     else "mcrt-resizestack"
                          | (true, false, false) =>
-                            (case (lazyunderflow, nocopyoverflow)
+                            (case (lazyunderflow, nosealingcapture)
                               of (false, false) => "mcrt-segstack"
                                | (true, false) => "mcrt-segstack-lazyunderflow"
-                               | (false, true) => "mcrt-segstack-nocopyoverflow"
-                               | (true, true) => "mcrt-segstack-lazyunderflow-nocopyoverflow"
+                               | (false, true) => "mcrt-segstack-nosealingcapture"
+                               | (true, true) => "mcrt-segstack-lazyunderflow-nosealingcapture"
                                (* end case *))
                           (* end case *))
               in

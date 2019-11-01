@@ -254,7 +254,7 @@ functor MainFn (
 	  \    -segstack        use segmented stacks\n\
 	  \    -resizestack     use resizing stacks\n\
 	  \    -lazyunderflow   segstack -- do not free on underflow\n\
-	  \    -nocopyoverflow  segstack -- do not copy on overflow\n\
+	  \    -sealingcapture  seg/resize -- always seal the segment for callec\n\
 	  \    -noras           emit pop/push jmp instead of call/ret for stacks\n\
 	  \    -noparray        disable parray basis inclusion\n\
 	  \    -keepTemps       keep temporary files generated during compilation\n\
@@ -364,7 +364,7 @@ functor MainFn (
                             set BasicControl.linkstack )
 		| "-noras" => set BasicControl.noras
 		| "-lazyunderflow" => set BasicControl.lazyunderflow
-		| "-nocopyoverflow" => set BasicControl.nocopyoverflow
+		| "-sealingcapture" => (Controls.set(BasicControl.nosealingcapture, false); processArgs args)
 		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
 		| "-log" => set BasicControl.logging
 		| "-gcstats" => set BasicControl.gcStats

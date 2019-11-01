@@ -54,7 +54,7 @@ structure BasicControl :  sig
     val noras : bool Controls.control
 
     val lazyunderflow : bool Controls.control
-    val nocopyoverflow : bool Controls.control
+    val nosealingcapture : bool Controls.control
 
   (* optimization level used by LLVM backend *)
     val llopt : int Controls.control
@@ -285,12 +285,12 @@ structure BasicControl :  sig
         default = false
       }
 
-    val nocopyoverflow : bool Controls.control = Controls.genControl {
-        name = "nocopyoverflow",
+    val nosealingcapture : bool Controls.control = Controls.genControl {
+        name = "nosealingcapture",
         pri = [0, 1, 1], (* TODO: What do these values mean? *)
         obscurity = 0,
-        help = "segstack -- do not copy on overflow",
-        default = false
+        help = "segmented / resizing stack -- if true, does not seal the segment on callec",
+        default = true
       }
 
 

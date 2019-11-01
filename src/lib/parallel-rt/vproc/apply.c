@@ -383,7 +383,7 @@ doShutdown:
                       vp->sigPending = M_FALSE;
                       LogPreemptSignal(vp);
 
-                  #if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOCOPY_OVERFLOW)
+                  #if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOSEALING_CAPTURE)
 
                       // after capturing the resumeK, we need to execute in a new segment
                       #ifndef NO_GC_STATS
