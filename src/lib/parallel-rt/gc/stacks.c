@@ -292,11 +292,12 @@ StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
 } // end of alloc new memory
 
     // push on alloc'd list
-    StackInfo_t* cur = vp->allocdStacks;
-    if (cur != NULL) {
-        cur->prev = info;
+    StackInfo_t* oldTop = vp->allocdStacks;
+    if (oldTop != NULL) {
+        assert(oldTop->prev == NULL && "malformed list");
+        oldTop->prev = info;
     }
-    info->next = cur;
+    info->next = oldTop;
     info->prev = NULL;
 
     vp->allocdStacks = info;

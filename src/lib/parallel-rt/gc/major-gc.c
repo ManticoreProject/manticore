@@ -141,9 +141,11 @@ void ScanStackMajor (
 
 
     if (vp->inPromotion) {
-      // remove this segment from our local list
-      RemoveFromAllocList(vp, stkInfo);
-      stkInfo->owner = NULL; // it's not owned by anyone in particular now.
+      if (stkInfo->owner == vp) {
+        // remove this segment from our local list
+        RemoveFromAllocList(vp, stkInfo);
+        stkInfo->owner = NULL; // it's not owned by anyone in particular now.
+      }
 
       // then push it onto the global allocd list
       MutexLock(&GlobStackMutex);

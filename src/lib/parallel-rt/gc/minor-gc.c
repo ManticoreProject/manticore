@@ -248,21 +248,32 @@ int LimitNumStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
   return released;
 }
 
-void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd) {
-  // save links
-  StackInfo_t* allocdNext = allocd->next;
-  StackInfo_t* allocdPrev = allocd->prev;
+bool DebugListContains(StackInfo_t* cur, StackInfo_t* elm) {
+  while (cur != elm && cur != NULL)
+    cur = cur->next;
 
-  // update links in next/prev
-  if (allocdNext != NULL)
-      allocdNext->prev = allocdPrev;
+  return cur == elm;
+}
 
+void RemoveFromAllocList(VProc_t *vp, StackInfo_t* elm) {
+  assert(DebugListContains(vp->allocdStacks, elm) && "trying to remove a stack not in the allocd list of this vproc!");
 
-  if (allocdPrev != NULL) {
-      allocdPrev->next = allocdNext;
+  StackInfo_t *nextS = elm->next;
+  StackInfo_t *prevS = elm->prev;
+
+  if (prevS != NULL) {
+    assert(prevS->next == elm && "malformed list");
+    prevS->next = nextS;
   } else {
-      vp->allocdStacks = allocdNext;
+    assert(vp->allocdStacks == elm && "malformed list");
+    vp->allocdStacks = nextS;
   }
+
+  if (nextS != NULL) {
+    assert(nextS->prev == elm && "malformed list");
+    nextS->prev = prevS;
+  }
+
 }
 
 
