@@ -40,6 +40,10 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
     } else {
         int len = GetLength(hdr);
         assert(len > 0);
+#ifdef LINKSTACK
+        if (isLinkedFrameHdr(hdr))
+          roundUpFwdPtr(nextW, 16);
+#endif
         Word_t *newObj = *nextW;
         newObj[-1] = hdr;
         for (int i = 0;  i < len;  i++) {

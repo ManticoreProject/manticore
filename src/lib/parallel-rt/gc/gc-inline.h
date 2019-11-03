@@ -119,6 +119,40 @@ STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
     return ((p - base) <= szB);
 }
 
+// This round-up routine is specific to assumptions about Manticore's heap.
+// namely, it's word-size aligned by default. You must pass to this function
+// the pointer into the to-space where objects are being forwarded.
+// What is returned is a heap in a valid state where the forwarding
+// pointer is now 16-byte aligned, with (*ptr)[-1] free.
+//
+// Implementation Note:
+// Our GC must be able to parse the to-space in order to scan it for
+// further pointers to forward, and it visits each object by relying
+// on well-formed headers. Thus, to add padding between these objects,
+// the padding must be parseable by the scanning routine, i.e., it
+// must look like an allocated RAW object, which may be of size zero.
+STATIC_INLINE void roundUpFwdPtr(Word_t** ptr, uint16_t powOfTwo) {
+  const uint64_t wordSz = 8;
+  if (powOfTwo == wordSz)
+    return;
+
+  assert(powOfTwo >= 16 && "any smaller and we can't do it or it's unneeded!");
+  uint64_t addr = (uint64_t) *ptr;
+  uint16_t remainder = addr % powOfTwo;
+
+  if (remainder == 0)
+    return;
+
+  if (remainder % wordSz != 0)
+    Die("we cannot align such an object.");
+
+  uint64_t rawObjSz = (remainder / wordSz) - 1;
+  (*ptr)[-1] = RAW_HDR(rawObjSz);
+
+  addr += remainder;
+  *ptr = (Word_t*) addr;
+}
+
 /*! \brief return the top of the used space in a memory chunk.
  *  \param vp the vproc that owns the chunk.
  *  \param cp the memory chunk.
