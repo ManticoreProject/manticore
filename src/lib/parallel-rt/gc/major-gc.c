@@ -143,7 +143,7 @@ void ScanStackMajor (
     if (vp->inPromotion) {
       if (stkInfo->owner == vp) {
         // remove this segment from our local list
-        RemoveFromAllocList(vp, stkInfo);
+        RemoveFromAllocList(&(vp->allocdStacks), stkInfo);
         stkInfo->owner = NULL; // it's not owned by anyone in particular now.
       }
 

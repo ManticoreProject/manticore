@@ -403,12 +403,47 @@ void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
     }
 }
 
+// NOTE: called by ASM code
+void TakeOwnership(VProc_t* vp, StackInfo_t* segment) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
+
+  for (StackInfo_t* cur = segment; cur != NULL; cur = cur->prevSegment) {
+    if (cur->owner != NULL)
+      Die("invalid segment to take ownership of!");
+
+    // critical section for modifying the GlobAllocdList
+    MutexLock(&GlobStackMutex);
+      RemoveFromAllocList(&GlobAllocdList, cur);
+    MutexUnlock(&GlobStackMutex);
+
+    // push it onto this vproc's allocdStacks list
+    StackInfo_t* oldTop = vp->allocdStacks;
+    if (oldTop != NULL)
+      oldTop->prev = cur;
+
+    cur->prev = NULL;
+    cur->next = oldTop;
+    vp->allocdStacks = cur;
+
+    // update ownership status
+    cur->owner = vp;
+  } // end loop
+
+  #ifndef NO_GC_STATS
+      TIMER_Stop(&(vp->largeObjStats.timer));
+  #endif
+
+  return;
+}
 
 
 #if defined(SEGSTACK)
 
 // In this SEGMENTED STACKS version, we copy a bounded number of frames,
 // or none at all.
+// NOTE: called by ASM code
 uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
   #ifndef NO_GC_STATS
       TIMER_Start(&(vp->largeObjStats.timer));
@@ -515,6 +550,7 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
 
 // on overflow we RESIZE the stack and discard the old one.
 // In the case of callec, we link a new segment instead.
+// NOTE: called by ASM code
 uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
   #ifndef NO_GC_STATS
       TIMER_Start(&(vp->largeObjStats.timer));

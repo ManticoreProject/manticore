@@ -109,7 +109,7 @@ struct struct_stackinfo {
     StackInfo_t* prev   ALIGN_8;  // link to previous stack in the list
     void* deepestScan   ALIGN_8;  // unscanned <=> deepestScan == ptr to its own StackInfo_t
     Age_t age           ALIGN_8;
-    VProc_t* owner      ALIGN_8;
+    VProc_t* owner      ALIGN_8; // who's allocation/free list it is in. NULL means it's in global list.
     uint64_t canCopy    ALIGN_8; // if true, indicates that it's safe to copy frames out of this segment
     size_t guardSz      ALIGN_8;
     size_t usableSpace  ALIGN_8;
@@ -163,7 +163,7 @@ extern MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool i
 
 extern StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t*, Age_t epoch, bool GlobalGCLeader);
 extern StackInfo_t* ReleaseOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC);
-extern void RemoveFromAllocList(VProc_t *vp, StackInfo_t* allocd);
+extern void RemoveFromAllocList(StackInfo_t** head, StackInfo_t* allocd);
 
 extern void ScanStackMinor (
     void* origStkPtr,

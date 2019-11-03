@@ -248,15 +248,19 @@ int LimitNumStacks(VProc_t *vp, const size_t maxCache, const size_t maxSegSz) {
   return released;
 }
 
-bool DebugListContains(StackInfo_t* cur, StackInfo_t* elm) {
-  while (cur != elm && cur != NULL)
+bool DebugListContains(StackInfo_t* start, StackInfo_t* elm) {
+  StackInfo_t* cur = start;
+  while (cur != elm && cur != NULL) {
     cur = cur->next;
+    if (cur == start)
+      Die("circular list!");
+  }
 
   return cur == elm;
 }
 
-void RemoveFromAllocList(VProc_t *vp, StackInfo_t* elm) {
-  assert(DebugListContains(vp->allocdStacks, elm) && "trying to remove a stack not in the allocd list of this vproc!");
+void RemoveFromAllocList(StackInfo_t** head, StackInfo_t* elm) {
+  assert(DebugListContains(*head, elm) && "trying to remove a stack not in the allocd list given!");
 
   StackInfo_t *nextS = elm->next;
   StackInfo_t *prevS = elm->prev;
@@ -265,8 +269,8 @@ void RemoveFromAllocList(VProc_t *vp, StackInfo_t* elm) {
     assert(prevS->next == elm && "malformed list");
     prevS->next = nextS;
   } else {
-    assert(vp->allocdStacks == elm && "malformed list");
-    vp->allocdStacks = nextS;
+    assert(*head == elm && "malformed list");
+    *head = nextS;
   }
 
   if (nextS != NULL) {
@@ -286,7 +290,7 @@ void RemoveFromAllocList(VProc_t *vp, StackInfo_t* elm) {
 // ASM_DS_SegUnderflow will also free a stack!
 StackInfo_t* ReleaseOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC) {
 
-  RemoveFromAllocList(vp, allocd);
+  RemoveFromAllocList(&(vp->allocdStacks), allocd);
 
   // demote
   allocd->age = AGE_Minor;
@@ -347,6 +351,8 @@ StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool Glob
       TIMER_Start(&(vp->largeObjStats.timer));
   #endif
 
+  // Say("Start of reclaim stacks...");
+
     int NextVProc = 0;
     StackInfo_t* current = top;
     top = NULL;
@@ -382,6 +388,7 @@ StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool Glob
         TIMER_Stop(&(vp->largeObjStats.timer));
     #endif
 
+    // Say("done!\n");
     return top;
 }
 

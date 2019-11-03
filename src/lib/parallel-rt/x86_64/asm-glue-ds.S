@@ -74,6 +74,53 @@ _GSYM(ASM_Resume_Stack):
     ret
 
 .p2align 4, 0xCC
+.globl _GSYM(ASM_CallTakeOwnership)
+_GSYM(ASM_CallTakeOwnership):
+// convention: call/ret
+// ASSUMPTION: EscapeThrow is our only caller
+// INPUTS: TMP_REG0  -- segment we want to transition to
+//         XXX  -- Manticore registers, etc.
+
+    // we need to switch to FFI stack, so we move the return address
+    popq  TMP_REG1
+
+    // switch to FFI stack
+    movq    FFI_STK(VPROC_PTR_REG), %rsp
+
+    pushq   TMP_REG1  // put return address in the right place to enable a ret
+    pushq   TMP_REG0  // save caller's temporary, plus fix alignment
+
+    // save manticore registers
+    pushq   ALLOC_PTR_REG
+    pushq   VPROC_PTR_REG
+    pushq   STD_EP_REG
+    pushq   STD_EXH_REG
+    pushq   STD_ARG_REG
+    pushq   %r10            // arg 2
+
+    // NOTE: no need to save XMM regs since that's not possible to be
+    // live in EscapeThrow, which is our only current caller.
+
+    movq    VPROC_PTR_REG, %rdi            // vproc is arg 1
+    movq    TMP_REG0, %rsi                 // target segment is arg 2
+    callq   _GSYM(TakeOwnership)
+
+    // restore other manticore regs
+    popq    %r10
+    popq   STD_ARG_REG
+    popq   STD_EXH_REG
+    popq   STD_EP_REG
+    popq   VPROC_PTR_REG
+    popq   ALLOC_PTR_REG
+
+    // restore caller's temporary
+    popq   TMP_REG0
+
+    // consume the return address that was left on the FFI stack
+    retq
+
+
+.p2align 4, 0xCC
 .globl	_GSYM(ASM_LongJmp2)
 .globl	_GSYM(ASM_DS_EscapeThrow)
 _GSYM(ASM_LongJmp2):
@@ -84,28 +131,56 @@ _GSYM(ASM_LongJmp2):
 _GSYM(ASM_DS_EscapeThrow):
 
 #if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOSEALING_CAPTURE) && !defined(LAZY_UNDERFLOW)
-  // NOTE: this is only safe to do because every capture seals off the
-  // the segment and begins operating in a new one, thus we always know
-  // the current segment != new segment being thrown to.
-  //
-  // It is _not_ safe if NOSEALING_CAPTURE, i.e., when we do _not_ seal off on
-  // every capture because the current segment may have a live cont capture
-  // still in it. Consider code that captures a cont, stores it somewhere,
-  // and then immediately throws to a different continuation.
-  // Then the current segment still has a live captured cont in memory.
-  // ~kavon
+    // NOTE: this is only safe to do because every capture seals off the
+    // the segment and begins operating in a new one, thus we always know
+    // the current segment != new segment being thrown to.
+    //
+    // It is _not_ safe if NOSEALING_CAPTURE, i.e., when we do _not_ seal off on
+    // every capture because the current segment may have a live cont capture
+    // still in it. Consider code that captures a cont, stores it somewhere,
+    // and then immediately throws to a different continuation.
+    // Then the current segment still has a live captured cont in memory.
+    // ~kavon
 
-  // then whichever segment we were operating in is no longer live, so
-  // we can try to free it if it belongs to us.
-  movq      STD_CONT(VPROC_PTR_REG), TMP_REG1
-  callq     _GSYM(ASM_TryFreeSegment)
+    // then whichever segment we were operating in is no longer live, so
+    // we can try to free it if it belongs to us.
+    movq      STD_CONT(VPROC_PTR_REG), TMP_REG1
+    callq     _GSYM(ASM_TryFreeSegment)
 #endif
 
-    // set the stack ptr.
-    movq    8(STD_EP_REG), %rsp
     // set stack descriptor
     movq    16(STD_EP_REG), TMP_REG0
     movq    TMP_REG0, STD_CONT(VPROC_PTR_REG)
+
+////////////////////// start of ownership check //////////////////////////////
+
+    // check ownership of the immediate segment we're transitioning to.
+    // The fast path is if it's already owned by us, which we determine by
+    // assumption that if it's not NULL, then its ours.
+    movq    OWNER(TMP_REG0), TMP_REG1
+    testq   TMP_REG1, TMP_REG1
+    jnz     alreadyOwned
+
+    // then it's a global segment and we need to take ownership, which is
+    // too complicated to do in assembly.
+    callq  _GSYM(ASM_CallTakeOwnership)
+
+alreadyOwned:
+#ifndef NDEBUG
+    // actually check that this vproc specifically is the owner
+    // this assumption would only fail if something's busted.
+    movq    OWNER(TMP_REG0), TMP_REG1
+    cmpq    VPROC_PTR_REG, TMP_REG1
+    je      itsOK
+    ud2    // crash. unexpected owner of segment.
+itsOK:
+#endif
+
+////////////////////// end of ownership check ////////////////////////////////
+
+    // finally move to the new segment
+    movq    8(STD_EP_REG), %rsp
+
 #if defined(SEGSTACK) || defined(RESIZESTACK)
     // set the stack limit
     movq    STK_LIM(TMP_REG0), TMP_REG0
