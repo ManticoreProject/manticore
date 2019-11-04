@@ -134,6 +134,7 @@ void print_frame(FILE *stream, frame_info_t* frame);
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 /** Functions **/
 
