@@ -57,7 +57,7 @@ extern int ASM_LinkedStack_PrologueGC_Ret;
 extern int ASM_ForkFrame;
 size_t dfltStackSz;
 bool stackCacheThinning;
-void InitStackMaps ();
+void InitStackMaps (Options_t *opts);
 
 // initalize items related to stack allocation in the global heap context.
 Mutex_t GlobStackMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -208,7 +208,7 @@ void HeapInit (Options_t *opts)
 
     InitGlobalGC ();
 
-    InitStackMaps();
+    InitStackMaps(opts);
 
 } /* end of HeapInit */
 
@@ -237,10 +237,11 @@ void InitVProcHeap (VProc_t *vp)
 
 }
 
-void InitStackMaps () {
+void InitStackMaps (Options_t *opts) {
   #if defined(DIRECT_STYLE) || defined(LINKSTACK)
       /* initialize the statepoint table */
-      SPTbl = generate_table((void*)&STACK_MAPS, 0.5);
+      int loadPct = GetIntOpt(opts, "-gctableload", 50);
+      SPTbl = generate_table((void*)&STACK_MAPS, loadPct / 100.0);
   #endif
 
   #ifdef LINKSTACK
