@@ -373,12 +373,12 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
   // allocate a special launcher-cont with space for the function closure.
   const uint64_t sz = 3;
 
-  // bump the allocation pointer further than required
+  // Bump the allocation pointer further than required,
   // because the main way to reclaim this stack is to
   // perform a GC. Some heavy-duty programs may end up allocating so many segments
   // but virtually nothing in the heap. This is a natural way to trigger a GC.
-  // Make sure the total is < the slop size (4k)
-  const uint64_t fluff = 128;
+  // Make sure the total num words is < 400 to stay away from slop end.
+  const uint64_t fluff = 0;
   EnsureNurserySpace(vp, fluff+sz+1);
 
   Word_t  *obj = (Word_t *)(vp->allocPtr);
