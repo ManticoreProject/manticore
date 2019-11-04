@@ -152,6 +152,12 @@ _GSYM(ASM_DS_EscapeThrow):
     movq    16(STD_EP_REG), TMP_REG0
     movq    TMP_REG0, STD_CONT(VPROC_PTR_REG)
 
+// controls
+
+// #define ClaimOwnership
+#undef ClaimOwnership
+
+#ifdef ClaimOwnership
 ////////////////////// start of ownership check //////////////////////////////
 
     // check ownership of the immediate segment we're transitioning to.
@@ -177,6 +183,7 @@ itsOK:
 #endif
 
 ////////////////////// end of ownership check ////////////////////////////////
+#endif
 
     // finally move to the new segment
     movq    8(STD_EP_REG), %rsp
