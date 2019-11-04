@@ -122,9 +122,9 @@ void HeapInit (Options_t *opts)
       MaxNurserySzB = MIN_NURSERY_SZB;
 
 #if defined(SEGSTACK)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 16 * ONE_K);
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 128 * ONE_K);
 #elif defined(RESIZESTACK)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, ONE_K);
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 32 * ONE_K);
 #elif defined(DIRECT_STYLE)
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 128 * ONE_MEG);
 #endif

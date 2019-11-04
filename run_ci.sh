@@ -38,12 +38,13 @@ llvmOptions=(
   # "-O5"
 )
 
+SMALL_SEG_SIZE="4k"
 segmentLike=(
   "-segstack"
-  # "-resizestack"
+  "-resizestack"
 
   "-segstack -sealingcapture"
-  # "-resizestack -sealingcapture"
+  "-resizestack -sealingcapture"
 )
 
 stacks=(
@@ -57,8 +58,7 @@ stacks=(
   "-Ccshim=true"
   "-contigstack -Ccshim=true"
   "-segstack -Ccshim=false"
-
-  "-resizestack -sealingcapture"
+  "-resizestack -Ccshim=false"
 
   # now we test noras
   # "-noras"
@@ -106,10 +106,10 @@ for stack in "${segmentLike[@]}"; do
   echo -e "\n\n\t----- testing $stack with small segments -----\n\n"
 
   echo -e "\t--SEQUENTIAL --"
-  runTest "$stack" run-seq.sh "-stacksz 1024"
+  runTest "$stack" run-seq.sh "-stacksz ${SMALL_SEG_SIZE}"
 
   echo -e "\n\t-- CML --"
-  runTest "$stack" run-cml.sh "-stacksz 1024"
+  runTest "$stack" run-cml.sh "-stacksz ${SMALL_SEG_SIZE}"
 
   echo -e "\n\n\t----- done -----\n\n"
 done
