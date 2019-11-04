@@ -56,6 +56,7 @@ extern int ASM_DS_StartStack;
 extern int ASM_LinkedStack_PrologueGC_Ret;
 extern int ASM_ForkFrame;
 size_t dfltStackSz;
+bool stackCacheThinning;
 void InitStackMaps ();
 
 // initalize items related to stack allocation in the global heap context.
@@ -132,8 +133,11 @@ void HeapInit (Options_t *opts)
     if (dfltStackSz < ONE_K)
       dfltStackSz = ONE_K;
 
+    // only enable stack cache thinning if user specifies.
+    stackCacheThinning = GetFlagOpt(opts, "-thincache");
+
 #ifndef NDEBUG
-    Say("Stack size = %lu bytes\n", dfltStackSz);
+    Say("Stack size = %lu bytes, cache thinning = %i\n", dfltStackSz, stackCacheThinning);
 #endif
 #endif
 

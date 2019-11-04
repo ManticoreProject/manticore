@@ -555,9 +555,11 @@ void MinorGC (VProc_t *vp)
 
 #if defined(DIRECT_STYLE)
     /* Now that GC is over, thin-out the free-stack cache */
-    // int numReleased =
-      LimitNumStacks(vp, MAX_STACK_CACHE_SZ, MAX_SEG_SIZE_IN_CACHE);
-    // Say("Released %i segments\n", numReleased);
+    if (stackCacheThinning) {
+      // int numReleased =
+        LimitNumStacks(vp, MAX_STACK_CACHE_SZ, MAX_SEG_SIZE_IN_CACHE);
+      // Say("Released %i segments\n", numReleased);
+    }
 #endif
 
     /* reset the allocation pointer */

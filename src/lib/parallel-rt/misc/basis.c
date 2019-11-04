@@ -385,6 +385,11 @@ int M_GetNumVProcs ()
     return NumVProcs;
 }
 
+// useful for debugging and evaluating performance of FFI calls.
+int32_t M_IntIdentity (int32_t i) {
+  return i;
+}
+
 /***** functions to support debugging *****/
 
 Value_t M_Test ()
@@ -610,7 +615,11 @@ void *M_TextIOOpenIn (Value_t filename)
 {
     SequenceHdr_t	*filenameS = (SequenceHdr_t *)ValueToPtr(filename);
 
-    return fopen ((char*)(filenameS->data), "r");
+    FILE* res = fopen ((char*)(filenameS->data), "r");
+    if (res == NULL)
+      perror("TextIO.openIn");
+
+    return res;
 }
 
 void M_TextIOCloseIn (void *instream)
