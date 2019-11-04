@@ -91,7 +91,7 @@ GC_SRCS = 	minor-gc.c \
 		heap.c \
 		unix-memory.c \
 		alloc.c \
-		statepoints.c \
+		statepoint.c \
 		stacks.c \
 		large-object.c \
 		work-stealing-deque.c

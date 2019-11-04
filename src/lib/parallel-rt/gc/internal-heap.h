@@ -11,7 +11,7 @@
 
 #include "manticore-rt.h"
 #include "heap.h"
-#include "statepoints.h"
+#include "statepoint.h"
 
 typedef enum {
     FREE_CHUNK,			/*!< chunk that is available for allocation */

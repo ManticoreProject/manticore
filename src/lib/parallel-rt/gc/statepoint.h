@@ -10,11 +10,11 @@
 typedef struct {
     // kind < 0 means this is a base pointer
     // kind >= 0 means this is a pointer derived from base pointer in slot number "kind"
-    int32_t kind;  
-    
-    // offsets are relative to the base of a frame. 
+    int32_t kind;
+
+    // offsets are relative to the base of a frame.
     // See Figure 1 below for our defintion of "base"
-    int32_t offset;  
+    int32_t offset;
 } pointer_slot_t;
 
 /*
@@ -43,12 +43,12 @@ typedef struct {
     // NOTE flags & calling convention didn't seem useful to include in the map.
     uint64_t retAddr;
     uint64_t frameSize;     // in bytes
-    
+
     // all base pointers come before derived pointers in the slot array. you can use this
     // fact to quickly update the derived pointers by referring back to the base pointers
     // while scanning the slots.
     uint16_t numSlots;
-    pointer_slot_t slots[];  
+    pointer_slot_t slots[];
 } frame_info_t;
 
 
@@ -59,7 +59,7 @@ typedef struct {
 } table_bucket_t;
 
 typedef struct {
-    uint64_t size; 
+    uint64_t size;
     table_bucket_t* buckets;
 } statepoint_table_t;
 
@@ -84,7 +84,7 @@ frame_info_t* lookup_return_address(statepoint_table_t *table, uint64_t retAddr)
 /**
  * Given an LLVM generated Stack Map, will returns a hash table mapping return addresses
  * to a frame_info_t struct that provides information about live pointer locations within
- * that stack frame. 
+ * that stack frame.
  *
  * - The map is the LLVM Stack Map generated via gc.statepoint.
  * - The load factor allows you to tune the amount of hash collisions in the table. Lower
@@ -155,7 +155,7 @@ frame_info_t* next_frame(frame_info_t* cur);
 #include <stdint.h>
 #include <stddef.h>
 
-/** 
+/**
  * LLVM's Documentation: http://llvm.org/docs/StackMaps.html#stack-map-format
  *
  *  "The runtime must be able to interpret the stack map record given only the ID,
@@ -164,26 +164,26 @@ frame_info_t* next_frame(frame_info_t* cur);
  *  We interpret "order of the locations" to mean that not only are callsite records
  *  cooresponding to a function grouped together and ordered from least to greatest
  *  offset, but these callsite groups are also in the same order as the array of
- *  function stack size records. 
- * 
- *  This appears to be the case in LLVM, and indeed, these assumptions are nessecary to 
+ *  function stack size records.
+ *
+ *  This appears to be the case in LLVM, and indeed, these assumptions are nessecary to
  *  figure out what groups correspond to which functions (without abusing the ID field
  *  with a post processing script) to compute the return addresses.
  */
- 
+
  /******** LAYOUT ********
- 
+
  stackmap_header_t;
- 
+
  function_info_t[numFunctions];
- 
+
  uint64_t[numConstants];
- 
+
  numRecords of the following {
     callsite_header_t;
 
     value_location_t[numLocations];
-    
+
     << upto 4 bytes of padding, as needed, to achieve 8 byte alignment >>
 
     liveout_header_t;
@@ -192,7 +192,7 @@ frame_info_t* next_frame(frame_info_t* cur);
 
     << upto 4 bytes of padding, as needed, to achieve 8 byte alignment >>
 }
- 
+
  ******** END OF LAYOUT ********/
 
 typedef struct __attribute__((packed)) {
