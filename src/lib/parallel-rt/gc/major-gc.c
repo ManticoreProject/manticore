@@ -153,7 +153,7 @@ void ScanStackMajor (
       }
 
       // then push it onto the global allocd list
-      MutexLock(&GlobStackMutex);
+      if (NumVProcs > 1) MutexLock(&GlobStackMutex);
       StackInfo_t* top = GlobAllocdList;
       GlobAllocdList = stkInfo;
 
@@ -163,7 +163,7 @@ void ScanStackMajor (
       if (top != NULL)
         top->prev = stkInfo;
 
-      MutexUnlock(&GlobStackMutex);
+      if (NumVProcs > 1) MutexUnlock(&GlobStackMutex);
 
     } else {
       // only during a GC cycle is it valid to do this test of the deepestScan,

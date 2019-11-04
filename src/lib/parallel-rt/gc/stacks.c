@@ -414,9 +414,9 @@ void TakeOwnership(VProc_t* vp, StackInfo_t* segment) {
       Die("invalid segment to take ownership of!");
 
     // critical section for modifying the GlobAllocdList
-    MutexLock(&GlobStackMutex);
+    if (NumVProcs > 1) MutexLock(&GlobStackMutex);
       RemoveFromAllocList(&GlobAllocdList, cur);
-    MutexUnlock(&GlobStackMutex);
+    if (NumVProcs > 1) MutexUnlock(&GlobStackMutex);
 
     // push it onto this vproc's allocdStacks list
     StackInfo_t* oldTop = vp->allocdStacks;
@@ -429,6 +429,7 @@ void TakeOwnership(VProc_t* vp, StackInfo_t* segment) {
 
     // update ownership status
     cur->owner = vp;
+    // cur->age = AGE_Minor;  // QUESTION: is this correct?
   } // end loop
 
   #ifndef NO_GC_STATS
