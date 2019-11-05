@@ -171,7 +171,8 @@ void ScanStackMajor (
       // and will not scan the stack.
         uint64_t deepest = (uint64_t)stkInfo->deepestScan;
         if(deepest <= (uint64_t)origStkPtr) {
-            goto nextIter; // this part of the stack has already been scanned.
+          // Then I've already scanned the segments following this one.
+          goto stopEarly;
         }
         stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
     }
@@ -234,8 +235,9 @@ void ScanStackMajor (
     // the roots have been forwarded to the global heap
     stkInfo->age = promoteGen;
 
-nextIter:
+
 #if defined(SEGSTACK) || defined(RESIZESTACK)
+    // set up for next iteration
     stkInfo = stkInfo->prevSegment;
 
     #ifdef DEBUG_STACK_SCAN_MAJOR
@@ -245,6 +247,8 @@ nextIter:
 
   } // end stkInfo while
 #endif // SEGSTACK
+
+stopEarly:
 
 #ifdef DEBUG_STACK_SCAN_MAJOR
         if (framesSeen == 0) {
