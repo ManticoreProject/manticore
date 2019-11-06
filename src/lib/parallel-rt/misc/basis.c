@@ -584,9 +584,14 @@ double M_Atan2 (double x, double y)
   return atan2(x,y);
 }
 
-double M_Floor (double x)
+double M_DFloor (double x)
 {
   return floor(x);
+}
+
+int M_IFloor (double x)
+{
+  return (int) floor(x);
 }
 
 int64_t M_Lround (double x)
