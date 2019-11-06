@@ -216,8 +216,17 @@ in (case p
   | P.F64Abs _ => (fn [a] => valOf(LB.call bb (fv (#1(LR.abs_f64)), #[a])))
 
 
-  | (P.I8RSh _ | P.I16RSh _ | P.I32RSh _ | P.I64RSh _ )
+  | (P.I8RSh _ | P.I16RSh _ | P.I32RSh _ | P.I64RSh _ ) (* right logical shift *)
       => (fn [a, b] => f e Op.LShr #[a, b])
+
+  | (P.I32AndB _ | P.I64AndB _)
+      => (fn [a, b] => f e Op.And #[a, b])
+
+  | (P.I32OrB _ | P.I64OrB _)
+      => (fn [a, b] => f e Op.Or #[a, b])
+
+  | (P.I32XorB _ | P.I64XorB _)
+      => (fn [a, b] => f e Op.Xor #[a, b])
 
   (* conversions *)
 

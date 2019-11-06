@@ -23,7 +23,7 @@ structure Prim =
       | U32Rem of 'var * 'var
       | I32AndB of 'var * 'var   (*bitwise and*)
       | I32OrB of 'var * 'var    (*bitwise or*)
-      | I32XorB of 'var * 'var   (*bitwise or*)
+      | I32XorB of 'var * 'var   (*bitwise xor*)
       | I32NotB of 'var          (*bitwise not*)
       | I32LSh of 'var * 'var    (*left shift*)
       | I32RSh of 'var * 'var    (*right (logical) shift*)
@@ -38,7 +38,7 @@ structure Prim =
       | U64Rem of 'var * 'var
       | I64AndB of 'var * 'var   (*bitwise and*)
       | I64OrB of 'var * 'var    (*bitwise or*)
-      | I64XorB of 'var * 'var   (*bitwise or*)
+      | I64XorB of 'var * 'var   (*bitwise xor*)
       | I64NotB of 'var          (*bitwise not*)
       | I64LSh of 'var * 'var    (*left shift*)
       | I64RSh of 'var * 'var    (*right (logical) shift*)
@@ -118,7 +118,7 @@ structure Prim =
       | FenceRW				(* memory fence for both reads and writes *)
       | Trap				(* crash the program at this point (e.g., execute an illegal instruction) *)
     (* allocation primitives *)
-      | AllocPolyVec of 'var * 'var     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
+      | AllocPolyVec of 'var * 'var     (* AllocPolyVec (n, xs): allocate in the local heap a vector
 					 * v of length n s.t. v[i] := l[i] for 0 <= i < n *)
       | AllocIntArray of 'var           (* allocates an array of ints in the local heap *)
       | AllocLongArray of 'var          (* allocates an array of longs in the local heap *)
