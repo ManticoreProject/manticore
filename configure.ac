@@ -63,9 +63,13 @@ fi
 
 dnl sanitizers include: thread, address, undefined
 AC_ARG_VAR(SANITIZE, "debug builds should use a sanitizer: thread address undefined")
-if test $SANITIZE != "" ; then
+AC_MSG_CHECKING([for SANITIZE flag request])
+if test x"$SANITIZE" != x"" ; then
   SANITIZER="-fsanitize=$SANITIZE"
+  AC_MSG_RESULT($SANITIZE)
   AC_SUBST(SANITIZER)
+else
+  AC_MSG_RESULT(none)
 fi
 
 dnl
