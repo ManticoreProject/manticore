@@ -51,6 +51,7 @@ stacks=(
   ""
   "-contigstack"
   "-segstack"
+  "-segstack -lazyunderflow"
   "-resizestack"
   "-linkstack"
 
@@ -58,12 +59,14 @@ stacks=(
   "-Ccshim=true"
   "-contigstack -Ccshim=true"
   "-segstack -Ccshim=false"
+  "-segstack -lazyunderflow -Ccshim=false"
   "-resizestack -Ccshim=false"
 
   # now we test noras
   "-noras"
   "-noras -contigstack"
   "-noras -segstack"
+  "-noras -segstack -lazyunderflow"
   "-noras -linkstack"
 )
 
@@ -94,7 +97,7 @@ for stack in "${stacks[@]}"; do
         echo -e "\t--SEQUENTIAL --"
         runTest "$config" run-seq.sh
         echo -e "\n\t-- CML --"
-        runTest "$config" run-cml.sh
+        runTest "$config" run-cml.sh "-p 1"
         echo -e "\n\n\t----- done -----\n\n"
     done
 done
@@ -109,7 +112,7 @@ for stack in "${smallSegmentConfigs[@]}"; do
   runTest "$stack" run-seq.sh "-stacksz ${SMALL_SEG_SIZE}"
 
   echo -e "\n\t-- CML --"
-  runTest "$stack" run-cml.sh "-stacksz ${SMALL_SEG_SIZE}"
+  runTest "$stack" run-cml.sh "-p 1 -stacksz ${SMALL_SEG_SIZE}"
 
   echo -e "\n\n\t----- done -----\n\n"
 done
