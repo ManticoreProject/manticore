@@ -39,12 +39,12 @@ llvmOptions=(
 )
 
 SMALL_SEG_SIZE="4k"
-segmentLike=(
-  "-segstack"
-  "-resizestack"
-
-  "-segstack -sealingcapture"
-  "-resizestack -sealingcapture"
+smallSegmentConfigs=(
+  # "-segstack"
+  # "-resizestack"
+  #
+  # "-segstack -sealingcapture"
+  # "-resizestack -sealingcapture"
 )
 
 stacks=(
@@ -61,10 +61,10 @@ stacks=(
   "-resizestack -Ccshim=false"
 
   # now we test noras
-  # "-noras"
-  # "-noras -contigstack"
-  # "-noras -segstack"
-  # "-noras -linkstack"
+  "-noras"
+  "-noras -contigstack"
+  "-noras -segstack"
+  "-noras -linkstack"
 )
 
 CI_REPORT="gitlab_report.txt"
@@ -102,7 +102,7 @@ done
 ##########
 # stress the overflow / underflow handling
 
-for stack in "${segmentLike[@]}"; do
+for stack in "${smallSegmentConfigs[@]}"; do
   echo -e "\n\n\t----- testing $stack with small segments -----\n\n"
 
   echo -e "\t--SEQUENTIAL --"
