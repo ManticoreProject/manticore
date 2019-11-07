@@ -59,7 +59,7 @@ stacks=(
   "-Ccshim=true"
   "-contigstack -Ccshim=true"
   "-segstack -Ccshim=false"
-  "-segstack -lazyunderflow -Ccshim=false"
+  # "-segstack -lazyunderflow -Ccshim=false"  # this config is too inefficient; it mprotects too many segments!
   "-resizestack -Ccshim=false"
 
   # now we test noras
