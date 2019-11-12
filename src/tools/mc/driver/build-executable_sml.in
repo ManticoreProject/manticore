@@ -246,6 +246,9 @@ Pass Arguments:  -domtree
 
     val o_essential = ["-lower-expect"]
 
+    (* a very basic function-level clean-up *)
+    val o_basic = o_analysis @ ["-simplifycfg", "-early-cse"] @ o_essential
+
   (* all of the basic cleanup passes LLVM has. things like adce were left off
    * not sure if this is reasonable ordering, just guessed
    *)
@@ -279,11 +282,11 @@ Pass Arguments:  -domtree
 
     val optLevels = [
             (0, o_essential),
-            (1, o_normal),
-            (2, o_aggressive),
-            (3, ["-O1"]),
-            (4, ["-O2"]),
-            (5, ["-O3"])
+            (1, o_basic),
+            (2, o_normal),
+            (3, o_aggressive),
+            (4, ["-O1"]),
+            (5, ["-O2"])
           ]
 
     (* opt passes that need to be performed before/after any passes *)
@@ -318,7 +321,8 @@ Pass Arguments:  -domtree
 
      val llcLevels = [
          (0, ["-O1"]),
-         (1, ["-O3"])
+         (1, ["-O1"]),
+         (2, ["-O3"])
      ]
 
   (* llc passes that need to be performed before/after any passes *)
@@ -358,9 +362,7 @@ Pass Arguments:  -domtree
           val verbose = verbose orelse (Controls.get BasicControl.verbose > 0)
         (* take off the .ll *)
           val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 3))
-        (* run opt. we do not need to run opt if the llopt level is set to 0, because
-           llc will already run a verification pass on the input. we do it anyways though
-           so we can run the linter. *)
+        (* run opt. *)
         val commonName = asmPrefix ^ "_opt.bc"
         val optRun = doOpt verbose asmFile commonName
         val optOutput = let

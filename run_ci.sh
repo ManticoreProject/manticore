@@ -33,9 +33,9 @@ llvmOptions=(
   # "-O0"
   # "-O1"
   # "-O2"
-  "-O3"
+  # "-O3"
   # "-O4"
-  # "-O5"
+  "-O5"
 )
 
 SMALL_SEG_SIZE="4k"
