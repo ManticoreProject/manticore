@@ -362,6 +362,8 @@ void *NewVProc (void *arg)
     TIMER_Init (&(vproc->largeObjStats.timer));
     vproc->nBytesPromoted = 0;
     TIMER_Init (&(vproc->promoteTimer));
+    vproc->stkCacheMisses = 0;
+    vproc->stkCacheReqs = 0;
 #endif
 
 #if defined(SEGSTACK) || defined(RESIZESTACK)

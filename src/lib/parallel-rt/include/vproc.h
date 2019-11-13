@@ -127,6 +127,8 @@ struct struct_vproc {
     GCCntrs_t	largeObjStats; // information about allocation in large-object area
     uint64_t	nBytesPromoted;	//!< the number of bytes promoted on this vproc
     Timer_t	promoteTimer;	//!< used to track time taken by promotions
+    uint64_t stkCacheMisses;  //!< how many times did a request to this vproc's stack cache miss?
+    uint64_t stkCacheReqs;    //!< how many requests to stack cache occurred for this vproc?
 
 #endif
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */

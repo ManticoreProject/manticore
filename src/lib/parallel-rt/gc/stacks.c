@@ -265,10 +265,17 @@ ALWAYS_INLINE StackInfo_t* CheckFreeStacks(VProc_t *vp, size_t requiredSpace) {
 
 // Retrieves an unused stack for the given vproc.
 StackInfo_t* GetStack(VProc_t *vp, size_t usableSpace) {
+  #ifndef NO_GC_STATS
+      vp->stkCacheReqs++;
+  #endif
+
     StackInfo_t* info = CheckFreeStacks(vp, usableSpace);
 
     if (info == NULL) {
         // Allocate new memory for this stack.
+        #ifndef NO_GC_STATS
+            vp->stkCacheMisses++;
+        #endif
         bool isSegment = false;
   #if defined(SEGSTACK) || defined(RESIZESTACK)
         isSegment = true;

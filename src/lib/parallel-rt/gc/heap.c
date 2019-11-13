@@ -572,6 +572,8 @@ void ReportGCStats ()
     uint32_t nMinorGCs = 0;
     uint32_t nMajorGCs = 0;
     uint64_t nLargeObjs = 0;
+    uint64_t nStkCacheMisses = 0;
+    uint64_t nStkCacheReqs = 0;
     GCSummary_t totMinor = { 0, 0, 0, 0.0 };
     GCSummary_t totMajor = { 0, 0, 0, 0.0 };
     GCSummary_t totGlobal = { 0, 0, 0, 0.0 };
@@ -589,6 +591,8 @@ void ReportGCStats ()
         nMinorGCs += vp->nMinorGCs;
         nMajorGCs += vp->nMajorGCs;
         nLargeObjs += vp->nLargeObjs;
+        nStkCacheMisses += vp->stkCacheMisses;
+        nStkCacheReqs += vp->StkCacheReqs;
 
         totMinor.nBytesAlloc += vp->minorStats.nBytesAlloc;
         totMinor.nBytesCollected += vp->minorStats.nBytesCollected;
