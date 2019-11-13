@@ -13,10 +13,10 @@ struct
 
 	fun doCodeGen {code : CFG.module, dst : TextIO.outstream} = (
     (* check correctness of codegen options requested *)
-    if (Controls.get BasicControl.cshim) andalso (Controls.get BasicControl.linkstack)
-      then () (* okay *)
-      else (print "note: -Ccshim=false is not supported by linkstack. overriding to true.\n";
-            Controls.set(BasicControl.cshim, true));
+    if (not (Controls.get BasicControl.cshim)) andalso (Controls.get BasicControl.linkstack)
+      then (print "note: -Ccshim=false is not supported by linkstack. overriding to true.\n";
+            Controls.set(BasicControl.cshim, true))
+      else ();
 
     LLVMBackend.output(dst, code)
     )
