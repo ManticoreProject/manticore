@@ -494,6 +494,18 @@ static void ParseGCStatsOptions (Options_t *opts)
 
 }
 
+STATIC_INLINE void JSON_Unsigned (FILE *f, const char* name, uint64_t val) {
+  fprintf(f, "\"%s\" : %" PRIu64 "", name, val);
+}
+
+STATIC_INLINE void JSON_Double (FILE *f, const char* name, double val) {
+  fprintf(f, "\"%s\" : %f", name, val);
+}
+
+STATIC_INLINE void comma (FILE *f) {
+  fprintf(f, ",\n");
+}
+
 STATIC_INLINE void PrintNum (FILE *f, int wid, Addr_t nbytes)
 {
     if (nbytes < 64 * ONE_K)
@@ -568,6 +580,7 @@ void ReportGCStats ()
         return;
 
     FILE *outF = StatsOutFile;
+    FILE *o = outF; // short-hand
 
   // compute summary information
     double maxTime = 0.0;
@@ -621,8 +634,12 @@ void ReportGCStats ()
         totPromoteTime += TIMER_GetTime (&(vp->promoteTimer));
     }
 
+    // Determine output format
+
     if (CSVStatsFlg) {
       // report per-vproc stats
+
+        // NOTE: CSV FORMAT STATS ARE NOT COMPLETE
 
         // print the header row
         if (!OutFileAlreadyExists) {
@@ -668,6 +685,9 @@ void ReportGCStats ()
         }
     }
     else if (SMLStatsFlg) {
+
+      // NOTE: SML FORMAT STATS ARE NOT COMPLETE
+
       // report per-vproc stats in SML record format
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
@@ -694,89 +714,118 @@ void ReportGCStats ()
         fprintf (outF, "nil\n");
     }
     else {
-      // print the header
-        fprintf(outF, "         Time                    Minor GCs                          Major GCs                      Promotions                    Global GCs                     Large-objects\n");
-        fprintf(outF, "     total    gc      num   alloc     copied      time    num   alloc      copied     time     num    bytes   time    num   alloc     copied      time    num   alloc   freed   time\n");
-        fprintf(outF, "--- ------- ------- ------ ------- ------------- ------- ----- ------- ------------- ------- ------- ------- ------- ----- ------- ------------- ------- ----- ------- ------- -------\n");
+        // output as JSON. which is up to date!
+
+        fprintf(outF, "{\n"); // START
+
         if (DetailStatsFlg && (NumVProcs > 1)) {
           // report per-vproc stats
             for (int i = 0;  i < NumVProcs;  i++) {
+
+                // start dictionary for this vproc's info
+                fprintf (outF, "\"p%02d\" : {\n", i);
+
                 VProc_t *vp = VProcs[i];
                 double minorT = TIMER_GetTime (&(vp->minorStats.timer));
                 double majorT = TIMER_GetTime (&(vp->majorStats.timer));
                 double promoteT = TIMER_GetTime (&(vp->promoteTimer));
                 double globalT = TIMER_GetTime (&(vp->globalStats.timer));
                 double largeObjT = TIMER_GetTime (&(vp->largeObjStats.timer));
-                fprintf (outF, "p%02d", i);
+                double gcTotalTime = minorT + majorT + promoteT + globalT + largeObjT;
               // time
-                PrintTime (outF, TIMER_GetTime (&(vp->timer)));
-                PrintTime (outF, minorT + majorT + promoteT + globalT);
-              // minor GCs
-                fprintf (outF, " %6d", vp->nMinorGCs);
-                PrintNum (outF, 7, vp->minorStats.nBytesAlloc);
-                PrintNum (outF, 7, vp->minorStats.nBytesCopied);
-                PrintPct (outF, vp->minorStats.nBytesCopied, vp->minorStats.nBytesCollected);
-                PrintTime (outF, minorT);
-              // major GCs
-                fprintf (outF, " %5d", vp->nMajorGCs);
-                PrintNum (outF, 7, vp->majorStats.nBytesAlloc);
-                PrintNum (outF, 7, vp->majorStats.nBytesCopied);
-                PrintPct (outF, vp->majorStats.nBytesCopied, vp->majorStats.nBytesCollected);
-                PrintTime (outF, majorT);
-              // promotions
-                PrintNum (outF, 7, vp->nPromotes);
-                PrintNum (outF, 7, vp->nBytesPromoted);
-                PrintTime (outF, promoteT);
-              // global GCs
-                fprintf (outF, " %5d", NumGlobalGCs);
-                PrintNum (outF, 7, vp->globalStats.nBytesAlloc);
-                PrintNum (outF, 7, vp->globalStats.nBytesCopied);
-                PrintPct (outF, vp->globalStats.nBytesCopied, vp->globalStats.nBytesCollected);
-                PrintTime (outF, globalT);
-              // large-objects
-                fprintf (outF, " %5ld", nLargeObjs);
-                PrintNum (outF, 7, vp->largeObjStats.nBytesAlloc);
-                PrintNum (outF, 7, vp->largeObjStats.nBytesCollected);
-                PrintTime (outF, largeObjT);
-                fprintf (outF, "\n");
+                JSON_Double(o, "time-total", TIMER_GetTime (&(vp->timer))); comma(o);
+                JSON_Double(o, "time-gc", gcTotalTime); comma(o);
+
+              // gc phases
+                JSON_Unsigned(o, "minorgc-num", vp->nMinorGCs); comma(o);
+                JSON_Unsigned(o, "minorgc-alloc", vp->minorStats.nBytesAlloc); comma(o);
+                JSON_Unsigned(o, "minorgc-live", vp->minorStats.nBytesCopied); comma(o);
+                JSON_Unsigned(o, "minorgc-freed", vp->minorStats.nBytesCollected); comma(o);
+                JSON_Double(o, "minorgc-time", minorT); comma(o);
+
+                JSON_Unsigned(o, "majorgc-num", vp->nMajorGCs); comma(o);
+                JSON_Unsigned(o, "majorgc-alloc", vp->majorStats.nBytesAlloc); comma(o);
+                JSON_Unsigned(o, "majorgc-live", vp->majorStats.nBytesCopied); comma(o);
+                JSON_Unsigned(o, "majorgc-freed", vp->majorStats.nBytesCollected); comma(o);
+                JSON_Double(o, "majorgc-time", majorT); comma(o);
+
+                JSON_Unsigned(o, "globalgc-num", NumGlobalGCs); comma(o);
+                JSON_Unsigned(o, "globalgc-alloc", vp->globalStats.nBytesAlloc); comma(o);
+                JSON_Unsigned(o, "globalgc-live", vp->globalStats.nBytesCopied); comma(o);
+                JSON_Unsigned(o, "globalgc-freed", vp->globalStats.nBytesCollected); comma(o);
+                JSON_Double(o, "globalgc-time", globalT); comma(o);
+
+                // promotion
+
+                JSON_Unsigned(o, "promote-num", vp->nPromotes); comma(o);
+                JSON_Unsigned(o, "promote-bytes", vp->nBytesPromoted); comma(o);
+                JSON_Double(o, "promote-time", promoteT); comma(o);
+
+                // large object management by the GC
+
+                JSON_Unsigned(o, "largeobj-num", nLargeObjs); comma(o);
+                JSON_Unsigned(o, "largeobj-alloc", vp->largeObjStats.nBytesAlloc); comma(o);
+                JSON_Unsigned(o, "largeobj-freed", vp->largeObjStats.nBytesCollected); comma(o);
+                JSON_Double(o, "largeobj-time", largeObjT); comma(o);
+
+                // stack cache statistics
+                JSON_Unsigned(o, "stackcache-misses", vp->stkCacheMisses); comma(o);
+                JSON_Unsigned(o, "stackcache-access", vp->stkCacheReqs);
+
+                fprintf (outF, "},\n"); // end this vproc's dict
             }
         }
 
-      // report the summary stats
+        // report the summary stats
+        fprintf (outF, "\"TOT\" : {\n"); // start of TOT vproc
+
         double timeScale = 1.0 / (double)NumVProcs;
-        fprintf (outF, "TOT");
+
       // time
-        PrintTime (outF, maxTime);
-        PrintTime (outF, timeScale * (totMinor.time + totMajor.time + totPromoteTime + totGlobal.time + totLargeObj.time));
-      // minor GCs
-        fprintf (outF, " %6d", nMinorGCs);
-        PrintNum (outF, 7, totMinor.nBytesAlloc);
-        PrintNum (outF, 7, totMinor.nBytesCopied);
-        PrintPct (outF, totMinor.nBytesCopied, totMinor.nBytesCollected);
-        PrintTime (outF, timeScale * totMinor.time);
-      // major GCs
-        fprintf (outF, " %5d", nMajorGCs);
-        PrintNum (outF, 7, totMajor.nBytesAlloc);
-        PrintNum (outF, 7, totMajor.nBytesCopied);
-        PrintPct (outF, totMajor.nBytesCopied, totMajor.nBytesCollected);
-        PrintTime (outF, timeScale * totMajor.time);
-      // promotions
-        PrintNum (outF, 7, nPromotes);
-        PrintNum (outF, 7, nBytesPromoted);
-        PrintTime (outF, timeScale * totPromoteTime);
-      // global GCs
-        fprintf (outF, " %5d", NumGlobalGCs);
-        PrintNum (outF, 7, totGlobal.nBytesAlloc);
-        PrintNum (outF, 7, totGlobal.nBytesCopied);
-        PrintPct (outF, totGlobal.nBytesCopied, totGlobal.nBytesCollected);
-        PrintTime (outF, timeScale * totGlobal.time);
-      // large-objects
-        fprintf (outF, " %5ld", nLargeObjs);
-        PrintNum (outF, 7, totLargeObj.nBytesAlloc);
-        PrintNum (outF, 7, totLargeObj.nBytesCollected);
-        PrintTime (outF, timeScale * totLargeObj.time);
-        fprintf (outF, "\n");
-    }
+        double totGCTime = timeScale * (totMinor.time + totMajor.time + totPromoteTime + totGlobal.time + totLargeObj.time);
+        JSON_Double(o, "time-total", maxTime); comma(o);
+        JSON_Double(o, "time-gc", totGCTime); comma(o);
+
+        JSON_Unsigned(o, "minorgc-num", nMinorGCs); comma(o);
+        JSON_Unsigned(o, "minorgc-alloc", totMinor.nBytesAlloc); comma(o);
+        JSON_Unsigned(o, "minorgc-live", totMinor.nBytesCopied); comma(o);
+        JSON_Unsigned(o, "minorgc-freed", totMinor.nBytesCollected); comma(o);
+        JSON_Double(o, "minorgc-time", timeScale * totMinor.time); comma(o);
+
+        JSON_Unsigned(o, "majorgc-num", nMajorGCs); comma(o);
+        JSON_Unsigned(o, "majorgc-alloc", totMajor.nBytesAlloc); comma(o);
+        JSON_Unsigned(o, "majorgc-live", totMajor.nBytesCopied); comma(o);
+        JSON_Unsigned(o, "majorgc-freed", totMajor.nBytesCollected); comma(o);
+        JSON_Double(o, "majorgc-time", timeScale * totMajor.time); comma(o);
+
+        JSON_Unsigned(o, "globalgc-num", NumGlobalGCs); comma(o);
+        JSON_Unsigned(o, "globalgc-alloc", totGlobal.nBytesAlloc); comma(o);
+        JSON_Unsigned(o, "globalgc-live", totGlobal.nBytesCopied); comma(o);
+        JSON_Unsigned(o, "globalgc-freed", totGlobal.nBytesCollected); comma(o);
+        JSON_Double(o, "globalgc-time", timeScale * totGlobal.time); comma(o);
+
+        // promotion
+
+        JSON_Unsigned(o, "promote-num", nPromotes); comma(o);
+        JSON_Unsigned(o, "promote-bytes", nBytesPromoted); comma(o);
+        JSON_Double(o, "promote-time", timeScale * totPromoteTime); comma(o);
+
+        // large object management by the GC
+
+        JSON_Unsigned(o, "largeobj-num", nLargeObjs); comma(o);
+        JSON_Unsigned(o, "largeobj-alloc", totLargeObj.nBytesAlloc); comma(o);
+        JSON_Unsigned(o, "largeobj-freed", totLargeObj.nBytesCollected); comma(o);
+        JSON_Double(o, "largeobj-time", timeScale * totLargeObj.time); comma(o);
+
+        // stack cache statistics
+        JSON_Unsigned(o, "stackcache-misses", nStkCacheMisses); comma(o);
+        JSON_Unsigned(o, "stackcache-access", nStkCacheReqs);
+
+
+      fprintf(outF, "}\n"); // END of TOT vproc
+
+      fprintf(outF, "}\n"); // END of JSON
+    } // end of JSON output
 
     if (outF != stderr) {
         fclose (outF);

@@ -471,6 +471,13 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #endif
     }
 
+// NOTE: we stop the global GC timer for the vproc here, since 'reclaim stacks'
+// is a large-object management task tracked separately.
+// we don't want to double-count the time.
+#ifndef NO_GC_STATS
+    TIMER_Stop(&(self->globalStats.timer));
+#endif
+
 #ifdef DIRECT_STYLE
     /* another part of phase 4 is for each vproc to reclaim unmarked stacks,
        with the leader taking care of cleaning the global alloc'd list */
@@ -491,9 +498,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
     LogGlobalGCEnd (self, NumGlobalGCs);
 
-#ifndef NO_GC_STATS
-    TIMER_Stop(&(self->globalStats.timer));
-#endif
 #ifdef ENABLE_PERF_COUNTERS
     PERF_StopGC(&self->misses);
     PERF_StopGC(&self->reads);
