@@ -102,8 +102,8 @@ void ScanStackMinor (
 
     stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
 
-    while (((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0)
-           && state != LS_Stop) {
+    while ( state != LS_Stop &&
+           ((frame = lookup_return_address(SPTbl, *(uint64_t*)(stackPtr))) != 0) ) {
 
 #ifdef DEBUG_STACK_SCAN_MINOR
         framesSeen++;
