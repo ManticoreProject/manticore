@@ -311,6 +311,7 @@ void *NewVProc (void *arg)
     vproc->limitPtr = LimitPtr(vproc);
     SetAllocPtr (vproc);
     vproc->currentFLS = M_NIL;
+    vproc->nextStackContext = 1; // NOT zero, since that's the 'invalid' one.
     vproc->allocdStacks = NULL;
     vproc->freeStacks = NULL;
     vproc->inPromotion = false;

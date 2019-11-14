@@ -27,6 +27,7 @@
 #define AGE         7*8
 #define OWNER       8*8
 #define CAN_COPY    9*8
+#define CONTEXT    10*8
 
 
 
@@ -130,60 +131,51 @@ _GSYM(ASM_LongJmp2):
 .p2align 4, 0x90              // must pad with NOPs!
 _GSYM(ASM_DS_EscapeThrow):
 
-#if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOSEALING_CAPTURE) && !defined(LAZY_UNDERFLOW)
-    // NOTE: this is only safe to do because every capture seals off the
-    // the segment and begins operating in a new one, thus we always know
-    // the current segment != new segment being thrown to.
+#if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(LAZY_UNDERFLOW)
+
+  // we will inspect the old segment to try and free it eagarly,
+  // so load it into reg
+  movq    STD_CONT(VPROC_PTR_REG), TMP_REG1
+
+  #if defined(NOSEALING_CAPTURE)
+
+    // Freeing on throw is trickier for NOSEALING_CAPTURE, i.e., when we do _not_
+    // seal off on every capture, because the current segment may have a live
+    // cont capture still in it!
     //
-    // It is _not_ safe if NOSEALING_CAPTURE, i.e., when we do _not_ seal off on
-    // every capture because the current segment may have a live cont capture
-    // still in it. Consider code that captures a cont, stores it somewhere,
-    // and then immediately throws to a different continuation.
-    // Then the current segment still has a live captured cont in memory.
+    // Consider code that captures the current continuation, stores it somewhere,
+    // and then immediately throws to a continuation with a different root context.
+    // Then the old segment still is a valid and live continuation in memory!
+    //
+    // We have to check if the root contexts are the same.
+    // A throw from current to new segment, where both are in the same context,
+    // means the current segment _cannot_ be live anymore even under the
+    // NOSEALING_CAPTURE implementation, because of the lifetime
+    // restrictions imposed by callec.
     // ~kavon
 
-    // then whichever segment we were operating in is no longer live, so
+    // 1. if the segments are equal, then it's not safe to free.
+    movq    16(STD_EP_REG), TMP_REG0
+    cmpq    TMP_REG1, TMP_REG0
+    je      notSafeToFree
+
+    // 2. if the segments are from different contexts, it's also not safe to free.
+    movq    CONTEXT(TMP_REG0), TMP_REG0
+    cmpq    CONTEXT(TMP_REG1), TMP_REG0
+    jne     notSafeToFree
+
+  #endif
+
+    // Then whichever segment we were operating in is no longer live, so
     // we can try to free it if it belongs to us.
-    movq      STD_CONT(VPROC_PTR_REG), TMP_REG1
+    // NOTE: the segment to be freed should be in TMP_REG1 !
     callq     _GSYM(ASM_TryFreeSegment)
+notSafeToFree:
 #endif
 
     // set stack descriptor
     movq    16(STD_EP_REG), TMP_REG0
     movq    TMP_REG0, STD_CONT(VPROC_PTR_REG)
-
-// controls
-
-// #define ClaimOwnership
-#undef ClaimOwnership
-
-#ifdef ClaimOwnership
-////////////////////// start of ownership check //////////////////////////////
-
-    // check ownership of the immediate segment we're transitioning to.
-    // The fast path is if it's already owned by us, which we determine by
-    // assumption that if it's not NULL, then its ours.
-    movq    OWNER(TMP_REG0), TMP_REG1
-    testq   TMP_REG1, TMP_REG1
-    jnz     alreadyOwned
-
-    // then it's a global segment and we need to take ownership, which is
-    // too complicated to do in assembly.
-    callq  _GSYM(ASM_CallTakeOwnership)
-
-alreadyOwned:
-#ifndef NDEBUG
-    // actually check that this vproc specifically is the owner
-    // this assumption would only fail if something's busted.
-    movq    OWNER(TMP_REG0), TMP_REG1
-    cmpq    VPROC_PTR_REG, TMP_REG1
-    je      itsOK
-    ud2    // crash. unexpected owner of segment.
-itsOK:
-#endif
-
-////////////////////// end of ownership check ////////////////////////////////
-#endif
 
     // finally move to the new segment
     movq    8(STD_EP_REG), %rsp
@@ -195,6 +187,10 @@ itsOK:
 #endif
     // do a pop;jmp to resume the stack
     ret
+/////////////////////////////////
+
+
+
 
 
 #if defined(SEGSTACK) || defined(RESIZESTACK)

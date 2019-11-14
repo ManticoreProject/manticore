@@ -99,6 +99,8 @@ struct struct_vproc {
                             // it is primarily used by mutable, linked-frames.
     bool inPromotion;
 
+    uint64_t     nextStackContext;
+
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state
     Cond_t	wait;		//!< for waiting when idle

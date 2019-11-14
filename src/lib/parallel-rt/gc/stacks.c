@@ -106,6 +106,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     info->currentSP = NULL;
     info->owner = vp;
     info->canCopy = 1; // default is to allow copying.
+    info->context = 0; // an INVALID context.
     info->guardSz = guardSz;
     info->usableSpace = numBytes;
     info->memAlloc = mem;
@@ -347,6 +348,15 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
     StackInfo_t* info = NewStackForClos(vp, funClos);
     uint64_t* sp = info->currentSP;
 
+  #if defined(SEGSTACK) || defined(RESIZESTACK)
+    // context is the tuple (vproc ID, vproc unique ticket)
+    // We combine this into one value by placing the vproc id
+    // in the upper bits of the context value.
+    const int log2_num_tickets = 40; // 2^n max tickets, 2^(64-n) max vprocs.
+    info->context = vp->nextStackContext | (((uint64_t)vp->id) << log2_num_tickets);
+    vp->nextStackContext += 1;
+  #endif
+
     // now we need to allocate the stack cont object
     Value_t resumeK = AllocStkCont(vp, (Addr_t)&ASM_DS_EscapeThrow,
                                         PtrToValue(sp), // stack ptr
@@ -364,6 +374,13 @@ StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
       TIMER_Start(&(vp->largeObjStats.timer));
   #endif
     StackInfo_t* info = GetStack(vp, dfltStackSz);
+
+    #if defined(SEGSTACK) || defined(RESIZESTACK)
+      // see NewStack for details.
+      const int log2_num_tickets = 40; // 2^n max tickets, 2^(64-n) max vprocs.
+      info->context = vp->nextStackContext | (((uint64_t)vp->id) << log2_num_tickets);
+      vp->nextStackContext += 1;
+    #endif
 
     // initialize stack for a return from manticore's main fun.
     void* stkPtr = info->initialSP;
@@ -539,6 +556,9 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     fresh->prevSegment = old;
     old->currentSP = old_stkPtr;
 
+    // carry-over the root context
+    fresh->context = old->context;
+
     // install the fresh segment as the current stack descriptor
     vp->stdCont = PtrToValue(fresh);
     vp->stdEnvPtr = fresh->stkLimit;
@@ -598,6 +618,7 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     fresh->age = old->age;
     fresh->prevSegment = old->prevSegment;
     fresh->canCopy = old->canCopy;
+    fresh->context = old->context;
 
     if (old->owner == vp) {
       old = ReleaseOneStack(vp, old, false);  // add back to cache, it's hot
@@ -611,6 +632,9 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
     *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
     fresh->prevSegment = old;
     old->currentSP = old_origStkPtr;
+
+    // carry-over the root context
+    fresh->context = old->context;
   }
 
   // install the fresh segment as the current stack descriptor

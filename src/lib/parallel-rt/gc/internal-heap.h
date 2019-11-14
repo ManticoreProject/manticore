@@ -97,6 +97,8 @@ extern StackInfo_t* GlobAllocdList;
 // inside globGC, leader vproc has exlusive access to add elements.
 extern PaddedStackInfoPtr_t *GlobFreeStacks;
 
+// NOTE: many of these fields are accessed by ASM code, with hardcoded
+// offsets, so do _not_ reorder etc without updating asm-glue-ds.S
 struct struct_stackinfo {
     // these fields are only used by segmented stacks.
     void* currentSP             ALIGN_8;
@@ -111,6 +113,8 @@ struct struct_stackinfo {
     Age_t age           ALIGN_8;
     VProc_t* owner      ALIGN_8; // who's allocation/free list it is in. NULL means it's in global list.
     uint64_t canCopy    ALIGN_8; // if true, indicates that it's safe to copy frames out of this segment
+    uint64_t context    ALIGN_8; // the continuation's root context
+// Fields not accessed by ASM
     size_t guardSz      ALIGN_8;
     size_t usableSpace  ALIGN_8;
     uint8_t* memAlloc   ALIGN_8;
