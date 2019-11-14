@@ -390,8 +390,8 @@ void SetCanCopy(StackInfo_t* info, uint64_t val) {
     info->canCopy = val;
 }
 
-void WarmUpFreeList(VProc_t* vp, uint64_t numBytes) {
-    uint64_t N = numBytes / dfltStackSz;
+void WarmUpFreeList(VProc_t* vp, uint64_t numElms) {
+    uint64_t N = numElms;
     // make sure we allocate at least one.
     N = (N == 0 ? 1 : N);
 

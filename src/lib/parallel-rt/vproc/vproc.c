@@ -63,6 +63,7 @@ OSThread_t* VProcThreadIDs = NULL;
 #ifdef DIRECT_STYLE
     extern int ASM_DS_VProcSleep;
     extern size_t dfltStackSz;
+    extern size_t stackWarmUpElms;
 #else
     extern int ASM_VProcSleep;
 #endif
@@ -368,7 +369,7 @@ void *NewVProc (void *arg)
 
 #if defined(SEGSTACK) || defined(RESIZESTACK)
     // warm up the free list
-    WarmUpFreeList(vproc, 64 * dfltStackSz);
+    WarmUpFreeList(vproc, stackWarmUpElms);
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */

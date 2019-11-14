@@ -56,6 +56,7 @@ extern int ASM_DS_StartStack;
 extern int ASM_LinkedStack_PrologueGC_Ret;
 extern int ASM_ForkFrame;
 size_t dfltStackSz;
+size_t stackWarmUpElms;
 bool stackCacheThinning;
 void InitStackMaps (Options_t *opts);
 
@@ -135,6 +136,8 @@ void HeapInit (Options_t *opts)
 
     // only enable stack cache thinning if user specifies.
     stackCacheThinning = GetFlagOpt(opts, "-thincache");
+
+    stackWarmUpElms = GetIntOpt(opts, "-warmup", 64);
 
 #ifndef NDEBUG
     Say("Stack size = %lu bytes, cache thinning = %i\n", dfltStackSz, stackCacheThinning);
@@ -592,7 +595,7 @@ void ReportGCStats ()
         nMajorGCs += vp->nMajorGCs;
         nLargeObjs += vp->nLargeObjs;
         nStkCacheMisses += vp->stkCacheMisses;
-        nStkCacheReqs += vp->StkCacheReqs;
+        nStkCacheReqs += vp->stkCacheReqs;
 
         totMinor.nBytesAlloc += vp->minorStats.nBytesAlloc;
         totMinor.nBytesCollected += vp->minorStats.nBytesCollected;
