@@ -132,6 +132,7 @@ void ScanStackMajor (
 
     Age_t promoteGen = AGE_Global;
     enum LimitState state = LS_NoMark;
+    bool inPromotion = vp->inPromotion;
 
 #if defined(SEGSTACK) || defined(RESIZESTACK)
   stkInfo->currentSP = origStkPtr;
@@ -145,25 +146,24 @@ void ScanStackMajor (
     uint64_t stackPtr = (uint64_t)origStkPtr;
 
 
-    if (vp->inPromotion) {
-      if (stkInfo->owner == vp) {
+    if (inPromotion && stkInfo->owner == vp) {
         // remove this segment from our local list
         RemoveFromAllocList(&(vp->allocdStacks), stkInfo);
         stkInfo->owner = NULL; // it's not owned by anyone in particular now.
-      }
 
-      // then push it onto the global allocd list
-      if (NumVProcs > 1) MutexLock(&GlobStackMutex);
-      StackInfo_t* top = GlobAllocdList;
-      GlobAllocdList = stkInfo;
+        // then push it onto the global allocd list
+        bool needLock = NumVProcs > 1;
+        if (needLock) MutexLock(&GlobStackMutex);
+        StackInfo_t* top = GlobAllocdList;
+        GlobAllocdList = stkInfo;
 
-      stkInfo->prev = NULL;
-      stkInfo->next = top;
+        stkInfo->prev = NULL;
+        stkInfo->next = top;
 
-      if (top != NULL)
-        top->prev = stkInfo;
+        if (top != NULL)
+          top->prev = stkInfo;
 
-      if (NumVProcs > 1) MutexUnlock(&GlobStackMutex);
+        if (needLock) MutexUnlock(&GlobStackMutex);
 
     } else {
       // only during a GC cycle is it valid to do this test of the deepestScan,
