@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 dnl
-dnl COPYRIGHT (c) 2007 The Manticore Project (manticore.cs.uchicago.edu)
+dnl COPYRIGHT (c) 2019 The Manticore Project (manticore.cs.uchicago.edu)
 dnl All rights reserved.
 dnl
 
@@ -15,7 +15,6 @@ dnl
 dnl include extra macros
 dnl
 sinclude(config/check_smlnj.m4)
-sinclude(config/check_smlnj_heap_suffix.m4)
 sinclude(config/acx_pthread.m4)
 sinclude(config/check_leading_uscore.m4)
 
@@ -240,11 +239,6 @@ then
   AC_MSG_ERROR([installation requires SML/NJ version 110.81 or newer, but not 110.82])
 fi
 AC_SUBST(SMLNJ_VERSION)
-
-dnl determine the heap-image suffix
-dnl
-CHECK_SMLNJ_HEAP_SUFFIX([
-  AC_MSG_ERROR([unsupported configuration ${host_cpu}-${host_os}])])
 
 dnl look for ml-makedepend
 dnl
