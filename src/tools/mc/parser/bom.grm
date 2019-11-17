@@ -128,7 +128,7 @@
     ret_val
   end (* new_label() *)
 
-  val spanZZ = (Position.fromInt 0, Position.fromInt 0)
+  val spanZZ : AntlrStreamPos.span = (0, 0)
 
   val listTyTerm = BPT.T_TyCon {tree = ([Atom.atom "List"], Op.list), span = spanZZ}
 

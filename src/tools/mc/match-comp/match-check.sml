@@ -158,7 +158,7 @@ structure MatchCheck (* : sig
 (* error handling *)
   type err_stream = MatchErrors.err_stream
 
-  val bogusLocation = (Position.fromInt 0, Position.fromInt 0) (* FIXME *)
+  val bogusLocation : MatchErrors.span = (0, 0) (* FIXME *)
 
   fun errRedundant errStrm msg = 
     (TextIO.print (msg ^ "\n");
