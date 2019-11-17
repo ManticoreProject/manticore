@@ -3,10 +3,13 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * This functor is based on code from the SML/NJ compiler.
+ * This functor is based on code from the SML/NJ compiler.  It implements
+ * an algorithm that computes a minimal Feedback Vertex Set for a graph (a
+ * Feedback Vertex Set is a set of nodes that when removed leaves an
+ * acyclic graph).
  *
  * original version by: Andrew Appel
- * 
+ *
  * cleanup by: Matthias Blume
  *    The cleanup involves getting rid of duplicate SCC code (using
  *    the library module GraphSCCFn) and making use of integer set-
@@ -21,7 +24,7 @@ signature VERTEX =
   end
 
 functor FeedbackFn (V : VERTEX) :> sig
-  (* Input: A directed graph; that is, a list of vertex-numbers, 
+  (* Input: A directed graph; that is, a list of vertex-numbers,
    *        each node with a list of out-edges which indicate other vertices.
    * Output:  A minimum feedback vertex set.
    *
