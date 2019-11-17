@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Generate constant values that the runtime systems shares with the 
+ * Generate constant values that the runtime systems shares with the
  * code generator.
  */
 
@@ -17,6 +17,7 @@
 #include "value.h"
 #include "log-file.h"
 #include "crc.h"
+#include "heap.h"
 #include <math.h>
 
 /* since LOGBUF_SZ is defined in log-file.h, we have to be tricky */
@@ -65,6 +66,12 @@ int main ()
     PR_DEFINE(spillAreaSzB, SPILL_SZB);
     PR_DEFINE(spillAreaOffB, SAVE_AREA+PAD_SZB);
     PR_DEFINE(maxObjectSzB, (unsigned long long)(pow(2,64-TABLE_LEN_ID-TABLE_TAG_BITS)-1)*sizeof(Word_t));
+
+    printf ("\n  (* allocation slop in nursery *)\n");
+    PR_DEFINE(nurseryAllocSlopSzb, ALLOC_BUF_SZB);
+
+    printf ("\n  (* minimum size of the nursery *)\n");
+    PR_DEFINE(nurseryMinSzb, MIN_NURSERY_SZB);
 
     printf ("\n  (* offsets into the VProc_t structure *)\n");
 #include "vproc-offsets-ins.c"

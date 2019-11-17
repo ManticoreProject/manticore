@@ -18,13 +18,19 @@ structure DummySpec : TARGET_SPEC =
 	val wordAlignB : IntInf.int = 4
 	val boolSzB : IntInf.int = 4
 	val extendedAlignB : IntInf.int = 4
-    
+
 	val spillAreaSzB : IntInf.int = 1024
 	val spillAreaOffB : IntInf.int = 0
 	val bitMaskSzB : IntInf.int = wordSzB - 1
       (* number aligned words * number of bits in the object-header bitmask  *)
-	val maxObjectSzB : IntInf.int = wordAlignB * (bitMaskSzB * 8)  
+	val maxObjectSzB : IntInf.int = wordAlignB * (bitMaskSzB * 8)
 	val allocChunkSzB : IntInf.int = 64 * 1024
+
+      (* allocation slop in nursery *)
+	val nurseryAllocSlopSzb : IntInf.int = 4096
+
+      (* minimum size of the nursery *)
+	val nurseryMinSzb : IntInf.int = 16 * 1024
 
 	val magic : IntInf.int = 0xdeadbeef
 
@@ -40,7 +46,7 @@ structure DummySpec : TARGET_SPEC =
 	val stdExnCont : IntInf.int = 40
 	val allocPtr : IntInf.int = 44
 	val limitPtr : IntInf.int = 48
-    
+
       (* mask to get address of VProc from allocation pointer *)
 	val vpMask : IntInf.int = 0xfff00000
 

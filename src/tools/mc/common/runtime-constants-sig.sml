@@ -1,5 +1,5 @@
 (* runtime-constants-sig.sml
- * 
+ *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
@@ -16,10 +16,16 @@ signature RUNTIME_CONSTANTS =
     val extendedAlignB : IntInf.int      (* alignment constraint for extended-precision
 					  * floats *)
 
-    val spillAreaSzB : IntInf.int     (* size of the spill area on the stack *)
-    val spillAreaOffB : IntInf.int     (* offset from frame pointer to spill area *)
-    val maxObjectSzB : IntInf.int     (* maximum number of bytes allowable in a
-				       * heap-allocated object *) 
+    val spillAreaSzB : IntInf.int	(* size of the spill area on the stack *)
+    val spillAreaOffB : IntInf.int	(* offset from frame pointer to spill area *)
+    val maxObjectSzB : IntInf.int	(* maximum number of bytes allowable in a
+					 * heap-allocated object *)
+
+  (* allocation slop in nursery *)
+    val nurseryAllocSlopSzb : IntInf.int
+
+  (* minimum size of the nursery *)
+    val nurseryMinSzb : IntInf.int
 
   (* magic number used to check consistency between generated code and the runtime system *)
     val magic : IntInf.int
@@ -32,7 +38,7 @@ signature RUNTIME_CONSTANTS =
     val rdyQTl : IntInf.int
     val sndQHd : IntInf.int
     val sndQTl : IntInf.int
-    val stdArg : IntInf.int 
+    val stdArg : IntInf.int
     val stdEnvPtr : IntInf.int
     val stdCont : IntInf.int
     val stdExnCont : IntInf.int

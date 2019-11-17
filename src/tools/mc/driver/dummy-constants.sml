@@ -17,6 +17,12 @@ structure RuntimeConstants : RUNTIME_CONSTANTS =
     val spillAreaOffB : IntInf.int = 48
     val maxObjectSzB : IntInf.int = 281474976710655
 
+  (* allocation slop in nursery *)
+    val nurseryAllocSlopSzb : IntInf.int = 4096
+
+  (* minimum size of the nursery *)
+    val nurseryMinSzb : IntInf.int = 16 * 1024
+
   (* offsets into the VProc_t structure *)
     val atomic : IntInf.int = 8
     val sigPending : IntInf.int = 16
