@@ -114,7 +114,7 @@ structure TypeUtil : sig
 		    before info := Ty.INSTANCE ty)
 		else (
 		  info := Ty.UNIV(~1);
-		  fmt {long=false} ty 
+		  fmt {long=false} ty
                     before info := Ty.INSTANCE ty)
 	  (* end case *))
 
@@ -338,7 +338,7 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 		stamp=stamp, name=name, arity=arity, params=params, props=props,
 		def = (case def
 		   of Ty.AbsTyc => Ty.AbsTyc
-		    | Ty.DataTyc {nCons, cons} => 
+		    | Ty.DataTyc {nCons, cons} =>
 		      Ty.DataTyc {nCons=nCons, cons=cons}
 		  (* end case *))
 	      })
@@ -355,7 +355,5 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
           in
 	    openTy(0, ty)
           end
-	  
-    
-  end
 
+  end
