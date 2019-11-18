@@ -89,7 +89,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			 * so that we don't get into an infinite loop!
 			 *)
 			  val (exps, live, exps') = if (nb > allocSlopSzB)
-				then (exps, updateLive (live, exp), U.substExp subst exp)
+				then (exps, updateLive (live, exp), U.substExp subst exp :: exps')
 				else (exp::exps, live, exps')
 			  val live = VSet.listItems live
 			  val live' = List.map CFG.Var.copy live
