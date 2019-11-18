@@ -98,6 +98,7 @@ functor Alloc64Fn (
 		then print (concat[" mixed hdr: ", Int.toString id, "\n"])
 		else ()
 	  in
+(* FIXME: the maxObjectSzB is much larger than the nursery; we need a better test here *)
 	    if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
 	      then raise Fail "object size too large"
 	      else (totalSize, hdrWord, stms)
@@ -190,7 +191,7 @@ functor Alloc64Fn (
 	  end
 
   (* QUESTION: why subtract 512? *)
-    val heapSlopSzB = Word.fromLargeInt(Spec.ABI.nurseryAllocSlopSzb, 512)
+    val heapSlopSzB = Word.fromLargeInt(Spec.ABI.nurseryAllocSlopSzb - 512)
 
   (*
    * Crash if the alloc ptr >= (limit ptr + heapSlopSzB).
