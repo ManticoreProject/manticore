@@ -141,7 +141,7 @@ structure CFG =
     end
 
     local
-        val { getFn : label -> jump list, 
+        val { getFn : label -> jump list,
               setFn : (label * jump list) -> unit,
               peekFn : label -> jump list option, ... } =
             Label.newProp (fn l => raise Fail(concat["predecessors of label (", Label.toString l, ") are unknown!"]))
@@ -220,11 +220,11 @@ structure CFG =
       | paramsOfConv (KnownFunc{clos}, params) = clos::params
 
     fun mkBlock (lab, args, body, exit) = let
-        val block = BLK{lab=lab, args=args, body=body, exit=exit}
-    in
-        Label.setKind (lab, LK_Block block);
-        block
-    end
+	  val block = BLK{lab=lab, args=args, body=body, exit=exit}
+	  in
+	    Label.setKind (lab, LK_Block block);
+	    block
+	  end
 
     fun mkFunc (l, conv, start as BLK{lab, args,...}, body, export) = let
 	  val func = FUNC{lab = l, entry = conv, start = start, body = body}
