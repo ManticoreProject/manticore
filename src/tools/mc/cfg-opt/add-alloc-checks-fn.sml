@@ -59,6 +59,12 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
       val allocSlopSzB = Word.fromLargeInt ABI.nurseryAllocSlopSzb
     in
     fun splitLargeBock (blk as CFG.BLK{lab, args, body, exit}) = let
+	(* update the live set by adding the rhs variables and removing the lhs.
+	 * Note that we track the live variables using their original names,
+	 * not the fresh names that we introduce at heap checks!
+	 *)
+	  fun updateLive (live, exp) =
+		VSet.addList(VSet.subtractList(live, U.lhsOfExp exp), U.rhsOfExp exp)
 	  fun rename subst x = (case VMap.find(subst, x)
 		 of NONE => x
 		  | SOME x' => x'
@@ -67,12 +73,8 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		CFG.mkBlock(lab, List.map (rename subst) args, exps', exit') :: blks'
 	    | walk (exp::exps, subst, live, allocSzB, exit', exps', blks') = let
 		fun continue allocSzB = let
-		    (* update the live set by adding the rhs variables and removing the lhs.
-		     * Note that we track the live variables using their original names,
-		     * not the fresh names that we introduce at heap checks!
-		     *)
-		      val live' = VSet.subtractList(live, U.lhsOfExp exp)
-		      val live' = VSet.addList(live', U.rhsOfExp exp)
+		    (* update the live set *)
+		      val live' = updateLive (live, exp)
 		    (* rewrite the expression *)
 		      val exp' = U.substExp subst exp
 		      in
@@ -83,6 +85,12 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		   of 0w0 => continue allocSzB
 		    | nb => if (allocSzB + nb > allocSlopSzB)
 			then let
+			(* need to handle the case where allocSzB = 0 and nb > allocSlopSzB
+			 * so that we don't get into an infinite loop!
+			 *)
+			  val (exps, live, exps') = if (nb > allocSlopSzB)
+				then (exps, updateLive (live, exp), U.substExp subst exp)
+				else (exp::exps, live, exps')
 			  val live = VSet.listItems live
 			  val live' = List.map CFG.Var.copy live
 			(* compute the renaming substitution for the next block *)
@@ -99,9 +107,8 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			  val exit'' = CFG.HeapCheck{
 				  hck = CFG.HCK_Local, szb = allocSzB, nogc = (lab', live')
 				}
-			  val live'' = VSet.fromList live'
 			  in
-			    walk (exp::exps, subst', live'', 0w0, exit'', [], block::blks')
+			    walk (exps, subst', VSet.fromList live', 0w0, exit'', [], block::blks')
 			  end
 			else continue (allocSzB + nb)
 		  (* end case *)
