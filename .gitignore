@@ -1,3 +1,11 @@
+# Project specific files
+autom4te.cache/*
+bin/*
+configure
+config.log
+config.status
+config/config_h.in
+
 # Object files
 *.o
 *.ko
