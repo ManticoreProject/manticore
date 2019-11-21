@@ -1010,6 +1010,7 @@ structure FlatClosureWithCFA : sig
 		fun f (x, args) = (case findVar(env, x)
 		       of Local x' => x' :: args
 			| Extern _ => raise Fail "unexpected extern in free-var list"
+			| JoinCont => args
 			| _ => (needsEP := true; args)
 		      (* end case *))
 		val args = CPS.Var.Set.foldr f args (FreeVars.envOfFun k)

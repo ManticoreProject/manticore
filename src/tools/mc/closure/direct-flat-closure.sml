@@ -1164,9 +1164,8 @@ structure DirectFlatClosureWithCFA : sig
 		fun f (x, args) = (case findVar(env, x)
 		       of Local x' => x' :: args
 			| Extern _ => raise Fail "unexpected extern in free-var list"
-            | (JoinCont | RetCont) => args
+			| (JoinCont | RetCont) => args
 			| _ => (needsEP := true; args)
-            (* TODO FIXME in regular CPS closure conversion, JoinCont bindings are not a reason to include an EP *)
 		      (* end case *))
 		val args = CPS.Var.Set.foldr f args (FreeVars.envOfFun k)
 	     (* if there are any free globals in e, then we include
