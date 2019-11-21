@@ -247,7 +247,7 @@ Pass Arguments:  -domtree
     val o_essential = ["-lower-expect"]
 
     (* a very basic function-level clean-up *)
-    val o_basic = o_analysis @ ["-simplifycfg", "-early-cse"] @ o_essential
+    val o_basic = o_analysis @ ["-early-cse", "-simplifycfg", "-tailcallelim", "-early-cse"] @ o_essential
 
   (* all of the basic cleanup passes LLVM has. things like adce were left off
    * not sure if this is reasonable ordering, just guessed
