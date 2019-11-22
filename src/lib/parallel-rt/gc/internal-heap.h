@@ -74,7 +74,7 @@ typedef uint64_t Age_t;
 
   // resizing stack specific parameters
   #define FIRST_FIT_MAX_CHK    (2)
-  #define RESIZED_SEG_LIMIT    (32 * ONE_MEG)
+  #define RESIZED_SEG_LIMIT    (256 * ONE_MEG)
 
 #endif
 
