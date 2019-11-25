@@ -601,8 +601,8 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-log-debug, [logging debug])
     MK_BUILD_DIR(mcrt-stats, [stats])
 
-    MK_BUILD_DIR(mcrt-direct, [direct])
-    MK_BUILD_DIR(mcrt-direct-stats, [stats direct])
+    MK_BUILD_DIR(mcrt-direct-nosealingcapture, [direct nosealingcapture])
+    MK_BUILD_DIR(mcrt-direct-nosealingcapture-stats, [stats direct nosealingcapture])
 
     MK_BUILD_DIR(mcrt-resizestack, [direct resizestack])
     MK_BUILD_DIR(mcrt-resizestack-nosealingcapture, [direct resizestack nosealingcapture])

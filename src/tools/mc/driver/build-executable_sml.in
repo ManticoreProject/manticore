@@ -136,7 +136,7 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE =
           | (gcStats, _, debug, _, true) => let (* handle various kinds of stacks *)
                 val name =
                     (case (segstack, linkstack, resizestack)
-                        of (false, false, false) => "mcrt-direct"
+                        of (false, false, false) => "mcrt-direct-nosealingcapture"
                          | (false, true, false) => "mcrt-linkstack"
                          | (false, false, true) => if nosealingcapture
                                                     then "mcrt-resizestack-nosealingcapture"

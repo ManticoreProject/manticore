@@ -131,7 +131,7 @@ _GSYM(ASM_LongJmp2):
 .p2align 4, 0x90              // must pad with NOPs!
 _GSYM(ASM_DS_EscapeThrow):
 
-#if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(LAZY_UNDERFLOW)
+#if !defined(LAZY_UNDERFLOW)
 
   // we will inspect the old segment to try and free it eagarly,
   // so load it into reg
