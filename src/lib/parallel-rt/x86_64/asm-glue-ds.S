@@ -424,7 +424,7 @@ callec_body:
 
     movq    STD_CONT(VPROC_PTR_REG), STACK_DISC     // grab the stack descriptor
 
-#if defined(NOSEALING_CAPTURE)
+#if defined(NOSEALING_CAPTURE) && (defined(SEGSTACK) || defined(RESIZESTACK))
     // no need for a new segment. we disable future copying instead.
     movq    $0, CAN_COPY(STACK_DISC)    // info->canCopy = 0   disable frame copying.
 

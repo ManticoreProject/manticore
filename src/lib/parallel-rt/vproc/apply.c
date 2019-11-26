@@ -382,7 +382,7 @@ doShutdown:
                       vp->sigPending = M_FALSE;
                       LogPreemptSignal(vp);
 
-                  #if (defined(SEGSTACK) || defined(RESIZESTACK)) && !defined(NOSEALING_CAPTURE)
+                  #if !defined(NOSEALING_CAPTURE)
 
                       // after capturing the resumeK, we need to execute in a new segment
                       #ifndef NO_GC_STATS
@@ -402,12 +402,19 @@ doShutdown:
                       exnCont = M_UNIT;
                       arg = resumeK;
 
-                      vp->stdEnvPtr = GetStkLimit(curInfo);
+                      #if defined(SEGSTACK) || defined(RESIZESTACK)
+                        // set stack limit
+                        vp->stdEnvPtr = GetStkLimit(curInfo);
+                      #endif
 
                       LogRunThread(vp, 0);
                       ASM_Resume_Stack (vp, stkPtr, envP, exnCont, arg);
                   #else
 
+                      // TODO: is there a possibility of a race here when
+                      // invoking the scheduler, such that we should always
+                      // execute the scheduler in a separate stack?
+                      // it comes down to whether this queue is private or not.
 
                       closObj = ValueToClosure(vp->schedCont);
                       envP = closObj->ep;

@@ -348,7 +348,7 @@ Value_t NewStack (VProc_t *vp, Value_t funClos) {
     StackInfo_t* info = NewStackForClos(vp, funClos);
     uint64_t* sp = info->currentSP;
 
-  #if defined(SEGSTACK) || defined(RESIZESTACK)
+  #if defined(NOSEALING_CAPTURE)
     // context is the tuple (vproc ID, vproc unique ticket)
     // We combine this into one value by placing the vproc id
     // in the upper bits of the context value.
@@ -375,7 +375,7 @@ StackInfo_t* NewMainStack (VProc_t* vp, void** initialSP) {
   #endif
     StackInfo_t* info = GetStack(vp, dfltStackSz);
 
-    #if defined(SEGSTACK) || defined(RESIZESTACK)
+    #if defined(NOSEALING_CAPTURE)
       // see NewStack for details.
       const int log2_num_tickets = 40; // 2^n max tickets, 2^(64-n) max vprocs.
       info->context = vp->nextStackContext | (((uint64_t)vp->id) << log2_num_tickets);
