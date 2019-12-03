@@ -96,7 +96,7 @@ structure Error :> sig
     fun addErr (ES{errors, numErrors, ...}, pos, msg) = (
 	  numErrors := !numErrors + 1;
 	  errors := {kind=ERR, pos=pos, msg=msg} :: !errors)
-	  
+
     fun addWarn (ES{errors, numWarnings, ...}, pos, msg) = (
 	  numWarnings := !numWarnings + 1;
 	  errors := {kind=WARN, pos=pos, msg=msg} :: !errors)
@@ -129,9 +129,9 @@ structure Error :> sig
 	  fun lt (NONE, NONE) = false
 	    | lt (NONE, _) = true
 	    | lt (_, NONE) = false
-	    | lt (SOME(l1, r1), SOME(l2, r2)) = (case Position.compare(l1, l2)
+	    | lt (SOME(l1, r1), SOME(l2, r2)) = (case Int.compare(l1, l2)
 		 of LESS => true
-		  | EQUAL => (Position.compare(r1, r2) = LESS)
+		  | EQUAL => (Int.compare(r1, r2) = LESS)
 		  | GREATER => false
 		(* end case *))
 	  fun cmp (e1 : error, e2 : error) = lt(#pos e1, #pos e2)
