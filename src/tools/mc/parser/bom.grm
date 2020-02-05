@@ -25,7 +25,7 @@
 (*	| KW_datatype	("datatype")		*)
 	| KW_define	("define")
 	| KW_deque	("deque")
-	| KW_do		("do")   
+	| KW_do		("do")
 	| KW_double	("double")
 (*	| KW_else	("else")		*)
 (*	| KW_end	("end")			*)
@@ -117,9 +117,9 @@
   val markBOMSE = markBOM BPT.SE_Mark
 
   val zero = IntInf.fromInt 0
-	     
+
   val label_counter = ref 0
-		      
+
   fun new_label () = let
       val ret_val = Atom.atom ("$rewrite" ^
                                (Int.toString (!label_counter)))
@@ -128,7 +128,7 @@
     ret_val
   end (* new_label() *)
 
-  val spanZZ = (Position.fromInt 0, Position.fromInt 0)
+  val spanZZ = (0, 0)
 
   val listTyTerm = BPT.T_TyCon {tree = ([Atom.atom "List"], Op.list), span = spanZZ}
 
@@ -171,14 +171,14 @@ Definition
 		      BPT.D_Define(optAttrs, HLOpId, p1, p2, ReturnTy, SR)
 		    end))
         | "define" HLOpId "=" QualifiedId ";"
-		=> (markBOMDefn(FULL_SPAN, 
+		=> (markBOMDefn(FULL_SPAN,
 		      BPT.D_ImportPML(HLOpId, QualifiedId)
 		    ))
 *)
 	| "define" optAttrs HLOpId HLOpDef ";"
 		=> (markBOMDefn(FULL_SPAN, HLOpDef(optAttrs, HLOpId)))
         | LabelOpt Pattern "==>" Pattern Benefit ";"               (* rewrite rule *)
-                => ( markBOMDefn(FULL_SPAN, 
+                => ( markBOMDefn(FULL_SPAN,
 				 BPT.D_Rewrite {label = LabelOpt,
                                     lhs = Pattern1,
                                     rhs = Pattern2,
@@ -447,7 +447,7 @@ Pattern
         | Name
                 => ( BPT.RW_Var Name )
 
-        | "alloc" "(" PatternArgs ")"		
+        | "alloc" "(" PatternArgs ")"
                 => ( BPT.RW_Alloc PatternArgs )
         ;
 
