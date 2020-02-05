@@ -41,6 +41,9 @@ structure BasicControl :  sig
   (* same as "direct", but use resizing stacks instead *)
     val resizestack : bool Controls.control
 
+  (* same as "direct", but use hybrid stacks instead *)
+    val hybridstack : bool Controls.control
+
   (* same as "direct", but use a linked-frame stack instead *)
     val linkstack : bool Controls.control
 
@@ -241,6 +244,15 @@ structure BasicControl :  sig
         default = false
       }
 
+  (* hybrid stacks *)
+    val hybridstack : bool Controls.control = Controls.genControl {
+        name = "hybridstack",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "use hybrid stacks (variant of resizing stacks)",
+        default = false
+      }
+
   (* mutable, linked-frame stack *)
     val linkstack : bool Controls.control = Controls.genControl {
         name = "linkstack",
@@ -397,6 +409,10 @@ structure BasicControl :  sig
         };
       ControlRegistry.register topRegistry {
           ctl = Controls.stringControl ControlUtil.Cvt.bool resizestack,
+          envName = NONE
+        };
+      ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool hybridstack,
           envName = NONE
         };
       ControlRegistry.register topRegistry {

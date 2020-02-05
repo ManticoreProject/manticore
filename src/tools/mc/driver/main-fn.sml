@@ -253,6 +253,7 @@ functor MainFn (
 	  \    -linkstack       use mutable, linked-frame stacks\n\
 	  \    -segstack        use segmented stacks\n\
 	  \    -resizestack     use resizing stacks\n\
+	  \    -hybridstack     use hybrid stacks\n\
 	  \    -lazyunderflow   segstack -- do not free on underflow\n\
 	  \    -sealingcapture  seg/resize -- always seal the segment for callec\n\
 	  \    -noras           emit pop/push jmp instead of call/ret for stacks\n\
@@ -323,7 +324,7 @@ functor MainFn (
 	  in
             if String.isPrefix "-C" arg
                 then (processControl arg; processArgs args)
-            else if String.isPrefix "-h" arg
+            else if String.isPrefix "-h" arg andalso (not (String.isPrefix "-hybridstack" arg))
                 then let
                     val level = String.extract (arg, 2, NONE)
                     in
@@ -359,6 +360,9 @@ functor MainFn (
 		| "-resizestack" => ( Controls.set(BasicControl.direct, true) ;
                           Controls.set(BasicControl.cshim, true) ;
                           set BasicControl.resizestack )
+		| "-hybridstack" => ( Controls.set(BasicControl.direct, true) ;
+                          Controls.set(BasicControl.cshim, true) ;
+                          set BasicControl.hybridstack )
 		| "-linkstack" => ( Controls.set(BasicControl.direct, true) ;
                             Controls.set(BasicControl.cshim, true) ;
                             set BasicControl.linkstack )

@@ -466,6 +466,10 @@ void TakeOwnership(VProc_t* vp, StackInfo_t* segment) {
 
 #if defined(SEGSTACK)
 
+/////////////////////////////////////////////////////////////////////////////
+///////////////// SEGMENTED STACKS /////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+
 // In this SEGMENTED STACKS version, we copy a bounded number of frames,
 // or none at all.
 // NOTE: called by ASM code
@@ -574,7 +578,11 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
 
 
 
-#elif defined(RESIZESTACK)
+#elif defined(RESIZESTACK) && !defined(HYBRIDSTACK)
+
+/////////////////////////////////////////////////////////////////////////////
+///////////////// RESIZING STACKS /////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 
 // on overflow we RESIZE the stack and discard the old one.
 // In the case of callec, we link a new segment instead.
@@ -648,6 +656,148 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
   // return the new SP in the new segment
   return newStkPtr;
 }
+
+
+#elif defined(HYBRIDSTACK)
+
+/////////////////////////////////////////////////////////////////////////////
+///////////////// HYBRID STACKS /////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+
+uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shouldCopy) {
+  #ifndef NO_GC_STATS
+      TIMER_Start(&(vp->largeObjStats.timer));
+  #endif
+
+  enum Decision { Resize, Append, StartFresh };
+
+  StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
+  enum Decision D;
+
+  size_t oldSize = old->usableSpace;
+  size_t newSize;
+
+  if (!shouldCopy) {
+    D = StartFresh;
+    newSize = dfltStackSz;
+  } else if (oldSize < hybridThresholdSz) {
+    D = Resize;
+    newSize = oldSize * 2;
+  } else {
+    D = Append;
+    newSize = hybridThresholdSz;
+  }
+
+  assert(newSize >= dfltStackSz);
+  StackInfo_t* fresh = GetStack(vp, newSize);
+  uint8_t* newStkPtr = fresh->initialSP;
+
+
+  if (D == StartFresh) {
+    // create a fresh stack segment with the default size and append it
+
+    // initialize backwards link and its underflow handler.
+    *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
+    fresh->prevSegment = old;
+    old->currentSP = old_origStkPtr;
+
+    // carry-over the root context
+    fresh->context = old->context;
+
+
+    ///////////////////////////////
+  } else if (D == Resize) {
+    // copy everything over to the resized segment and discard old segment.
+    uint8_t* oldBase = old->initialSP;
+    uint64_t numBytes = oldBase - old_origStkPtr;
+
+    // pull down the stack ptr to same point as old stack's top
+    newStkPtr -= numBytes;
+
+    // +8 to include the retAddr
+    memcpy(newStkPtr, old_origStkPtr, numBytes + 8);
+
+    // initialize other fields.
+    fresh->age = old->age;
+    fresh->prevSegment = old->prevSegment;
+    fresh->canCopy = old->canCopy;
+    fresh->context = old->context;
+
+    if (old->owner == vp) {
+      old = ReleaseOneStack(vp, old, false);  // add back to cache, it's hot
+      assert(old == NULL && "if failed, then stack memory would leak");
+    }
+
+
+    ///////////////////////////////
+  } else {
+    assert(D == Append);
+
+    uint64_t bytesSeen = 0;
+    const uint64_t maxBytes = dfltStackSz / 8;
+    const int maxFrames = 4; // TODO make this a parameter of the compiler
+    const uint64_t szOffset = 2 * sizeof(uint64_t);
+
+    for(int i = 0; i < maxFrames; i++) {
+      // grab the size field
+      uint64_t* p = (uint64_t*)(old_origStkPtr + bytesSeen + szOffset);
+      uint64_t sz = *p;
+
+      // hit the end of the segment?
+      if(sz == ~0ULL) {
+          // copying the whole segment to the new one defeats the
+          // purpose of this optimization, so
+          // we will simply provide an empty segment.
+          bytesSeen = 0;
+          break;
+      }
+
+      uint64_t frameBytes = sz + sizeof(uint64_t);
+
+      if (bytesSeen + frameBytes >= maxBytes) {
+          // do not include this frame.
+          // it would put us over the max.
+          break;
+      }
+
+      // include this frame
+      bytesSeen += frameBytes;
+    }
+
+    // install underflow handler
+    *((uint64_t*)newStkPtr) = (uint64_t)(&ASM_DS_SegUnderflow);
+
+    if (bytesSeen) {
+        // pull pointer down
+        newStkPtr -= bytesSeen;
+
+        memcpy(newStkPtr, old_origStkPtr, bytesSeen);
+    }
+
+    uint8_t* old_stkPtr = old_origStkPtr + bytesSeen;
+
+    // initialize backwards link and save old segment's new top
+    fresh->prevSegment = old;
+    old->currentSP = old_stkPtr;
+
+    // carry-over the root context
+    fresh->context = old->context;
+  }
+
+
+
+  // install the fresh segment as the current stack descriptor
+  vp->stdCont = PtrToValue(fresh);
+  vp->stdEnvPtr = fresh->stkLimit;
+
+  #ifndef NO_GC_STATS
+      TIMER_Stop(&(vp->largeObjStats.timer));
+  #endif
+
+  // return the new SP in the new segment
+  return newStkPtr;
+}
+
 
 #endif // Segment Overflow versions
 

@@ -610,6 +610,12 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-resizestack-stats, [stats direct resizestack])
     MK_BUILD_DIR(mcrt-resizestack-nosealingcapture-stats, [stats direct resizestack nosealingcapture])
 
+    MK_BUILD_DIR(mcrt-hybridstack, [direct resizestack hybridstack])
+    MK_BUILD_DIR(mcrt-hybridstack-nosealingcapture, [direct resizestack hybridstack nosealingcapture])
+
+    MK_BUILD_DIR(mcrt-hybridstack-stats, [stats direct resizestack hybridstack])
+    MK_BUILD_DIR(mcrt-hybridstack-nosealingcapture-stats, [stats direct resizestack hybridstack nosealingcapture])
+
     MK_BUILD_DIR(mcrt-segstack, [direct segstack])
     MK_BUILD_DIR(mcrt-segstack-lazyunderflow, [direct segstack lazyunderflow])
     MK_BUILD_DIR(mcrt-segstack-nosealingcapture, [direct segstack nosealingcapture])

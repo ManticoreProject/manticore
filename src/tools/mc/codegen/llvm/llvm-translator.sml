@@ -1398,7 +1398,8 @@ fun output (outS, module as C.MODULE { name = module_name,
         "0x" ^ (IntInf.fmt StringCvt.HEX asInt)
     end
 
-    val isSegStack = Controls.get BasicControl.segstack
+    (* NOTE: hybrid stacks need frame-size metadata in each frame, so we request the segstack prologue. *)
+    val isSegStack = Controls.get BasicControl.segstack orelse Controls.get BasicControl.hybridstack
     val isResizeStack = Controls.get BasicControl.resizestack
     fun mkBasicAttr name = concat ["\"", name, "\" = \"" ^ IntegerLit.toString Spec.ABI.stdEnvPtr ^ "\""]
 
