@@ -321,7 +321,7 @@ Pass Arguments:  -domtree
 
      val llcLevels = [
          (0, ["-O1"]),
-         (1, ["-O1"]),
+         (1, ["-O3"]),
          (2, ["-O3"])
      ]
 
