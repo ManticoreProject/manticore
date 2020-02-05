@@ -94,7 +94,7 @@
 (* apply a mark constructor to a span and a tree *)
   fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
 
-  val spanZZ : AntlrStreamPos.span = (0, 0)
+  val spanZZ = (0, 0)
   val nilID = {tree = ([] : Atom.atom list, Op.listNil), span = spanZZ}
 
 (* specialize mark functions for common node types *)
@@ -157,7 +157,7 @@ Program
 Module
         : "struct" (Decl ";"?)* "end" => (mark PT.MarkMod (FULL_SPAN, PT.DeclsMod SR))
         | QualifiedId => (mark PT.MarkMod (FULL_SPAN, PT.NamedMod QualifiedId))
-        ; 
+        ;
 
 Signature
         : "sig" (Spec ";"?)* "end" => (mark PT.MarkSig (FULL_SPAN, PT.ExpSig SR))
