@@ -66,13 +66,6 @@ fun output (outS, module as C.MODULE { name = module_name,
           cfgArgs : C.var list,
           mvs : LV.var list }
 
-
-  datatype block_ordering_hint
-    = Entry of LB.bb
-    | Normal of LB.bb
-    | Cold of LB.bb
-
-
   fun mkBasicBlocks (initEnv : Util.gamma, start : C.block, body : C.block list, llvmCC) : string list = let
     (* no branches should be expected to target the start block,
       because they should be calls (the start block has the type of the function
@@ -119,14 +112,8 @@ fun output (outS, module as C.MODULE { name = module_name,
                 val blk = LB.new(LV.new("entry", LT.labelTy), LC.forceVars llvmCC)
 
                 val env = LC.setupEntryEnv (blk, initialEnv, llvmCC)
-
-                fun markFirstAsEntry originalThunk () =
-                    (case originalThunk()
-                      of Normal b :: xs => Entry b :: xs
-                       | Cold b :: xs => Entry b :: xs
-                    (* end case *))
             in
-                (blk, env, fn (blk, env) => markFirstAsEntry (fillBlock blk (env, body, exit)))
+                (blk, env, fn (blk, env) => fillBlock blk (env, body, exit))
             end
 
       (* make new blocks and setup their individual environments wrt their calling conventions *)
@@ -152,25 +139,21 @@ fun output (outS, module as C.MODULE { name = module_name,
 
     (* force the thunks now that all blocks have added their predecessor edges to
        all of the blocks. then flatten the LB.bb list list and map them to strings *)
-    fun organize (Normal x, (entry, normal, cold)) = (entry, x::normal, cold)
-      | organize (Cold x, (entry, normal, cold)) = (entry, normal, x::cold)
-      | organize (Entry x, (NONE, normal, cold)) = (SOME x, normal, cold)
-      | organize (Entry _, (SOME _, _, _)) = raise Fail "multiple entry blocks marked?"
-
-    val (SOME entry, normal, cold) = L.foldr
+    val stringyBlocks = L.foldr
                 (fn (thunk, ys) => case thunk()
                   of nil => raise Fail "uh oh, how did a block go missing?"
-                   | xs => L.foldr organize ys xs)
-                (NONE, [], [])
+                   | [x] => (LB.toString x)::ys
+                   | xs => (L.map LB.toString xs) @ ys)
+                []
                 allBlocks
 
     in
-        L.map LB.toString (entry :: normal @ cold)
+        stringyBlocks
     end
 
 
 
-  and fillBlock (b : LB.t) (initialEnv : Util.gamma, body : C.exp list, exit : C.transfer) : (unit -> block_ordering_hint list) = let
+  and fillBlock (b : LB.t) (initialEnv : Util.gamma, body : C.exp list, exit : C.transfer) : (unit -> LB.bb list) = let
 
     (* a jump list is a (label * var list) which indicates
        where a jump comes from, and the names of the vars from that BB.
@@ -361,8 +344,8 @@ fun output (outS, module as C.MODULE { name = module_name,
             val _ = markPredFrom gcLoopBB env (nogcTarg, allArgs)
 
             (* create terminators *)
-            val gcLoopTerm = (fn () => Cold (LB.condBr gcLoopBB (retNotEnoughSpaceCond, bbLab, nogcTarg)))
-            val heapCheckTerm = (fn () => Normal (LB.condBr b (notEnoughSpaceCond, bbLab, nogcTarg)))
+            val gcLoopTerm = (fn () => LB.condBr gcLoopBB (retNotEnoughSpaceCond, bbLab, nogcTarg))
+            val heapCheckTerm = (fn () => LB.condBr b (notEnoughSpaceCond, bbLab, nogcTarg))
 
         in
             (fn () => [heapCheckTerm(), gcLoopTerm()])
@@ -440,8 +423,8 @@ fun output (outS, module as C.MODULE { name = module_name,
                     when the scheduler decides to resume us *)
                  fun brTo enoughBB = (
                           (* LB.addIncoming enoughBB jump ; *)
-                          (fn () => Cold( LB.condBr myBB
-                             (notEnoughSpaceCond, bbLab, (LB.labelOf enoughBB))))
+                          (fn () => LB.condBr myBB
+                             (notEnoughSpaceCond, bbLab, (LB.labelOf enoughBB)))
                          )
 
              in
@@ -497,7 +480,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
                  fun brTo gotoBB = (
                           LB.addIncoming gotoBB (bbLab, outgoingLive) ;
-                          (fn () => Cold (LB.br myBB (LB.labelOf gotoBB)))
+                          (fn () => LB.br myBB (LB.labelOf gotoBB))
                          )
 
              in
@@ -558,7 +541,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                  fun brTo gotoBB = (
                          LB.addIncoming gotoBB
                              (bbLab, [allocPtr, vprocPtr] @ loadedInstrs)  ;
-                         (fn () => Cold (LB.br myBB (LB.labelOf gotoBB)))
+                         (fn () => LB.br myBB (LB.labelOf gotoBB))
                      )
 
              in
@@ -589,7 +572,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
 
         in
-             (fn () => [Normal (LB.condBr b (notEnoughSpaceCond, LB.labelOf prepBB, nogcTarg)),
+             (fn () => [LB.condBr b (notEnoughSpaceCond, LB.labelOf prepBB, nogcTarg),
                         prepTerminator(), gcTerminator(), xtractTerminator()])
         end
     (**** end heapCheckHelper ****)
@@ -662,8 +645,8 @@ fun output (outS, module as C.MODULE { name = module_name,
                 val conv = (AS.singleton A.Tail, LB.jwaCC)
             in
                 case (LB.callAs' b conv (llFun, V.fromList allCvtdArgs))
-                  of SOME result => (fn () => [Normal (LB.ret b result)])
-                   | NONE => (fn () => [Normal (LB.retVoid b)])
+                of SOME result => (fn () => [LB.ret b result])
+                 | NONE => (fn () => [LB.retVoid b])
             end
 
         (* the bool indicates whether it is a direct-style throw *)
@@ -680,7 +663,7 @@ fun output (outS, module as C.MODULE { name = module_name,
             val (trapLab, NONE) = LR.trap
             val NONE = LB.call b (LB.fromV trapLab, #[])
           in
-            (fn () => [Normal (LB.unreachable b)])
+            (fn () => [LB.unreachable b])
           end
 
       in
@@ -688,7 +671,7 @@ fun output (outS, module as C.MODULE { name = module_name,
               of C.Goto jmp => let
                     val (targ, _) = markPred env jmp
                   in
-                    (fn () => [Normal (LB.br b targ)])
+                    (fn () => [LB.br b targ])
                   end
 
                | C.If (cond, trueJ, falseJ) => let
@@ -732,7 +715,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
                                           (* the dummy block just dispatches to the actual
                                              location this blocks is going to *)
-                                          val dummyFin = Normal (LB.br dummyB falseLab)
+                                          val dummyFin = LB.br dummyB falseLab
 
                                          in
                                             (dummyJump, SOME dummyFin)
@@ -750,7 +733,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                    in
 
                      (fn () => L.mapPartial (fn x => x) [
-                            SOME (Normal (LB.condBr b (result, trueLab, falseLab))),
+                            SOME (LB.condBr b (result, trueLab, falseLab)),
                             maybeNewBlock
                         ])
 
@@ -793,7 +776,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                     val llCond = Util.lookupV(env, cond)
 
                in
-                    (fn () => [Normal (LB.switch b llCond (llDefault, llArms))])
+                    (fn () => [LB.switch b llCond (llDefault, llArms)])
                end
 
                (* all types are CFG vars *)
@@ -842,7 +825,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                | C.Return {args=vars,...} => let
                     val retStruct = LC.setupRetVal (b, env, LC.determineRet vars)
                in
-                    (fn () => [Normal (LB.ret b retStruct)])
+                    (fn () => [LB.ret b retStruct])
                end
 
 
@@ -911,7 +894,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                             (* do the jump *)
                             val (targ, _) = markPred env jmp
                        in
-                            (fn () => [Normal (LB.br b targ)])
+                            (fn () => [LB.br b targ])
                        end (* end nonTail *)
 
 
@@ -922,8 +905,8 @@ fun output (outS, module as C.MODULE { name = module_name,
                               LLVM not cleaning up the frame and emitting a callq
                               with an address that is not in the stackmap! *)
                           case (LB.callAs' b conv (f, V.fromList allArgs), doesReturn)
-                            of (SOME result, _) => (fn () => [Normal (LB.ret b result)])
-                             | (NONE, _)        => (fn () => [Normal (LB.retVoid b)])
+                            of (SOME result, _) => (fn () => [LB.ret b result])
+                             | (NONE, _)        => (fn () => [LB.retVoid b])
                        end
 
                    in
