@@ -1,0 +1,5 @@
+**/.git
+.dockerignore
+Dockerfile
+llvm/build
+llvm/install

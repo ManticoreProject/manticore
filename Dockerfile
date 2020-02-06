@@ -1,27 +1,55 @@
-# contributed by Ryan Newton
-
 FROM ubuntu:16.04
 
-RUN apt-get update -y && apt-get install -y wget gcc autoconf automake make
+# grab all dependencies
+RUN dpkg --add-architecture i386 \
+    && apt-get update \
+    && apt-get install --no-install-recommends -y \
+       # for 32-bit SML/NJ download & build
+       libc6:i386 gcc-multilib ca-certificates g++ g++-multilib \
+       \
+       # ordinary manticore dependencies
+       wget \
+       gcc \
+       autoconf \
+       automake \
+       make \
+       libjemalloc-dev \
+       \
+       # llvm dependencies
+       cmake \
+       zlib1g \
+       python2.7 \
+     && rm -rf /var/lib/apt/lists/*
 
-RUN dpkg --add-architecture i386 && \
-    apt-get install -y gcc-multilib libc6-dev-i386 libc6-i386
+# download SML/NJ
+RUN update-ca-certificates \
+    && mkdir -p /usr/smlnj \
+    && cd /usr/smlnj \
+    && wget http://smlnj.cs.uchicago.edu/dist/working/110.96/config.tgz \
+    && tar xf config.tgz \
+    && rm config.tgz
 
-# Ubuntu version of SML/NJ has problems.  Fetch the main distribution:
-RUN mkdir -p /usr/smlnj && cd /usr/smlnj && \
-    wget http://smlnj.cs.uchicago.edu/dist/working/110.81/config.tgz && \
-    tar xf config.tgz && rm config.tgz
+# build/install SML/NJ:
+RUN cd /usr/smlnj \
+    && ./config/install.sh -default 32 \
+    && cd /usr/bin \
+    && ln -s /usr/smlnj/bin/* ./
 
-# Build/install SML/NJ:
-RUN cd /usr/smlnj && ./config/install.sh && \
-    cd /usr/bin && ln -s /usr/smlnj/bin/* ./ && \
-    echo
+# copy source code to the image
+COPY . /usr/pmlc
 
-ADD . /usr/pmlc
+# set the working directory
+WORKDIR /usr/pmlc
 
-RUN cd /usr/pmlc && \
-    autoheader -Iconfig && \
-    autoconf -Iconfig && \
-    ./configure && \
-    make local-install && \
-    cd /usr/bin && ln -s /usr/pmlc/bin/* ./
+# build LLVM
+RUN ./llvm/fresh-build.sh \
+    && cd /usr/bin \
+    && ln -s /usr/pmlc/llvm/build/bin/* ./
+
+# build manticore
+RUN autoheader -Iconfig \
+    && autoconf -Iconfig \
+    && ./configure --with-llvm=./llvm/build \
+    && make local-install \
+    && cd /usr/bin \
+    && ln -s /usr/pmlc/bin/* ./
