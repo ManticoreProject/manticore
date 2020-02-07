@@ -9,7 +9,7 @@ variables:
   CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
 
 before_script:
-  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  - echo "$CI_REGISTRY_PASSWORD" | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
 build:
   stage: build
