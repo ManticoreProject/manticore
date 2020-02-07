@@ -19,7 +19,7 @@ pushd llvm
 rm -rf build install
 mkdir build install
 pushd build
-cmake -G "Unix Makefiles" -DLLVM_ENABLE_PROJECTS="clang;compiler-rt" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release $OPTIONS -DLLVM_TARGETS_TO_BUILD="X86" ../src/llvm
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release $OPTIONS -DLLVM_TARGETS_TO_BUILD="X86" ../src/llvm
 make -j $JOBS opt llc
 ./bin/opt --version
 ./bin/llc --version
