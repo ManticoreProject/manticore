@@ -11,10 +11,9 @@ OPTIONS="-DLLVM_ENABLE_ASSERTIONS=ON -DLLVM_USE_LINKER=gold -DLLVM_OPTIMIZED_TAB
 set -x # echo on
 set -e # exit on failure
 
-# for GitLab's CI, we allow 2 concurrent builds, and want to limit
-# the number of LLVM jobs to half the number of CPUs.
+# we try to not use all the CPUs on the system.
 CPUS=`getconf _NPROCESSORS_ONLN`
-JOBS=`expr $CPUS / 2`
+JOBS=`expr $CPUS - 2`
 
 pushd llvm
 rm -rf build install

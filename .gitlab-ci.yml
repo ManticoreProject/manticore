@@ -1,9 +1,35 @@
-# keeping it simple because this YML file is poorly documented/defined
+stages:
+  - build
+  - test
+  - release
 
 variables:
-    GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_STRATEGY: recursive  # download all, including benchmarks
+  CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
 
-build_and_test:
-    stage: build
-    script:
-        - ./run_ci.sh
+before_script:
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+build:
+  stage: build
+  script:
+    - docker build --pull -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
+
+test:
+  stage: test
+  script:
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker run -w /usr/pmlc $CONTAINER_TEST_IMAGE ./run_ci.sh local
+
+
+release-image:
+  stage: release
+  script:
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
+    - docker push $CONTAINER_RELEASE_IMAGE
+  only:
+    - stacks
+    # TODO: if you ever merge this into master, should change the name of branch
