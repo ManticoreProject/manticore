@@ -5,7 +5,7 @@ RUN dpkg --add-architecture i386 \
     && apt-get update \
     && apt-get install --no-install-recommends -y \
        # for 32-bit SML/NJ download & build
-       libc6:i386 gcc-multilib ca-certificates g++ g++-multilib \
+       libc6:i386 gcc-multilib g++ g++-multilib \
        \
        # ordinary manticore dependencies
        wget \
@@ -22,8 +22,7 @@ RUN dpkg --add-architecture i386 \
      && rm -rf /var/lib/apt/lists/*
 
 # download SML/NJ
-RUN update-ca-certificates \
-    && mkdir -p /usr/smlnj \
+RUN mkdir -p /usr/smlnj \
     && cd /usr/smlnj \
     && wget http://smlnj.cs.uchicago.edu/dist/working/110.96/config.tgz \
     && tar xf config.tgz \
