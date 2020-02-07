@@ -18,7 +18,7 @@ RUN dpkg --add-architecture i386 \
        # llvm dependencies
        cmake \
        zlib1g \
-       python2.7 \
+       python \
      && rm -rf /var/lib/apt/lists/*
 
 # download SML/NJ
