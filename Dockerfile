@@ -55,6 +55,17 @@ RUN cd /usr/smlnj64 \
     && ./config/install.sh -default 64
 
 
+# obtain and install MLton. it needs lib / bin to be in the expected places
+RUN cd /usr \
+    && wget https://sourceforge.net/projects/mlton/files/mlton/20180207/mlton-20180207-1.amd64-linux.tgz \
+    && tar xzf mlton-20180207-1.amd64-linux.tgz \
+    && rm mlton-20180207-1.amd64-linux.tgz \
+    && mv mlton-20180207-1.amd64-linux mlton \
+    && mv mlton/bin/* /usr/bin \
+    && mv mlton/lib/* /usr/lib \
+    && rm -rf ./mlton
+
+
 # build/install bloaty:
 RUN cd /usr \
     && git clone https://github.com/google/bloaty.git \
@@ -83,3 +94,17 @@ RUN autoheader -Iconfig \
     && make local-install \
     && cd /usr/bin \
     && ln -s /usr/pmlc/bin/* ./
+
+
+# HACK: the benchmark scripts use git-log to record the revision of the
+# benchmark dir, but we can't simply copy the src/benchmarks/.git dir
+# because git doesn't seem to support that.
+# thus instead replace 'git' with something that
+# just spits out some text and uninstall the real git, since we no longer
+# need git at this point anyway and can save ~20MB
+RUN apt-get autoremove -y \
+      git \
+      ca-certificates \
+      wget \
+    && echo '#!/bin/sh\necho "docker image"\n' > /usr/bin/git \
+    && chmod +x /usr/bin/git
