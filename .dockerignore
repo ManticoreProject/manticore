@@ -1,13 +1,17 @@
-.git
+**/.git
 .dockerignore
 Dockerfile
+
+doc
+bin
+lib
 
 llvm/build
 llvm/install
 
 src/benchmarks/results
+src/benchmarks/branches
 
-llvm/src/.git
 llvm/src/clang
 llvm/src/clang-tools-extra
 llvm/src/compiler-rt

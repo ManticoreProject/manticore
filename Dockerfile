@@ -83,14 +83,15 @@ COPY . /usr/pmlc
 WORKDIR /usr/pmlc
 
 # build LLVM (with asserts on for testing, since compile time is not important)
-RUN ./llvm/fresh-build.sh \
+RUN ./llvm/fresh-build.sh docker \
+    && rm -rf llvm/build llvm/src \
     && cd /usr/bin \
-    && ln -s /usr/pmlc/llvm/build/bin/* ./
+    && ln -s /usr/pmlc/llvm/install/bin/* ./
 
 # build manticore
 RUN autoheader -Iconfig \
     && autoconf -Iconfig \
-    && ./configure --with-llvm=./llvm/build \
+    && ./configure --with-llvm=./llvm/install \
     && make local-install \
     && cd /usr/bin \
     && ln -s /usr/pmlc/bin/* ./

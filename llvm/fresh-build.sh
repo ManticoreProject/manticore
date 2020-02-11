@@ -12,14 +12,19 @@ set -x # echo on
 set -e # exit on failure
 
 # we try to not use all the CPUs on the system.
-CPUS=`getconf _NPROCESSORS_ONLN`
-JOBS=`expr $CPUS - 2`
+CPUS=$(getconf _NPROCESSORS_ONLN)
+JOBS=$((CPUS - 2))
 
 pushd llvm
 rm -rf build install
 mkdir build install
 pushd build
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release $OPTIONS -DLLVM_TARGETS_TO_BUILD="X86" ../src/llvm
-make -j $JOBS opt llc
-./bin/opt --version
-./bin/llc --version
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release "$OPTIONS" -DLLVM_TARGETS_TO_BUILD="X86" ../src/llvm
+
+if [ "$1" != "docker" ]; then
+  make -j $JOBS opt llc
+  ./bin/opt --version
+  ./bin/llc --version
+else
+  make -j $JOBS install-opt install-llc
+fi
