@@ -13,11 +13,13 @@ ported the runtime or code generator to them yet.
 
 ### Docker
 
-To build, run
+To build an image locally after performing a recursive clone of Manticore, run
 
 ```console
 $ docker build .
 ```
+
+alternatively, you can use the pre-built image `registry.gitlab.com/kavon1/manticore:latest`
 
 The compiler will be available in the Docker image as `pmlc` in PATH:
 
