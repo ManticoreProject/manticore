@@ -31,7 +31,7 @@ RUN dpkg --add-architecture i386 \
        git \
        protobuf-compiler \
        linux-tools-`uname -r` \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
     && pip3 install --upgrade pip \
     && pip3 install --no-cache-dir \
        seaborn numpy matplotlib pandas click
@@ -112,6 +112,6 @@ RUN autoheader -Iconfig \
 # thus instead replace 'git' with something that
 # just spits out some text and uninstall the real git, since we no longer
 # need git at this point anyway and can save ~20MB
-RUN apt-get autoremove -y git
+RUN apt-get autoremove -y git \
     && echo '#!/bin/sh\necho "docker image"\n' > /usr/bin/git \
     && chmod +x /usr/bin/git
