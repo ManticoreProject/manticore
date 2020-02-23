@@ -49,3 +49,5 @@
 
 # Makefile dependencies
 .depend
+
+.vscode

@@ -15,6 +15,12 @@ RUN dpkg --add-architecture i386 \
        libjemalloc-dev \
        python \
        \
+       # manticore plotting dependencies
+       python3 \
+       python3-setuptools \
+       python3-dev \
+       python3-pip \
+       \
        # llvm dependencies
        cmake \
        zlib1g \
@@ -25,7 +31,10 @@ RUN dpkg --add-architecture i386 \
        git \
        protobuf-compiler \
        linux-tools-`uname -r` \
-     && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
+    && pip3 install --upgrade pip \
+    && pip3 install --no-cache-dir \
+       seaborn numpy matplotlib pandas click
 
 
 # download SML/NJ
@@ -84,7 +93,7 @@ WORKDIR /usr/pmlc
 
 # build LLVM (with asserts on for testing, since compile time is not important)
 RUN ./llvm/fresh-build.sh docker \
-    && rm -rf llvm/build llvm/src \
+    # && rm -rf llvm/build llvm/src \  # we leave LLVM sources alone for now
     && cd /usr/bin \
     && ln -s /usr/pmlc/llvm/install/bin/* ./
 
@@ -103,9 +112,6 @@ RUN autoheader -Iconfig \
 # thus instead replace 'git' with something that
 # just spits out some text and uninstall the real git, since we no longer
 # need git at this point anyway and can save ~20MB
-RUN apt-get autoremove -y \
-      git \
-      ca-certificates \
-      wget \
+RUN apt-get autoremove -y git
     && echo '#!/bin/sh\necho "docker image"\n' > /usr/bin/git \
     && chmod +x /usr/bin/git
