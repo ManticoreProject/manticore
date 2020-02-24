@@ -2,32 +2,22 @@
 
 [![pipeline status](https://gitlab.com/kavon1/manticore/badges/stacks/pipeline.svg)](https://gitlab.com/kavon1/manticore/commits/stacks)
 
-[Manticore](http://manticore.cs.uchicago.edu) is a high-level parallel
-programming language aimed at general-purpose applications running on multi-core
-processors. Manticore supports parallelism at multiple levels: explicit
-concurrency and coarse-grain parallelism via CML-style constructs and fine-grain
-parallelism via various light-weight notations, such as parallel tuple
-expressions and NESL/Nepal-style parallel array comprehensions.
-
-Manticore currently only supports the x86-64 (a.k.a. AMD64)
-architecture running on either Linux or Mac OS X. It is possible to
-build the compiler on other systems (see below), but we have not
-ported the runtime or code generator to them yet.
-
 ## PLDI'20 Artifact Evaluation
 
-In order to evaluate the system for PLDI'20 artifact evaluation, you must have
-access to a Linux system with [Docker installed](https://docs.docker.com/install/).
+In order to evaluate the system for PLDI'20 artifact evaluation, you must first
+have access to an x86-64 Linux system with [Docker installed](https://docs.docker.com/install/).
 
 The Linux requirement is due to our use of Linux's `perf` for profiling in our
 benchmark suite, which will probably *not* work if you are running Docker on any
-other OS because it is not Unix compatible.
+other OS because `perf` is not Unix compatible.
 
-You can test if Docker is working with:
+Before continuing on, you can test if Docker is working on your system with:
 
 ```console
 $ docker run hello-world
 ```
+
+
 
 ### Step 1: Obtain the Docker image
 
@@ -56,7 +46,9 @@ Successfully built SOME_HASH_CODE
 Then, use `SOME_HASH_CODE` wherever `image-name` appears in the rest of this README.
 
 
-### Step 2 (Optional): Play with the image
+
+
+### Step 2 (Optional): Explore the image
 
 To use the image, use the `-it` flag when running it with Docker to get an
 interactive prompt:
@@ -78,8 +70,70 @@ You can run the regression suite (~1 hour) to make sure everything's okay with:
 root@docker:/usr/pmlc# ./run_ci.sh local
 ```
 
-TODO: describe where source code is and an example of compiling a simple
-hello-world program with different stack strategies.
+The text editors `vim` and `emacs` are provided in the image for your
+convenience. Relative to `/usr/pmlc`, the sources are organized as follows:
+
+```
+src/tools/mc                          -- Manticore compiler
+llvm/src                              -- LLVM (our fork of it)
+src/lib/basis                         -- Manticore standard library
+src/lib/parallel-rt                   -- runtime system
+src/regression-tests/goals            -- regression tests
+src/benchmarks/benchmarks/programs    -- benchmark programs
+```
+
+Manticore's syntax and semantics are generally that of Standard ML, [but with
+extensions for concurrency](http://manticore.cs.uchicago.edu).
+The most mundane differences are that Manticore does not offer signatures or
+records and large portions of the Standard ML Basis Library are missing.
+The non-CPS stack strategies currently only support CML-style concurrency.
+
+Here's an example of how to compile and run a simple Manticore program:
+
+```console
+root@docker:~# echo -e "val () = Print.printLn \"hello, world\"" > hello.pml
+root@docker:~# pmlc hello.pml
+root@docker:~# ls
+a.out  hello.ll  hello.pml  hello.s  hello_opt.bc
+root@docker:~# ./a.out
+hello, world
+```
+
+Without additional arguments, `pmlc` will compile a program with the standard runtime system and basis library using the CPS strategy.
+Other useful flags are:
+
+```
+-o <file>        specify executable-file name
+-O<level>        set optimization level when using LLVM (0 to 5)
+-sequential      compile a sequential-mode program
+-contigstack     use contiguous stacks
+-linkstack       use mutable, linked-frame stacks
+-segstack        use segmented stacks
+-resizestack     use resizing stacks
+-noras           emit pop/push jmp instead of call/ret for stacks
+```
+
+The most relevant flags and additional context for the above:
+
+1. The `-O1` flag enables some basic clean-up optimizations by LLVM (early-cse,
+   simplifycfg, etc) and was used for the evaluation. This flag does not affect
+   optimizations performed by `pmlc` prior to emitting LLVM IR.
+
+2. The `-sequential` flag will produce a program that disables the runtime system
+scheduler for better sequential-program efficiency and omits parts of the standard
+library dealing with concurrency to improve compilation time.
+Benchmarks in the paper that are not prefixed with `cml-` were tested using
+this flag.
+
+3. The special `-Ccshim=<true/false>` flag controls whether to switch stacks
+for FFI calls (i.e., `true` means to switch stacks). Linkstack cannot support
+the `false` option.
+
+4. The `-noras` flag replaces `ret` instructions with a `pop; jmp` sequence
+to disable the CPU's return-address stack.
+
+
+
 
 ### Step 3: Run the benchmark suite
 
@@ -123,7 +177,7 @@ root@docker:/usr/pmlc# ./run_cont_bench.sh
 ```
 
 Once the command completes, keep the interactive Docker session running and open a new terminal prompt on your system.
-In this new window, find the active container ID corresponding to the session that finished running the benchmark suite,
+In this new window, find the active container ID corresponding to the session that finished running the benchmark suite:
 
 ```console
 $ docker ps
@@ -131,12 +185,18 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 <container-id>      <image-name>        "/bin/bash"         11 hours ago        Up 11 hours                             reverent_brattain
 ```
 
-and use that `container-id` to copy the results directory out of the container like so:
+Then use that `container-id` to copy the results directory out of the container
+like so (from outside of the Docker session):
 
 ```console
 $ docker cp container-id:/usr/pmlc/results .
 ```
 
-### Step 4: Interpreting the results
+
+
+### Step 4: Evaluate the results
+
+In this step we detail the claims in the paper supported by the artifact and how
+to check them against the results generated in Step 3.
 
 TODO
