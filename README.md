@@ -85,7 +85,10 @@ hello-world program with different stack strategies.
 
 The benchmark suite currently requires Linux's `perf stat`, which itself requires that you run the Docker image with additional permissions (the `--cap-add sys_admin` flag).
 
-Before getting started, make sure that `perf stat` is working:
+#### Ensuring `perf` is working
+
+Before getting started, make sure that `perf stat` is working with the following
+expected output:
 
 ```console
 $ docker run -it --cap-add sys_admin image-name
@@ -95,7 +98,11 @@ root@docker:/# perf stat echo
  ...
 ```
 
-If instead you see a message stating `WARNING: perf not found for kernel X`, then
+If you see a message stating `No permission to enable task-clock event.`, then
+you forgot to add `--cap-add sys_admin` to your `docker run` command and need
+to exit the Docker session with `CTRL+D` and run it again with that flag.
+
+Otherwise if you see a message stating `WARNING: perf not found for kernel X`, then
 that means the Docker image you've obtained was built on a Linux system with
 a different kernel version than yours (this is quite likely).
 This can be fixed for the currently-running image by running:
@@ -106,6 +113,8 @@ root@image-name# apt-get update && apt-get install linux-tools-`uname -r`
 
 **Please note** that you'll need to run the above command **every time** you run
 the Docker image, because the image is not modified during its use.
+
+#### Running the suite
 
 Once you've confirmed `perf stat echo` works, you can run the benchmark suite and
 generate plots from the paper with one command (which will probably take about 12 hours):
