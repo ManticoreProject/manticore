@@ -31,12 +31,12 @@ $ docker run hello-world
 
 ### Step 1: Obtain the Docker image
 
-#### Method 1: Download pre-built image
+##### Method 1: Download pre-built image
 
 The recommended way to obtain the image is to simply use `registry.gitlab.com/kavon1/manticore:latest` wherever `image-name` appears in the rest of this README.
 Docker will automatically download the image the first time you try to run it.
 
-#### Method 2: Build image locally
+##### Method 2: Build image locally
 
 After performing a recursive clone of Manticore,
 
@@ -99,8 +99,7 @@ root@docker:/# perf stat echo
 ```
 
 If you see a message stating `No permission to enable task-clock event.`, then
-you forgot to add `--cap-add sys_admin` to your `docker run` command and need
-to exit the Docker session with `CTRL+D` and run it again with that flag.
+you forgot to add `--cap-add sys_admin` to your `docker run` command (use `CTRL+D` to exit the session and try again).
 
 Otherwise if you see a message stating `WARNING: perf not found for kernel X`, then
 that means the Docker image you've obtained was built on a Linux system with
@@ -117,10 +116,27 @@ the Docker image, because the image is not modified during its use.
 #### Running the suite
 
 Once you've confirmed `perf stat echo` works, you can run the benchmark suite and
-generate plots from the paper with one command (which will probably take about 12 hours):
+generate plots from the paper with one command (which will probably take 7-8 hours):
 
 ```console
 root@docker:/usr/pmlc# ./run_cont_bench.sh
 ```
 
-TODO: explain how to copy the results dir out of the image.
+Once the command completes, keep the interactive Docker session running and open a new terminal prompt on your system.
+In this new window, find the active container ID corresponding to the session that finished running the benchmark suite,
+
+```console
+$ docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+<container-id>      <image-name>        "/bin/bash"         11 hours ago        Up 11 hours                             reverent_brattain
+```
+
+and use that `container-id` to copy the results directory out of the container like so:
+
+```console
+$ docker cp container-id:/usr/pmlc/results .
+```
+
+### Step 4: Interpreting the results
+
+TODO

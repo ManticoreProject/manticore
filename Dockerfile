@@ -31,6 +31,10 @@ RUN dpkg --add-architecture i386 \
        git \
        protobuf-compiler \
        linux-tools-`uname -r` \
+       \
+       # MLton dependencies
+       libgmp-dev \
+       \
     && rm -rf /var/lib/apt/lists/* \
     && pip3 install --upgrade pip \
     && pip3 install --no-cache-dir \

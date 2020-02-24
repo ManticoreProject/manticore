@@ -24,4 +24,8 @@ PATH=/usr/smlnj64/bin:${PATH} ./pldi20.sh "${MC_DIR}" "${RESULTS_DIR}" ${TRIALS}
 # generate plots
 LANG=C.UTF-8 LC_ALL=C.UTF-8 ./plotall.sh "${RESULTS_DIR}"
 
-echo "Benchmarking complete. See results in ${RESULTS_DIR}"
+echo "----------------------------------------------------------------------"
+echo "Benchmarking complete!"
+echo "Results are in ${RESULTS_DIR}"
+echo "Keep this Docker session alive and follow instructions in the README"
+echo "to copy the results to your local filesystem!"
