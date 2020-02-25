@@ -255,19 +255,30 @@ suite:
 
 ```console
 $ docker ps
-CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
-<container-id>      <image-name>        "/bin/bash"         11 hours ago        Up 11 hours                             reverent_brattain
+CONTAINER ID        IMAGE                                         COMMAND             CREATED             STATUS              PORTS               NAMES
+container-id        registry.gitlab.com/kavon1/manticore:latest   "/bin/bash"         14 hours ago        Up 14 hours                             upbeat_euclid
 ```
 
 Then use that `container-id` to [copy the results directory](https://docs.docker.com/engine/reference/commandline/cp/)
 out of the container and into your local file system like so:
 
 ```console
-$ docker cp container-id:/usr/pmlc/results .
+$ docker cp container-id:/usr/pmlc/results ./paper234_results
+$ ls paper234_results/
+gcstats  normal
 ```
 
 Once you've copied the results directory to your local file system,
 it's safe to end the Docker session with `CTRL+D`.
+
+**Optional**: If you're connected to a remote machine and want to view the
+data locally, compress the data into an archive with
+
+```console
+tar czvf paper234_results.tar.gz paper234_results/
+```
+
+prior to using `scp` to copy the data via SSH.
 
 
 
@@ -278,5 +289,28 @@ in the paper.
 
 In this step we detail the claims in the paper supported by the artifact and how
 to check them against the results generated in Step 3.
+All files we refer to here are relative to the `paper234_results` directory.
 
-TODO
+##### Section 5.1.1
+
+- Figure 3 corresponds with the plot `normal/cross_toy_times.pdf`, and covers the
+discussion on lines 747--761. Note that in the camera-ready version the
+corrected number of `fib` calls is 331 million per iteration.
+
+- Lines 765--808 can be checked in sequence:
+  1. Percent of time spent in the garbage collector for `ack` is in plot `gcstats/analyze_toy_gc_time_total_pct.pdf`.
+
+  2. The volume of data allocated for **closure-based stacks** (aka "cps") for `ack` should be checked manually in the file `gcstats/seq-ack/seq-ack-cps-mc-seq-DATE.json`.
+  The field `minorgc-alloc` corresponds to the number of bytes allocated in
+  the nursery. Divide by 2^30 = 1073741824 to get GiB.
+
+  3. The percentage of data promoted from the **nursery to the major heap** is in the plot
+  `gcstats/analyze_toy_gc_minor_live_pct.pdf`
+
+  4. The percentage of data promoted from the **major heap to the global heap** is in `gcstats/analyze_toy_gc_major_live_pct.pdf`.
+
+  5. The volume of data allocated for **linked-frame stacks** for `ack` is in  the
+  file `gcstats/seq-ack/seq-ack-linkstack-mc-seq-DATE.json`. Look for the `minorgc-alloc`
+  and compare it with step (2) in this sequence.
+
+- Figure 4 corresponds with the plot `normal/toy_perf_L1-dcache-load-misses.pdf`
