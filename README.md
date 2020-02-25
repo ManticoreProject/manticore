@@ -285,11 +285,18 @@ prior to using `scp` to copy the data via SSH.
 ### Step 2: Evaluate the results
 
 Now that you have generated the results directory from Step 1, we can evaluate
-the claims in the paper.
+the claims in the paper that are supported by this artifact.
 
-In this step we detail the claims in the paper supported by the artifact and how
-to check them against the results generated in Step 3.
-All files we refer to here are relative to the `paper234_results` directory.
+All files and plots we refer to in this section are paths relative to the `paper234_results` directory containing the results from Step 1.
+The plots are PDF files compatible with any PDF viewer and the other files
+we prefer to should be opened with a plain-text editor.
+Any files that contain a timestamp in their filename have `DATE` written there
+instead.
+
+Also, please double-check the files you open as you explore the results,
+since the file names and paths are all quite similar! :)
+
+
 
 ##### Section 5.1.1 -- Recursion Performance
 

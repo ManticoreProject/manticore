@@ -24,6 +24,8 @@ PATH=/usr/smlnj64/bin:${PATH} ./pldi20.sh "${MC_DIR}" "${RESULTS_DIR}" ${TRIALS}
 # generate plots
 LANG=C.UTF-8 LC_ALL=C.UTF-8 ./plotall.sh "${RESULTS_DIR}"
 
+# make the message below not ugly
+set +ex
 echo "----------------------------------------------------------------------"
 echo "Benchmarking complete!"
 echo "Results are in ${RESULTS_DIR}"
