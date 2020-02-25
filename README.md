@@ -26,7 +26,7 @@ to the Docker container's shell process.
 
 ### Obtaining the Docker image
 
-##### Method 1: Download pre-built image
+##### Method 1: Use the pre-built image
 
 The recommended way to obtain the image is to simply use
 `registry.gitlab.com/kavon1/manticore:latest` wherever `image-name` appears in
@@ -57,8 +57,8 @@ Then, use `SOME_HASH_CODE` wherever `image-name` appears in the rest of this REA
 
 ### Testing the Docker image
 
-To "kick the tires" of the image to make sure things are working,
-following command to launch a container based on the image with an interactive
+To "kick the tires" of the image to make sure things are working, the
+following command launches a container based on the image with an interactive
 prompt:
 
 ```console
@@ -284,20 +284,26 @@ prior to using `scp` to copy the data via SSH.
 
 ### Step 2: Evaluate the results
 
-Now that you have the results directory from Step 1, we can evaluate the claims
-in the paper.
+Now that you have generated the results directory from Step 1, we can evaluate
+the claims in the paper.
 
 In this step we detail the claims in the paper supported by the artifact and how
 to check them against the results generated in Step 3.
 All files we refer to here are relative to the `paper234_results` directory.
 
-##### Section 5.1.1
+##### Section 5.1.1 -- Recursion Performance
 
-- Figure 3 corresponds with the plot `normal/cross_toy_times.pdf`, and covers the
-discussion on lines 747--761. Note that in the camera-ready version the
-corrected number of `fib` calls is 331 million per iteration.
+We go in order of the claims made in this section and how to check them against
+the results gathered in Step 1.
 
-- Lines 765--808 can be checked in sequence:
+
+- RECHECK_THIS: Figure 3 corresponds with the plot `normal/cross_toy_times.pdf`,
+and covers the discussion on lines 747--761. Note that in the camera-ready
+version the corrected number of `fib` calls is 331 million per iteration.
+
+
+- Claims in lines 765--808 can be checked in the following way:
+
   1. Percent of time spent in the garbage collector for `ack` is in plot `gcstats/analyze_toy_gc_time_total_pct.pdf`.
 
   2. The volume of data allocated for **closure-based stacks** (aka "cps") for `ack` should be checked manually in the file `gcstats/seq-ack/seq-ack-cps-mc-seq-DATE.json`.
@@ -311,6 +317,58 @@ corrected number of `fib` calls is 331 million per iteration.
 
   5. The volume of data allocated for **linked-frame stacks** for `ack` is in  the
   file `gcstats/seq-ack/seq-ack-linkstack-mc-seq-DATE.json`. Look for the `minorgc-alloc`
-  and compare it with step (2) in this sequence.
+  value and compare it with check (2)'s value to find the difference.
+
 
 - Figure 4 corresponds with the plot `normal/toy_perf_L1-dcache-load-misses.pdf`
+  and supports the implicit claim on lines 810--812 that closure and linked stacks
+  have notably higher data-read miss rates than other stacks on a number of
+  programs.
+
+
+- On lines 813--820, the discussion of "high number of segment-overflow events"
+between segmented and resizing stacks for `ack` and `quicksort` are supported by
+examining the `stackcache-access` values (subtracting by 2 for the fixed number of accesses related to runtime system initialization) in the following comparisons:
+    ```
+    For 'ack':
+    gcstats/seq-ack/seq-ack-segstack-mc-seq-DATE.json
+                         vs
+    gcstats/seq-ack/seq-ack-resizestack-mc-seq-DATE.json
+
+    For 'quicksort':
+    gcstats/seq-quicksort/seq-quicksort-segstack-mc-seq-DATE.json
+                         vs
+    gcstats/seq-quicksort/seq-quicksort-resizestack-mc-seq-DATE.json
+    ```
+
+
+- Figure 5 corresponds with the plot `normal/cross_tail_times.pdf` and supports
+the discussion on lines 821--859.
+
+
+- RECHECK_THIS: Figure 6 corresponds with the plot `normal/cross_real_times.pdf`
+and supports the discussion on lines 872--914. Part of that discussion references
+data cache miss-rates for the "real" programs in `normal/real_perf_L1-dcache-load-misses.pdf`.
+
+
+
+##### Section 5.1.2 -- Escape Continuation Performance
+
+Figure 7 corresponds with the plot `normal/crossCont_cont_times.pdf` and
+supports the discussion on lines 917--927. The artifact contains an optimization
+we made to the implementation of contig stacks since the paper submission, which
+causes its performance on `cml-pingpong` to improve (and thus the speed-ups
+relative to it are reduced):
+
+  | strategy | old speed-up | new speed-up |
+  |----------|--------------|--------------|
+  | resize   | 1.24         | 1.14         |
+  | segment  | 1.24         | 1.13         |
+  | linked   | 1.30         | 1.11         |
+  | cps      | 1.45         | 1.24         |
+
+The discussion regarding Figure 7 will be updated accordingly.
+
+
+
+##### Section 5.1.3 -- Design Trade-offs
