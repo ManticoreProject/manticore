@@ -1,8 +1,10 @@
-# Manticore
+# Manticore PLDI'20 Artifact Evaluation
 
 [![pipeline status](https://gitlab.com/kavon1/manticore/badges/stacks/pipeline.svg)](https://gitlab.com/kavon1/manticore/commits/stacks)
 
-## PLDI'20 Artifact Evaluation
+## Getting Started Guide
+
+**NOTE**: This README is best viewed on GitHub here: https://github.com/ManticoreProject/manticore/blob/stacks/README.md
 
 In order to evaluate the system for PLDI'20 artifact evaluation, you must first
 have access to an x86-64 Linux system with [Docker installed](https://docs.docker.com/install/).
@@ -11,19 +13,24 @@ The Linux requirement is due to our use of Linux's `perf` for profiling in our
 benchmark suite, which will probably *not* work if you are running Docker on any
 other OS because `perf` is not Unix compatible.
 
-Before continuing on, you can test if Docker is working on your system with:
+Once you believe you have Docker installed, you can test if Docker is working
+on your system with:
 
 ```console
 $ docker run hello-world
 ```
 
+Throughout this guide, terminal shell prompts that begin with `$` refer to your
+system's native shell process, and prompts starting with `root@docker:CURRENT_PATH#` refer
+to the Docker container's shell process.
 
-
-### Step 1: Obtain the Docker image
+### Obtaining the Docker image
 
 ##### Method 1: Download pre-built image
 
-The recommended way to obtain the image is to simply use `registry.gitlab.com/kavon1/manticore:latest` wherever `image-name` appears in the rest of this README.
+The recommended way to obtain the image is to simply use
+`registry.gitlab.com/kavon1/manticore:latest` wherever `image-name` appears in
+the rest of this README.
 Docker will automatically download the image the first time you try to run it.
 
 ##### Method 2: Build image locally
@@ -48,30 +55,114 @@ Then, use `SOME_HASH_CODE` wherever `image-name` appears in the rest of this REA
 
 
 
-### Step 2 (Optional): Explore the image
+### Testing the Docker image
 
-To use the image, use the `-it` flag when running it with Docker to get an
-interactive prompt:
+To "kick the tires" of the image to make sure things are working,
+following command to launch a container based on the image with an interactive
+prompt:
 
 ```console
-$ docker run -it image-name
+$ docker run -it --cap-add sys_admin image-name
 root@docker:/usr/pmlc#
 ```
 
-The compiler is available in the image as `pmlc` in PATH:
+The text editors `vim` and `emacs` are provided in the image for your
+convenience.
+The Manticore compiler is available in the image as `pmlc` in PATH:
 
 ```console
 root@docker:/usr/pmlc# pmlc -version
 pmlc [x86_64-linux; 0.0.0 (); built 2020-02-07]
 ```
 
-You can run the regression suite (~1 hour) to make sure everything's okay with:
+Try to to compile and run a simple Manticore program:
+
 ```console
+root@docker:/usr/pmlc# cd ~
+root@docker:~# echo -e "val () = Print.printLn \"hello, manticore\"" > hello.pml
+root@docker:~# pmlc hello.pml
+root@docker:~# ls
+a.out  hello.ll  hello.pml  hello.s  hello_opt.bc
+root@docker:~# ./a.out
+hello, manticore
+```
+
+Then a MLton-compiled SML program:
+
+```console
+root@docker:~# echo -e "val () = print \"hello, sml\\\n\"" > hello.sml
+root@docker:~# mlton hello.sml
+root@docker:~# ./hello
+hello, sml
+```
+
+Then launch a specific installation of SML/NJ and make sure it says "64-bit" when launched:
+
+```console
+root@docker:~# /usr/smlnj64/bin/sml   
+Standard ML of New Jersey (64-bit) v110.96 [built: Fri Feb 07 22:57:06 2020]
+- 1+1;
+val it = 2 : int
+(* press CTRL+D to exit the REPL *)
+```
+
+Next up is the most important thing to test, `perf`!
+
+
+#### Ensuring that `perf` is working
+
+The benchmark suite requires Linux's `perf`, which itself requires
+that you run the Docker image with additional permissions (hence the `--cap-add sys_admin` flag).
+Make sure that `perf` is working with the following expected output:
+
+```console
+root@docker:~# perf stat echo
+
+ Performance counter stats for 'echo':
+ ...
+```
+
+If you see a message starting with `No permission to enable task-clock event.`,
+then you forgot to add `--cap-add sys_admin` to your `docker run` command
+(use `CTRL+D` to exit the session and try again).
+
+Otherwise if you see a message starting with`WARNING: perf not found for kernel X`,
+then that means the Docker image you've obtained was built on a Linux system with
+a different kernel version than yours (this is quite likely to happen!).
+This can be fixed for the currently-running container by running:
+
+```console
+root@docker:~# apt-get update && apt-get install -y linux-tools-`uname -r`
+```
+
+**Please note** that you'll need to run the above command **every time** you run
+the Docker image, because the image is not modified after it's launched, i.e.,
+modifications within the container instance initialized with an image are not
+preserved.
+
+
+If time permits, we suggest that you also run the compiler's regression suite
+(~1 hour) to make sure everything's okay with:
+
+```console
+root@docker:~# cd /usr/pmlc
 root@docker:/usr/pmlc# ./run_ci.sh local
 ```
 
-The text editors `vim` and `emacs` are provided in the image for your
-convenience. Relative to `/usr/pmlc`, the sources are organized as follows:
+Otherwise, if you've reached this point in the Getting Started Guide:
+congratulations, you're done for now!
+
+
+
+
+## Background Information
+
+In this section, we provide basic information about the compiler and source
+code contained in the Docker image for reusability purposes.
+This information is not needed to reproduce the results of the paper, but it is
+useful for future extensions of the system.
+
+Relative to `/usr/pmlc`, the sources in the image are organized as follows:
 
 ```
 src/tools/mc                          -- Manticore compiler
@@ -88,18 +179,8 @@ The most mundane differences are that Manticore does not offer signatures or
 records and large portions of the Standard ML Basis Library are missing.
 The non-CPS stack strategies currently only support CML-style concurrency.
 
-Here's an example of how to compile and run a simple Manticore program:
-
-```console
-root@docker:~# echo -e "val () = Print.printLn \"hello, world\"" > hello.pml
-root@docker:~# pmlc hello.pml
-root@docker:~# ls
-a.out  hello.ll  hello.pml  hello.s  hello_opt.bc
-root@docker:~# ./a.out
-hello, world
-```
-
-Without additional arguments, `pmlc` will compile a program with the standard runtime system and basis library using the CPS strategy.
+Without additional arguments, `pmlc` will compile a program with the standard
+runtime system and basis library using the CPS strategy.
 Other useful flags are:
 
 ```
@@ -135,49 +216,42 @@ to disable the CPU's return-address stack.
 
 
 
-### Step 3: Run the benchmark suite
 
-The benchmark suite currently requires Linux's `perf stat`, which itself requires that you run the Docker image with additional permissions (the `--cap-add sys_admin` flag).
+## Step-by-Step Evaluation Instructions
 
-#### Ensuring `perf` is working
+In this section we describe how to evaluate the artifact with respect to the paper.
 
-Before getting started, make sure that `perf stat` is working with the following
-expected output:
+### Step 1: Run the benchmark suite
+
+**Optional**: If you're connecting to a machine over SSH, [consider running Docker
+within `screen`](https://www.linode.com/docs/networking/ssh/using-gnu-screen-to-manage-persistent-terminal-sessions/)
+to keep the Docker session alive even if the connection is
+interrupted.
+
+First, launch the Docker container with the right permissions and make
+sure `perf stat echo` works:
 
 ```console
 $ docker run -it --cap-add sys_admin image-name
-root@docker:/# perf stat echo
+root@docker:/usr/pmlc# perf stat echo
 
  Performance counter stats for 'echo':
  ...
 ```
 
-If you see a message stating `No permission to enable task-clock event.`, then
-you forgot to add `--cap-add sys_admin` to your `docker run` command (use `CTRL+D` to exit the session and try again).
+If you run into problems or don't know the image's name, see the Getting Started Guide.
 
-Otherwise if you see a message stating `WARNING: perf not found for kernel X`, then
-that means the Docker image you've obtained was built on a Linux system with
-a different kernel version than yours (this is quite likely).
-This can be fixed for the currently-running image by running:
-
-```console
-root@image-name# apt-get update && apt-get install linux-tools-`uname -r`
-```
-
-**Please note** that you'll need to run the above command **every time** you run
-the Docker image, because the image is not modified during its use.
-
-#### Running the suite
-
-Once you've confirmed `perf stat echo` works, you can run the benchmark suite and
-generate plots from the paper with one command (which will probably take 7-8 hours):
+Next, we have an all-in-one script that runs the benchmark suite and generates plots
+from the paper (which will take 7-8 hours to finish):
 
 ```console
 root@docker:/usr/pmlc# ./run_cont_bench.sh
 ```
 
-Once the command completes, keep the interactive Docker session running and open a new terminal prompt on your system.
-In this new window, find the active container ID corresponding to the session that finished running the benchmark suite:
+Once the script completes, **keep the interactive Docker session running** and open
+a new terminal prompt on your system. In this new window, find the active
+container ID corresponding to the session that finished running the benchmark
+suite:
 
 ```console
 $ docker ps
@@ -185,16 +259,22 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 <container-id>      <image-name>        "/bin/bash"         11 hours ago        Up 11 hours                             reverent_brattain
 ```
 
-Then use that `container-id` to copy the results directory out of the container
-like so (from outside of the Docker session):
+Then use that `container-id` to [copy the results directory](https://docs.docker.com/engine/reference/commandline/cp/)
+out of the container and into your local file system like so:
 
 ```console
 $ docker cp container-id:/usr/pmlc/results .
 ```
 
+Once you've copied the results directory to your local file system,
+it's safe to end the Docker session with `CTRL+D`.
 
 
-### Step 4: Evaluate the results
+
+### Step 2: Evaluate the results
+
+Now that you have the results directory from Step 1, we can evaluate the claims
+in the paper.
 
 In this step we detail the claims in the paper supported by the artifact and how
 to check them against the results generated in Step 3.
