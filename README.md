@@ -287,7 +287,8 @@ prior to using `scp` to copy the data via SSH.
 Now that you have generated the results directory from Step 1, we can evaluate
 the claims in the paper that are supported by this artifact.
 
-All files and plots we refer to in this section are paths relative to the `paper234_results` directory containing the results from Step 1.
+All files and plots we refer to in this section are paths relative to the
+`paper234_results` directory containing the results from Step 1.
 The plots are PDF files compatible with any PDF viewer and the other files
 we prefer to should be opened with a plain-text editor.
 Any files that contain a timestamp in their filename have `DATE` written there
@@ -311,20 +312,24 @@ version the corrected number of `fib` calls is 331 million per iteration.
 
 - Claims in lines 765--808 can be checked in the following way:
 
-  1. Percent of time spent in the garbage collector for `ack` is in plot `gcstats/analyze_toy_gc_time_total_pct.pdf`.
+  1. Percent of time spent in the garbage collector for `ack` is in plot
+  `gcstats/analyze_toy_gc_time_total_pct.pdf`.
 
-  2. The volume of data allocated for **closure-based stacks** (aka "cps") for `ack` should be checked manually in the file `gcstats/seq-ack/seq-ack-cps-mc-seq-DATE.json`.
+  2. The volume of data allocated for **closure-based stacks** (aka "cps") for
+  `ack` should be checked manually in the file `gcstats/seq-ack/seq-ack-cps-mc-seq-DATE.json`.
   The field `minorgc-alloc` corresponds to the number of bytes allocated in
   the nursery. Divide by 2^30 = 1073741824 to get GiB.
 
-  3. The percentage of data promoted from the **nursery to the major heap** is in the plot
-  `gcstats/analyze_toy_gc_minor_live_pct.pdf`
+  3. The percentage of data promoted from the **nursery to the major heap** is
+  in the plot `gcstats/analyze_toy_gc_minor_live_pct.pdf`
 
-  4. The percentage of data promoted from the **major heap to the global heap** is in `gcstats/analyze_toy_gc_major_live_pct.pdf`.
+  4. The percentage of data promoted from the **major heap to the global heap**
+  is in `gcstats/analyze_toy_gc_major_live_pct.pdf`.
 
-  5. The volume of data allocated for **linked-frame stacks** for `ack` is in  the
-  file `gcstats/seq-ack/seq-ack-linkstack-mc-seq-DATE.json`. Look for the `minorgc-alloc`
-  value and compare it with check (2)'s value to find the difference.
+  5. The volume of data allocated for **linked-frame stacks** for `ack` is
+  in the file `gcstats/seq-ack/seq-ack-linkstack-mc-seq-DATE.json`. Look for the
+  `minorgc-alloc` value and compare it with check (2)'s value to find the
+  difference.
 
 
 - Figure 4 corresponds with the plot `normal/toy_perf_L1-dcache-load-misses.pdf`
@@ -335,7 +340,8 @@ version the corrected number of `fib` calls is 331 million per iteration.
 
 - On lines 813--820, the discussion of "high number of segment-overflow events"
 between segmented and resizing stacks for `ack` and `quicksort` are supported by
-examining the `stackcache-access` values (subtracting by 2 for the fixed number of accesses related to runtime system initialization) in the following comparisons:
+examining the `stackcache-access` values (subtracting by 2 for the fixed number
+of accesses related to runtime system initialization) in the following comparisons:
     ```
     For 'ack':
     gcstats/seq-ack/seq-ack-segstack-mc-seq-DATE.json
