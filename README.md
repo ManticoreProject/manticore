@@ -21,17 +21,23 @@ $ docker run hello-world
 ```
 
 Throughout this guide, terminal shell prompts that begin with `$` refer to your
-system's native shell process, and prompts starting with `root@docker:CURRENT_PATH#` refer
+system's native shell process, and prompts starting with `root@container:CURRENT_PATH#` refer
 to the Docker container's shell process.
 
 ### Obtaining the Docker image
 
 ##### Method 1: Use the pre-built image
 
-The recommended way to obtain the image is to simply use
-`registry.gitlab.com/kavon1/manticore:latest` wherever `image-name` appears in
-the rest of this README.
-Docker will automatically download the image the first time you try to run it.
+The recommended way to obtain the latest version of the Docker image is to run
+
+```console
+$ docker pull registry.gitlab.com/kavon1/manticore:latest
+```
+
+For the remainder of this README, wherever `image-name` appears, you will
+use `registry.gitlab.com/kavon1/manticore:latest`.
+To make sure you have the latest version, run the `docker pull` command above
+prior to running the image.
 
 ##### Method 2: Build image locally
 
@@ -63,7 +69,7 @@ prompt:
 
 ```console
 $ docker run -it --cap-add sys_admin image-name
-root@docker:/usr/pmlc#
+root@container:/usr/pmlc#
 ```
 
 The text editors `vim` and `emacs` are provided in the image for your
@@ -71,35 +77,35 @@ convenience.
 The Manticore compiler is available in the image as `pmlc` in PATH:
 
 ```console
-root@docker:/usr/pmlc# pmlc -version
+root@container:/usr/pmlc# pmlc -version
 pmlc [x86_64-linux; 0.0.0 (); built 2020-02-07]
 ```
 
 Try to to compile and run a simple Manticore program:
 
 ```console
-root@docker:/usr/pmlc# cd ~
-root@docker:~# echo -e "val () = Print.printLn \"hello, manticore\"" > hello.pml
-root@docker:~# pmlc hello.pml
-root@docker:~# ls
+root@container:/usr/pmlc# cd ~
+root@container:~# echo -e "val () = Print.printLn \"hello, manticore\"" > hello.pml
+root@container:~# pmlc hello.pml
+root@container:~# ls
 a.out  hello.ll  hello.pml  hello.s  hello_opt.bc
-root@docker:~# ./a.out
+root@container:~# ./a.out
 hello, manticore
 ```
 
 Then a MLton-compiled SML program:
 
 ```console
-root@docker:~# echo -e "val () = print \"hello, sml\\\n\"" > hello.sml
-root@docker:~# mlton hello.sml
-root@docker:~# ./hello
+root@container:~# echo -e "val () = print \"hello, sml\\\n\"" > hello.sml
+root@container:~# mlton hello.sml
+root@container:~# ./hello
 hello, sml
 ```
 
 Then launch a specific installation of SML/NJ and make sure it says "64-bit" when launched:
 
 ```console
-root@docker:~# /usr/smlnj64/bin/sml   
+root@container:~# /usr/smlnj64/bin/sml   
 Standard ML of New Jersey (64-bit) v110.96 [built: Fri Feb 07 22:57:06 2020]
 - 1+1;
 val it = 2 : int
@@ -116,7 +122,7 @@ that you run the Docker image with additional permissions (hence the `--cap-add 
 Make sure that `perf` is working with the following expected output:
 
 ```console
-root@docker:~# perf stat echo
+root@container:~# perf stat echo
 
  Performance counter stats for 'echo':
  ...
@@ -132,7 +138,7 @@ a different kernel version than yours (this is quite likely to happen!).
 This can be fixed for the currently-running container by running:
 
 ```console
-root@docker:~# apt-get update && apt-get install -y linux-tools-`uname -r`
+root@container:~# apt-get update && apt-get install -y linux-tools-`uname -r`
 ```
 
 **Please note** that you'll need to run the above command **every time** you run
@@ -145,13 +151,12 @@ If time permits, we suggest that you also run the compiler's regression suite
 (~1 hour) to make sure everything's okay with:
 
 ```console
-root@docker:~# cd /usr/pmlc
-root@docker:/usr/pmlc# ./run_ci.sh local
+root@container:~# cd /usr/pmlc
+root@container:/usr/pmlc# ./run_ci.sh local
 ```
 
-Otherwise, if you've reached this point in the Getting Started Guide:
-congratulations, you're done for now!
-
+Otherwise, if you've reached this point then you've successfully
+"kicked the tires" of this artifact!
 
 
 
@@ -228,39 +233,50 @@ within `screen`](https://www.linode.com/docs/networking/ssh/using-gnu-screen-to-
 to keep the Docker session alive even if the connection is
 interrupted.
 
+##### Step 1a: Launch the container and check `perf`.
+
 First, launch the Docker container with the right permissions and make
 sure `perf stat echo` works:
 
 ```console
 $ docker run -it --cap-add sys_admin image-name
-root@docker:/usr/pmlc# perf stat echo
+root@container:/usr/pmlc# perf stat echo
 
  Performance counter stats for 'echo':
  ...
 ```
 
-If you run into problems or don't know the image's name, see the Getting Started Guide.
+If you run into problems with `perf`, try the following:
+
+```console
+root@container:/usr/pmlc# apt-get update && apt-get install -y linux-tools-`uname -r`
+```
+
+If you don't know the `image-name` or have other issues with `perf`,
+please see the Getting Started guide.
+
+
+##### Step 1b: Run the script.
 
 Next, we have an all-in-one script that runs the benchmark suite and generates plots
 from the paper (which will take 7-8 hours to finish):
 
 ```console
-root@docker:/usr/pmlc# ./run_cont_bench.sh
+root@container:/usr/pmlc# ./run_cont_bench.sh
 ```
 
-Once the script completes, **keep the interactive Docker session running** and open
-a new terminal prompt on your system. In this new window, find the active
-container ID corresponding to the session that finished running the benchmark
-suite:
+##### Step 1c: Copy the results out of the Docker container.
 
-```console
-$ docker ps
-CONTAINER ID        IMAGE                                         COMMAND             CREATED             STATUS              PORTS               NAMES
-container-id        registry.gitlab.com/kavon1/manticore:latest   "/bin/bash"         14 hours ago        Up 14 hours                             upbeat_euclid
-```
+Once the script completes, **keep the interactive Docker session running**.
+You'll need to find the ID associated with that active container.
+Normally the `container-id` is the hash-code between the `@` and `:` in the
+shell prompt of the container.
 
-Then use that `container-id` to [copy the results directory](https://docs.docker.com/engine/reference/commandline/cp/)
-out of the container and into your local file system like so:
+Alternatively, you can find the `container-id` by opening a new terminal prompt
+on your system and run `docker ps`, looking in the "CONTAINER ID" column.
+
+Once you have the `container-id`, [copy the results directory](https://docs.docker.com/engine/reference/commandline/cp/)
+out of the container and into the real file system like so:
 
 ```console
 $ docker cp container-id:/usr/pmlc/results ./paper234_results
@@ -268,17 +284,18 @@ $ ls paper234_results/
 gcstats  normal
 ```
 
-Once you've copied the results directory to your local file system,
-it's safe to end the Docker session with `CTRL+D`.
+Once you've copied the results directory to the real file system,
+it's safe to end the Docker container with `CTRL+D` at its prompt.
 
 **Optional**: If you're connected to a remote machine and want to view the
 data locally, compress the data into an archive with
 
 ```console
-tar czvf paper234_results.tar.gz paper234_results/
+$ tar czvf paper234_results.tar.gz paper234_results/
 ```
 
-prior to using `scp` to copy the data via SSH.
+And then use the `scp` utility to copy the archive from the remote machine to
+your local one using your SSH credentials.
 
 
 
@@ -386,4 +403,73 @@ The discussion regarding Figure 7 will be updated accordingly.
 
 ##### Section 5.1.3 -- Design Trade-offs
 
+
+###### Foreign Function Calls
+
+The data for Foreign Function Calls are plotted in a number of files, with
+one file per stack strategy.
+The claims made on lines 1026--1029 are about the min-max ranges for
+both `ffi-fib` and `ffi-trigfib` and are shown in these plots:
+
+```
+normal/ffi_contig_ffi_times.pdf
+normal/ffi_cps_ffi_times.pdf
+normal/ffi_resizestack_ffi_times.pdf
+normal/ffi_segstack_ffi_times.pdf
+```
+
+Note that `noshim` means "native FFI calls" and `shim` means "switching to
+a dedicated stack via a shim to perform the call".
+
+Also, you may notice that the linked-frame stack data is not included.
+This is because that strategy does not support this experiment as a consequence
+of its design: one cannot make a C call without switching stacks when using
+a heap-allocated linked-frame stack that uses the native CPU call/ret
+instructions.
+
+
+###### Non-native Stack on x86-64
+
+> We found that for contig, resize, and segment stacks, using the
+> native CPU instructions yields a 1.06× – 1.08× speedup for
+> toy programs, [...]
+
+This min-max claim can be checked by inspecting the GMEAN values in the
+following plots, which show the speed-up of using the native stack instructions:
+
+```
+normal/ras_contig_toy_times.pdf
+normal/ras_resizestack_toy_times.pdf
+normal/ras_segstack_toy_times.pdf
+```
+
+> [...] a 1.01--1.03x speedup for real programs, [...]
+
+This claim is checked like the previous one, but using these plots instead:
+
+```
+normal/ras_contig_real_times.pdf
+normal/ras_resizestack_real_times.pdf
+normal/ras_segstack_real_times.pdf
+```
+
+> [...] and a 1.04x speedup overall.
+
 TODO
+
+
+> Linked stacks saw effectively no change in performance even
+> though the implementation uses call and return.
+
+This claim can be checked by inspecting the GMEAN values in the following plots:
+
+```
+normal/ras_linkstack_toy_times.pdf
+normal/ras_linkstack_real_times.pdf
+```
+
+
+### Step 3: Finished
+
+If you've reached this point in the README, you're done!
+Thanks for volunteering your time! :)
