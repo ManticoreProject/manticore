@@ -11,7 +11,7 @@ have access to an x86-64 Linux system with [Docker installed](https://docs.docke
 
 The Linux requirement is due to our use of Linux's `perf` for profiling in our
 benchmark suite, which will probably *not* work if you are running Docker on any
-other OS because `perf` is not Unix compatible.
+other OS because `perf` is Linux-only.
 
 Once you believe you have Docker installed, you can test if Docker is working
 on your system with:
@@ -21,12 +21,48 @@ $ docker run hello-world
 ```
 
 Throughout this guide, terminal shell prompts that begin with `$` refer to your
-system's native shell process, and prompts starting with `root@container:CURRENT_PATH#` refer
-to the Docker container's shell process.
+system's native shell process, and prompts starting with
+`root@container:CURRENT_PATH#` refer to the Docker container's shell process.
 
-### Obtaining the Docker image
 
-##### Method 1: Use the pre-built image
+### On Docker's Privileges
+
+In order to run the benchmark suite for this artifact, at a minimum you must
+grant the container the `--cap-add sys_admin` Linux capability because we use
+`perf`, which is a Linux-specific profiling system that makes special system
+calls.
+
+During our testing of this artifact, we found that Docker adds a *large*
+overhead to indirect-jump instructions, unless if the `--privileged` flag is
+used (**no `sudo` is required**).
+That flag grants privileges equivalent to a process running outside of the container
+(and thus the flag subsumes the `sys_admin` capability we just mentioned).
+The reason for this overhead is likely to be that Docker intercepts all indirect
+jumps to check if they're making a system call (for fine-grained security).
+
+This interception has an impact on our benchmarks, because indirect jumps
+are the primary mechanism by which the cps, smlnj, and mlton benchmark
+configurations perform ordinary function call-and-return, so some
+benchmarks (like `fib`) saw an over 2x slow-down in overall running-time without
+the `--privileged` flag.
+
+Of course, since function-call overhead is precisely one of the focuses of our
+evaluation, we strongly recommend you consider using the `--privileged` flag in
+your testing of this artifact.
+In this guide, we assume that you'll be using it. For more information about
+privileges and Docker, see here:
+
+https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
+
+If you or your system administrator disallows the use of `--privileged`, then
+please take into account the overhead we described and use `--cap-add sys_admin`
+instead.
+
+
+
+### Obtaining the Artifact Docker image
+
+##### Method 1: Pull the pre-built image
 
 The recommended way to obtain the latest version of the Docker image is to run
 
@@ -63,18 +99,19 @@ Then, use `SOME_HASH_CODE` wherever `image-name` appears in the rest of this REA
 
 ### Testing the Docker image
 
-To "kick the tires" of the image to make sure things are working, the
-following command launches a container based on the image with an interactive
-prompt:
+To "kick the tires" of the image to make sure things are working, run
+the following command, which launches a container based on the image
+with an interactive prompt:
 
 ```console
-$ docker run -it --cap-add sys_admin image-name
+$ docker run -it --privileged image-name
 root@container:/usr/pmlc#
 ```
 
 The text editors `vim` and `emacs` are provided in the image for your
 convenience.
-The Manticore compiler is available in the image as `pmlc` in PATH:
+The Manticore compiler (which implements the 5 stack strategies) is
+available in the image as `pmlc` in PATH:
 
 ```console
 root@container:/usr/pmlc# pmlc -version
@@ -102,7 +139,8 @@ root@container:~# ./hello
 hello, sml
 ```
 
-Then launch a specific installation of SML/NJ and make sure it says "64-bit" when launched:
+Then launch a specific installation of SML/NJ and make sure it says "64-bit"
+when launched:
 
 ```console
 root@container:~# /usr/smlnj64/bin/sml   
@@ -118,7 +156,7 @@ Next up is the most important thing to test, `perf`!
 #### Ensuring that `perf` is working
 
 The benchmark suite requires Linux's `perf`, which itself requires
-that you run the Docker image with additional permissions (hence the `--cap-add sys_admin` flag).
+that you run the Docker image with additional permissions (described earlier).
 Make sure that `perf` is working with the following expected output:
 
 ```console
@@ -128,35 +166,36 @@ root@container:~# perf stat echo
  ...
 ```
 
-If you see a message starting with `No permission to enable task-clock event.`,
-then you forgot to add `--cap-add sys_admin` to your `docker run` command
-(use `CTRL+D` to exit the session and try again).
-
-Otherwise if you see a message starting with`WARNING: perf not found for kernel X`,
+If you see a message starting with `WARNING: perf not found for kernel X`,
 then that means the Docker image you've obtained was built on a Linux system with
 a different kernel version than yours (this is quite likely to happen!).
-This can be fixed for the currently-running container by running:
+This can be fixed for the currently-active container by running the `apt-get`
+command:
 
 ```console
-root@container:~# apt-get update && apt-get install -y linux-tools-`uname -r`
+root@container:~# apt-get update && apt-get install -y linux-tools-$(uname -r)
+root@container:~# perf stat echo  # should work now!
 ```
 
-**Please note** that you'll need to run the above command **every time** you run
-the Docker image, because the image is not modified after it's launched, i.e.,
-modifications within the container instance initialized with an image are not
-preserved.
+While you'll normally need to run the `apt-get` command every time you
+relaunch the Docker image, we've added basic detection of this scenario in our
+benchmarking scripts.
 
+Otherwise, If you see a message starting with
+`No permission to enable task-clock event.`, then you forgot to add
+`--privileged` to your `docker run` command (use `CTRL+D` to exit the
+session and try again).
 
-If time permits, we suggest that you also run the compiler's regression suite
-(~1 hour) to make sure everything's okay with:
+**NOTE**: If time permits, we suggest that you also run the compiler's
+regression suite (~1 hour) to make sure everything's okay with:
 
 ```console
 root@container:~# cd /usr/pmlc
 root@container:/usr/pmlc# ./run_ci.sh local
 ```
 
-Otherwise, if you've reached this point then you've successfully
-"kicked the tires" of this artifact!
+Once you've reached this point, then you've successfully "kicked the tires"
+of this artifact!
 
 
 
@@ -173,9 +212,9 @@ Relative to `/usr/pmlc`, the sources in the image are organized as follows:
 src/tools/mc                          -- Manticore compiler
 llvm/src                              -- LLVM (our fork of it)
 src/lib/basis                         -- Manticore standard library
-src/lib/parallel-rt                   -- runtime system
-src/regression-tests/goals            -- regression tests
-src/benchmarks/benchmarks/programs    -- benchmark programs
+src/lib/parallel-rt                   -- Manticore runtime system
+src/regression-tests/goals            -- Manticore regression tests
+src/benchmarks/benchmarks/programs    -- Manticore benchmark programs
 ```
 
 Manticore's syntax and semantics are generally that of Standard ML, [but with
@@ -220,8 +259,6 @@ to disable the CPU's return-address stack.
 
 
 
-
-
 ## Step-by-Step Evaluation Instructions
 
 In this section we describe how to evaluate the artifact with respect to the paper.
@@ -233,39 +270,18 @@ within `screen`](https://www.linode.com/docs/networking/ssh/using-gnu-screen-to-
 to keep the Docker session alive even if the connection is
 interrupted.
 
-##### Step 1a: Launch the container and check `perf`.
+##### Step 1a: Run the script.
 
-First, launch the Docker container with the right permissions and make
-sure `perf stat echo` works:
-
-```console
-$ docker run -it --cap-add sys_admin image-name
-root@container:/usr/pmlc# perf stat echo
-
- Performance counter stats for 'echo':
- ...
-```
-
-If you run into problems with `perf`, try the following:
+We have an all-in-one script that runs the benchmark suite and generates plots
+from the paper. So, launch Docker and run the script (which will take
+7-8 hours to finish) with:
 
 ```console
-root@container:/usr/pmlc# apt-get update && apt-get install -y linux-tools-`uname -r`
-```
-
-If you don't know the `image-name` or have other issues with `perf`,
-please see the Getting Started guide.
-
-
-##### Step 1b: Run the script.
-
-Next, we have an all-in-one script that runs the benchmark suite and generates plots
-from the paper (which will take 7-8 hours to finish):
-
-```console
+$ docker run -it --privileged image-name
 root@container:/usr/pmlc# ./run_cont_bench.sh
 ```
 
-##### Step 1c: Copy the results out of the Docker container.
+##### Step 1b: Copy the results out of the Docker container.
 
 Once the script completes, **keep the interactive Docker session running**.
 You'll need to find the ID associated with that active container.
@@ -273,7 +289,7 @@ Normally the `container-id` is the hash-code between the `@` and `:` in the
 shell prompt of the container.
 
 Alternatively, you can find the `container-id` by opening a new terminal prompt
-on your system and run `docker ps`, looking in the "CONTAINER ID" column.
+the system and run `docker ps`, looking in the "CONTAINER ID" column.
 
 Once you have the `container-id`, [copy the results directory](https://docs.docker.com/engine/reference/commandline/cp/)
 out of the container and into the real file system like so:
@@ -311,18 +327,17 @@ we prefer to should be opened with a plain-text editor.
 Any files that contain a timestamp in their filename have `DATE` written there
 instead.
 
-Also, please double-check the files you open as you explore the results,
+**ALSO** please double-check the files you open as you explore the results,
 since the file names and paths are all quite similar! :)
-
 
 
 ##### Section 5.1.1 -- Recursion Performance
 
-We go in order of the claims made in this section and how to check them against
-the results gathered in Step 1.
+We go step-by-step in order of the claims made in this section
+and how to check them against the results gathered in Step 1.
 
 
-- RECHECK_THIS: Figure 3 corresponds with the plot `normal/cross_toy_times.pdf`,
+- Figure 3 corresponds with the plot `normal/cross_toy_times.pdf`,
 and covers the discussion on lines 747--761. Note that in the camera-ready
 version the corrected number of `fib` calls is 331 million per iteration.
 
@@ -376,7 +391,7 @@ of accesses related to runtime system initialization) in the following compariso
 the discussion on lines 821--859.
 
 
-- RECHECK_THIS: Figure 6 corresponds with the plot `normal/cross_real_times.pdf`
+- Figure 6 corresponds with the plot `normal/cross_real_times.pdf`
 and supports the discussion on lines 872--914. Part of that discussion references
 data cache miss-rates for the "real" programs in `normal/real_perf_L1-dcache-load-misses.pdf`.
 
@@ -387,8 +402,8 @@ data cache miss-rates for the "real" programs in `normal/real_perf_L1-dcache-loa
 Figure 7 corresponds with the plot `normal/crossCont_cont_times.pdf` and
 supports the discussion on lines 917--927. The artifact contains an optimization
 we made to the implementation of contig stacks since the paper submission, which
-causes its performance on `cml-pingpong` to improve (and thus the speed-ups
-relative to it are reduced):
+yields better contig performance on `cml-pingpong`, thus the speed-ups
+relative to it are reduced as follows:
 
   | strategy | old speed-up | new speed-up |
   |----------|--------------|--------------|
@@ -398,7 +413,6 @@ relative to it are reduced):
   | cps      | 1.45         | 1.24         |
 
 The discussion regarding Figure 7 will be updated accordingly.
-
 
 
 ##### Section 5.1.3 -- Design Trade-offs

@@ -13,8 +13,20 @@ TRIALS=5
 RESULTS_DIR=${MC_DIR}/results
 
 # make sure `perf stat` works, since the benchmark's conf script doesn't
-# check for this.
-perf stat echo
+# check for this but it's required.
+if ! perf stat echo; then
+  # assuming it's a lack of linux-tools for the host's particular kernel,
+  # try installing it
+  apt-get update && apt-get install -y linux-tools-$(uname -r)
+
+  # recheck
+  if ! perf stat echo; then
+    set +ex
+    echo -e "perf is not working! If you're in Docker, make sure"
+    echo -e "you passed --privileged or --cap-add sys_admin to docker run!"
+    exit 1
+  fi
+fi
 
 # run the benchmarks
 mkdir "${RESULTS_DIR}"
