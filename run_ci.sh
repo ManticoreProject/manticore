@@ -31,11 +31,11 @@ fi
 
 llvmOptions=(
   # "-O0"
-  # "-O1"
+  "-O1"
   # "-O2"
   # "-O3"
   # "-O4"
-  "-O5"
+  # "-O5"
 )
 
 SMALL_SEG_SIZE="4k"
@@ -121,12 +121,18 @@ for stack in "${smallSegmentConfigs[@]}"; do
 done
 
 
-echo -e "\n\n\t----- testing with MLRISC -----\n\n"
-echo -e "\t--SEQUENTIAL --"
-runTest -mlrisc run-seq.sh
-echo -e "\n\t-- CML --"
-runTest -mlrisc run-cml.sh
-echo -e "\n\n\t----- done -----\n\n"
+#####
+# NOTE: MLRISC testing has been disabled for now. Some tests in the run-cml
+# randomly hang infinitely. It happens very rarely but nontheless it's annoying
+# and that backend is becoming deprecated.
+#####
+
+# echo -e "\n\n\t----- testing with MLRISC -----\n\n"
+# echo -e "\t--SEQUENTIAL --"
+# runTest -mlrisc run-seq.sh
+# echo -e "\n\t-- CML --"
+# runTest -mlrisc run-cml.sh
+# echo -e "\n\n\t----- done -----\n\n"
 
 # Exit with error if any tests failed
 numFailed="$(wc -l < $CI_REPORT)"
