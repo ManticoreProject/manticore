@@ -455,7 +455,17 @@ normal/ras_segstack_real_times.pdf
 
 > [...] and a 1.04x speedup overall.
 
-TODO
+This claim is checked in the following way. Gather the three GEOMEAN values
+from the following oversized plots that contain all non-callec benchmarks:
+
+```
+normal/ras_TOTAL_contig_all_times.pdf
+normal/ras_TOTAL_resizestack_all_times.pdf
+normal/ras_TOTAL_segstack_all_times.pdf
+```
+
+Then compute the average of those three values and round.
+We had (1.04 + 1.04 + 1.03) / 3 = 1.0366667 -> 1.04x overall speedup.
 
 
 > Linked stacks saw effectively no change in performance even
@@ -467,6 +477,15 @@ This claim can be checked by inspecting the GMEAN values in the following plots:
 normal/ras_linkstack_toy_times.pdf
 normal/ras_linkstack_real_times.pdf
 ```
+
+You're looking to see that nearly all programs hover around 1.0 with little
+variation.
+Particular focus should be placed on linkstack's toy plot, which had the highest
+variance among all other stack strategies *except* for linkstack.
+On our machine, only `fib` was clearly not at a 1.0 speed-up (at 1.07); for all
+other programs the confidence interval overlaps with 1.0 and the GMEAN was 1.01.
+Same story for linkstack's real plot: while a few more are above/below 1.0, the
+GMEAN was 1.00.
 
 
 ### Step 3: Finished
