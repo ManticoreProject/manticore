@@ -323,9 +323,9 @@ the claims in the paper that are supported by this artifact.
 All files and plots we refer to in this section are paths relative to the
 `paper234_results` directory containing the results from Step 1.
 The plots are PDF files compatible with any PDF viewer and the other files
-we prefer to should be opened with a plain-text editor.
-Any files that contain a timestamp in their filename have `DATE` written there
-instead.
+should be opened with a plain-text editor.
+Some files contain a timestamp in their filename, so in this README we have
+`DATE` written in its place.
 
 **ALSO** please double-check the files you open as you explore the results,
 since the file names and paths are all quite similar! :)
@@ -342,26 +342,27 @@ and covers the discussion on lines 747--761. Note that in the camera-ready
 version the corrected number of `fib` calls is 331 million per iteration.
 
 
-- Claims in lines 765--808 can be checked in the following way:
+- Claims in lines 765--808 can be checked in the following sub-steps:
 
-  1. Percent of time spent in the garbage collector for `ack` is in plot
-  `gcstats/analyze_toy_gc_time_total_pct.pdf`.
+  1. Percent of time spent in the garbage collector for `ack` in cps and linked
+  strategies (~67%) is in plot `gcstats/analyze_toy_gc_time_total_pct.pdf`.
 
   2. The volume of data allocated for **closure-based stacks** (aka "cps") for
-  `ack` should be checked manually in the file `gcstats/seq-ack/seq-ack-cps-mc-seq-DATE.json`.
+  `ack` (24GB) should be checked manually in the file
+  `gcstats/seq-ack/seq-ack-cps-mc-seq-DATE.json`.
   The field `minorgc-alloc` corresponds to the number of bytes allocated in
   the nursery. Divide by 2^30 = 1073741824 to get GiB.
 
-  3. The percentage of data promoted from the **nursery to the major heap** is
-  in the plot `gcstats/analyze_toy_gc_minor_live_pct.pdf`
+  3. The percentage of data promoted from the **nursery to the major heap**
+  (65.6%) is in the plot `gcstats/analyze_toy_gc_minor_live_pct.pdf`
 
   4. The percentage of data promoted from the **major heap to the global heap**
-  is in `gcstats/analyze_toy_gc_major_live_pct.pdf`.
+  (40%) is in `gcstats/analyze_toy_gc_major_live_pct.pdf`.
 
   5. The volume of data allocated for **linked-frame stacks** for `ack` is
   in the file `gcstats/seq-ack/seq-ack-linkstack-mc-seq-DATE.json`. Look for the
-  `minorgc-alloc` value and compare it with check (2)'s value to find the
-  difference.
+  `minorgc-alloc` value and compare it with cps's value (sub-step 2) to find the
+  difference to be 2.7GB.
 
 
 - Figure 4 corresponds with the plot `normal/toy_perf_L1-dcache-load-misses.pdf`
@@ -371,18 +372,19 @@ version the corrected number of `fib` calls is 331 million per iteration.
 
 
 - On lines 813--820, the discussion of "high number of segment-overflow events"
-between segmented and resizing stacks for `ack` and `quicksort` are supported by
-examining the `stackcache-access` values (subtracting by 2 for the fixed number
-of accesses related to runtime system initialization) in the following comparisons:
+for segmented stacks compared to resizing stacks for `ack` and `quicksort`
+are supported by examining the `stackcache-access` values (subtracting by 2 for
+the fixed number of accesses related to runtime system initialization)
+in the following comparisons:
     ```
     For 'ack':
     gcstats/seq-ack/seq-ack-segstack-mc-seq-DATE.json
-                         vs
+                    much higher than
     gcstats/seq-ack/seq-ack-resizestack-mc-seq-DATE.json
 
     For 'quicksort':
     gcstats/seq-quicksort/seq-quicksort-segstack-mc-seq-DATE.json
-                         vs
+                    much higher than
     gcstats/seq-quicksort/seq-quicksort-resizestack-mc-seq-DATE.json
     ```
 
@@ -400,19 +402,12 @@ data cache miss-rates for the "real" programs in `normal/real_perf_L1-dcache-loa
 ##### Section 5.1.2 -- Escape Continuation Performance
 
 Figure 7 corresponds with the plot `normal/crossCont_cont_times.pdf` and
-supports the discussion on lines 917--927. The artifact contains an optimization
-we made to the implementation of contig stacks since the paper submission, which
-yields better contig performance on `cml-pingpong`, thus the speed-ups
-relative to it are reduced as follows:
+supports the discussion on lines 917--927.
 
-  | strategy | old speed-up | new speed-up |
-  |----------|--------------|--------------|
-  | resize   | 1.24         | 1.14         |
-  | segment  | 1.24         | 1.13         |
-  | linked   | 1.30         | 1.11         |
-  | cps      | 1.45         | 1.24         |
-
-The discussion regarding Figure 7 will be updated accordingly.
+Note that the artifact contains a small optimization
+to the implementation of contig stacks since the paper submission, which
+may yield better contig performance on `cml-pingpong` and `cml-spawn` (and thus
+lower speed-ups relative to it).
 
 
 ##### Section 5.1.3 -- Design Trade-offs
@@ -423,7 +418,8 @@ The discussion regarding Figure 7 will be updated accordingly.
 The data for Foreign Function Calls are plotted in a number of files, with
 one file per stack strategy.
 The claims made on lines 1026--1029 are about the min-max ranges for
-both `ffi-fib` and `ffi-trigfib` and are shown in these plots:
+both `ffi-fib` (2.44× -- 2.94×) and `ffi-trigfib` (1.03× -- 1.05×) and are
+shown in these plots:
 
 ```
 normal/ffi_contig_ffi_times.pdf
@@ -469,7 +465,7 @@ normal/ras_segstack_real_times.pdf
 
 > [...] and a 1.04x speedup overall.
 
-This claim is checked in the following way. Gather the three GEOMEAN values
+This claim is checked in the following way. Gather the three GMEAN values
 from the following oversized plots that contain all non-callec benchmarks:
 
 ```
