@@ -4,10 +4,18 @@
 
 ## Getting Started Guide
 
-**NOTE**: This README is best viewed on GitHub here: https://github.com/ManticoreProject/manticore/blob/stacks/README.md
+**NOTE**: This README is best viewed on GitHub here:
+
+https://github.com/ManticoreProject/manticore/blob/stacks/README.md
+
+
+In this section, we provide a quick (30 minute) guide to help you become
+familiar with the artifact and ensure that it's working.
 
 In order to evaluate the system for PLDI'20 artifact evaluation, you must first
-have access to an x86-64 Linux system with [Docker installed](https://docs.docker.com/install/).
+have access to an x86-64 Linux system with Docker installed:
+
+https://docs.docker.com/install/
 
 The Linux requirement is due to our use of Linux's `perf` for profiling in our
 benchmark suite, which will probably *not* work if you are running Docker on any
@@ -27,40 +35,39 @@ system's native shell process, and prompts starting with
 
 ### On Docker's Privileges
 
-In order to run the benchmark suite for this artifact, at a minimum you must
-grant the container the `--cap-add sys_admin` Linux capability because we use
-`perf`, which is a Linux-specific profiling system that makes special system
-calls.
-
 During our testing of this artifact, we found that Docker adds a *large*
 overhead to indirect-jump instructions, unless if the `--privileged` flag is
-used (**no `sudo` is required**).
-That flag grants privileges equivalent to a process running outside of the container
-(and thus the flag subsumes the `sys_admin` capability we just mentioned).
-The reason for this overhead is likely to be that Docker intercepts all indirect
-jumps to check if they're making a system call (for fine-grained security).
+used.
+Note that **no `sudo` is required or granted** to use this flag; it simply
+grants privileges equivalent to a process running outside of the container.
+The reason for this overhead *without the flag* is likely to be that Docker
+intercepts all indirect jumps to check if they're making a system call
+(for fine-grained security).
 
 This interception has an impact on our benchmarks, because indirect jumps
 are the primary mechanism by which the cps, smlnj, and mlton benchmark
-configurations perform ordinary function call-and-return, so some
-benchmarks (like `fib`) saw an over 2x slow-down in overall running-time without
-the `--privileged` flag.
-
-Of course, since function-call overhead is precisely one of the focuses of our
-evaluation, we strongly recommend you consider using the `--privileged` flag in
-your testing of this artifact.
-In this guide, we assume that you'll be using it. For more information about
-privileges and Docker, see here:
+configurations perform ordinary function call-and-return.
+Some benchmarks (like `fib`) saw over 2x slow-down in overall running-time
+without the `--privileged` flag.
+For more information about privileges and Docker, see here:
 
 https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
 
-If you or your system administrator disallows the use of `--privileged`, then
-please take into account the overhead we described and use `--cap-add sys_admin`
-instead.
+Of course, since function-call overhead is precisely one of the focuses of our
+evaluation, throughout this guide we assume that you'll be using the flag.
+If you or your system administrator disallows the use of `--privileged` when
+testing this artifact, then please take into account the overhead we described.
+
+In order to run the benchmark suite for this artifact, at a *minimum* you must
+grant the container the `--cap-add sys_admin` Linux capability because we use
+`perf`, which is a Linux-specific profiling system that makes calls into the
+kernel that are disabled in Docker without that capability.
 
 
 
-### Obtaining the Artifact Docker image
+
+
+### Getting Started Step 1: Obtaining the Artifact Docker image
 
 ##### Method 1: Pull the pre-built image
 
@@ -92,12 +99,13 @@ $ docker build .
 Successfully built SOME_HASH_CODE
 ```
 
-Then, use `SOME_HASH_CODE` wherever `image-name` appears in the rest of this README.
+Then, use `SOME_HASH_CODE` wherever `image-name` appears in the rest of this
+README.
 
 
 
 
-### Testing the Docker image
+### Getting Started Step 2: Testing the Docker image
 
 To "kick the tires" of the image to make sure things are working, run
 the following command, which launches a container based on the image
@@ -167,8 +175,8 @@ root@container:~# perf stat echo
 ```
 
 If you see a message starting with `WARNING: perf not found for kernel X`,
-then that means the Docker image you've obtained was built on a Linux system with
-a different kernel version than yours (this is quite likely to happen!).
+then that means the Docker image you've obtained was built on a Linux system
+with a different kernel version than yours (this is quite likely to happen!).
 This can be fixed for the currently-active container by running the `apt-get`
 command:
 
@@ -197,6 +205,8 @@ root@container:/usr/pmlc# ./run_ci.sh local
 Once you've reached this point, then you've successfully "kicked the tires"
 of this artifact!
 
+
+------------------------------------------------------------------------------
 
 
 ## Background Information
@@ -244,9 +254,9 @@ The most relevant flags and additional context for the above:
    simplifycfg, etc) and was used for the evaluation. This flag does not affect
    optimizations performed by `pmlc` prior to emitting LLVM IR.
 
-2. The `-sequential` flag will produce a program that disables the runtime system
-scheduler for better sequential-program efficiency and omits parts of the standard
-library dealing with concurrency to improve compilation time.
+2. The `-sequential` flag will produce a program that disables the runtime
+system scheduler for better sequential-program efficiency and omits parts of
+the standard library dealing with concurrency to improve compilation time.
 Benchmarks in the paper that are not prefixed with `cml-` were tested using
 this flag.
 
@@ -258,17 +268,21 @@ the `false` option.
 to disable the CPU's return-address stack.
 
 
+------------------------------------------------------------------------------
+
 
 ## Step-by-Step Evaluation Instructions
 
-In this section we describe how to evaluate the artifact with respect to the paper.
+In this section we describe how to evaluate the artifact with respect to the
+paper.
 
 ### Step 1: Run the benchmark suite
 
-**Optional**: If you're connecting to a machine over SSH, [consider running Docker
-within `screen`](https://www.linode.com/docs/networking/ssh/using-gnu-screen-to-manage-persistent-terminal-sessions/)
-to keep the Docker session alive even if the connection is
-interrupted.
+**Optional**: If you're connecting to a machine over SSH, consider running
+Docker within `screen` to keep the Docker session alive even if the connection
+is interrupted:
+
+https://www.linode.com/docs/networking/ssh/using-gnu-screen-to-manage-persistent-terminal-sessions/
 
 ##### Step 1a: Run the script.
 
@@ -287,12 +301,11 @@ Once the script completes, **keep the interactive Docker session running**.
 You'll need to find the ID associated with that active container.
 Normally the `container-id` is the hash-code between the `@` and `:` in the
 shell prompt of the container.
-
 Alternatively, you can find the `container-id` by opening a new terminal prompt
 the system and run `docker ps`, looking in the "CONTAINER ID" column.
 
-Once you have the `container-id`, [copy the results directory](https://docs.docker.com/engine/reference/commandline/cp/)
-out of the container and into the real file system like so:
+Once you have the `container-id`, copy the results directory out of the
+container and into the real file system like so:
 
 ```console
 $ docker cp container-id:/usr/pmlc/results ./paper234_results
@@ -366,9 +379,9 @@ version the corrected number of `fib` calls is 331 million per iteration.
 
 
 - Figure 4 corresponds with the plot `normal/toy_perf_L1-dcache-load-misses.pdf`
-  and supports the implicit claim on lines 810--812 that closure and linked stacks
-  have notably higher data-read miss rates than other stacks on a number of
-  programs.
+  and supports the implicit claim on lines 810--812 that closure and linked
+  stacks have notably higher data-read miss rates than other stacks on a number
+  of programs.
 
 
 - On lines 813--820, the discussion of "high number of segment-overflow events"
@@ -394,8 +407,9 @@ the discussion on lines 821--859.
 
 
 - Figure 6 corresponds with the plot `normal/cross_real_times.pdf`
-and supports the discussion on lines 872--914. Part of that discussion references
-data cache miss-rates for the "real" programs in `normal/real_perf_L1-dcache-load-misses.pdf`.
+and supports the discussion on lines 872--914. Part of that discussion
+references data cache miss-rates for the "real" programs in
+`normal/real_perf_L1-dcache-load-misses.pdf`.
 
 
 
