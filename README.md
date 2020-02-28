@@ -79,7 +79,23 @@ use `registry.gitlab.com/kavon1/manticore:latest`.
 To make sure you have the latest version, run the `docker pull` command above
 prior to running the image.
 
-##### Method 2: Build image locally
+
+##### Method 2: Load the archived image
+
+Should the Method 1 fail, the artifact package also includes the image
+in as a tar file, `manticore_docker.tar`.
+You can load this image into Docker with:
+
+```console
+$ docker load < manticore_docker.tar
+Loaded image: registry.gitlab.com/kavon1/manticore:latest
+```
+
+Then, you should be able to use `registry.gitlab.com/kavon1/manticore:latest`
+wherever `image-name` appears in the rest of this README.
+
+
+##### Method 3: Build image locally
 
 You can also build the image from the source code available on GitHub, which
 takes about 20 -- 30 minutes on our continuous integration runner.
