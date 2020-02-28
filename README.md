@@ -64,9 +64,6 @@ grant the container the `--cap-add sys_admin` Linux capability because we use
 kernel that are disabled in Docker without that capability.
 
 
-
-
-
 ### Getting Started Step 1: Obtaining the Artifact Docker image
 
 ##### Method 1: Pull the pre-built image
@@ -84,23 +81,25 @@ prior to running the image.
 
 ##### Method 2: Build image locally
 
-After performing a recursive clone of Manticore,
+You can also build the image from the source code available on GitHub, which
+takes about 20 -- 30 minutes on our continuous integration runner.
+To do this, perform a recursive clone of Manticore like so,
 
 ```console
-$ git clone --recursive --single-branch=stacks https://github.com/ManticoreProject/manticore.git
+$ git clone -b stacks --recursive https://github.com/ManticoreProject/manticore.git
+```
+
+Then build the Docker image locally with
+
+```console
 $ cd manticore
-```
-
-You can build the Docker image locally with
-
-```console
 $ docker build .
-# ... some time later ...
-Successfully built SOME_HASH_CODE
 ```
 
-Then, use `SOME_HASH_CODE` wherever `image-name` appears in the rest of this
-README.
+Finally, once the Docker build completes you'll see a final message saying
+`Successfully built SOME_HASH_CODE`.
+You should use `SOME_HASH_CODE` wherever `image-name` appears in the rest of
+this README.
 
 
 
@@ -123,7 +122,7 @@ available in the image as `pmlc` in PATH:
 
 ```console
 root@container:/usr/pmlc# pmlc -version
-pmlc [x86_64-linux; 0.0.0 (); built 2020-02-07]
+pmlc [x86_64-linux; 0.0.0 (); built 2020-02-28]
 ```
 
 Try to to compile and run a simple Manticore program:
