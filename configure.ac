@@ -410,7 +410,7 @@ AC_SUBST(DEFAULT_LOG_VIEW_PATH)
 
 dnl ******************** Runtime system parameters ********************
 
-AC_DEFINE([MAX_NUM_VPROCS], [64], [maximum number of virtual processors])
+AC_DEFINE([MAX_NUM_VPROCS], [128], [maximum number of virtual processors])
 dnl VP_HEAP_SZB
 dnl MEM_BLOCK_SZB
 
