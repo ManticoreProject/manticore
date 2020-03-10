@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OPTIONS="-DLLVM_ENABLE_ASSERTIONS=ON -DLLVM_USE_LINKER=gold -DLLVM_OPTIMIZED_TABLEGEN=ON"
+OPTIONS="-DLLVM_ENABLE_ASSERTIONS=ON -DLLVM_USE_LINKER=gold -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_CCACHE_BUILD=true"
 
 # this script is meant to help run continuous integration on Linux. If you'd
 # like to build LLVM so that it compiles programs quickly, uncomment the line below:
