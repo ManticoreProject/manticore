@@ -632,9 +632,10 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-linkstack-stats, [stats linkstack])
 
     dnl debug builds of stack-based strategies
-    MK_BUILD_DIR(mcrt-direct-debug, [debug direct])
-    MK_BUILD_DIR(mcrt-resizestack-debug, [debug direct resizestack])
-    MK_BUILD_DIR(mcrt-segstack-debug, [debug direct segstack])
+    MK_BUILD_DIR(mcrt-direct-nosealingcapture-debug, [debug direct nosealingcapture])
+    MK_BUILD_DIR(mcrt-resizestack-nosealingcapture-debug, [debug direct resizestack nosealingcapture])
+    MK_BUILD_DIR(mcrt-segstack-nosealingcapture-debug, [debug direct segstack nosealingcapture])
+    MK_BUILD_DIR(mcrt-hybridstack-nosealingcapture-debug, [debug direct resizestack hybridstack nosealingcapture])
     MK_BUILD_DIR(mcrt-linkstack-debug, [debug linkstack])
 
 if test $OS != darwin; then

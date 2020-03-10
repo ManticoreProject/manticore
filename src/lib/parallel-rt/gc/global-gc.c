@@ -22,6 +22,10 @@
 #include "work-stealing-deque.h"
 #include "gc-scan.h"
 
+#ifdef DIRECT_STYLE
+  extern int ASM_DS_Return;
+#endif
+
 #ifdef ENABLE_PERF_COUNTERS
     #include "perf.h"
 #endif
@@ -168,7 +172,7 @@ void ScanOneSegmentGlobal (
                 *root = newP;
 
 #ifdef DEBUG_STACK_SCAN_GLOBAL
-                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, newP);
+                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, (void*)root, (void*)p, (void*)newP);
 #endif
             }
         } // end for
@@ -181,6 +185,16 @@ void ScanOneSegmentGlobal (
         stackPtr += frame->frameSize;
 
     } // end while
+
+#ifdef DEBUG_STACK_SCAN_GLOBAL
+ #ifdef DIRECT_STYLE
+    uint64_t lastRetAddr = *(uint64_t*)(stackPtr);
+    if (framesSeen == 0 && lookup_return_address(SPTbl, lastRetAddr) == 0
+            && lastRetAddr != (uint64_t)&EndOfStack
+            && lastRetAddr != (uint64_t)&ASM_DS_Return)
+        Die("Encountered an unexpected return address on the stack: %p\n", (void*)lastRetAddr);
+ #endif
+#endif
 
     // the roots have been forwarded to another part of the global heap
     stkInfo->age = AGE_Global;

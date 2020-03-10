@@ -330,7 +330,7 @@ StackInfo_t* NewStackForClos(VProc_t *vp, Value_t funClos) {
     sp[0] = (uint64_t)&EndOfStack; // funClos should not try to return!
     sp[-1] = (uint64_t)funClos;
     sp[-2] = 24; // 24 bytes, including watermark and frame size
-    sp[-3] = 0;  // watermark.
+    sp[-3] = AGE_Minor;  // watermark.
     sp[-4] = (uint64_t)&ASM_DS_StartStack;
     sp = sp - 4;
 

@@ -2,20 +2,26 @@
 // include auto-removed
 // include auto-removed
 
+// when debugging is enabled, don't inline
+#ifdef NDEBUG
+  #define INLINE inline
+#else
+  #define INLINE
+#endif
 
 /**
  * The hash function used to distribute keys uniformly across the table.
  * The implementation is one round of the xorshift64* algorithm.
  * Code Source: Wikipedia
  */
-inline uint64_t hashFn(uint64_t x) {
+INLINE uint64_t hashFn(uint64_t x) {
     x ^= x >> 12; // a
     x ^= x << 25; // b
     x ^= x >> 27; // c
     return x * UINT64_C(2685821657736338717);
 }
 
-inline uint64_t computeBucketIndex(statepoint_table_t* table, uint64_t key) {
+INLINE uint64_t computeBucketIndex(statepoint_table_t* table, uint64_t key) {
     // Using modulo may introduce a little bias in the table.
     // If you care, use the unbiased version that's floating around the internet.
 
@@ -24,16 +30,16 @@ inline uint64_t computeBucketIndex(statepoint_table_t* table, uint64_t key) {
     return hashFn(key) & (table->size - 1);
 }
 
-inline size_t size_of_frame(uint16_t numSlots) {
+INLINE size_t size_of_frame(uint16_t numSlots) {
     return sizeof(frame_info_t) + numSlots * sizeof(pointer_slot_t);
 }
 
-inline size_t frame_size(frame_info_t* frame) {
+INLINE size_t frame_size(frame_info_t* frame) {
     return size_of_frame(frame->numSlots);
 }
 
 // returns the next frame relative the current frame
-inline frame_info_t* next_frame(frame_info_t* cur) {
+INLINE frame_info_t* next_frame(frame_info_t* cur) {
     uint8_t* next = ((uint8_t*)cur) + frame_size(cur);
     return (frame_info_t*)next;
 }

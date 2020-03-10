@@ -26,6 +26,10 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#ifdef DIRECT_STYLE
+  extern int ASM_DS_Return;
+#endif
+
 //ForwardObject of MajorGC
 /*! \brief Forward an object into the global-heap chunk reserved for the given vp.
  *  \param vp the vproc
@@ -172,6 +176,9 @@ void ScanStackMajor (
         uint64_t deepest = (uint64_t)stkInfo->deepestScan;
         if(deepest <= (uint64_t)origStkPtr) {
           // Then I've already scanned the segments following this one.
+          #ifdef DEBUG_STACK_SCAN_MAJOR
+            fprintf(stderr, "Segment portion is marked as already scanned, stopping early!\n");
+          #endif
           goto stopEarly;
         }
         stkInfo->deepestScan = origStkPtr; // mark that we've seen this stack
@@ -217,7 +224,7 @@ void ScanStackMajor (
                 newP = ForwardObjMajor(vp, p);
                 *root = newP;
 #ifdef DEBUG_STACK_SCAN_MAJOR
-                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, root, p, newP);
+                fprintf(stderr, "[slot %u : %p] forward %p --> %p\n", i, (void*)root, (void*)p, (void*)newP);
 #endif
             }
 
@@ -231,6 +238,16 @@ void ScanStackMajor (
         stackPtr += frame->frameSize;
 
     } // end while
+
+#ifdef DEBUG_STACK_SCAN_MAJOR
+ #ifdef DIRECT_STYLE
+    uint64_t lastRetAddr = *(uint64_t*)(stackPtr);
+    if (framesSeen == 0 && lookup_return_address(SPTbl, lastRetAddr) == 0
+            && lastRetAddr != (uint64_t)&EndOfStack
+            && lastRetAddr != (uint64_t)&ASM_DS_Return)
+        Die("Encountered an unexpected return address on the stack: %p\n", (void*)lastRetAddr);
+ #endif
+#endif
 
     // the roots have been forwarded to the global heap
     stkInfo->age = promoteGen;
@@ -248,8 +265,6 @@ void ScanStackMajor (
   } // end stkInfo while
 #endif // SEGSTACK
 
-stopEarly:
-
 #ifdef DEBUG_STACK_SCAN_MAJOR
         if (framesSeen == 0) {
             Die("MajorGC: Should have seen at least one frame!");
@@ -257,6 +272,7 @@ stopEarly:
         fprintf(stderr, "##########################################\n");
 #endif
 
+stopEarly:
     return;
 }
 
