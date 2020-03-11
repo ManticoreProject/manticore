@@ -130,7 +130,6 @@ void ScanStackMajor (
 
     enum LimitState {
         LS_NoMark,
-        LS_MarkSeen,
         LS_Stop
     };
 
@@ -141,7 +140,7 @@ void ScanStackMajor (
 #if defined(SEGSTACK) || defined(RESIZESTACK)
   stkInfo->currentSP = origStkPtr;
 
-  while (stkInfo != NULL) {
+  while (state != LS_Stop && stkInfo != NULL) {
 
     origStkPtr = stkInfo->currentSP;
 #endif // SEGSTACK
@@ -169,7 +168,7 @@ void ScanStackMajor (
 
         if (needLock) MutexUnlock(&GlobStackMutex);
 
-    } else {
+    } else if (!inPromotion) {
       // only during a GC cycle is it valid to do this test of the deepestScan,
       // because otherwise during a PromoteObj, we never end up clearing this,
       // and will not scan the stack.
@@ -195,15 +194,11 @@ void ScanStackMajor (
         // step into frame
         stackPtr += sizeof(uint64_t);
 
-        // handle watermark
+        // check the watermark
         uint64_t* watermark = (uint64_t*)stackPtr;
-
-        if (state == LS_MarkSeen) {
+        if (*watermark >= promoteGen) {
             // this is the last frame we'll check.
             state = LS_Stop;
-        } else if (*watermark >= promoteGen) {
-            // saw the limit in this frame.
-            state = LS_MarkSeen;
         } else {
             // overwrite the watermark
             *watermark = promoteGen;

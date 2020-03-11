@@ -76,7 +76,6 @@ void ScanStackMinor (
 
     enum LimitState {
         LS_NoMark,
-        LS_MarkSeen,
         LS_Stop
     };
 
@@ -86,7 +85,7 @@ void ScanStackMinor (
 #if defined(SEGSTACK) || defined(RESIZESTACK)
   stkInfo->currentSP = origStkPtr;
 
-  while (stkInfo != NULL) {
+  while (state != LS_Stop && stkInfo != NULL) {
 
     origStkPtr = stkInfo->currentSP;
 #endif // SEGSTACK
@@ -116,15 +115,11 @@ void ScanStackMinor (
         // step into frame
         stackPtr += sizeof(uint64_t);
 
-        // handle watermark
+        // check the watermark
         uint64_t* watermark = (uint64_t*)stackPtr;
-
-        if (state == LS_MarkSeen) {
+        if (*watermark >= promoteGen) {
             // this is the last frame we'll check.
             state = LS_Stop;
-        } else if (*watermark >= promoteGen) {
-            // saw the limit in this frame.
-            state = LS_MarkSeen;
         } else {
             // overwrite the watermark
             *watermark = promoteGen;
