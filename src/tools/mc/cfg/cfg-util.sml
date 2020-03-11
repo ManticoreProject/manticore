@@ -114,9 +114,21 @@ structure CFGUtil : sig
       | varsOfXfer (HeapCheck{nogc=(_, args), ...}) = args
       | varsOfXfer (HeapCheckN{nogc=(_, args), ...}) = args
       | varsOfXfer (AllocCCall{lhs, args, ret=(_, rArgs), ...}) = lhs @ args @ rArgs
-      | varsOfXfer (Call{f, clos, args, next}) =
-            (* NOTE(kavon): going with the live vars here *)
-            f :: clos :: args @ (fn (SOME(_,(_,fvNext))) => fvNext | (NONE) => []) (maybeNext next)
+      | varsOfXfer (Call{f, clos, args, next}) = let
+        (* NOTE(kavon): going with the live vars here, NOT including those
+            bound during the transfer itself *)
+        val liveIn = (case maybeNext next
+                        of NONE => []
+                         | SOME(lhs, (_, jumpArgs)) => let
+                            fun notinLHS ja = not (List.exists (fn x => CFG.Var.same (x, ja)) lhs)
+                          in
+                            List.filter notinLHS jumpArgs
+                          end
+                         (* end case *))
+      in
+        f :: clos :: args @ liveIn
+      end
+
       | varsOfXfer (Return {args,...}) = args
 
    (* project the lhs variables of a control transfer *)

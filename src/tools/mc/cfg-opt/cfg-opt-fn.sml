@@ -72,6 +72,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val simplifyGraph = transform {passName = "simplifygraph", pass = SimplifyGraph.transform}
     val absorbChecks = transform {passName = "absorb-heap-checks", pass = AbsorbHeapChecks.transform}
     val castNonRet = transform {passName = "cast-non-ret", pass = CastNonRet.transform}
+    val convertNewStack = transform {passName = "convert-newstack", pass = ConvertNewStack.transform}
 
     fun optimize module = let
       val _ = CheckCFG.check ("closure", module)
@@ -79,6 +80,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val _ = CheckCFG.check ("census", module)
 	  val module = contract module
       val module = simplifyGraph module
+      val module = convertNewStack module
       val module = contract module
           val _ = cfa module
           val module = unrollLoops module

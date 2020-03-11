@@ -31,6 +31,7 @@ is
   cfg-opt-controls.sml
   cfg-opt-fn.sml
   contract.sml
+  convert-newstack.sml
   cast-nonret.sml
   feedback-fn.sml
   implement-calls-fn.sml

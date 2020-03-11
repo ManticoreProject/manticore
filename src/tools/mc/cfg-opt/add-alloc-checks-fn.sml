@@ -80,16 +80,16 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
       | gExpAlloc _ = 0w0
 
     fun xferAlloc (CFG.Call{f,...}) = let
-            (* this is only here because the only external label expected
-               is ASM_Callec, which is hand-written assembly whose allocation
-               should be accounted for. *)
+            (* NOTE: The only external labels expected are ASM_Callec
+               and ASM_NewStack, which are hand-written assembly who
+               may perform allocation and thus should be accounted for! *)
             fun isExternLab v = (case CFG.Var.kindOf v
                 of CFG.VK_Let(CFG.E_Label(_, lab)) => not(noExterns lab)
                  | _ => false
                 (* esac *))
         in
             if isExternLab f
-            then Word.fromLargeInt ABI.wordSzB * Word.fromInt(5)
+            then Word.fromLargeInt ABI.wordSzB * Word.fromInt(16)
             else 0w0
         end
       | xferAlloc _ = 0w0
