@@ -79,8 +79,10 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val _ = census module
 	  val _ = CheckCFG.check ("census", module)
 	  val module = contract module
-      val module = simplifyGraph module
       val module = convertNewStack module
+      val _ = CheckCFG.check ("convert-newstack", module)
+      val module = simplifyGraph module
+      val _ = CheckCFG.check ("simplifygraph", module)
       val module = contract module
           val _ = cfa module
           val module = unrollLoops module

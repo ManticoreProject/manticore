@@ -71,10 +71,10 @@ structure CFGUtil : sig
 
   (* return the block that a label is bound to, or NONE if it is external *)
     fun blockOfLabel lab = (case CFG.Label.kindOf lab
-	   of CFG.LK_Func{func as CFG.FUNC{start,...}, ...} => SOME start
+           of CFG.LK_Func{func as CFG.FUNC{start,...}, ...} => SOME start
             | CFG.LK_Block block => SOME block
-	    | _ => NONE
-	  (* end case *))
+            | _ => NONE
+          (* end case *))
 
   (* project out the lhs variables of an expression *)
     val lhsOfExp = CFG.lhsOfExp
@@ -107,10 +107,10 @@ structure CFGUtil : sig
       | varsOfXfer (Goto(_, args)) = args
       | varsOfXfer (If(cond, (_, args1), (_, args2))) = CondUtil.varsOf cond @ args1 @ args2
       | varsOfXfer (Switch(x, cases, dflt)) = let
-	  fun f ((_, (_, args)), l) = args @ l
-	  in
-	    x :: (List.foldl f (case dflt of SOME(_, args) => args | _ => []) cases)
-	  end
+          fun f ((_, (_, args)), l) = args @ l
+          in
+            x :: (List.foldl f (case dflt of SOME(_, args) => args | _ => []) cases)
+          end
       | varsOfXfer (HeapCheck{nogc=(_, args), ...}) = args
       | varsOfXfer (HeapCheckN{nogc=(_, args), ...}) = args
       | varsOfXfer (AllocCCall{lhs, args, ret=(_, rArgs), ...}) = lhs @ args @ rArgs
@@ -147,10 +147,10 @@ structure CFGUtil : sig
       | labelsOfXfer (Goto(lab, _)) = [lab]
       | labelsOfXfer (If(_, (lab1, _), (lab2, _))) = [lab1, lab2]
       | labelsOfXfer (Switch(x, cases, dflt)) = let
-	  fun f ((_, (lab, _)), l) = lab :: l
-	  in
-	    List.foldl f (case dflt of SOME(lab, _) => [lab] | _ => []) cases
-	  end
+          fun f ((_, (lab, _)), l) = lab :: l
+          in
+            List.foldl f (case dflt of SOME(lab, _) => [lab] | _ => []) cases
+          end
       | labelsOfXfer (HeapCheck{nogc=(lab, _), ...}) = [lab]
       | labelsOfXfer (HeapCheckN{nogc=(lab, _), ...}) = [lab]
       | labelsOfXfer (AllocCCall{ret=(lab, _), ...}) = [lab]
@@ -164,68 +164,78 @@ structure CFGUtil : sig
 
    (* rewrite a function with a new body and exit *)
     fun rewriteFunc (FUNC{lab, entry, ...}, start as M.BLK{args,...}, body, exit) = let
-	  val func = FUNC{lab = lab, entry = entry, start = start, body = body}
-	  val lk = (case CFG.Label.kindOf lab
-		  of CFG.LK_Func{export, ...} => CFG.LK_Func{func=func, export=export}
-		   | lk => lk
-		(* end case *))
-	  in
-	    CFG.Label.setKind (lab, lk);
-	    List.app (fn x => CFG.Var.setKind(x, CFG.VK_Param lab)) (paramsOfConv (entry, args));
-	    func
-	  end
+          val func = FUNC{lab = lab, entry = entry, start = start, body = body}
+          val lk = (case CFG.Label.kindOf lab
+                  of CFG.LK_Func{export, ...} => CFG.LK_Func{func=func, export=export}
+                   | lk => lk
+                (* end case *))
+          in
+            CFG.Label.setKind (lab, lk);
+            List.app (fn x => CFG.Var.setKind(x, CFG.VK_Param lab)) (paramsOfConv (entry, args));
+            func
+          end
 
     type substitution = CFG.var CFG.Var.Map.map
 
    (* substitute a variable w.r.t. an environment *)
     fun substVar (env : substitution) v = (case CFG.Var.Map.find (env, v)
-	  of NONE => v
-	   | SOME v' => v'
-	  (* end case *))
+          of NONE => v
+           | SOME v' => v'
+          (* end case *))
 
    (* variable substitution over an expression *)
     fun substExp (env : substitution) e = let
-	  val substVar = substVar env
-	  in
+          val substVar = substVar env
+          in
             case e
-	     of E_Var(lhs, rhs) => CFG.mkVar (lhs, List.map substVar rhs)
-	      | E_Cast(lhs, ty, rhs) => CFG.mkCast (lhs, ty, substVar rhs)
-	      | E_Select(lhs, i, rhs) => CFG.mkSelect (lhs, i, substVar rhs)
-	      | E_Update(i, v1, v2) => CFG.mkUpdate (i, substVar v1, substVar v2)
-	      | E_AddrOf(lhs, i, rhs) => CFG.mkAddrOf (lhs, i, substVar rhs)
-	      | E_Alloc(lhs, ty, rhs) => CFG.mkAlloc (lhs, ty, List.map substVar rhs)
-	      | E_GAlloc(lhs, ty, rhs) => CFG.mkGAlloc (lhs, ty, List.map substVar rhs)
-	      | E_Promote(lhs, rhs) => CFG.mkPromote (lhs, substVar rhs)
-	      | E_Prim0 prim => CFG.mkPrim0 (PrimUtil.map substVar prim)
-	      | E_Prim(lhs, prim) => CFG.mkPrim (lhs, PrimUtil.map substVar prim)
-	      | E_CCall(lhs, f, rhs) => CFG.mkCCall (lhs, substVar f, List.map substVar rhs)
-	      | E_VPLoad(lhs, offset, rhs) => CFG.mkVPLoad (lhs, offset, substVar rhs)
-	      | E_VPStore(offset, v1, v2) => CFG.mkVPStore (offset, substVar v1, substVar v2)
-	      | E_VPAddr(lhs, offset, rhs) => CFG.mkVPAddr (lhs, offset, substVar rhs)
-	      | e => e
+             of E_Var(lhs, rhs) => CFG.mkVar (lhs, List.map substVar rhs)
+              | E_Cast(lhs, ty, rhs) => CFG.mkCast (lhs, ty, substVar rhs)
+              | E_Select(lhs, i, rhs) => CFG.mkSelect (lhs, i, substVar rhs)
+              | E_Update(i, v1, v2) => CFG.mkUpdate (i, substVar v1, substVar v2)
+              | E_AddrOf(lhs, i, rhs) => CFG.mkAddrOf (lhs, i, substVar rhs)
+              | E_Alloc(lhs, ty, rhs) => CFG.mkAlloc (lhs, ty, List.map substVar rhs)
+              | E_GAlloc(lhs, ty, rhs) => CFG.mkGAlloc (lhs, ty, List.map substVar rhs)
+              | E_Promote(lhs, rhs) => CFG.mkPromote (lhs, substVar rhs)
+              | E_Prim0 prim => CFG.mkPrim0 (PrimUtil.map substVar prim)
+              | E_Prim(lhs, prim) => CFG.mkPrim (lhs, PrimUtil.map substVar prim)
+              | E_CCall(lhs, f, rhs) => CFG.mkCCall (lhs, substVar f, List.map substVar rhs)
+              | E_VPLoad(lhs, offset, rhs) => CFG.mkVPLoad (lhs, offset, substVar rhs)
+              | E_VPStore(offset, v1, v2) => CFG.mkVPStore (offset, substVar v1, substVar v2)
+              | E_VPAddr(lhs, offset, rhs) => CFG.mkVPAddr (lhs, offset, substVar rhs)
+              | e => e
             (* end case *)
-	  end
+          end
 
    (* variable substitution over an transfer *)
     fun substTransfer (env : substitution) transfer = let
-	  val sv = substVar env
-	  fun sj (l, args) = (l, List.map sv args)
-	  in
-	    case transfer
-	     of StdApply{f, clos, args, ret, exh} =>
-		  StdApply{f=sv f, clos=sv clos, args=List.map sv args, ret=sv ret, exh=sv exh}
-	      | StdThrow{k, clos, args} => StdThrow{k=sv k, clos=sv clos, args=List.map sv args}
-	      | Apply{f, clos, args} => Apply{f=sv f, clos=sv clos, args=List.map sv args}
-	      | Goto jmp => Goto(sj jmp)
-	      | If(cond, jmp1, jmp2) => If(CondUtil.map sv cond, sj jmp1, sj jmp2)
-	      | Switch(x, cases, dflt) =>
-		  Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
-	      | HeapCheck{hck, szb, nogc} => HeapCheck{hck=hck, szb=szb, nogc=sj nogc}
-	      | HeapCheckN{hck, n, szb, nogc} => HeapCheckN{hck=hck, n=sv n, szb=szb, nogc=sj nogc}
-	      | AllocCCall{lhs, f, args, ret} =>
-		  AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
-	     (* end case *)
-	  end
+          val sv = substVar env
+
+          (* subsitute for a jump *)
+          fun sj (l, args) = (l, List.map sv args)
+
+          (* subsitute for a 'next' in a DS call*)
+          fun sn (CFG.NK_Resume (lhs, jmp)) = CFG.NK_Resume (lhs, sj jmp)
+            | sn other = other
+          in
+            case transfer
+             of StdApply{f, clos, args, ret, exh} =>
+                  StdApply{f=sv f, clos=sv clos, args=List.map sv args, ret=sv ret, exh=sv exh}
+              | StdThrow{k, clos, args} => StdThrow{k=sv k, clos=sv clos, args=List.map sv args}
+              | Apply{f, clos, args} => Apply{f=sv f, clos=sv clos, args=List.map sv args}
+              | Call {f, clos, args, next} =>
+                  Call { f = sv f, clos = sv clos, args = map sv args, next = sn next}
+              | Return {args, name} =>
+                  Return { args = map sv args, name=name }
+              | Goto jmp => Goto(sj jmp)
+              | If(cond, jmp1, jmp2) => If(CondUtil.map sv cond, sj jmp1, sj jmp2)
+              | Switch(x, cases, dflt) =>
+                  Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
+              | HeapCheck{hck, szb, nogc} => HeapCheck{hck=hck, szb=szb, nogc=sj nogc}
+              | HeapCheckN{hck, n, szb, nogc} => HeapCheckN{hck=hck, n=sv n, szb=szb, nogc=sj nogc}
+              | AllocCCall{lhs, f, args, ret} =>
+                  AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
+             (* end case *)
+          end
 
     fun mapSuccOfXfer f xfer = (case xfer
         of Goto j => Goto (f j)

@@ -62,9 +62,12 @@ structure ConvertNewStack : sig
                   }
 
       val newStackLab = CFG.mkMantiExtern(CFG.Label.new("ASM_NewStack", newStackLab_type))
-    in
-      C.mkModule (name, externs, newStackLab :: mantiExterns,
+      val module = C.mkModule (name, externs, newStackLab :: mantiExterns,
                                  map (doFunc newStackLab) code)
+    in
+      (* recompute census information, since it may have been invalidated *)
+      Census.census module;
+      module
     end
 
     and doFunc newStackLab (C.FUNC{lab, entry, start, body}) = let
@@ -78,58 +81,130 @@ structure ConvertNewStack : sig
     (* In order to replace a ccall with a Manticore call, we need to
        know which variables are live after the ccall.
     *)
-    and splitBlock newStackLab convention (C.BLK{lab, args, body, exit}) = (
+    and splitBlock newStackLab convention (oldBlock as C.BLK{lab, args, body, exit}) = (
       (* Assert that the exit is not an AllocCCall.
-         this pass should be performed prior to inserting
+         this conversion pass should have been performed prior to inserting
          heap checks! *)
       case exit
         of C.AllocCCall _ =>
             raise Fail "convert-newstack: pass run at wrong point!"
-         | _ => (); let
+         | _ => ();
 
-      val partitioning = findAll isNewStackCall body
-      (* TODO: if the partition contains 1 element, then we can return the original block. *)
+      (* if the partition contains 1 element, then we can just return the original block. *)
+      case findAll isNewStackCall body
+        of [_] => [oldBlock]
+         | partitioning => let
 
-      val live = asSet (CU.varsOfXfer exit)
-      val (blockLive, splitPoints) = foldr computeLiveIn (live, []) partitioning
+          val live = asSet (CU.varsOfXfer exit)
+          val (blockLive, splitPoints) = foldr computeLiveIn (live, []) partitioning
 
-      (* assertion to ensure liveness is computed correctly *)
-      val allBlockParams = if isSome convention
-                            then CU.paramsOfConv(valOf convention, args)
-                            else args
-      val () = if not (VSet.isSubset(blockLive, asSet allBlockParams))
-                then raise Fail (concat [
-                  "convert-newstack: liveness computation wrong,\n",
-                  concat ((map CV.toString) (VSet.listItems blockLive)),
-                  "\n\tshould be a subset of\n",
-                  concat (map CV.toString allBlockParams)
-                  ])
-                else ()
+          (* assertion to ensure liveness is computed correctly *)
+          val allBlockParams = if isSome convention
+                                then CU.paramsOfConv(valOf convention, args)
+                                else args
+          val () = if not (VSet.isSubset(blockLive, asSet allBlockParams))
+                    then raise Fail (concat [
+                      "convert-newstack: liveness computation wrong,\n",
+                      concat ((map CV.toString) (VSet.listItems blockLive)),
+                      "\n\tshould be a subset of\n",
+                      concat (map CV.toString allBlockParams)
+                      ])
+                    else ()
+
+          val emptySubst : CFGUtil.substitution = VMap.empty
+          val (_, _, _, otherBlocks) =
+              foldl (generateBlock newStackLab exit) (lab, args, emptySubst, []) splitPoints
+        in
+          rev otherBlocks
+        end)
+
+
+
+    and generateBlock newStackLab exit ((instrs, ccall, liveOut), (lab, args, env, blks)) =
+      (case ccall
+        of NONE => (* easy case. this is the last block,
+                    so we just pass along the old stuff *)
+          (lab, args, env,
+            C.mkBlock(lab, args, map (CU.substExp env) instrs, CU.substTransfer env exit) :: blks)
+
+        | SOME ccall => let
+          (* generate the call and components of the successor block *)
+          val (instrs, transfer, nextLab, nextArgs, nextEnv) =
+                replaceNewStackCall (newStackLab, env, instrs, ccall, liveOut)
+        in
+          (nextLab, nextArgs, nextEnv, C.mkBlock(lab, args, instrs, transfer) :: blks)
+        end
+
+    (* end case *))
+
+
+    and replaceNewStackCall (nsLab, env, instrs, C.E_CCall ([lhsV], _, [_, thdClos]), liveOut) = let
+
+      fun rauw env v = (case VMap.find (env, v)
+        of SOME newV => newV
+         | NONE => v
+       (* end case *))
+
+       fun mkUnit name = let
+         val var = CV.new (name, CFGTy.unitTy)
+         val binding = CFG.mkConst(var, Literal.Enum 0w0, CFGTy.unitTy)
+       in
+         (var, binding)
+       end
+
+       (* generate a new env for the next block that records the correspondence
+            oldLiveOut -> newArg *)
+       val nextArgs = map CV.copy liveOut
+       val nextEnv = foldl VMap.insert' env (ListPair.zip(liveOut, nextArgs))
+
+       (* name the next block since we can now determine its type *)
+       val nextLab = CL.new("afterNewStack", CFGTy.T_Block{args = map CV.typeOf nextArgs})
+
+      (* perform rauw updates *)
+      val instrs = map (CU.substExp env) instrs
+      val updatedLiveOut = map (rauw env) liveOut
+
+      (* generate bindings and components for the call *)
+      val fVar = CV.new (CL.nameOf nsLab, CL.typeOf nsLab)
+      val bindF = C.mkLabel (fVar, nsLab)
+
+      val (unitVar, bindUnit) = mkUnit "unit"
+
+      val transfer = C.Call {
+          f = fVar,
+          clos = unitVar,
+          args = [rauw env thdClos, unitVar],  (* last arg is the exn handler *)
+          next = C.NK_Resume ([lhsV], (nextLab, updatedLiveOut))
+      }
 
     in
-      [C.mkBlock(lab, args, body, exit)]
-    end)
+      (instrs @ [bindUnit, bindF], transfer, nextLab, nextArgs, nextEnv)
+    end
 
     (* Given a set of vars that are live OUT of this partition point,
-       computes the set of vars that are live IN to this partition point.
+       computes the set of vars that are live IN to this partition point
+       and passes that along.
+       It also builds a list of split points tagged with the values that
+       are needed by the next point (i.e., the live out it was given).
+
        This computes a minimal set of live vars and should be folded
        from right-to-left (reverse order) over the partition points. *)
-    and computeLiveIn ((instrs, ccall), (live, splits)) = let
-      fun iter ([], live) = (live, (instrs, ccall, live) :: splits)
-        | iter (x::xs, live) = let
+    and computeLiveIn ((instrs, ccall), (liveOut, splits)) = let
+      fun iter ([], liveIn) = (liveIn, (instrs, ccall, VSet.listItems liveOut) :: splits)
+        | iter (x::xs, liveIn) = let
           (* live = (live \ lhs) + rhs *)
           val lhs = asSet (CU.lhsOfExp x)
           val rhs = asSet (CU.rhsOfExp x)
-          val live = VSet.union(VSet.difference(live, lhs), rhs)
+          val liveIn = VSet.union(VSet.difference(liveIn, lhs), rhs)
         in
-          iter (xs, live)
+          iter (xs, liveIn)
         end
 
       val allReversed = if isSome ccall
                         then valOf ccall :: rev instrs
                         else rev instrs
     in
-      iter (allReversed, live)
+      iter (allReversed, liveOut)
     end
 
     and isNewStackCall exp = (case exp
