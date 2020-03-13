@@ -376,6 +376,65 @@ _GSYM(ASM_ContLauncher_Closure):
 
 
 
+.p2align 4, 0xCC
+.globl  _GSYM(ASM_NewStack)
+_GSYM(ASM_NewStack): // NOTE: FOR LINKED STACKS ONLY
+  // Calls to this Manticore function are introduced by the convert-newstack
+  // CFG pass, which turns CCalls to NewStack into ones that call this
+  // hand-written routine.
+  //
+  // If you want accurate heap-allocation statistics, then you should turn
+  // off convert-newstack because it's too much of a pain to try and
+  // implement statistics tracking in ASM here!
+  //
+  // std direct function convention for linked stack and accepts one argument,
+  // the thread closure to be invoked by the stack.
+
+  #define TMP_REG2  %rbx
+  #define TMP_REG3  %r14
+  #define TMP_REG4  %r15
+
+  // Step 1 -- create the base frame of the stack
+  ////////////////
+  #define BASE_SZ_WORDS 3
+  // TMP_REG1 <-- baseFrame
+  movq  ALLOC_PTR_REG, TMP_REG1
+  addq  $(BASE_SZ_WORDS+1)*8, ALLOC_PTR_REG
+  // initialize baseFrame
+  leaq  ASM_Error(%rip), TMP_REG2
+  movq  $(RAW_HDR(BASE_SZ_WORDS)), -8(TMP_REG1) // header
+  movq  $0,                         0(TMP_REG1) // no previous frame
+  movq  TMP_REG2,                   8(TMP_REG1) // code address
+  movq  $0,                        16(TMP_REG1) // watermark
+
+  #undef BASE_SZ_WORDS
+
+  // Step 2 -- allocate a special launcher-cont with space for the fn closure
+  ///////////////
+  #define LAUNCHER_SZ_WORDS 3
+  // TMP_REG2 <-- launcher
+  movq  ALLOC_PTR_REG, TMP_REG2
+  addq  $(LAUNCHER_SZ_WORDS+1)*8, ALLOC_PTR_REG
+  // initialize launcher
+  movq  $(BITPAT_HDR(0b110, LAUNCHER_SZ_WORDS)), TMP_REG4
+  leaq  ASM_ContLauncher_Closure(%rip), TMP_REG3
+  movq  TMP_REG4,        -8(TMP_REG2) // header
+  movq  TMP_REG3,         0(TMP_REG2) // code ptr
+  movq  TMP_REG1,         8(TMP_REG2) // stack frame (the baseFrame)
+  movq  STD_ARG_REG,     16(TMP_REG2) // fn to invoke
+
+  #undef LAUNCHER_SZ_WORDS
+
+  // return the launcher-cont
+  movq  TMP_REG2, STD_ARG_REG
+  retq
+
+  #undef TMP_REG2
+  #undef TMP_REG3
+  #undef TMP_REG4
+
+
+
 
 .p2align 4, 0xCC
 .globl	_GSYM(ASM_InvokeGC)

@@ -27,6 +27,19 @@ structure ConvertNewStack : sig
     structure VSet = CFG.Var.Set
     structure VMap = CFG.Var.Map
 
+    val enableFlg = ref true
+
+    val () = List.app (fn ctl => ControlRegistry.register CFGOptControls.registry {
+                        ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+                        envName = NONE })
+                      [Controls.control {
+                        ctl = enableFlg,
+                        name = "enable-convert-newstack",
+                        pri = [0, 1],
+                        obscurity = 0,
+                        help = "if enabled, uses hand-written ASM NewStack routines instead of C code"
+                      }]
+
     (* identifies the first element in the list that satisfies the predicate,
        returning the elements before and after it too. *)
     fun findFirst predicate body = let
@@ -52,7 +65,10 @@ structure ConvertNewStack : sig
 
 
     (* the top-level transformation function! *)
-    fun transform (C.MODULE{name, externs, mantiExterns, code}) = let
+    fun transform (orig as C.MODULE{name, externs, mantiExterns, code}) =
+      if not (!enableFlg)
+        then orig
+        else let
       (* NOTE: this must be kept up-to-date with the assembly-code implementation! *)
       val newStackLab_type = CFGTy.T_StdDirFun {
                       clos = CFGTy.unitTy,

@@ -109,7 +109,7 @@
 #define VEC_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((VEC_TAG_VAL) << TABLE_TAG_BITS) | TABLE_TAG)
 
 // Raw object
-#define RAW_HDR(len)	((((Word_t)len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((RAW_TAG_VAL) << TABLE_TAG_BITS) | TABLE_TAG)
+#define RAW_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((RAW_TAG_VAL) << TABLE_TAG_BITS) | TABLE_TAG)
 
 // Stack continuation object
 #define STACK_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((STACK_TAG_VAL) << TABLE_TAG_BITS) | TABLE_TAG)
