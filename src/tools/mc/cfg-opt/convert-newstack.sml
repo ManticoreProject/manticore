@@ -8,12 +8,6 @@ structure ConvertNewStack : sig
 
     (* Converts C calls to allocate a new stack into a native call
        that implements the fast-path in assembly.
-
-       If the fast-path's assumptions aren't satisfied, a slower call into
-       the original C routine is invoked.
-
-       Thus, this is a trade-off, but this optimization is very likely to
-       improve performance.
     *)
 
     val transform : CFG.module -> CFG.module
@@ -27,7 +21,18 @@ structure ConvertNewStack : sig
     structure VSet = CFG.Var.Set
     structure VMap = CFG.Var.Map
 
-    val enableFlg = ref true
+    (* NOTE: disabled by default because for linked-frame stacks, we saw
+       only a 1.024x speed-up (2.4%) on cml-pingpong. Virtually no difference on
+       cml-spawn!
+
+       Other stack strategies (for which ASM_NewStack is not implemented yet!)
+       we're very likely to see no benefit, or a performance regression! This is
+       because even _more_ instructions are executed by the fast-path for those
+       strategies than for linked stacks. So the handful of instructions saved by
+       not switching stacks is probably not going to outweigh my ability to
+       write optimal-but-readable assembly code for the fast path, etc!
+                                                          - kavon (3/13/2020) *)
+    val enableFlg = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CFGOptControls.registry {
                         ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,

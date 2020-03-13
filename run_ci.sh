@@ -57,13 +57,14 @@ stacks=(
   # "-hybridstack"
   "-linkstack"
 
-  # now we test with / without the cshim
+  # now we test with / without the cshim and other weird configurations
   "-Ccshim=true"
   "-contigstack -Ccshim=true"
   "-segstack -Ccshim=false"
   # "-segstack -lazyunderflow -Ccshim=false"  # this config is too inefficient; it mprotects too many segments!
   "-resizestack -Ccshim=false"
   # "-hybridstack -Ccshim=false"
+  "-linkstack -Ccfg.enable-convert-newstack=true"
 
   # now we test noras
   "-noras"
