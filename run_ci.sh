@@ -54,7 +54,7 @@ stacks=(
   "-segstack -lazyunderflow"
   "-segstack -sealingcapture"
   "-resizestack"
-  # "-hybridstack"
+  "-hybridstack"
   "-linkstack"
 
   # now we test with / without the cshim and other weird configurations
@@ -63,7 +63,7 @@ stacks=(
   "-segstack -Ccshim=false"
   # "-segstack -lazyunderflow -Ccshim=false"  # this config is too inefficient; it mprotects too many segments!
   "-resizestack -Ccshim=false"
-  # "-hybridstack -Ccshim=false"
+  "-hybridstack -Ccshim=false"
   "-linkstack -Ccfg.enable-convert-newstack=true"
 
   # now we test noras
