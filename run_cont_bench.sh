@@ -12,6 +12,8 @@ MC_DIR=$(pwd)
 TRIALS=5
 RESULTS_DIR=${MC_DIR}/results
 
+SMLNJ64_BIN_PATH=/usr/smlnj64/bin
+
 # make sure `perf stat` works, since the benchmark's conf script doesn't
 # check for this but it's required.
 if ! perf stat echo; then
@@ -31,7 +33,7 @@ fi
 # run the benchmarks
 mkdir "${RESULTS_DIR}"
 cd src/benchmarks/drivers
-PATH=/usr/smlnj64/bin:${PATH} ./pldi20.sh "${MC_DIR}" "${RESULTS_DIR}" ${TRIALS}
+PATH=${SMLNJ64_BIN_PATH}:${PATH} ./pldi20.sh "${MC_DIR}" "${RESULTS_DIR}" ${TRIALS}
 
 # generate plots
 LANG=C.UTF-8 LC_ALL=C.UTF-8 ./plotall.sh "${RESULTS_DIR}"
