@@ -86,7 +86,8 @@ structure Uncurry : sig
                       case findCurried f
                        of NONE => ()
                         | SOME(DEF n) => recordPartial(g, n, f, [xs], ys)
-                        | SOME(PARTIAL{arity=0, ...}) => raise Fail "bogus application"
+                        | SOME(PARTIAL{arity=0, f, ...}) =>
+                                raise Fail (concat["bogus application of ", BV.toString f])
                         | SOME(PARTIAL{arity, f, args, ...}) =>
                             recordPartial(g, arity, f, xs::args, ys)
                       (* end case *);
