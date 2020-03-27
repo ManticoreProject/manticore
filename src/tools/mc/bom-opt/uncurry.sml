@@ -24,39 +24,50 @@ structure Uncurry : sig
 
     val noUncurryFlg = ref false
 
-    val cntReplace                = ST.newCounter "uncurry:replace-apply"
-    val cntElim                        = ST.newCounter "uncurry:elim-apply"
+    val cntReplace              = ST.newCounter "uncurry:replace-apply"
+    val cntElim                 = ST.newCounter "uncurry:elim-apply"
 
   (***** Analysis *****
    *
    * The analysis phase both finds curried functions and the detects partial application sites.
    *)
 
-    datatype curried_fn            (* information about a curried function *)
-      = DEF of int                (* a curried function; the integer (>1) is the number *)
-                                (* of curried arguments *)
+    datatype curried_fn         (* information about a curried function *)
+      = DEF of int                  (* a curried function; the integer (>1) is the
+                                     * number of curried arguments
+				     *)
       | PARTIAL of {                (* the partial application of a curried function *)
             arity : int,            (* the remaining depth of currying (>= 0) *)
-            f : B.var,                    (* the original curried function *)
-            args : B.var list list, (* the arguments for each partial application (in right to *)
-                                    (* left order) *)
-            exh : B.var list            (* the exception-handler continuation from the rightmost *)
-                                    (* application (the other applications cannot raise exceptions) *)
+            f : B.var,              (* the original curried function *)
+            args : B.var list list, (* the arguments for each partial application (in
+				     * right to left order)
+				     *)
+            exh : B.var list        (* the exception-handler continuation from the
+				     * rightmost application (the other applications
+				     * cannot raise exceptions)
+				     *)
           }
 
     fun analyse (B.FB{body, ...}) = let
-        (* this flag is set to true if there are opportunities for the uncurrying transformation *)
+        (* this flag is set to true if there are opportunities for the
+	 * uncurrying transformation
+	 *)
           val optPossible = ref false
         (* partial map from functions to currying info *)
           val curriedFns = VTbl.mkTable (16, Fail "CurriedFns")
+	  val insert = VTbl.insert curriedFns
         (* record the currying depth n of the function f *)
           fun setArity (f, n) = VTbl.insert curriedFns (f, DEF n)
         (* lookup information about a curried function; returns NONE for non-curried functions *)
           val findCurried = VTbl.find curriedFns
-        (* record that the variable g is bound to a partial application of the curried function f *)
+        (* record that the variable `g` is bound to a partial application of the
+	 * curried function `f`
+	 *)
           fun recordPartial (g, n, f, args, exh) = (
-                if (n = 1) then optPossible := true else ();
-                VTbl.insert curriedFns (g, PARTIAL{arity=n-1, f=f, args=args, exh=exh}))
+                if (n = 1)
+		  then optPossible := true
+		  else ();
+		insert (g, PARTIAL{arity=n-1, f=f, args=args, exh=exh}))
         (* compute and record the curried arity (i.e., # of levels of currying) for
          * a function.  A level of currying is a function body of the form
          *
@@ -86,8 +97,11 @@ structure Uncurry : sig
                       case findCurried f
                        of NONE => ()
                         | SOME(DEF n) => recordPartial(g, n, f, [xs], ys)
-                        | SOME(PARTIAL{arity=0, f, ...}) =>
-                                raise Fail (concat["bogus application of ", BV.toString f])
+                        | SOME(PARTIAL{arity=0, f=f', ...}) =>
+			  (* this case arises when the curried definitions
+			   * did not satisfy the free variable check.
+			   *)
+			    ()
                         | SOME(PARTIAL{arity, f, args, ...}) =>
                             recordPartial(g, arity, f, xs::args, ys)
                       (* end case *);
