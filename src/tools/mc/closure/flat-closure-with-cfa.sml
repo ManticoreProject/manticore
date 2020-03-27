@@ -10,6 +10,47 @@
  * the first word containing the code pointer.
  *)
 
+(* NOTE ConvertTypeMismatch
+First, a snippet of debug output where closure-conversion crashed in seq-boyer:
+
+    cvtTyOfVar(enm<D1DB>#1 : typeOf => enum(1) ; valueOf => T) => enum(1)
+    newVar(enm<D1DB>#1 : enum(1)) => enm<D88E> : enum(1)
+    lookupVar(_,c<CE02>#10) => c<D88A>
+    closure/flat-closure-with-cfa.sml:61.31-62.78: Fail: bogus type enum(1) : (T,(T,T))
+
+In the above, closure conversion is having problem generating a CFG var
+corresponding to the CPS var enm<D1DB>#1, who's RHS is a cast operation.
+The rule for converting a cast performs a look-up for the type of the RHS cast
+based on CFA information:
+
+    | ((env, [x]), CPS.Cast(ty, y)) => let
+                         val (binds, y') = lookupVar(env, y)
+                         val convertedTy = cvtTy(ty, CFA.valueOf y)
+
+Following the use-def chain starting from enm<D1DB>, you'll see that CFA is
+right in saying that the type of its RHS does have the shape (T, (T, T)) here:
+
+    let data<CDFF>#1:[enum(0),int] = alloc (Var<CDFE>#1,_lit<CDFD>#1)
+    let RK_Term<CE00>#1:enum(1) = enum(1):enum(1)
+    let data<CE01>#1:[enum(1),any] = alloc (RK_Term<CE00>#1,data<CDFF>#1)
+    let c<CE02>#10:any = (any)data<CE01>#1
+    if isBoxed(c<CE02>#10) then
+     ...
+    else
+     let enm<D1DB>#1:enum(1) = (enum(1))c<CE02>#10
+
+But that lookup for `CFA.valueOf` doesn't take into account the context of which
+branch it currently is in. The code at that point is dead, so it should probably
+return CFA.BOT. If it were ever executed it would be making an erroneous cast.
+
+The particular bug is that 'cvtTy' takes a pair of the original CPS type and
+CPS's CFA result of what value it is, and there sensibly no case to handle
+cvtTy (CPSTy.T_Enum w, CFA.TUPLE _).
+
+For now, I'm adding a printed warning when that case is hit and having it return
+the CFG Enum type as if it were CFA.BOT.
+*)
+
 structure FlatClosureWithCFA : sig
 
     val convert : CPS.module -> CFG.module
@@ -33,6 +74,9 @@ structure FlatClosureWithCFA : sig
       | cvtTy (CPSTy.T_Enum w, CFA.TOP) = CFG.T_Enum w
       | cvtTy (CPSTy.T_Enum w, CFA.BOT) = CFG.T_Enum w
       | cvtTy (CPSTy.T_Enum w, CFA.BOOL _) = CFG.T_Enum w
+      | cvtTy (CPSTy.T_Enum w, CFA.TUPLE _) =
+          (print "closure-conversion warning: see NOTE ConvertTypeMismatch\n" ;
+          CFG.T_Enum w)
       | cvtTy (CPSTy.T_Raw rTy, CFA.TOP) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Raw rTy, CFA.TUPLE _) = CFGTy.T_Raw rTy (* datatypes *)
       | cvtTy (CPSTy.T_Raw rTy, CFA.BOT) = CFGTy.T_Raw rTy

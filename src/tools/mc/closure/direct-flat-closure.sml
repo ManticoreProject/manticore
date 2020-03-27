@@ -34,6 +34,9 @@ structure DirectFlatClosureWithCFA : sig
       | cvtTy (CPSTy.T_Enum w, CFA.TOP) = CFG.T_Enum w
       | cvtTy (CPSTy.T_Enum w, CFA.BOT) = CFG.T_Enum w
       | cvtTy (CPSTy.T_Enum w, CFA.BOOL _) = CFG.T_Enum w
+      | cvtTy (CPSTy.T_Enum w, CFA.TUPLE _) =
+          (print "closure-conversion warning: see NOTE ConvertTypeMismatch\n" ;
+          CFG.T_Enum w)
       | cvtTy (CPSTy.T_Raw rTy, CFA.TOP) = CFGTy.T_Raw rTy
       | cvtTy (CPSTy.T_Raw rTy, CFA.TUPLE _) = CFGTy.T_Raw rTy (* datatypes *)
       | cvtTy (CPSTy.T_Raw rTy, CFA.BOT) = CFGTy.T_Raw rTy
