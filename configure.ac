@@ -15,7 +15,6 @@ dnl
 dnl include extra macros
 dnl
 sinclude(config/check_smlnj.m4)
-sinclude(config/check_smlnj_heap_suffix.m4)
 sinclude(config/acx_pthread.m4)
 sinclude(config/check_leading_uscore.m4)
 
@@ -277,28 +276,32 @@ dnl
 
 dnl check that we have a compatible version of SML/NJ
 dnl
-CHECK_SMLNJ([AC_MSG_ERROR([unable to find SML/NJ installation; check your PATH or set SMLNJ_CMD])])
+CHECK_SMLNJ([AC_MSG_ERROR([unable to find SML/NJ installation; please add it to your PATH or set SML_CMD])])
 if test $SMLNJ_MAJOR_VERSION -lt 110 \
   -o $SMLNJ_MINOR_VERSION -lt 95
 then
-  AC_MSG_ERROR([installation requires SML/NJ version 110.95 or newer])
+  AC_MSG_ERROR([installation requires SML/NJ version 110.95+ (available from smlnj.org)])
 fi
-AC_SUBST(SMLNJ_VERSION)
 
-dnl determine the heap-image suffix
+dnl if the SMLNJ_PATH (and SMLNJ_CMD) variables are relative paths, then we add the
+dnl $ROOTDIR as a prefix so that scripts work correctly.
 dnl
-CHECK_SMLNJ_HEAP_SUFFIX([
-  AC_MSG_ERROR([unsupported configuration ${host_cpu}-${host_os}])])
+case $SMLNJ_PATH in
+  /*) ;; # already absolute
+  *)  SMLNJ_PATH="$ROOTDIR/$SMLNJ_PATH"
+      sml=`basename "$SMLNJ_CMD"`
+      SMLNJ_CMD="$SMLNJ_PATH"/"$sml"
+      AC_MSG_NOTICE([using SMLNJ_PATH=$SMLNJ_PATH])
+esac
+
+AC_SUBST(SMLNJ_VERSION)
 
 dnl look for ml-makedepend
 dnl
-AC_MSG_CHECKING([for ml-makedepend])
 tmpPATH="$SMLNJ_PATH:$PATH"
 AC_PATH_PROG(ML_MAKEDEPEND, ml-makedepend, ":", $tmpPATH)
 if test $ML_MAKEDEPEND = none ; then
   AC_MSG_ERROR([ml-makedepend not found])
-else
-  AC_MSG_RESULT([$ML_MAKEDEPEND])
 fi
 AC_SUBST(ML_MAKEDEPEND)
 
@@ -311,28 +314,6 @@ if test $ML_BUILD = none ; then
   AC_MSG_ERROR([ml-build not found])
 fi
 AC_SUBST(ML_BUILD)
-
-dnl
-dnl allow the user to override the location of the LLVM installation
-dnl
-LLVM_DIR=""
-AC_ARG_WITH(llvm,
-  AC_HELP_STRING([--with-llvm=PATH], [specify location of LLVM installation]),
-  dnl define an m4 variable for $with_llvm so we can pass it to m4_esyscmd
-  m4_define([with_llvm_m4], [$with_llvm])
-  dnl because OS X has no working realpath or readlink, use a shell script to canonicalize llvm path:
-  LLVM_DIR=[m4_esyscmd([./config/realpath.sh with_llvm_m4])])
-
-if test x$with_llvm = xyes -o x$with_llvm = xno ; then
-  AC_MSG_ERROR([--with-llvm option must specify directory argument])
-elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/llc  ; then
-  AC_MSG_ERROR([llvm code generator (llc) not found at $LLVM_DIR])
-elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/opt  ; then
-  AC_MSG_ERROR([llvm optimizer (opt) not found at $LLVM_DIR])
-fi
-
-AC_SUBST(LLVM_DIR)
-
 
 dnl
 dnl allow the user to override the location of the MLRisc library
@@ -367,6 +348,31 @@ else
 fi
 AC_SUBST(MLRISC_DIR)
 AC_SUBST(MLRISC_CM_DIR)
+
+
+dnl ******************** LLVM configuration ********************
+dnl
+
+dnl
+dnl allow the user to override the location of the LLVM installation
+dnl
+LLVM_DIR=""
+AC_ARG_WITH(llvm,
+  AC_HELP_STRING([--with-llvm=PATH], [specify location of LLVM installation]),
+  dnl define an m4 variable for $with_llvm so we can pass it to m4_esyscmd
+  m4_define([with_llvm_m4], [$with_llvm])
+  dnl because OS X has no working realpath or readlink, use a shell script to canonicalize llvm path:
+  LLVM_DIR=[m4_esyscmd([./config/realpath.sh with_llvm_m4])])
+
+if test x$with_llvm = xyes -o x$with_llvm = xno ; then
+  AC_MSG_ERROR([--with-llvm option must specify directory argument])
+elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/llc  ; then
+  AC_MSG_ERROR([llvm code generator (llc) not found at $LLVM_DIR])
+elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/opt  ; then
+  AC_MSG_ERROR([llvm optimizer (opt) not found at $LLVM_DIR])
+fi
+
+AC_SUBST(LLVM_DIR)
 
 
 dnl ******************** Paths ********************

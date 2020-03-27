@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# COPYRIGHT (c) 2006 The SML/NJ Fellowship.
+# COPYRIGHT (c) 2019 The SML/NJ Fellowship.
 #
 # @configure_input@
 #
@@ -13,15 +13,15 @@ INSTALL="@INSTALL@"
 INSTALL_DATA="@INSTALL_DATA@"
 HEAP_SUFFIX="@SMLNJ_HEAP_SUFFIX@"
 
-if test $# -ne 2 ; then
+if test $# -lt 2 ; then
   echo "usage: install-sml-wrapper.sh <program-name> <install-dir>"
   exit 1
 fi
 
-SRC=$1
+SRC=$1; shift
 TARGET=`basename $SRC`
 HEAP_IMAGE=$SRC.$HEAP_SUFFIX
-INSTALL_DIR=$2
+INSTALL_DIR=$1; shift
 INSTALL_HEAP_DIR=$INSTALL_DIR/.heap
 INSTALL_HEAP_IMAGE=$INSTALL_HEAP_DIR/$TARGET.$HEAP_SUFFIX
 
@@ -40,9 +40,12 @@ XXXX
 
 #install the script and heap image
 #
+if test ! -d $INSTALL_DIR ; then
+  mkdir -p $INSTALL_DIR || exit 1
+fi
 $INSTALL $TARGET $INSTALL_DIR/$TARGET || exit 1
 if test ! -d $INSTALL_HEAP_DIR ; then
-  mkdir $INSTALL_HEAP_DIR || exit 1
+  mkdir -p $INSTALL_HEAP_DIR || exit 1
 fi
 $INSTALL_DATA $HEAP_IMAGE $INSTALL_HEAP_IMAGE || exit 1
 
