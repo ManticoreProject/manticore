@@ -25,6 +25,7 @@ structure CondContract : sig
       | Prim of B.prim
       | Int of IntInf.int
       | Enum of word
+      | Alloc
 
     fun same (Var x, Var y) = if BV.same(x, y) then TRUE else UNKNOWN
       | same (Int a, Int b) = if (a = b) then TRUE else FALSE
@@ -56,7 +57,10 @@ structure CondContract : sig
     fun bind x = (case BV.kindOf x
 	  of B.VK_RHS(B.E_Const(Literal.Int n, _)) => Int n
 	   | B.VK_RHS(B.E_Const(Literal.Enum n, _)) => Enum n
+	   | B.VK_RHS(B.E_Alloc _) => Alloc
 	   | B.VK_RHS(B.E_Prim p) => Prim p
+	    (* peer through 'any' casts *)
+	   | B.VK_RHS(B.E_Cast(BTy.T_Any, castee)) => bind castee
 	   | _ => Var x
 	 (* end case *))
 
@@ -77,7 +81,9 @@ structure CondContract : sig
 	      then UNKNOWN
 	  else (case CondUtil.map bind cond
 	     of P.isBoxed(Enum x) => (delete (); FALSE)
+	      | P.isBoxed(Alloc) => (delete (); TRUE)
 	      | P.isUnboxed(Enum x) => (delete (); TRUE)
+	      | P.isUnboxed(Alloc) => (delete (); FALSE)
 	      | P.Equal(a, b) => eq(a, b)
 	      | P.NotEqual(a, b) => neq(a, b)
 	      | P.EnumEq(a, b) => eq(a, b)
