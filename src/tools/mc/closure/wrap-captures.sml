@@ -244,11 +244,44 @@ structure WrapCaptures : sig
               (* an Apply may change from being in tail position
                  to non-tail due to the landing pad capture. *)
               val newRetK = lookupV (env, oldRetK)
-              val applyExp = wrap (C.Apply(f, L.map (subst env) args, newRetK :: rest))
+              fun applyExp setToNonTail retK = let
+                    val theApply = wrap (C.Apply(f, L.map (subst env) args, retK :: rest))
+                  in
+                    (if setToNonTail
+                      then K.setTailApply(theApply, false)
+                      else () (* don't change it *);
+                    theApply)
+                  end
               in
                 if CV.same (newRetK, oldRetK)
-                  then applyExp
-                  else (K.setTailApply(applyExp, false) ; applyExp)
+                  then applyExp false newRetK
+                else let
+                        (* We need to introduce a local cont as the
+                        return-point of this non-tail apply. The reason is that
+                        the subsitution might have replaced the return cont with
+                        a first-class cont. If so, then the direct-style closure
+                        conversion becomes confused: it expects that the
+                        retK in an Apply will always correspond to a local cont.
+                        Thus, this localK is that local block, that simply invokes
+                        the replaced return cont immediately. This verbosity will
+                        be eliminated by subsequent optimizations. *)
+                        val localK = CV.new ("returnPt", CV.typeOf newRetK)
+                        val localParams = map (fn ty => CV.new("p", ty)) (MK.argTysOf newRetK)
+                    in
+                      ( K.setKind(localK, K.ReturnCont) ;
+                        if K.kindOfCont newRetK = K.ReturnCont
+                          then K.setKind(newRetK, K.JoinCont)
+                          else () ;
+                        C.mkCont(C.FB {
+                                    f = localK,
+                                    params = localParams,
+                                    rets = [],
+                                    body = C.mkThrow(newRetK, localParams)
+                                  },
+                                  applyExp true localK
+                                )
+                      )
+                    end
               end
 
          | C.Throw (k, args) => let

@@ -143,10 +143,13 @@ structure Contract : sig
           fun doRest env = contractExps(env, es, exit)
           in
             case e
-             of C.E_Var(lhs, rhs) => (
-                  ST.tick cntVarRename;
-                  ListPair.appEq mergeUseCounts (lhs, rhs);
-                  doRest (rename' (env, lhs, rhs)))
+             of C.E_Var(lhs, rhs) => let
+                 val rhs = applySubst' (env, rhs)
+               in (
+                 ST.tick cntVarRename;
+                 ListPair.appEq mergeUseCounts (lhs, rhs);
+                 doRest (rename' (env, lhs, rhs)))
+               end
               | C.E_Const(x, lit, ty) => let
                   val (rest, exit) = doRest env
                   in

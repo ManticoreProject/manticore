@@ -344,7 +344,8 @@ structure Inline : sig
             then print (CV.toString f ^ " was not inlined because it is a member of env\n")
             else if not (isLocalCont (localK, f))
                  then print (CV.toString f ^ " was not inlined because it is not a local cont.\n")
-            else if not(Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)))
+                 (* NOTE: for direct-style codegen, contract will not inline single-use conts. we do it here though. *)
+            else if not(Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)) orelse useCntOf f = 1)
                  then print (CV.toString f ^ " was not inlined because its body is too large\n")
                  else ()
       | _ => (case CFA.valueOf f
