@@ -12,40 +12,40 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 
 
     val cfgDOT : bool Controls.control = Controls.genControl {
-	    name = "dump-dot",
-	    pri = [0, 0],
-	    obscurity = 0,
-	    help = "also dump CFGs in Graphviz DOT format",
-	    default = false
-	  }
+            name = "dump-dot",
+            pri = [0, 0],
+            obscurity = 0,
+            help = "also dump CFGs in Graphviz DOT format",
+            default = false
+          }
 
     val _ = ControlRegistry.register CFGOptControls.registry {
-	    ctl = Controls.stringControl ControlUtil.Cvt.bool cfgDOT,
-	    envName = NONE
-	    }
+            ctl = Controls.stringControl ControlUtil.Cvt.bool cfgDOT,
+            envName = NONE
+            }
 
   (* a wrapper for CFG optimization passes.  The wrapper includes an invariant check. *)
     fun transform {passName, pass} = let
-	  fun output (outf, module) =
-	      (if Controls.get cfgDOT then PrintDOT.output (outf, module) else ();
-	      PrintCFG.output {counts = true, types = PrintCFG.Max 120, preds = false} (outf, module))
+          fun output (outf, module) =
+              (if Controls.get cfgDOT then PrintDOT.output (outf, module) else ();
+              PrintCFG.output {counts = true, types = PrintCFG.Max 120, preds = false} (outf, module))
 
-	  val xform = BasicControl.mkKeepPassSimple {
-		  output = output,
-		  ext = "cfg",
-		  passName = passName,
-		  pass = pass,
-		  registry = CFGOptControls.registry
-		}
-	  fun xform' module = let
-		val module = xform module
-		val _ = CheckCFG.check (passName, module)
-		in
-		  module
-		end
-	  in
-	    xform'
-	  end
+          val xform = BasicControl.mkKeepPassSimple {
+                  output = output,
+                  ext = "cfg",
+                  passName = passName,
+                  pass = pass,
+                  registry = CFGOptControls.registry
+                }
+          fun xform' module = let
+                val module = xform module
+                val _ = CheckCFG.check (passName, module)
+                in
+                  module
+                end
+          in
+            xform'
+          end
 
     fun analyze {passName, pass} = BasicControl.mkTracePassSimple {
             passName = passName,
@@ -75,44 +75,41 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val convertNewStack = transform {passName = "convert-newstack", pass = ConvertNewStack.transform}
 
     fun optimize module = let
-      val _ = CheckCFG.check ("closure", module)
-	  val _ = census module
-	  val _ = CheckCFG.check ("census", module)
-	  val module = contract module
-      val module = convertNewStack module
-      val _ = CheckCFG.check ("convert-newstack", module)
-      val module = simplifyGraph module
-      val _ = CheckCFG.check ("simplifygraph", module)
+        val _ = CheckCFG.check ("closure", module)
+        val _ = census module
+        val _ = CheckCFG.check ("census", module)
       val module = contract module
-          val _ = cfa module
-          val module = unrollLoops module
-          val _ = cfaClear module
-          val _ = cfa module
-          val module = specialCalls module
-          val _ = cfaClear module
-          val module = implCalls module
-	  val _ = census module
-	  val module = contract module
-	  val _ = cfa module
-	  val module = allocChecks module
-          val _ = cfaClear module
-          val module = allocVecChecks module
-          val module = absorbChecks module
+      val module = convertNewStack module
+      val module = simplifyGraph module
+      val module = contract module
+        val _ = cfa module
+      val module = unrollLoops module
+        val _ = cfaClear module
+        val _ = cfa module
+      val module = specialCalls module
+        val _ = cfaClear module
+      val module = implCalls module
+        val _ = census module
+      val module = contract module
+        val _ = cfa module
+      val module = allocChecks module
+        val _ = cfaClear module
+      val module = allocVecChecks module
+      val module = absorbChecks module
       val module = contract module
       val module = simplifyGraph module
       val module = castNonRet module
       val module = contract module
-      val _ = CheckCFG.check ("final", module)
-	  in
-	    module
-	  end
+        in
+          module
+        end
 
     val optimize = BasicControl.mkKeepPassSimple {
-	    output = PrintCFG.output {counts=true, types=PrintCFG.Full, preds = false},
-	    ext = "cfg",
-	    passName = "optimize",
-	    pass = optimize,
-	    registry = CFGOptControls.registry
-	  }
+            output = PrintCFG.output {counts=true, types=PrintCFG.Full, preds = false},
+            ext = "cfg",
+            passName = "optimize",
+            pass = optimize,
+            registry = CFGOptControls.registry
+          }
 
   end
