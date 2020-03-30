@@ -207,11 +207,14 @@ notSafeToFree:
     -----------  <- RSP
 */
 
+#if !defined(NOSEALING_CAPTURE)
 .p2align 4, 0xCC
 .globl _GSYM(__manti_growstack_callec)
 _GSYM(__manti_growstack_callec):
     movq    $0, TMP_REG1      // never copy frames to new segment for callec.
     jmp     manti_growstack_impl
+#endif // sealingcapture == not no-sealingcapture
+
 
 // This version is for segmented stacks a la Bruggeman et al.
 .p2align 4, 0xCC
@@ -463,18 +466,6 @@ callec_body:
 #undef OLD_SP
 #undef RESUME_ADDR
 #undef STACK_DISC
-
-    .p2align 4, 0xCC
-    .globl	_GSYM(InvalidReturnAddr)
-_GSYM(InvalidReturnAddr):
-// if control-flow ends up here, an unexpected return occurred.
-    ud2
-
-    .p2align 4, 0xCC
-    .globl	_GSYM(EndOfStack)
-_GSYM(EndOfStack):
-// if control-flow ends up here, unexpected stack underflow has occurred.
-    ud2
 
     .p2align 4, 0xCC
     .globl	_GSYM(ASM_DS_Return)

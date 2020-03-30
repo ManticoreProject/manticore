@@ -115,6 +115,19 @@ _GSYM(ASM_Apply):
     jmp	*%r12
 
 
+    .p2align 4, 0xCC
+    .globl	_GSYM(InvalidReturnAddr)
+_GSYM(InvalidReturnAddr):
+// if control-flow ends up here, an unexpected return occurred.
+    ud2
+
+    .p2align 4, 0xCC
+    .globl	_GSYM(EndOfStack)
+_GSYM(EndOfStack):
+// if control-flow ends up here, unexpected stack underflow has occurred.
+    ud2
+
+
 /* code address for uncaught exception continuation */
     .p2align 4, 0xCC
     .globl	_GSYM(ASM_UncaughtExn)
