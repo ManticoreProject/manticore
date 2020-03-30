@@ -266,7 +266,7 @@ Pass Arguments:  -domtree
   (* run some fancier passes that might help further optimize allocation code *)
     val o_aggressive =
           o_essential @
-          o_cleanup2 @ [
+          o_cleanupExtra @ [
               "-sink",
               "-mldst-motion",
               "-slp-vectorizer",
