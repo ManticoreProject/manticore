@@ -220,7 +220,7 @@ structure Contract : sig
               | C.E_Prim0 prim => let
                   val (rest, exit) = doRest env
                   in
-                    (C.mkPrim0 prim :: rest, exit)
+                    (C.mkPrim0 (PrimUtil.map (fn y => applySubst(env, y)) prim) :: rest, exit)
                   end
               | C.E_Prim(x, prim) => let
                   val (rest, exit) = doRest env
