@@ -239,29 +239,15 @@ Pass Arguments:  -domtree
      *  flags and options for opt
      **********************)
 
-
-    (* i dunno *)
-    val o_analysis = [
-            "-basicaa",
-            "-aa",
-            "-memdep",
-            "-domtree"
-          ]
-
     val o_essential = ["-lower-expect"]
-
-    (* a very basic function-level clean-up *)
-    val o_basic = o_analysis @ ["-early-cse", "-simplifycfg", "-tailcallelim", "-early-cse"] @ o_essential
+    val o_cleanup = ["-instcombine", "-globalopt", "-simplifycfg", "-tailcallelim", "-simplifycfg", "-early-cse"]
 
   (* all of the basic cleanup passes LLVM has. things like adce were left off
    * not sure if this is reasonable ordering, just guessed
    *)
-    val o_cleanup = [
-            "-simplifycfg",
-            "-instcombine",
+    val o_cleanupExtra = o_cleanup @ [
             "-reassociate",
             "-constprop",
-            "-early-cse",
             "-gvn",
             "-dce",
             "-simplifycfg",
@@ -269,20 +255,24 @@ Pass Arguments:  -domtree
             "-simplifycfg"
           ]
 
-    val o_normal = o_analysis @ o_cleanup @ o_essential
+
+    (***********************************************************
+     custom optimization pipelines for basic function clean-up
+     ***********************************************************)
+
+    val o_basic = o_essential @ o_cleanup
+    val o_normal = o_essential @ o_cleanupExtra
 
   (* run some fancier passes that might help further optimize allocation code *)
     val o_aggressive =
-          o_analysis @
-          o_cleanup @
-          o_analysis @ [
+          o_essential @
+          o_cleanup2 @ [
               "-sink",
               "-mldst-motion",
               "-slp-vectorizer",
               "-instcombine",
               "-simplifycfg"
-            ] @
-          o_essential
+            ]
 
     val optLevels = [
             (0, o_essential),
@@ -295,7 +285,7 @@ Pass Arguments:  -domtree
 
     (* opt passes that need to be performed before/after any passes *)
     fun o_wrapPasses verbose passes = let
-          val firstPasses = ["-targetlibinfo", "-tti", "-verify" (* , "-lint" *) ]
+          val firstPasses = ["-verify" (* , "-lint" *) ]
           val statsPasses = ["-stats", "-time-passes"]
           val passes = (case passes
                  of [] => firstPasses
@@ -325,8 +315,9 @@ Pass Arguments:  -domtree
 
      val llcLevels = [
          (0, ["-O1"]),
-         (1, ["-O1"]),
-         (2, ["-O3"])
+         (1, ["-O2"]),
+         (2, ["-O2"]),
+         (3, ["-O3"])
      ]
 
   (* llc passes that need to be performed before/after any passes *)

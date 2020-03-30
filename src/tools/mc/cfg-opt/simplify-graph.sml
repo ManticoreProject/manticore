@@ -51,14 +51,18 @@ structure SimplifyGraph : sig
     val (startL::bodyLs) = L.map initBlk (start::body)
     val simplifyBlock = simplifyBlock tbl
 
-    fun doSimp () =
+    (* NOTE: Ideally one would probably do this in a reverse post-order
+       of the CFG, since I think most of the current simplifications work
+       best bottom-up. The blocks are not ordered in any particular way
+       by default so we're just going in arbitrary order.  *)
+    fun doOnePass () =
         (simplifyBlock true startL ;
          L.app (simplifyBlock false) bodyLs)
 
     (* iterate until a fixed point *)
     fun fixedpt oldSum = let
             val _ = ST.tick cntIters
-            val () = doSimp ()
+            val () = doOnePass ()
             val newSum = ticks()
         in
             if oldSum <> newSum
