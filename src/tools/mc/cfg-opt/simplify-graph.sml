@@ -18,6 +18,7 @@ structure SimplifyGraph : sig
   structure CT = CFGTy
   structure CTU = CFGTyUtil
   structure CL = CFG.Label
+  structure CU = CFGUtil
   structure CV = CFG.Var
   structure Tbl = CFG.Label.Tbl
   structure ST = Stats
@@ -83,10 +84,28 @@ structure SimplifyGraph : sig
 
 
     fun updateBlock f lb = (case find lb
-        of SOME blk => insert (lb, f blk)
+        of SOME blk => let
+              val (newBlk as C.BLK{lab,...}) = f blk
+            in
+              if CL.same (lb, lab)
+                then insert (lb, newBlk)
+                else raise Fail (concat["updateBlock inconsistency: ",
+                                          CL.toString lb,
+                                            " --> ",
+                                          CL.toString lab, " ??"])
+            end
          | NONE => raise Fail ("block does not exist " ^ CL.toString lb)
         (* end case *))
 
+    (* updates the given label's Predecessor analysis info to reflect
+       the renaming of the label old --> new *)
+    fun updateSuccs (old, new) succLab = let
+        fun repl x = if CL.same(x, old)
+                      then new
+                      else x
+    in
+      C.setPreds (succLab, map repl (C.getPreds succLab))
+    end
 
     (* master list of optimizations *)
     fun examine bl =
@@ -108,6 +127,9 @@ structure SimplifyGraph : sig
                    (* val _ = print (S.concat["merging ", CL.toString tgt, " into ", CL.toString bl, "\n"]) *)
                    fun inlineTgt (C.BLK{lab, args, body, exit}) = let
                         val (C.BLK{lab=tgtLab, args=tgtParams, body=tgtBody, exit=tgtExit,...}) = lookup tgt
+                        val _ = if CL.same (tgtLab, tgt)
+                                  then ()
+                                  else raise Fail ("inconsistency in inlineTgt")
 
                         (* because a transfer can include an implicit cast. *)
                         fun bindWithCasts (lhs, rhs) = let
@@ -125,6 +147,8 @@ structure SimplifyGraph : sig
 
                    in
                     ( decUseL tgtLab ;
+                      C.setPreds (tgtLab, []) ;
+                      app (updateSuccs (tgtLab, lab)) (CU.labelsOfXfer tgtExit) ;
                       remove tgtLab ;
                       C.mkBlock(lab, args, body @ argBinds @ tgtBody, tgtExit))
                    end
