@@ -131,6 +131,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
 
     // leave space for a return addr
     valP -= sizeof(uint64_t);
+    *((uint64_t*)valP) = (uint64_t)&EndOfStack; // write the stack-end ret addr
 
     uint8_t* sp = (uint8_t*)valP;
     uint8_t* spLim = (uint8_t*)(valP - numBytes);

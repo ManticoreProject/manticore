@@ -72,7 +72,7 @@ _GSYM(ASM_Resume_Stack):
     movq    %rcx, STD_EXH_REG
     movq    %r8, STD_ARG_REG
     movq    ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG
-    ret
+    retq
 
 .p2align 4, 0xCC
 .globl _GSYM(ASM_CallTakeOwnership)
@@ -407,11 +407,11 @@ _GSYM(ASM_DS_SegUnderflow):
 .globl	_GSYM(ASM_Callec2)
 /* uses the direct-style manticore calling convention */
 
-// using the 3rd through 4th arg registers to hold important values
+// using spare arg registers to hold important temporary values
 // that must be preserved, since we know Callec only takes 1 argument.
-#define OLD_SP       %r10
-#define RESUME_ADDR  %r12
-#define STACK_DISC   %r13
+#define OLD_SP       %r12
+#define RESUME_ADDR  %r13
+#define STACK_DISC   %r14
 
 _GSYM(ASM_Callec1):
   leaq    _GSYM(ASM_DS_EscapeThrow)(%rip), RESUME_ADDR    // load the resume address
