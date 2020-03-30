@@ -595,7 +595,12 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
 
   StackInfo_t* old = (StackInfo_t*) (vp->stdCont);
 
-  size_t newSize = shouldCopy ? old->usableSpace * 2 : dfltStackSz;
+  #ifdef NOSEALING_CAPTURE
+    size_t newSize = old->usableSpace * 2;
+  #else
+    // prevent unbounded growth by NOT doubling on overflow for a sealing capture.
+    size_t newSize = shouldCopy ? old->usableSpace * 2 : dfltStackSz;
+  #endif
 
   // the size we grow to is capped.
   if (newSize > RESIZED_SEG_LIMIT) {
