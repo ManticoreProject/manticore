@@ -12,7 +12,7 @@ structure SimplifyGraph : sig
     val transform : CFG.module -> CFG.module
 
   end = struct
-  
+
   structure L = List
   structure C = CFG
   structure CT = CFGTy
@@ -22,38 +22,38 @@ structure SimplifyGraph : sig
   structure Tbl = CFG.Label.Tbl
   structure ST = Stats
   structure S = String
-  
+
   (* statistics that control the number of iterations *)
   val cntUnusedArg		= ST.newCounter "cfg-simplifygraph:args-elim"
   val cntMergedBlk		= ST.newCounter "cfg-simplifygraph:blocks-merged"
 (* first and last counters *)
   val firstCounter		= cntUnusedArg
   val lastCounter		= cntMergedBlk
-  
+
   (* count iterations too *)
   val cntIters		= ST.newCounter "cfg-simplifygraph:iterations"
-  
+
   fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
-  
+
   fun unused v = (CV.useCount v = 0)
   fun decUse v = CV.addToCount(v, ~1)
   fun decUseL l = CL.addToCount(l, ~1)
-  
-  
+
+
   fun doFn (f as C.FUNC{lab, entry, start, body}) = let
     (* tbl holds the current version of the block, if it is still around. *)
     val tbl = Tbl.mkTable(L.length body, Fail "block not found.")
-    
+
     fun initBlk (b as C.BLK{lab,...}) = (Tbl.insert tbl (lab, b); lab)
-    
+
     (* setup for iteration *)
     val (startL::bodyLs) = L.map initBlk (start::body)
     val simplifyBlock = simplifyBlock tbl
-    
-    fun doSimp () = 
-        (simplifyBlock true startL ; 
+
+    fun doSimp () =
+        (simplifyBlock true startL ;
          L.app (simplifyBlock false) bodyLs)
-    
+
     (* iterate until a fixed point *)
     fun fixedpt oldSum = let
             val _ = ST.tick cntIters
@@ -63,16 +63,16 @@ structure SimplifyGraph : sig
             if oldSum <> newSum
             then fixedpt newSum
             else ()
-        end 
+        end
     val () = fixedpt (ticks())
-    
-    (* collect the new blocks together *)    
+
+    (* collect the new blocks together *)
     val SOME start' = Tbl.find tbl startL
     val body' = L.mapPartial (Tbl.find tbl) bodyLs
   in
     C.mkLocalFunc(lab, entry, start', body')
   end
-  
+
   and simplifyBlock tbl isStart = let
     (* utilities *)
     val exists = Tbl.inDomain tbl
@@ -80,16 +80,16 @@ structure SimplifyGraph : sig
     val find = Tbl.find tbl
     val insert = Tbl.insert tbl
     val remove = Tbl.remove tbl
-    
-      
+
+
     fun updateBlock f lb = (case find lb
         of SOME blk => insert (lb, f blk)
          | NONE => raise Fail ("block does not exist " ^ CL.toString lb)
         (* end case *))
-    
-    
+
+
     (* master list of optimizations *)
-    fun examine bl = 
+    fun examine bl =
         if exists bl
         then (
             removeDeadParams bl ;
@@ -97,9 +97,9 @@ structure SimplifyGraph : sig
             ()
             )
         else ()
-        
+
     (**********************)
-    
+
     (* peephole optimization: inline single-predecessor blocks targeted by a Goto.
        it is simple in the sense that this is _not_ expansive inlining. *)
     and mergeBlocks bl = (case lookup bl
@@ -108,7 +108,7 @@ structure SimplifyGraph : sig
                    (* val _ = print (S.concat["merging ", CL.toString tgt, " into ", CL.toString bl, "\n"]) *)
                    fun inlineTgt (C.BLK{lab, args, body, exit}) = let
                         val (C.BLK{lab=tgtLab, args=tgtParams, body=tgtBody, exit=tgtExit,...}) = lookup tgt
-                        
+
                         (* because a transfer can include an implicit cast. *)
                         fun bindWithCasts (lhs, rhs) = let
                             val lhsTy = CV.typeOf lhs
@@ -120,11 +120,11 @@ structure SimplifyGraph : sig
                                     then C.mkCast(lhs, lhsTy, rhs)
                                 else raise Fail "incompatible types!"
                             end
-                        
+
                         val argBinds = ListPair.mapEq bindWithCasts (tgtParams, passedVars)
-                        
+
                    in
-                    ( decUseL tgtLab ; 
+                    ( decUseL tgtLab ;
                       remove tgtLab ;
                       C.mkBlock(lab, args, body @ argBinds @ tgtBody, tgtExit))
                    end
@@ -135,23 +135,23 @@ structure SimplifyGraph : sig
              (* end case *))
          | _ => ()  (* bl doesn't end in a Goto *)
         (* end case *))
-        
+
     (* peephole optimization: delete dead args in non-start blocks *)
-    and removeDeadParams bl = 
+    and removeDeadParams bl =
         if isStart orelse (CL.useCount bl <> L.length (C.getPreds bl))
-        then () 
+        then ()
         else let
         val (C.BLK{args, ...}) = lookup bl
-        
+
         fun look (v, (i, ds)) =
             if unused v
             then (i+1, i::ds)
             else (i+1, ds)
-        
+
         (* look for dead arguments in this block *)
         val (_, deadArgNums) = L.foldl look (0, []) args
         val deadArgNums = L.rev deadArgNums
-        
+
         (* in the sorted, zero-based index list, drop all CFG vars in ls
            in those positions, and and adjust their use count. *)
         fun drop idxs ls = let
@@ -165,21 +165,21 @@ structure SimplifyGraph : sig
         in
             lp(0, idxs, ls, [])
         end
-        
+
         fun changePred (C.BLK{lab, args, body, exit}) = let
-        (*    val _ = print (String.concat 
+        (*    val _ = print (String.concat
                 ["changing ", CL.toString lab, " -> ", CL.toString bl, "\n"]) *)
-                
-            fun chkJ (j as (tgt, vars)) = 
+
+            fun chkJ (j as (tgt, vars)) =
                 if CL.same (tgt, bl)
                 then (tgt, drop deadArgNums vars)
                 else j
-            
+
             val exit' = CFGUtil.mapSuccOfXfer chkJ exit
         in
             C.mkBlock(lab, args, body, exit')
         end
-        
+
         fun changeSelf (C.BLK{lab, args, body, exit}) = let
             val args' = drop deadArgNums args
             val (CT.T_Block _) = CL.typeOf lab (* sanity check *)
@@ -187,8 +187,8 @@ structure SimplifyGraph : sig
         in
             ( CL.setType (lab, newTy) ; C.mkBlock(lab, args', body, exit) )
         end
-        
-        
+
+
         val numElim = L.length deadArgNums
         val predecessors = C.getPreds bl
     in
@@ -199,14 +199,14 @@ structure SimplifyGraph : sig
               updateBlock changeSelf bl
             ; (* update my predecessors *)
                L.app (updateBlock changePred) predecessors
-            )  
+            )
     end
   in
     examine
   end
-  
-  
-  
+
+
+
   fun transform m = let
     val () = Predecessors.clear m
     val () = Predecessors.analyze m
@@ -217,5 +217,5 @@ structure SimplifyGraph : sig
   in
     m'
   end
-  
+
 end
