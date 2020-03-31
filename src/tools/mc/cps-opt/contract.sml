@@ -52,18 +52,59 @@ structure Contract : sig
     val dec' = List.app dec
     fun unused x = (useCntOf x = 0)
 
+  (* transformation environment utils *)
+  datatype environment = E of { subst : CPS.var VMap.map, (* var substituion map *)
+                                enclFn : CPS.var option, (* the current enclosing function *)
+                                enclosedBy : CPS.var VMap.map (* map tracking which function
+                                                                 a cont is bound within *)
+                              }
+  val emptyEnv = E { subst = VMap.empty,
+                     enclFn = NONE,
+                     enclosedBy = VMap.empty
+                   }
+
+  fun getMap (E{subst,...}) = subst
+
+  fun mapInsert (E{subst, enclFn, enclosedBy}, x, y) =
+    E { subst = VMap.insert(subst, x, y), enclFn=enclFn, enclosedBy=enclosedBy}
+
+  fun mapFind (env, x) = VMap.find(getMap env, x)
+
+  (* augment the environment to contract the body of the given function *)
+  fun enterFunc (E{subst,enclFn=ignored, enclosedBy}, fnVar) =
+    E {subst=subst, enclFn = (SOME fnVar), enclosedBy=enclosedBy}
+
+  (* augment the environment when a continuation binding is encountered *)
+  fun visitCont (E{subst,enclFn=(encl as (SOME f)), enclosedBy}, k) =
+      E{subst=subst, enclFn=encl, enclosedBy = VMap.insert(enclosedBy, k, f)}
+    | visitCont _ = raise Fail "cont binding outside of a function?"
+
+  fun safeToInlineThrow (E{enclFn=(SOME currentFn), enclosedBy,...}, k) =
+    (* In direct-style codegen, it's only correct to inline a cont-throw
+       if the cont is bound within in the same function as the throw expression.
+       Otherwise, it may change the program such that going back to direct-style
+       is very difficult. *)
+    if Controls.get BasicControl.direct
+      then  (case VMap.find (enclosedBy, k)
+              of SOME kEnclosingFunc => CV.same(currentFn, kEnclosingFunc)
+               | NONE => raise Fail ("missing cont binding location for " ^ CV.toString k)
+            (* end case *))
+      else true (* otherwise it's always safe. *)
+
+
+
   (* Variable renaming *)
     fun rename (env, x, y) = (
         (* every use of x will be replaced by a use of y *)
           combineAppUseCnts(y, x);
-          VMap.insert(env, x, y))
+          mapInsert(env, x, y))
 
     fun rename' (env, [], []) = env
       | rename' (env, x::xs, y::ys) = rename' (rename(env, x, y), xs, ys)
       | rename' _ = raise Fail "rename': arity mismatch"
 
   (* apply a substitution to a variable *)
-    fun subst (env, x) = (case VMap.find(env, x)
+    fun subst (env, x) = (case mapFind(env, x)
            of SOME y => y
             | NONE => x
           (* end case *))
@@ -73,7 +114,7 @@ structure Contract : sig
       | subst' (env, x::xs) = subst(env, x) :: subst'(env, xs)
 
   (* decrement a variable's use count after applying a substitution *)
-    fun substDec (env, x) = (case VMap.find(env, x)
+    fun substDec (env, x) = (case mapFind(env, x)
            of SOME y => dec y
             | NONE => dec x
           (* end case *))
@@ -117,7 +158,7 @@ structure Contract : sig
           fun bind (fromVar', toVar, env) = (
                 CV.combineAppUseCnts (fromVar', toVar);
                 dec fromVar';
-                VMap.insert (env, toVar, fromVar'))
+                mapInsert (env, toVar, fromVar'))
           val env' = ListPair.foldl bind env (fromVars', toVars)
           in
             (env', casts)
@@ -202,11 +243,11 @@ structure Contract : sig
                 fun doFB (C.FB{f, params, rets, body}) = if unused f
                       then (
                         ST.tick cntUnusedFun;
-                        Census.delete (env, body);
+                        Census.delete (getMap env, body);
                         NONE)
                       else SOME(C.FB{
                           f=f, params=params, rets=rets,
-                          body=doExp(env, body)
+                          body=doExp(enterFunc (env, f), body)
                         })
               (* note that the mkLambda resets the kind info *)
                 val fbs = List.map (fn x => C.mkLambda (x,false)) (List.mapPartial doFB fbs)
@@ -216,7 +257,7 @@ structure Contract : sig
                       else if unused f
                         then (
                           ST.tick cntUnusedFun;
-                          Census.delete (env, body);
+                          Census.delete (getMap env, body);
                           NONE)
                         else SOME fb
                 in
@@ -228,11 +269,12 @@ structure Contract : sig
             | C.Cont(C.FB{f, params, rets, body}, e) => if unused f
                 then (
                   ST.tick cntUnusedCont;
-                  Census.delete (env, body);
+                  Census.delete (getMap env, body);
                   doExp (env, e))
                 else let
                 (* blackhole to avoid recursive inlining *)
                   val _ = setBinding(f, C.VK_None)
+                  val env = visitCont (env, f)
                   val fb = C.FB{f=f, params=params, rets=rets, body=doExp(env, body)}
                   val _ = setBinding(f, C.VK_Cont fb)
                   val e = doExp (env, e)
@@ -242,7 +284,7 @@ structure Contract : sig
                     else if unused f
                       then (
                         ST.tick cntUnusedCont;
-                        Census.delete (env, body);
+                        Census.delete (getMap env, body);
                         doExp (env, e))
                       else C.mkCont(fb, e)
                   end
@@ -278,13 +320,8 @@ structure Contract : sig
                 in
                   case bindingOf k
                    of C.VK_Cont(C.FB{params, body, ...}) =>
-                        if useCntOf k = 1 andalso not (Controls.get BasicControl.direct)
-                          then ((* inline continuation that is only called once.
-
-                                 For direct-style codegen, we let the expansive inliner
-                                 will take care of inlining this throw, because it
-                                 more carefully tracks whether this is a local cont throw,
-                                 which are the only throws that are always safe to inline. *)
+                        if useCntOf k = 1 andalso safeToInlineThrow (env, k)
+                          then ((* inline continuation that is only called once. *)
                             ST.tick cntBetaCont;
                             markInlined k;
                             inline (env, params, body, args))
@@ -320,11 +357,12 @@ structure Contract : sig
 
     fun transform (C.MODULE{name, externs, body}) = let
           val C.FB{f, params, rets, body} = body
+          val initialEnv = enterFunc(emptyEnv, f)
         (* iterate contraction until we reach a fixed point *)
           fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
           fun loop (body, prevSum) = let
                 val _ = ST.tick cntIters
-                val body = doExp(VMap.empty, body)
+                val body = doExp(initialEnv, body)
                 val sum = ticks()
                 in
                   if (prevSum <> sum)
