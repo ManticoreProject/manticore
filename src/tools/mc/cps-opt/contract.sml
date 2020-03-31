@@ -282,7 +282,7 @@ structure Contract : sig
                           then ((* inline continuation that is only called once.
 
                                  For direct-style codegen, we let the expansive inliner
-                                 will take care of inlining this throw because it
+                                 will take care of inlining this throw, because it
                                  more carefully tracks whether this is a local cont throw,
                                  which are the only throws that are always safe to inline. *)
                             ST.tick cntBetaCont;

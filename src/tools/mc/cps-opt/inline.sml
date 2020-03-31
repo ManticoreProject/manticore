@@ -344,7 +344,6 @@ structure Inline : sig
             then print (CV.toString f ^ " was not inlined because it is a member of env\n")
             else if not (isLocalCont (localK, f))
                  then print (CV.toString f ^ " was not inlined because it is not a local cont.\n")
-                 (* NOTE: for direct-style codegen, contract will not inline single-use conts. we do it here though. *)
             else if not(Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)) orelse useCntOf f = 1)
                  then print (CV.toString f ^ " was not inlined because its body is too large\n")
                  else ()
@@ -376,7 +375,9 @@ structure Inline : sig
      of C.VK_Cont(fb as C.FB{body, ...}) =>
         if not(VSet.member (s, f)) andalso
            isLocalCont (localK, f) andalso
-           Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args))
+           (* NOTE: for direct-style codegen, CPS's contract will not inline single-use conts
+                    in favor of doing it here, where we can properly check its correctness. *)
+           (Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)) orelse useCntOf f = 1)
         then (ST.tick cntFOInline;
                   SOME fb)
         else NONE
