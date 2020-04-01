@@ -51,7 +51,6 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
 
     enum LimitState {
         LS_NoMark,
-        LS_MarkSeen,
         LS_Stop
     };
 
@@ -79,13 +78,10 @@ Word_t * minorGCscanLINKFRAMEpointer (Word_t* nextScan, Word_t **nextW, Addr_t a
         }
 
 
-        // does this frame need to be scanned?
-        if (state == LS_MarkSeen) {
+        // check the watermark
+        if (*watermark >= promoteGen) {
             // this is the last frame we'll check.
             state = LS_Stop;
-        } else if (*watermark >= promoteGen) {
-            // saw the limit in this frame.
-            state = LS_MarkSeen;
         } else {
             // overwrite the watermark
             *watermark = promoteGen;
