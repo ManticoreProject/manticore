@@ -681,19 +681,16 @@ uint8_t* StkSegmentOverflow (VProc_t* vp, uint8_t* old_origStkPtr, uint64_t shou
   enum Decision D;
 
   size_t oldSize = old->usableSpace;
-  size_t newSize;
   const size_t normalSize = hybridThresholdSz;
+  const size_t doubled = oldSize * 2;
+  size_t newSize = (doubled < normalSize) ? doubled : normalSize;
 
   if (!shouldCopy) {
     D = StartFresh; // act like a seg stack that cannot copy frames
-    newSize = normalSize; // jump right to the normal size
   } else if (oldSize < normalSize) {
     D = Resize; // act like a resizing stack, growing to at most the threshold size.
-    size_t doubled = oldSize * 2;
-    newSize = (doubled < normalSize) ? doubled : normalSize;
   } else {
     D = Append; // the usual case where we act like a seg stack that can copy.
-    newSize = normalSize;
   }
 
   assert(newSize >= dfltStackSz);
