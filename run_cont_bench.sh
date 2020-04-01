@@ -8,11 +8,23 @@
 
 set -ex
 
+# optional argument to control the script based on machine
+# default of nothing means docker.
+KIND="$1"
+DONNER="donner"
+
 MC_DIR=$(pwd)
-TRIALS=5
+TRIALS=10
 RESULTS_DIR=${MC_DIR}/results
 
 SMLNJ64_BIN_PATH=/usr/smlnj64/bin
+
+if [ "$KIND" == "$DONNER" ]; then
+  pushd "$MC_DIR/src/benchmarks"
+  git clean -df
+  popd
+  SMLNJ64_BIN_PATH=/home/kavon/smlnj64/bin
+fi
 
 # make sure `perf stat` works, since the benchmark's conf script doesn't
 # check for this but it's required.
@@ -35,8 +47,10 @@ mkdir "${RESULTS_DIR}"
 cd src/benchmarks/drivers
 PATH=${SMLNJ64_BIN_PATH}:${PATH} ./pldi20.sh "${MC_DIR}" "${RESULTS_DIR}" ${TRIALS}
 
-# generate plots
-LANG=C.UTF-8 LC_ALL=C.UTF-8 ./plotall.sh "${RESULTS_DIR}"
+if [ "$KIND" != "$DONNER" ]; then
+  # generate plots
+  LANG=C.UTF-8 LC_ALL=C.UTF-8 ./plotall.sh "${RESULTS_DIR}"
+fi
 
 # make the message below not ugly
 set +ex
