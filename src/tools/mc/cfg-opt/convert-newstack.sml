@@ -21,29 +21,18 @@ structure ConvertNewStack : sig
     structure VSet = CFG.Var.Set
     structure VMap = CFG.Var.Map
 
-    (* NOTE: disabled by default because for linked-frame stacks, we saw
-       only a 1.024x speed-up (2.4%) on cml-pingpong. Virtually no difference on
-       cml-spawn!
+    (* NOTE: Enabled by default for linked-frame stacks, for which we saw
+       a 1.024x speed-up (2.4%) on cml-pingpong. Virtually no difference on
+       cml-spawn.
 
-       Other stack strategies (for which ASM_NewStack is not implemented yet!)
+       Thus, other stack strategies (for which ASM_NewStack is not implemented yet!)
        we're very likely to see no benefit, or a performance regression! This is
        because even _more_ instructions are executed by the fast-path for those
        strategies than for linked stacks. So the handful of instructions saved by
        not switching stacks is probably not going to outweigh my ability to
        write optimal-but-readable assembly code for the fast path, etc!
-                                                          - kavon (3/13/2020) *)
-    val enableFlg = ref false
-
-    val () = List.app (fn ctl => ControlRegistry.register CFGOptControls.registry {
-                        ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
-                        envName = NONE })
-                      [Controls.control {
-                        ctl = enableFlg,
-                        name = "enable-convert-newstack",
-                        pri = [0, 1],
-                        obscurity = 0,
-                        help = "if enabled, uses hand-written ASM NewStack routines instead of C code"
-                      }]
+                                                          - kavon (4/1/2020) *)
+    fun isEnabled () = Controls.get BasicControl.linkstack
 
     (* identifies the first element in the list that satisfies the predicate,
        returning the elements before and after it too. *)
@@ -71,7 +60,7 @@ structure ConvertNewStack : sig
 
     (* the top-level transformation function! *)
     fun transform (orig as C.MODULE{name, externs, mantiExterns, code}) =
-      if not (!enableFlg)
+      if not (isEnabled())
         then orig
         else let
       (* NOTE: this must be kept up-to-date with the assembly-code implementation! *)
