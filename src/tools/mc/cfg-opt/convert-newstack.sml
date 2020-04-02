@@ -33,6 +33,7 @@ structure ConvertNewStack : sig
        write optimal-but-readable assembly code for the fast path, etc!
                                                           - kavon (4/1/2020) *)
     fun isEnabled () = Controls.get BasicControl.linkstack
+                       andalso not (Controls.get BasicControl.gcStats)
 
     (* identifies the first element in the list that satisfies the predicate,
        returning the elements before and after it too. *)
