@@ -215,9 +215,9 @@ structure FreeVars : sig
                                  doAnalysis m)
 
     and analyzeForWrapCaptures m = (checkWrapCap := true ;
-                                    checkJoin := true ;
-                                    (* NOTE we want to include return
+                                    (* NOTE we want to include return/join
                                        conts as FVs in this analysis! *)
+                                    checkJoin := false ;
                                     checkDS := false ;
                                     doAnalysis m)
 

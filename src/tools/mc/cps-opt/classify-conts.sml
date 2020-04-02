@@ -242,38 +242,14 @@ structure ClassifyConts : sig
                   (* end case *))
 
           fun chkDS k = CV.same(outer, k)
-                orelse (case kindOf k
-                   of (JoinCont | ReturnCont) => (case getOuter k
-                         of NONE => false
-                          | SOME k' => chkDS k'
-                        (* end case *))
-                    | _ => false
-                  (* end case *))
+
           in
             if !usingDS then chkDS else chkCPS
           end
 
 
-    (* TODO i think this the function below is not useful and leads to problems! CLEANME LATER
-
-       what seems to happen is that CFA tells us that the throw to a retk bound
-       as a parameter is actually a join cont, and then that leads us to thinking
-       that the throw occurs in a different function (marking the use from another fun),
-       so the join gets turned into a GOTO cont, when in reality it should just be treated
-       as a return/join cont.
-       *)
-
-    (* consult CFA to determine the actual continuation, if its known *)
-    (*fun actualCont k = (case CFA.valueOf k
-        of CFA.LAMBDAS gs => let
-                val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
-            in
-                if CPS.Var.Set.numItems gs = 1
-                    then Option.valOf (CPS.Var.Set.find (fn _ => true) gs)
-                    else k
-            end
-         | _ => k
-         (* esac *))*)
+    (* This use to check CFA info to find the value of K. Turns out this was not needed or buggy.
+       yet it remains here. TODO: clean up uses of this! *)
     fun actualCont k = k
 
     (* climbs the context, if necessary, to find the immediately enclosing function. *)
@@ -325,24 +301,26 @@ structure ClassifyConts : sig
                     else markAsJoin f;
 
                 (* analyse its body *)
-                analExp (f, body);
+                if !usingDS (* for DS, the only binding context we care about are funcs *)
+                  then analExp (outer, body)
+                  else analExp (f, body);
 
                 (* analyze the expression in which it is scoped *)
-                analExp (f, e);
+                analExp (outer, e);
+
+                if Controls.get CPSOptControls.debug then
+                print (concat (["ClassifyConts:\t\tk = " ^ CV.toString f, "; uses = ",
+                          (String.concatWith ", " (map CV.toString (usesOf f))),
+                        "; outer = ", CV.toString outer, "\n"]))
+                else ();
 
                 (* determine whether the join/return is actually a goto *)
                 (case (kindOf f, !usingDS)
-                 of ((JoinCont, _) | (ReturnCont, true))  => (
-                        (* Do all uses of f occur in the current function environment?
-                           we also must ensure that no Other / Goto conts were
-                           bound between this cont's binding and one of its uses.
-                           That's because an Other/Goto cont is considered a
-                           different function environment. *)
-                        if List.all (checkUse outer) (usesOf f)
-                                then () (* it remains as is *)
-                                else markAsGoto f (* should be its own function *)
-                        )
-                  | _ => ());
+                  of ((JoinCont, _) | (ReturnCont, true)) =>
+                    if List.all (checkUse outer) (usesOf f)
+                        then ()
+                        else markAsGoto f
+                   | _ => ());
 
                 if Controls.get CPSOptControls.debug then
                 print(concat[
