@@ -48,7 +48,6 @@
 // has size 0. Otherwise their sizes are fixed (see implementation).
 //
 StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool isSegment) {
-    StackInfo_t* info;
     bool haveGuardPage = guardSz > 0;
     // NOTE automatic resizing using MAP_GROWSDOWN has
     // been deprecated: https://lwn.net/Articles/294001/
@@ -63,7 +62,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
 
     size_t totalRegion = ccallSz + slopSz + numBytes + bonusSz;
     size_t stackLen = guardSz + totalRegion;
-    size_t totalSz = stackLen + sizeof(StackInfo_t);
+    size_t totalSz = stackLen;
 
     totalSz = haveGuardPage ? ROUNDUP(totalSz, guardSz) : ROUNDUP(totalSz, 16ULL);
 
@@ -97,7 +96,10 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
     uint64_t val = (uint64_t) mem;
 
     // initialize the stack's info descriptor
-    info = (StackInfo_t*)(val + stackLen);
+    StackInfo_t* info = (StackInfo_t*) malloc(sizeof(StackInfo_t));
+    if (info == NULL)
+      Die("AllocStackMem: unable to allocate a StackInfo object");
+
     info->deepestScan = 0;
     info->age = AGE_Minor;
     info->next = NULL;
@@ -161,6 +163,7 @@ void DeallocateStackMem(VProc_t *vp, StackInfo_t* info) {
     #endif
 
     lo_free(vp, mem);
+    free(info);
 }
 
 // returns a stack pointer SP such that SP+8 is 16-byte aligned.
