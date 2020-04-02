@@ -371,7 +371,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifdef DIRECT_STYLE
     // try to reclaim stacks
-    vp->allocdStacks = ReclaimStacks(vp, vp->allocdStacks, AGE_Major, false);
+    ReclaimStacks(vp, &(vp->allocdStacks), AGE_Major, false);
 #endif
 
     PushToSpaceChunks (vp, scanChunk, false);

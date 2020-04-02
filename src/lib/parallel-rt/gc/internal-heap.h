@@ -169,8 +169,8 @@ extern void InitGlobalGC ();
 extern void StartGlobalGC (VProc_t *self, Value_t **roots);
 extern MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal);
 
-extern StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t*, Age_t epoch, bool GlobalGCLeader);
-extern StackInfo_t* ReleaseOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC);
+extern void ReclaimStacks(VProc_t *vp, StackInfo_t** head, Age_t epoch, bool GlobalGCLeader);
+extern StackInfo_t* ReleaseOneStack(VProc_t *vp, StackInfo_t** head, StackInfo_t* allocd, bool GlobalGC);
 extern void RemoveFromAllocList(StackInfo_t** head, StackInfo_t* allocd);
 
 extern void ScanStackMinor (

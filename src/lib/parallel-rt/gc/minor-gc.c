@@ -292,29 +292,28 @@ void RemoveFromAllocList(StackInfo_t** head, StackInfo_t* elm) {
 //
 // Updates here must also be reflected in asm-glue-ds, since
 // ASM_DS_SegUnderflow will also free a stack!
-StackInfo_t* ReleaseOneStack(VProc_t *vp, StackInfo_t* allocd, bool GlobalGC) {
+StackInfo_t* ReleaseOneStack(VProc_t *vp, StackInfo_t** head, StackInfo_t* allocd, bool GlobalGC) {
 
-  RemoveFromAllocList(&(vp->allocdStacks), allocd);
+  RemoveFromAllocList(head, allocd);
 
   // demote
   allocd->age = AGE_Minor;
   allocd->canCopy = 1;
   allocd->prev = NULL;
 
-  if (allocd->owner == vp) {
+  if (GlobalGC) {
+    return allocd;
+  } else if (allocd->owner == vp) {
     // put it on the free list
     // note that we don't bother with prev links
     // on the free list since we never unlink
     // in the middle.
     allocd->next = vp->freeStacks;
     vp->freeStacks = allocd;
-
-  } else if (GlobalGC) {
-    return allocd;
-
   } else {
     // release the memory associated with this stack.
-    DeallocateStackMem(vp, allocd);
+    // DeallocateStackMem(vp, allocd);
+    Die("Why am I freeing a stack not owned by me?");
   }
 
   return NULL;
@@ -350,7 +349,7 @@ int RedistributeOrphanStack(int nextVP, StackInfo_t* free) {
  *
  * This function is also used by later GCs.
  */
-StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool GlobalGCLeader) {
+void ReclaimStacks(VProc_t *vp, StackInfo_t** head, Age_t epoch, bool GlobalGCLeader) {
   #ifndef NO_GC_STATS
       TIMER_Start(&(vp->largeObjStats.timer));
   #endif
@@ -358,8 +357,7 @@ StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool Glob
   // Say("Start of reclaim stacks...");
 
     int NextVProc = 0;
-    StackInfo_t* current = top;
-    top = NULL;
+    StackInfo_t* current = *head;
 
     while (current != NULL) {
         StackInfo_t* nextIter = current->next;
@@ -369,7 +367,7 @@ StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool Glob
 
         if (!marked && safe) {
             // we can free it
-            StackInfo_t* maybeStack = ReleaseOneStack(vp, current, GlobalGCLeader);
+            StackInfo_t* maybeStack = ReleaseOneStack(vp, head, current, GlobalGCLeader);
             if (maybeStack != NULL) {
               if (!GlobalGCLeader) // is it safe to mutate the global free stack list?
                 Die("should not have got back a stack if not the global gc leader.");
@@ -381,8 +379,6 @@ StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool Glob
         if (marked) {
           // clear the marking since we're keeping it.
           current->deepestScan = current;
-          if (top == NULL)
-            top = current;
         }
 
         // advance position
@@ -393,7 +389,6 @@ StackInfo_t* ReclaimStacks(VProc_t *vp, StackInfo_t* top, Age_t epoch, bool Glob
     #endif
 
     // Say("done!\n");
-    return top;
 }
 
 /* MinorGC:
@@ -533,7 +528,7 @@ void MinorGC (VProc_t *vp)
 
     #ifdef DIRECT_STYLE
         /* try to free unreachable stacks */
-        vp->allocdStacks = ReclaimStacks(vp, vp->allocdStacks, AGE_Minor, false);
+        ReclaimStacks(vp, &(vp->allocdStacks), AGE_Minor, false);
     #endif
 
     //LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
