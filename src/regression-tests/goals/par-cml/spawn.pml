@@ -25,8 +25,7 @@ structure Spawn : sig
 
 structure Main = struct
 
-  val dfltN = 11000  (* highest we can go right now,
-                        since segstack without cshim is too slow. *)
+  val dfltN = 1048576
 
     fun timeit n = let
     val t0 = Time.now()
