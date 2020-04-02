@@ -363,21 +363,21 @@ void ReclaimStacks(VProc_t *vp, StackInfo_t** head, Age_t epoch, bool GlobalGCLe
         StackInfo_t* nextIter = current->next;
 
         bool marked = (current->deepestScan != current);
-        bool safe = current->age <= epoch; // young enough
 
-        if (!marked && safe) {
+        if (!marked) {
+          bool safe = current->age <= epoch; // safe, i.e., young enough
+          if (safe) {
             // we can free it
             StackInfo_t* maybeStack = ReleaseOneStack(vp, head, current, GlobalGCLeader);
             if (maybeStack != NULL) {
-              if (!GlobalGCLeader) // is it safe to mutate the global free stack list?
-                Die("should not have got back a stack if not the global gc leader.");
-
+              // this is expected only during a global gc when the current VP holds
+              // a mutex on the GlobFreeStacks.
+              assert(GlobalGCLeader && "should not have got back a stack if not the global gc leader!");
               NextVProc = RedistributeOrphanStack(NextVProc, maybeStack);
             }
-        }
-
-        if (marked) {
-          // clear the marking since we're keeping it.
+          }
+        } else {
+          // it's marked, clear the marking since we're keeping it.
           current->deepestScan = current;
         }
 
