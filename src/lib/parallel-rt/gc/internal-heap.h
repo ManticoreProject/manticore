@@ -109,7 +109,7 @@ struct struct_stackinfo {
     void* initialSP     ALIGN_8;
     void* stkLimit      ALIGN_8;
     StackInfo_t* prev   ALIGN_8;  // link to previous stack in the list
-    void* deepestScan   ALIGN_8;  // unscanned <=> deepestScan == ptr to its own StackInfo_t
+    void* deepestScan   ALIGN_8;  // unscanned <=> deepestScan == 0. otherwise it represents the deepest point in the stack scanned so far
     Age_t age           ALIGN_8;
     VProc_t* owner      ALIGN_8; // who's allocation/free list it is in. NULL means it's in global list.
     uint64_t canCopy    ALIGN_8; // if true, indicates that it's safe to copy frames out of this segment

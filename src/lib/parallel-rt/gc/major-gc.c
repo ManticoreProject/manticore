@@ -173,7 +173,7 @@ void ScanStackMajor (
       // because otherwise during a PromoteObj, we never end up clearing this,
       // and will not scan the stack.
         uint64_t deepest = (uint64_t)stkInfo->deepestScan;
-        if(deepest <= (uint64_t)origStkPtr) {
+        if(deepest != 0 && deepest <= (uint64_t)origStkPtr) {
           // Then I've already scanned the segments following this one.
           #ifdef DEBUG_STACK_SCAN_MAJOR
             fprintf(stderr, "Segment portion is marked as already scanned, stopping early!\n");

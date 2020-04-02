@@ -98,7 +98,7 @@ StackInfo_t* AllocStackMem(VProc_t *vp, size_t numBytes, size_t guardSz, bool is
 
     // initialize the stack's info descriptor
     info = (StackInfo_t*)(val + stackLen);
-    info->deepestScan = info;
+    info->deepestScan = 0;
     info->age = AGE_Minor;
     info->next = NULL;
     info->prev = NULL;
@@ -183,7 +183,7 @@ extern int ASM_DS_SegUnderflow;
 
 void ResetSegment(VProc_t* vp, StackInfo_t* info) {
   // reset some fields
-  info->deepestScan = info;
+  info->deepestScan = 0;
   info->age = AGE_Minor;
   info->prevSegment = NULL;
   info->currentSP = NULL;

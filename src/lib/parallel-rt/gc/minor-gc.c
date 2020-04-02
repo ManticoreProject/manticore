@@ -94,7 +94,7 @@ void ScanStackMinor (
     uint64_t stackPtr = (uint64_t)origStkPtr;
 
     uint64_t deepest = (uint64_t)stkInfo->deepestScan;
-    if(deepest <= (uint64_t)origStkPtr) {
+    if(deepest != 0 && deepest <= (uint64_t)origStkPtr) {
         // Then I've already scanned the segments following this one.
         #ifdef DEBUG_STACK_SCAN_MINOR
           fprintf(stderr, "Segment portion is marked as already scanned, stopping early!\n");
@@ -362,7 +362,7 @@ void ReclaimStacks(VProc_t *vp, StackInfo_t** head, Age_t epoch, bool GlobalGCLe
     while (current != NULL) {
         StackInfo_t* nextIter = current->next;
 
-        bool marked = (current->deepestScan != current);
+        bool marked = (current->deepestScan != 0);
 
         if (!marked) {
           bool safe = current->age <= epoch; // safe, i.e., young enough
@@ -378,7 +378,7 @@ void ReclaimStacks(VProc_t *vp, StackInfo_t** head, Age_t epoch, bool GlobalGCLe
           }
         } else {
           // it's marked, clear the marking since we're keeping it.
-          current->deepestScan = current;
+          current->deepestScan = 0;
         }
 
         // advance position

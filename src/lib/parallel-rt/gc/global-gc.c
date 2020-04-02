@@ -131,7 +131,7 @@ void ScanOneSegmentGlobal (
     MutexLock(&stkInfo->gcLock);
 
     uint64_t deepest = (uint64_t)stkInfo->deepestScan;
-    if (deepest <= (uint64_t)origStkPtr) {
+    if (deepest != 0 && deepest <= (uint64_t)origStkPtr) {
       // this part of the segment has already been scanned by someone else.
 
       ///////////////////////////////////////////////////
