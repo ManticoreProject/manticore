@@ -130,8 +130,8 @@ void HeapInit (Options_t *opts)
 #elif defined(RESIZESTACK) && !defined(HYBRIDSTACK)
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 8 * ONE_K);
 #elif defined(HYBRIDSTACK)
-    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 4 * ONE_K);
-    hybridThresholdSz = GetSizeOpt (opts, "-hybridsz", 1, 256 * ONE_K);
+    dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 8 * ONE_K);
+    hybridThresholdSz = GetSizeOpt (opts, "-hybridsz", 1, 64 * ONE_K);
 #elif defined(DIRECT_STYLE)
     dfltStackSz = GetSizeOpt (opts, "-stacksz", 1, 128 * ONE_MEG);
 #endif
