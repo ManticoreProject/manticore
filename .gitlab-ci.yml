@@ -5,8 +5,8 @@ stages:
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive  # download all, including benchmarks
-  CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+  CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-test
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:pldi20
 
 before_script:
   - echo "$CI_REGISTRY_PASSWORD" | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
@@ -31,5 +31,5 @@ release-image:
     - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
     - docker push $CONTAINER_RELEASE_IMAGE
   only:
-    - stacks
+    - pldi20
     # TODO: if you ever merge this into master, should change the name of branch

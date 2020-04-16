@@ -1,19 +1,19 @@
-# Manticore PLDI'20 Artifact Evaluation
+# Manticore PLDI'20 Artifact Guide
 
-[![pipeline status](https://gitlab.com/kavon1/manticore/badges/stacks/pipeline.svg)](https://gitlab.com/kavon1/manticore/commits/stacks)
+[![pipeline status](https://gitlab.com/kavon1/manticore/badges/pldi20/pipeline.svg)](https://gitlab.com/kavon1/manticore/commits/pldi20)
 
-## Getting Started Guide
+## Getting Started
 
 **NOTE**: This README is best viewed on GitHub here:
 
-https://github.com/ManticoreProject/manticore/blob/stacks/README.md
+https://github.com/ManticoreProject/manticore/blob/pldi20/README.md
 
 
 In this section, we provide a quick (30 minute) guide to help you become
 familiar with the artifact and ensure that it's working.
 
-In order to evaluate the system for PLDI'20 artifact evaluation, you must first
-have access to an x86-64 Linux system with Docker installed:
+In order to use and evaluate the artifact, you must first
+have access to an x86-64 Linux system, ideally with Docker installed:
 
 https://docs.docker.com/install/
 
@@ -71,11 +71,11 @@ kernel that are disabled in Docker without that capability.
 The recommended way to obtain the latest version of the Docker image is to run
 
 ```console
-$ docker pull registry.gitlab.com/kavon1/manticore:latest
+$ docker pull registry.gitlab.com/kavon1/manticore:pldi20
 ```
 
 For the remainder of this README, wherever `image-name` appears, you will
-use `registry.gitlab.com/kavon1/manticore:latest`.
+use `registry.gitlab.com/kavon1/manticore:pldi20`.
 To make sure you have the latest version, run the `docker pull` command above
 prior to running the image.
 
@@ -88,10 +88,10 @@ You can load this image into Docker with:
 
 ```console
 $ docker load < manticore_docker.tar
-Loaded image: registry.gitlab.com/kavon1/manticore:latest
+Loaded image: registry.gitlab.com/kavon1/manticore:pldi20
 ```
 
-Then, you should be able to use `registry.gitlab.com/kavon1/manticore:latest`
+Then, you should be able to use `registry.gitlab.com/kavon1/manticore:pldi20`
 wherever `image-name` appears in the rest of this README.
 
 
@@ -102,8 +102,13 @@ takes about 20 -- 30 minutes on our continuous integration runner.
 To do this, perform a recursive clone of Manticore like so,
 
 ```console
-$ git clone -b stacks --recursive https://github.com/ManticoreProject/manticore.git
+$ git clone -b pldi20-final --recursive https://github.com/ManticoreProject/manticore.git
 ```
+
+The `pldi20-final` is the tagged commit on the `pldi20` branch corresponding
+to the archived artifact.
+As a backup, we've provided the full recursive clone of `pldi20-final` as
+the tarball `manticore.tar.gz`.
 
 Then build the Docker image locally with
 
@@ -116,6 +121,12 @@ Finally, once the Docker build completes you'll see a final message saying
 `Successfully built SOME_HASH_CODE`.
 You should use `SOME_HASH_CODE` wherever `image-name` appears in the rest of
 this README.
+
+**Building Without Docker**
+Step-by-step instructions to obtain all dependencies and build the compiler
+outside of Docker are the same as those listed in the `Dockerfile`.
+Just run each command listed in each `RUN` step, assuming your initial working
+directory is the root of the repository where the `Dockerfile` resides.
 
 
 
@@ -133,7 +144,7 @@ root@container:/usr/pmlc#
 
 The text editors `vim` and `emacs` are provided in the image for your
 convenience.
-The Manticore compiler (which implements the 5 stack strategies) is
+The Manticore compiler (which implements the 6 stack strategies) is
 available in the image as `pmlc` in PATH:
 
 ```console
@@ -231,7 +242,8 @@ code contained in the Docker image for reusability purposes.
 This information is not needed to reproduce the results of the paper, but it is
 useful for future extensions of the system.
 
-Relative to `/usr/pmlc`, the sources in the image are organized as follows:
+Relative to `/usr/pmlc`, which is the root of the GitHub repository,
+the sources in the image are organized as follows:
 
 ```
 src/tools/mc                          -- Manticore compiler
@@ -250,7 +262,9 @@ The non-CPS stack strategies currently only support CML-style concurrency.
 
 Without additional arguments, `pmlc` will compile a program with the standard
 runtime system and basis library using the CPS strategy.
-Other useful flags are:
+LLVM is always used to compile programs unless if the `-mlrisc` flag is specified.
+Full options can be found by passing `-h` and `-H` to `pmlc`.
+The most useful flags are:
 
 ```
 -o <file>        specify executable-file name
@@ -260,6 +274,7 @@ Other useful flags are:
 -linkstack       use mutable, linked-frame stacks
 -segstack        use segmented stacks
 -resizestack     use resizing stacks
+-hybridstack     use hybrid stacks
 -noras           emit pop/push jmp instead of call/ret for stacks
 ```
 
