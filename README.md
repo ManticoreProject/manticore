@@ -107,8 +107,8 @@ $ git clone -b pldi20-final --recursive https://github.com/ManticoreProject/mant
 
 The `pldi20-final` is the tagged commit on the `pldi20` branch corresponding
 to the archived artifact.
-As a backup, we've provided the full recursive clone of `pldi20-final` as
-the tarball `manticore.tar.gz`.
+As a backup, we've provided a snapshot of `pldi20-final` (and its source
+dependencies) as the tarball `manticore.tgz`.
 
 Then build the Docker image locally with
 
