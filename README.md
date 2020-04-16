@@ -370,25 +370,38 @@ should be opened with a plain-text editor.
 Some files contain a timestamp in their filename, so in this README we have
 `DATE` written in its place.
 
-**ALSO** please double-check the files you open as you explore the results,
+**ALSO**
+
+1. Please double-check the files you open as you explore the results,
 since the file names and paths are all quite similar! :)
 
+2. The benchmark group nicknames used internally within our benchmark
+suite and plotting script differs from the paper. The correspondence from
+internal name to paper name is: "toy" => "recursive", "tail" => "looping",
+"real" => "mixed", "cont" => "continuation".
 
-##### Section 5.1.1 -- Recursion Performance
+3. To find the programs in the benchmark suite from Table 1, you are looking
+for directories under `src/benchmarks/benchmarks/programs` with names that start
+with either `seq-`, `ec-`, `cml-`, or `ffi-` and end with the suffix that are
+in Table 1. The exception is that "mcray" is "seq-raytrace", and "barnes-hut"
+is "seq-barneshut".
+
+
+##### Section 5.1.2 -- Recursion Performance
 
 We go step-by-step in order of the claims made in this section
 and how to check them against the results gathered in Step 1.
 
 
 - Figure 3 corresponds with the plot `normal/cross_toy_times.pdf`,
-and covers the discussion on lines 747--761. Note that in the camera-ready
-version the corrected number of `fib` calls is 331 million per iteration.
+and covers the discussion in the Recursive Benchmarks paragraph.
 
 
-- Claims in lines 765--808 can be checked in the following sub-steps:
+- Claims regarding garbage collection in the Recursive Benchmarks paragraph
+can be checked in the following sub-steps:
 
   1. Percent of time spent in the garbage collector for `ack` in cps and linked
-  strategies (~67%) is in plot `gcstats/analyze_toy_gc_time_total_pct.pdf`.
+  strategies etc, is in plot `gcstats/analyze_toy_gc_time_total_pct.pdf`.
 
   2. The volume of data allocated for **closure-based stacks** (aka "cps") for
   `ack` (24GB) should be checked manually in the file
@@ -396,10 +409,10 @@ version the corrected number of `fib` calls is 331 million per iteration.
   The field `minorgc-alloc` corresponds to the number of bytes allocated in
   the nursery. Divide by 2^30 = 1073741824 to get GiB.
 
-  3. The percentage of data promoted from the **nursery to the major heap**
+  3. The percentage of live data copied from the **nursery to the old space**
   (65.6%) is in the plot `gcstats/analyze_toy_gc_minor_live_pct.pdf`
 
-  4. The percentage of data promoted from the **major heap to the global heap**
+  4. The percentage of live data copied from the **old space to the global heap**
   (40%) is in `gcstats/analyze_toy_gc_major_live_pct.pdf`.
 
   5. The volume of data allocated for **linked-frame stacks** for `ack` is
@@ -408,13 +421,7 @@ version the corrected number of `fib` calls is 331 million per iteration.
   difference to be 2.7GB.
 
 
-- Figure 4 corresponds with the plot `normal/toy_perf_L1-dcache-load-misses.pdf`
-  and supports the implicit claim on lines 810--812 that closure and linked
-  stacks have notably higher data-read miss rates than other stacks on a number
-  of programs.
-
-
-- On lines 813--820, the discussion of "high number of segment-overflow events"
+- The discussion of "high number of segment-overflow events"
 for segmented stacks compared to resizing stacks for `ack` and `quicksort`
 are supported by examining the `stackcache-access` values (subtracting by 2 for
 the fixed number of accesses related to runtime system initialization)
@@ -433,37 +440,27 @@ in the following comparisons:
 
 
 - Figure 5 corresponds with the plot `normal/cross_tail_times.pdf` and supports
-the discussion on lines 821--859.
+the discussion regarding looping benchmarks.
 
 
 - Figure 6 corresponds with the plot `normal/cross_real_times.pdf`
-and supports the discussion on lines 872--914. Part of that discussion
-references data cache miss-rates for the "real" programs in
-`normal/real_perf_L1-dcache-load-misses.pdf`.
+and supports the discussion regarding mixed benchmarks.
 
 
 
-##### Section 5.1.2 -- Escape Continuation Performance
+##### Section 5.1.3 -- Continuation Benchmarks
 
-Figure 7 corresponds with the plot `normal/crossCont_cont_times.pdf` and
-supports the discussion on lines 917--927.
-
-Note that the artifact contains a small optimization
-to the implementation of contig stacks since the paper submission, which
-may yield better contig performance on `cml-pingpong` and `cml-spawn` (and thus
-lower speed-ups relative to it).
+Figure 7 corresponds with the plot `normal/crossCont_cont_times.pdf`.
 
 
-##### Section 5.1.3 -- Design Trade-offs
+##### Section 5.2 -- Design Trade-offs
 
-
-###### Foreign Function Calls
+###### Section 5.2.1 Foreign Function Calls
 
 The data for Foreign Function Calls are plotted in a number of files, with
 one file per stack strategy.
-The claims made on lines 1026--1029 are about the min-max ranges for
-both `ffi-fib` (2.44× -- 2.94×) and `ffi-trigfib` (1.03× -- 1.05×) and are
-shown in these plots:
+The claims made about the min-max ranges for
+both `ffi-fib` and `ffi-trigfib` are shown in these plots:
 
 ```
 normal/ffi_contig_ffi_times.pdf
@@ -482,44 +479,57 @@ a heap-allocated linked-frame stack that uses the native CPU call/ret
 instructions.
 
 
-###### Non-native Stack on x86-64
+###### 5.2.2 Hardware Stack Support
 
-> We found that for contig, resize, and segment stacks, using the
-> native CPU instructions yields a 1.06× – 1.08× speedup for
-> toy programs, [...]
+In the plots discussed here, "-noras" appended to a particular stack strategy's
+name refers to that stack when it's run with the `ret` instruction replacement
+to disable the Return Address Stack mechanism in the CPU. So the speed-ups
+are relative to a "noras" baseline.
 
-This min-max claim can be checked by inspecting the GMEAN values in the
-following plots, which show the speed-up of using the native stack instructions:
+> We found that for contig, resize, and segmented and hybrid strategies,
+> using the native CPU instructions yields a 1.02× – 1.07× speedup for
+> the recursive group, [...]
+
+This min-max claim can be checked by inspecting the GMEAN values in the following
+plots, which show  the speed-up of using the native stack instructions:
 
 ```
 normal/ras_contig_toy_times.pdf
 normal/ras_resizestack_toy_times.pdf
 normal/ras_segstack_toy_times.pdf
+normal/ras_hybridstack_toy_times.pdf
 ```
 
-> [...] a 1.01--1.03x speedup for real programs, [...]
+For the subsequent discussion about motzkin and fib being outliers, use
+the same plots above, but look specifically at those two benchmark programs.
 
-This claim is checked like the previous one, but using these plots instead:
+
+> [...] Those strategies see a 1.01× – 1.02× speedup for the mixed benchmarks, [...]
+
+This claim is checked like the previous one by looking at the GMEAN values,
+but using these plots instead:
 
 ```
 normal/ras_contig_real_times.pdf
 normal/ras_resizestack_real_times.pdf
 normal/ras_segstack_real_times.pdf
+normal/ras_hybridstack_real_times.pdf
 ```
 
-> [...] and a 1.04x speedup overall.
+> [...] and a 1.02x speedup overall [...]
 
-This claim is checked in the following way. Gather the three GMEAN values
-from the following oversized plots that contain all non-callec benchmarks:
+This claim is checked in the following way. Gather the four GMEAN values
+from the following plots that contain all non-continuation benchmarks:
 
 ```
 normal/ras_TOTAL_contig_all_times.pdf
 normal/ras_TOTAL_resizestack_all_times.pdf
 normal/ras_TOTAL_segstack_all_times.pdf
+normal/ras_TOTAL_hybridstack_all_times.pdf
 ```
 
 Then compute the average of those three values and round.
-We had (1.04 + 1.04 + 1.03) / 3 = 1.0366667 -> 1.04x overall speedup.
+We had (1.03 + 1.03 + 1.01 + 1.01) / 4 = 1.02x overall speedup.
 
 
 > Linked stacks saw effectively no change in performance even
@@ -530,19 +540,33 @@ This claim can be checked by inspecting the GMEAN values in the following plots:
 ```
 normal/ras_linkstack_toy_times.pdf
 normal/ras_linkstack_real_times.pdf
+normal/ras_TOTAL_linkstack_all_times.pdf
 ```
 
 You're looking to see that nearly all programs hover around 1.0 with little
 variation.
-Particular focus should be placed on linkstack's toy plot, which had the highest
+Particular focus should be placed on linkstack's 'toy' plot, which had the highest
 variance among all other stack strategies *except* for linkstack.
-On our machine, only `fib` was clearly not at a 1.0 speed-up (at 1.07); for all
+On our machine, only `fib` was clearly not at a 1.0 speed-up (at 1.06); for all
 other programs the confidence interval overlaps with 1.0 and the GMEAN was 1.01.
 Same story for linkstack's real plot: while a few more are above/below 1.0, the
 GMEAN was 1.00.
 
 
+###### 5.2.3 Cache Locality
+
+The data from Table 2 comes from the MEAN values computed in the following
+plots:
+
+```
+normal/toy_perf_L1-dcache-load-misses.pdf    ==> recursive
+normal/tail_perf_L1-dcache-load-misses.pdf   ==> looping
+normal/real_perf_L1-dcache-load-misses.pdf   ==> mixed
+normal/cont_perf_L1-dcache-load-misses.pdf   ==> continuation
+```
+
+
 ### Step 3: Finished
 
-If you've reached this point in the README, you're done!
-Thanks for volunteering your time! :)
+If you've reached this point in the README, you're done evaluating the main
+claims of the paper that are supported by the benchmarks!
