@@ -4,7 +4,7 @@
 
 ## Getting Started
 
-**NOTE**: This README is best viewed on GitHub here:
+**NOTE**: This Markdown-formatted README is best viewed on GitHub here:
 
 https://github.com/ManticoreProject/manticore/blob/pldi20/README.md
 
@@ -20,6 +20,9 @@ https://docs.docker.com/install/
 The Linux requirement is due to our use of Linux's `perf` for profiling in our
 benchmark suite, which will probably *not* work if you are running Docker on any
 other OS because `perf` is Linux-only.
+The particular Linux distribution assumed throughout this README is Ubuntu,
+and if you end up using Docker then you'll want your system to be running
+Ubuntu so that the kernel version matches up with what the image expects.
 
 Once you believe you have Docker installed, you can test if Docker is working
 on your system with:
@@ -83,7 +86,7 @@ prior to running the image.
 ##### Method 2: Load the archived image
 
 Should the Method 1 fail, the artifact package also includes the image
-in as a tar file, `manticore_docker.tar`.
+as a tar file, `manticore_docker.tar`.
 You can load this image into Docker with:
 
 ```console
@@ -107,8 +110,8 @@ $ git clone -b pldi20-final --recursive https://github.com/ManticoreProject/mant
 
 The `pldi20-final` is the tagged commit on the `pldi20` branch corresponding
 to the archived artifact.
-As a backup, we've provided a snapshot of `pldi20-final` (and its source
-dependencies) as the tarball `manticore.tgz`.
+As a backup, we've provided a snapshot of `pldi20-final` as the
+tarball `manticore.tgz`.
 
 Then build the Docker image locally with
 
@@ -200,25 +203,106 @@ root@container:~# perf stat echo
  ...
 ```
 
+There are two possible error messages you'll see, which we will cover in the
+following sub-sections.
+
+##### Error 1: Perf Not Found
+
 If you see a message starting with `WARNING: perf not found for kernel X`,
 then that means the Docker image you've obtained was built on a Linux system
-with a different kernel version than yours (this is quite likely to happen!).
-This can be fixed for the currently-active container by running the `apt-get`
-command:
+with a different kernel version than yours.
+Unfortunately, this is quite likely to happen because the kernel is the one
+leaky part of the Docker container.
+For reference, this artifact's Docker image was based on Ubuntu 16.04,
+and was built on a native machine running Ubuntu 18.04.
+If you're running a version of Ubuntu between 16.04 and 18.04, you should
+be able to fix this error for the currently-active container by running
+the `apt-get` command:
 
 ```console
 root@container:~# apt-get update && apt-get install -y linux-tools-$(uname -r)
 root@container:~# perf stat echo  # should work now!
 ```
 
-While you'll normally need to run the `apt-get` command every time you
-relaunch the Docker image, we've added basic detection of this scenario in our
-benchmarking scripts.
+If `apt-get` works for you, wonderful!
+Because you would normally need to run that command every time you relaunch the
+Docker image, we've added basic detection of this scenario in the
+`run_cont_bench.sh` script in case you don't remember.
+Feel free to jump to the "Running the regression suite" section.
+
+Otherwise, if the `apt-get` installation of `linux-tools-*` fails,
+it's likely to be the case that your native Linux machine's kernel version is newer
+than what is available in Ubuntu 16.04's package repository for `linux-tools-*`.
+In particular, it seems Ubuntu 16.04 only supports up to 18.04's kernel version.
+Here are some workarounds:
+
+**Workaround 1:** If you don't plan to run our benchmarking scripts, i.e.,
+`run_cont_bench.sh` and the subsequent scripts it kicks off, then
+you don't need `perf` to be working and continue on with using the Docker image.
+
+**Workaround 2:** If you plan to use the benchmark scripts, but *do not care
+about the data collected from `perf`*, then you could just add a dummy `perf`
+executable to the PATH of the running Docker container that always spits out
+the following data (an example taken from the paper's data) to `stderr`:
+
+```
+ Performance counter stats for '/home/kavon/manticore/src/benchmarks/benchmarks/programs/seq-fib/mc-seq' (5 runs):
+
+       3608.019854      task-clock (msec)         #    0.984 CPUs utilized            ( +-  0.57% )
+               350      context-switches          #    0.097 K/sec                    ( +-  1.21% )
+                36      cpu-migrations            #    0.010 K/sec                    ( +-  2.60% )
+               330      page-faults               #    0.091 K/sec                    ( +-  0.18% )
+    12,640,356,788      cycles                    #    3.503 GHz                      ( +-  0.14% )  (30.81%)
+   <not supported>      stalled-cycles-frontend  
+   <not supported>      stalled-cycles-backend   
+    38,193,194,020      instructions              #    3.02  insns per cycle          ( +-  0.12% )  (38.53%)
+     9,575,569,738      branches                  # 2653.968 M/sec                    ( +-  0.10% )  (38.56%)
+           652,922      branch-misses             #    0.01% of all branches          ( +-  2.31% )  (38.59%)
+     8,234,247,853      L1-dcache-loads           # 2282.207 M/sec                    ( +-  0.05% )  (38.64%)
+           307,152      L1-dcache-load-misses     #    0.00% of all L1-dcache hits    ( +-  4.55% )  (38.68%)
+            18,110      LLC-loads                 #    0.005 M/sec                    ( +- 10.99% )  (30.90%)
+             7,092      LLC-load-misses           #   78.32% of all LL-cache hits     ( +- 10.35% )  (30.97%)
+   <not supported>      L1-icache-loads          
+           523,516      L1-icache-load-misses     #    0.145 M/sec                    ( +-  8.75% )  (30.91%)
+     8,269,966,365      dTLB-loads                # 2292.107 M/sec                    ( +-  0.12% )  (30.86%)
+             1,015      dTLB-load-misses          #    0.00% of all dTLB cache hits   ( +- 36.32% )  (30.86%)
+            11,362      iTLB-loads                #    0.003 M/sec                    ( +-  7.35% )  (30.82%)
+             2,164      iTLB-load-misses          #   19.05% of all iTLB cache hits   ( +- 12.00% )  (30.83%)
+
+       3.666326914 seconds time elapsed                                          ( +-  0.57% )
+```
+
+This way, our plotting scripts that try to parse this output will not crash,
+and instead produce `perf` data plots that are identical for all strategies (for
+you to ignore of course).
+
+**Workaround 3:** Our `Dockerfile` in the source code's root is known to work
+if you change the first line to `FROM ubuntu:18.04` and then follow the steps
+above in "Method 3" to build the Docker image locally.
+This one-line change might work in the future for other Docker image bases
+(i.e., `ubuntu:20.04`, etc).
+
+Our best guess as to what might break in the future if you change the image base
+is the availability of 32-bit libraries needed to build 32-bit SML/NJ,
+which is what is used to build Manticore.
+If they're no longer available, it might be possible to build Manticore
+with 64-bit SML/NJ, but as of writing we haven't tested that out with
+our build system yet.
+There might be some lingering heap-image extensions hardcoded to say
+`x86-linux` that need to change to `amd64-linux`, but that should be all that's
+needed to build with 64-bit SML/NJ.
+
+
+##### Error 2: No permission to run perf
 
 Otherwise, If you see a message starting with
 `No permission to enable task-clock event.`, then you forgot to add
 `--privileged` to your `docker run` command (use `CTRL+D` to exit the
 session and try again).
+
+
+
+#### Running the Regression Suite
 
 **NOTE**: If time permits, we suggest that you also run the compiler's
 regression suite (~1 hour) to make sure everything's okay with:
@@ -280,9 +364,10 @@ The most useful flags are:
 
 The most relevant flags and additional context for the above:
 
-1. The `-O1` flag enables some basic clean-up optimizations by LLVM (early-cse,
-   simplifycfg, etc) and was used for the evaluation. This flag does not affect
-   optimizations performed by `pmlc` prior to emitting LLVM IR.
+1. The `-O1` flag enables LLVM optimizations like tail-call elimination and
+some basic clean-up (instcombine, simplifycfg, etc) and was used for the paper's
+evaluation. Note that the `-O<level>` flag does not affect any optimizations
+performed by `pmlc` prior to emitting LLVM IR.
 
 2. The `-sequential` flag will produce a program that disables the runtime
 system scheduler for better sequential-program efficiency and omits parts of

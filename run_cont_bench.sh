@@ -38,6 +38,7 @@ if ! perf stat echo; then
     set +ex
     echo -e "perf is not working! If you're in Docker, make sure"
     echo -e "you passed --privileged or --cap-add sys_admin to docker run!"
+    echo -e "If perf is not available on apt-get, then see the README for workarounds."
     exit 1
   fi
 fi
